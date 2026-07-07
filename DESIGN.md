@@ -118,6 +118,8 @@ flowchart TD
 
 **Público:** Aceite de Convite, Rastreio sem login.
 
+Especificação detalhada tela a tela — papel, dados exibidos (campos reais do schema), ações e estados — em [`SCREENS.md`](./SCREENS.md).
+
 ## 5. Arquitetura técnica
 
 ```mermaid
@@ -246,12 +248,17 @@ Sobe dois serviços com healthcheck e volume nomeado (dados sobrevivem a um `dow
 
 ```bash
 cd apps/api
-pnpm install
-pnpm exec prisma generate   # gera o client em generated/prisma
-pnpm start:dev              # http://localhost:3333
+pnpm install       # postinstall roda `prisma generate` sozinho
+pnpm start:dev     # prestart:dev roda `prisma migrate deploy` sozinho — http://localhost:3333
 ```
 
-O `.env` já aponta pra infra do compose (`DATABASE_URL="postgresql://tms:tms@localhost:5432/tms?schema=public"`) e fixa `PORT=3333`, já que o Next.js também usa 3000 por padrão — os dois dev servers rodam ao mesmo tempo sem conflito. Ainda não há `models` no `schema.prisma` — isso é modelagem de domínio, tratada como etapa própria, não parte do scaffold.
+O `.env` já aponta pra infra do compose (`DATABASE_URL="postgresql://tms:tms@localhost:5432/tms?schema=public"`) e fixa `PORT=3333`, já que o Next.js também usa 3000 por padrão — os dois dev servers rodam ao mesmo tempo sem conflito.
+
+**Migrations — o que é automático e o que não é.** O `docker-compose.yml` só sobe um Postgres vazio; ele não sabe nada sobre Prisma. Quem aplica o schema é o Prisma, e isso está automatizado via hooks do npm/pnpm no `package.json` do `apps/api`:
+- `postinstall` → `prisma generate` (sempre que instalar dependências, o client fica em dia).
+- `prestart` / `prestart:dev` / `prestart:prod` → `prisma migrate deploy` (aplica migrations já commitadas em `prisma/migrations/`, de forma não-interativa e segura — nunca cria migration nova nem reseta dado).
+
+Isso cobre "banco vazio → schema aplicado sozinho ao rodar `pnpm start:dev`". O que **continua manual, de propósito**: alterar `schema.prisma` e gerar uma migration nova é sempre `pnpm exec prisma migrate dev --name <nome>` — um passo deliberado, não automatizado, porque envolve decidir o nome/conteúdo da migration.
 
 **Nota técnica — Prisma 7 e driver adapters:** a partir da v7, o Prisma trocou o client gerado por engine Rust implícita por uma arquitetura de *driver adapters*: o `PrismaClient` recebe explicitamente um adapter (`@prisma/adapter-pg`, sobre `pg`) construído com a connection string, em vez de resolver a conexão sozinho a partir de `DATABASE_URL`. Duas implicações práticas registradas aqui porque não são óbvias vindo de versões anteriores do Prisma:
 - O generator precisa de `moduleFormat = "cjs"` explícito no `schema.prisma` — o padrão da v7 gera um client ESM-only (usa `import.meta.url`), incompatível com o build CommonJS padrão do Nest.
@@ -321,3 +328,28 @@ Por padrão, tudo é Server Component — só existe `'use client'` onde há int
 ### Status atual
 
 Esqueleto de pastas criado e validado (`pnpm build` e `pnpm dev` rodando limpos). `@tanstack/react-query` e `zustand` instalados e conectados (`Providers`, `ui-store.ts`). `features/*` ainda vazias (`types.ts`, `api/index.ts`, `index.ts` placeholders) — modelagem de cada domínio é o próximo passo, feature por feature.
+
+## 10. Modelo de dados
+
+11 tabelas em `apps/api/prisma/schema.prisma`, aplicadas via `prisma migrate dev` contra o Postgres do compose. Auth (`User`) separada de perfil de domínio (`Seller`, `CarrierUser`) — o Admin é só um `User` com `role: ADMIN`, sem tabela própria.
+
+```
+User ──1:1── Seller ──1:N── Shipment ──N:1── DeliveryModality
+  └──1:1── CarrierUser ──N:1── Carrier ──1:N── Invite
+                                  ├──1:N── CarrierCoverageArea
+                                  ├──1:N── CarrierModality ──N:1── DeliveryModality
+                                  └──1:N── Shipment (owner opcional via CarrierUser)
+
+Seller ──1:N── SellerModality ──N:1── DeliveryModality
+Shipment ──1:N── TrackingEvent (histórico imutável, nunca UPDATE)
+```
+
+### Decisões que não estavam óbvias na primeira passada
+
+- **Endereço em campos soltos, não `Json`** — `Shipment.addressCity`/`addressState`/etc. como colunas reais. Perde a conveniência de um blob único, mas ganha índice e busca por cidade/UF — que é exatamente o que a atribuição de carrier por cobertura (abaixo) precisa.
+- **`ShipmentStatus` com 9 estados**, não 4 — `COLLECTED` marca a coleta física (sem isso, não dá pra distinguir "criado" de "já saiu do seller"); `FAILED_DELIVERY` + `RETURNED` cobrem a tentativa frustrada (sem eles, um envio que falha na entrega ficaria preso em `IN_TRANSIT` pra sempre). `CANCELLED` só é possível antes de `COLLECTED` — depois disso a única saída de exceção é `FAILED_DELIVERY → RETURNED`.
+- **Atribuição de carrier por cobertura de cidade/UF, não geoespacial** — `CarrierCoverageArea` (`carrierId`, `state`, `city` nullable = "estado inteiro"). Na criação do envio, filtra carriers aprovadas cuja cobertura bate com o endereço; o seller escolhe entre as que aparecem. Geocoding/PostGIS fica pro roadmap (seção 7) — não é escopo do MVP.
+- **Modalidades como catálogo configurável, não enum fixo** — a existência da tela "Configuração de Modalidades" (seção 4) só faz sentido se há algo pra configurar. `DeliveryModality` é o catálogo (`code`, `name`, `slaHours` — este último pensado pro alerta de SLA estourado do roadmap); `CarrierModality` e `SellerModality` são junções N:N — a carrier declara o que opera, o seller declara o que habilita. **Decisão deliberada:** a configuração do seller é independente da oferta real de carriers (o seller liga/desliga do catálogo inteiro, sem saber se hoje existe carrier compatível na região dele) — mais simples, e evita acoplar a tela de config ao estado de onboarding de carriers. Sem carrier compatível na criação do envio vira um estado vazio tratado ali, não uma restrição na tela de configuração.
+- **`Shipment` aponta pra uma única `Carrier`** — a fila compartilhada (seção 3) é *dentro* de uma carrier já atribuída; o "sem dono" é só sobre qual *operador* assume via `CarrierUser.ownedShipments` (`ownerId` nullable), não sobre qual carrier.
+
+Rascunho visual (ER completo + fluxo de status) documentado à parte durante a discussão de modelagem — este documento reflete a versão final aplicada na migration `20260707213521_init_domain`.

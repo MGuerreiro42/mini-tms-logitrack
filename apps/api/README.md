@@ -15,11 +15,12 @@ Backend do [Mini TMS](../../README.md), em NestJS. Racional completo das decisõ
 # infra (na raiz do repo)
 docker compose up -d
 
-# aqui
+# aqui — postinstall roda `prisma generate`, prestart:dev roda `prisma migrate deploy`
 pnpm install
-pnpm exec prisma generate
 pnpm start:dev   # http://localhost:3333
 ```
+
+Alterar `schema.prisma` e gerar uma migration nova continua manual, de propósito: `pnpm exec prisma migrate dev --name <nome>`.
 
 ## Estrutura
 
@@ -29,7 +30,8 @@ src/
 ├── app.module.ts
 └── main.ts
 prisma/
-└── schema.prisma    # ainda sem models — modelagem de domínio é o próximo passo
+├── schema.prisma     # 11 models — ver DESIGN.md § 10
+└── migrations/       # versionadas no git, aplicadas via `prisma migrate deploy`
 ```
 
 A arquitetura de módulos por domínio (`modules/auth`, `modules/sellers`, `modules/shipments`, etc., desacoplados via `EventEmitterModule` em vez de import direto entre módulos) está planejada mas ainda não implementada.

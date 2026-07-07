@@ -19,7 +19,7 @@ apps/
 └── web/   # Next.js — frontend
 ```
 
-Ver seção 8 e 9 do [`DESIGN.md`](./DESIGN.md) para a árvore de pastas completa e a lógica por trás dela.
+Ver seção 8 e 9 do [`DESIGN.md`](./DESIGN.md) para a árvore de pastas completa e a lógica por trás dela. Especificação tela a tela (papéis, dados, ações) em [`SCREENS.md`](./SCREENS.md).
 
 ## Rodando localmente
 
@@ -27,10 +27,9 @@ Ver seção 8 e 9 do [`DESIGN.md`](./DESIGN.md) para a árvore de pastas complet
 # 1. Infra (Postgres + Redis)
 docker compose up -d
 
-# 2. Backend — http://localhost:3333
+# 2. Backend — http://localhost:3333 (generate + migrate rodam sozinhos)
 cd apps/api
 pnpm install
-pnpm exec prisma generate
 pnpm start:dev
 
 # 3. Frontend — http://localhost:3000
@@ -43,7 +42,7 @@ Detalhes de configuração (`.env`, credenciais de dev, notas técnicas do Prism
 
 ## Status
 
-Em desenvolvimento. Scaffold de backend e frontend prontos e validados; modelagem de domínio (Prisma) e features ainda em andamento — acompanhe o [roadmap](./DESIGN.md#7-roadmap-features-avançadas--próximos-passos) e as seções de arquitetura no `DESIGN.md`.
+Em desenvolvimento. Scaffold de backend e frontend prontos e validados; modelagem de domínio fechada ([`DESIGN.md` § 10](./DESIGN.md#10-modelo-de-dados), 11 tabelas, migration aplicada). Faltam: módulos do backend, features do frontend — acompanhe o [roadmap](./DESIGN.md#7-roadmap-features-avançadas--próximos-passos) e as seções de arquitetura no `DESIGN.md`.
 
 ## Licença
 

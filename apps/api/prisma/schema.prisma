@@ -12,3 +12,191 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------- enums ----------
+
+enum Role {
+  ADMIN
+  SELLER
+  CARRIER_MANAGER
+  CARRIER_OPERATOR
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+enum ShipmentStatus {
+  PENDING // criado, sem dono, na fila da carrier
+  ACCEPTED // um operador assumiu (claim)
+  COLLECTED // coletado no seller
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED_DELIVERY
+  CANCELLED // só possível antes de COLLECTED
+  RETURNED // saída de exceção após FAILED_DELIVERY
+}
+
+// ---------- auth ----------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  seller      Seller?
+  carrierUser CarrierUser?
+}
+
+// ---------- seller ----------
+
+model Seller {
+  id          String         @id @default(uuid())
+  userId      String         @unique
+  user        User           @relation(fields: [userId], references: [id])
+  companyName String
+  document    String         @unique
+  status      ApprovalStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  shipments         Shipment[]
+  enabledModalities SellerModality[]
+}
+
+// ---------- carrier ----------
+
+model Carrier {
+  id          String         @id @default(uuid())
+  companyName String
+  document    String         @unique
+  status      ApprovalStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  users         CarrierUser[]
+  invites       Invite[]
+  coverageAreas CarrierCoverageArea[]
+  modalities    CarrierModality[]
+  shipments     Shipment[]
+}
+
+model CarrierUser {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  carrierId String
+  carrier   Carrier  @relation(fields: [carrierId], references: [id])
+  role      Role
+  createdAt DateTime @default(now())
+
+  ownedShipments Shipment[] @relation("ShipmentOwner")
+}
+
+model Invite {
+  id        String       @id @default(uuid())
+  token     String       @unique
+  email     String
+  carrierId String
+  carrier   Carrier      @relation(fields: [carrierId], references: [id])
+  status    InviteStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+}
+
+model CarrierCoverageArea {
+  id        String   @id @default(uuid())
+  carrierId String
+  carrier   Carrier  @relation(fields: [carrierId], references: [id])
+  state     String
+  city      String? // null = cobre o estado inteiro
+  createdAt DateTime @default(now())
+
+  @@unique([carrierId, state, city])
+}
+
+// ---------- delivery modality ----------
+
+model DeliveryModality {
+  id        String   @id @default(uuid())
+  code      String   @unique // "PADRAO", "FULL", "EXPRESSA"
+  name      String
+  slaHours  Int? // usado no futuro alerta de SLA estourado
+  createdAt DateTime @default(now())
+
+  carrierModalities CarrierModality[]
+  sellerModalities  SellerModality[]
+  shipments         Shipment[]
+}
+
+model CarrierModality {
+  id         String           @id @default(uuid())
+  carrierId  String
+  carrier    Carrier          @relation(fields: [carrierId], references: [id])
+  modalityId String
+  modality   DeliveryModality @relation(fields: [modalityId], references: [id])
+  createdAt  DateTime         @default(now())
+
+  @@unique([carrierId, modalityId])
+}
+
+model SellerModality {
+  id         String           @id @default(uuid())
+  sellerId   String
+  seller     Seller           @relation(fields: [sellerId], references: [id])
+  modalityId String
+  modality   DeliveryModality @relation(fields: [modalityId], references: [id])
+  createdAt  DateTime         @default(now())
+
+  @@unique([sellerId, modalityId])
+}
+
+// ---------- shipment ----------
+
+model Shipment {
+  id           String           @id @default(uuid())
+  trackingCode String           @unique
+  sellerId     String
+  seller       Seller           @relation(fields: [sellerId], references: [id])
+  carrierId    String
+  carrier      Carrier          @relation(fields: [carrierId], references: [id])
+  modalityId   String
+  modality     DeliveryModality @relation(fields: [modalityId], references: [id])
+  ownerId      String?
+  owner        CarrierUser?     @relation("ShipmentOwner", fields: [ownerId], references: [id])
+  status       ShipmentStatus   @default(PENDING)
+
+  addressStreet       String
+  addressNumber       String
+  addressComplement   String?
+  addressNeighborhood String
+  addressCity         String
+  addressState        String
+  addressZipCode      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trackingEvents TrackingEvent[]
+}
+
+model TrackingEvent {
+  id         String         @id @default(uuid())
+  shipmentId String
+  shipment   Shipment       @relation(fields: [shipmentId], references: [id])
+  status     ShipmentStatus
+  note       String?
+  createdAt  DateTime       @default(now()) // imutável — nunca tem updatedAt
+}
