@@ -353,3 +353,40 @@ Shipment ──1:N── TrackingEvent (histórico imutável, nunca UPDATE)
 - **`Shipment` aponta pra uma única `Carrier`** — a fila compartilhada (seção 3) é *dentro* de uma carrier já atribuída; o "sem dono" é só sobre qual *operador* assume via `CarrierUser.ownedShipments` (`ownerId` nullable), não sobre qual carrier.
 
 Rascunho visual (ER completo + fluxo de status) documentado à parte durante a discussão de modelagem — este documento reflete a versão final aplicada na migration `20260707213521_init_domain`.
+
+## 11. Arquitetura de módulos do backend
+
+```
+apps/api/src/
+├── modules/
+│   ├── auth/            # implementado — Passport + JWT + bcrypt
+│   │   ├── auth.module.ts / .controller.ts / .service.ts
+│   │   ├── strategies/jwt.strategy.ts
+│   │   ├── guards/jwt-auth.guard.ts, roles.guard.ts
+│   │   ├── decorators/roles.decorator.ts, current-user.decorator.ts
+│   │   └── dto/login.dto.ts
+│   ├── sellers/         # skeleton — module/controller/service vazios
+│   ├── carriers/        # skeleton, com invites/ como sub-módulo aninhado
+│   ├── shipments/       # skeleton
+│   ├── tracking/        # skeleton — vai virar Gateway WS + Redis adapter
+│   └── notifications/   # skeleton — vai virar workers BullMQ
+├── shared/
+│   └── prisma/          # PrismaModule/PrismaService, movido de src/prisma — @Global()
+└── main.ts
+```
+
+Grupo por domínio, não por camada técnica — é a mesma filosofia da arquitetura do front (§9): cada módulo é dono do que é dele, `common/` (filters/interceptors/pipes cross-cutting) fica de fora até existir uma necessidade real — criar essa pasta vazia hoje seria abstração sem uso. `EventEmitterModule` (`@nestjs/event-emitter`) já está registrado globalmente no `AppModule`, mas sem nenhum listener fake — o padrão de desacoplar módulos via evento (`ShipmentsService` emite, `TrackingModule`/`NotificationsModule` escutam) só faz sentido quando esses módulos tiverem lógica de verdade.
+
+### AuthModule — por quê Passport, não um provedor hospedado
+
+Passport (`@nestjs/passport` + `@nestjs/jwt` + `bcrypt`) em vez de Auth0/Clerk/Supabase Auth ou NextAuth: é o padrão oficial do NestJS e o mais comum em vaga real de backend Node, e não terceiriza a parte que é o próprio objetivo do projeto (RBAC aplicado no backend, §1). Um provedor hospedado tiraria justamente essa lógica pra fora do código; NextAuth encaixaria mal porque assume que o Next.js é dono da sessão — aqui quem autoriza cada request é a API NestJS (e, no futuro, o Gateway WebSocket), não o front.
+
+**Como funciona:**
+- `POST /auth/login` — valida email/senha (`bcrypt.compare` contra `User.passwordHash`), assina um JWT (`sub`, `email`, `role`) via `JwtModule`.
+- `JwtStrategy` (Passport) valida o token em cada request protegida e recarrega o `User` do banco — garante que um usuário deletado não continua "autenticado" só porque o token ainda não expirou.
+- `JwtAuthGuard` — exige token válido. `RolesGuard` + `@Roles(...)` — exige um `role` específico, lendo metadata via `Reflector`. Os dois se combinam com `@UseGuards(JwtAuthGuard, RolesGuard)` nos controllers dos outros módulos.
+- `@CurrentUser()` — decorator de parâmetro que extrai o usuário autenticado do request, evitando repetir `request.user` em cada handler.
+
+**Validado ponta a ponta** (não só compilado): seed de um Admin (`prisma/seed.ts`, rodando via `tsx` — `ts-node` falhou por causa da resolução de módulo `.js`→`.ts` do client gerado pelo Prisma 7, gotcha registrado aqui pra não repetir a investigação), login retornando JWT de verdade, `GET /auth/me` protegido respondendo 200 com token e 401 sem token, `ValidationPipe` global rejeitando DTO inválido com 400.
+
+**Seed do Prisma na v7:** o comando de seed não vai mais em `package.json#prisma.seed` (convenção antiga) — agora é `migrations.seed` dentro do `prisma.config.ts`.

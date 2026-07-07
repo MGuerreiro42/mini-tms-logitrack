@@ -26,15 +26,36 @@ Alterar `schema.prisma` e gerar uma migration nova continua manual, de propósit
 
 ```
 src/
-├── prisma/          # PrismaModule + PrismaService — @Global(), injetável em qualquer módulo futuro
+├── modules/
+│   ├── auth/            # implementado — Passport + JWT + bcrypt (ver DESIGN.md § 11)
+│   ├── sellers/         # skeleton
+│   ├── carriers/        # skeleton (+ invites/ aninhado)
+│   ├── shipments/       # skeleton
+│   ├── tracking/        # skeleton — vira Gateway WS + Redis adapter
+│   └── notifications/   # skeleton — vira workers BullMQ
+├── shared/
+│   └── prisma/          # PrismaModule + PrismaService — @Global()
 ├── app.module.ts
 └── main.ts
 prisma/
 ├── schema.prisma     # 11 models — ver DESIGN.md § 10
+├── seed.ts           # cria o Admin — `pnpm exec prisma db seed`
 └── migrations/       # versionadas no git, aplicadas via `prisma migrate deploy`
 ```
 
-A arquitetura de módulos por domínio (`modules/auth`, `modules/sellers`, `modules/shipments`, etc., desacoplados via `EventEmitterModule` em vez de import direto entre módulos) está planejada mas ainda não implementada.
+Agrupado por domínio, não por camada técnica — mesma filosofia do front (`DESIGN.md` § 9). Só `auth/` tem lógica de verdade; os demais são esqueletos prontos pra receber implementação módulo a módulo.
+
+## Testando o login
+
+```bash
+pnpm exec prisma db seed   # cria admin@minitms.dev / admin12345 (ou ADMIN_EMAIL/ADMIN_PASSWORD)
+
+curl -X POST http://localhost:3333/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@minitms.dev","password":"admin12345"}'
+
+curl http://localhost:3333/auth/me -H "Authorization: Bearer <accessToken>"
+```
 
 ## Nota técnica — Prisma 7
 
@@ -46,3 +67,5 @@ O generator usa `moduleFormat = "cjs"` no `schema.prisma` — o padrão da v7 ge
 |---|---|---|
 | `DATABASE_URL` | — | connection string do Postgres (ver `docker-compose.yml` na raiz) |
 | `PORT` | `3333` | porta do servidor — Next.js usa 3000 por padrão |
+| `JWT_SECRET` | — | assinatura dos tokens — trocar em produção |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` | credenciais do seed do Admin |
