@@ -2,20 +2,20 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { Role } from '../../../../generated/prisma/client';
+import type { GlobalRole } from '../../../../generated/prisma/client';
 import type { EnvConfig } from '../../../shared/config/env.validation';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface JwtPayload {
   sub: string;
   email: string;
-  role: Role;
+  role: GlobalRole;
 }
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
-  role: Role;
+  role: GlobalRole;
 }
 
 @Injectable()

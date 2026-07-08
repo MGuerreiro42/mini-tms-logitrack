@@ -28,8 +28,8 @@ Changing `schema.prisma` and generating a new migration remains manual, on purpo
 src/
 ├── modules/
 │   ├── auth/            # implemented — Passport + JWT + bcrypt (see DESIGN.md § 11)
-│   ├── sellers/         # self-signup implemented (see DESIGN.md § 16); the rest is still a skeleton
-│   ├── carriers/        # skeleton (+ nested invites/)
+│   ├── sellers/         # signup + admin approval implemented (see DESIGN.md § 16); onboarding still pending
+│   ├── carriers/        # signup + admin approval implemented (see DESIGN.md § 17); invites/ still a skeleton
 │   ├── shipments/       # skeleton
 │   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
 │   └── notifications/   # skeleton — will become BullMQ workers
@@ -66,7 +66,45 @@ curl -X POST http://localhost:3333/sellers \
   -d '{"email":"seller@example.com","password":"password12345","companyName":"Example Store LLC","document":"12345678000199"}'
 ```
 
-Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transaction. A duplicate email/document returns 409. Admin approval doesn't exist yet — next step.
+Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transaction. A duplicate email/document returns 409.
+
+## Testing admin approval
+
+Requires an admin token (see login above) — these are `@Roles(GlobalRole.ADMIN)`-guarded, a non-admin token gets 403, no token gets 401. `GET /sellers` is paginated (`?page=`/`?limit=`, default 20, capped at 100) — see § "Pagination and filtering" below.
+
+```bash
+curl http://localhost:3333/sellers -H "Authorization: Bearer <adminAccessToken>"
+curl "http://localhost:3333/sellers?status=PENDING" -H "Authorization: Bearer <adminAccessToken>"
+curl http://localhost:3333/sellers/<id> -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/sellers/<id>/approve -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/sellers/<id>/reject -H "Authorization: Bearer <adminAccessToken>"
+```
+
+Approving/rejecting a seller that isn't `PENDING` returns 409 — it's a state transition, not a raw field overwrite.
+
+## Testing carrier company registration + admin approval
+
+Same shape as sellers, one extra row: signup creates `User` (role `CARRIER_MANAGER`) + `Carrier` (`status: PENDING`) + `CarrierUser` (`role: MANAGER`) in one transaction.
+
+```bash
+curl -X POST http://localhost:3333/carriers \
+  -H "Content-Type: application/json" \
+  -d '{"email":"manager@example.com","password":"password12345","companyName":"Fast Freight LLC","document":"12345678000199"}'
+
+curl http://localhost:3333/carriers -H "Authorization: Bearer <adminAccessToken>"
+curl "http://localhost:3333/carriers?status=PENDING" -H "Authorization: Bearer <adminAccessToken>"
+curl http://localhost:3333/carriers/<id> -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/carriers/<id>/approve -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/carriers/<id>/reject -H "Authorization: Bearer <adminAccessToken>"
+```
+
+## Pagination and filtering
+
+`GET /sellers` and `GET /carriers` share the same shape: `?status=` filters, `?page=`/`?limit=` paginate (default `page=1&limit=20`, `limit` capped at 100). Response is always `{ data: [...], meta: { total, page, limit, totalPages } }`, never a bare array — documented in Swagger via a reusable `ApiPaginatedResponse` decorator (`src/shared/pagination/`). Why offset-based instead of cursor/keyset pagination, and the reasoning behind every index added to support these queries at scale: [`DESIGN.md` § 18](../../DESIGN.md#18-scale--pagination-and-indexing).
+
+```bash
+curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <adminAccessToken>"
+```
 
 ## Tests
 

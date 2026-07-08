@@ -15,11 +15,21 @@ datasource db {
 
 // ---------- enums ----------
 
-enum Role {
+// Global identity role, held once per User — drives which linked profile
+// (Seller? / CarrierUser?) exists and what the JWT/RolesGuard checks.
+enum GlobalRole {
   ADMIN
   SELLER
   CARRIER_MANAGER
   CARRIER_OPERATOR
+}
+
+// Role scoped to a single CarrierUser within one Carrier — kept separate from
+// GlobalRole so an invalid combination (e.g. a CarrierUser typed ADMIN) is a
+// compile-time impossibility, not just an app-level convention. See DESIGN.md.
+enum CarrierRole {
+  MANAGER
+  OPERATOR
 }
 
 enum ApprovalStatus {
@@ -52,7 +62,7 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
-  role         Role
+  role         GlobalRole
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -74,6 +84,9 @@ model Seller {
 
   shipments         Shipment[]
   enabledModalities SellerModality[]
+
+  // Serves GET /sellers?status= (the admin's default "queue" view, §16.1)
+  @@index([status])
 }
 
 // ---------- carrier ----------
@@ -91,6 +104,9 @@ model Carrier {
   coverageAreas CarrierCoverageArea[]
   modalities    CarrierModality[]
   shipments     Shipment[]
+
+  // Serves GET /carriers?status= (§17), same reasoning as Seller.status
+  @@index([status])
 }
 
 model CarrierUser {
@@ -99,10 +115,16 @@ model CarrierUser {
   user      User     @relation(fields: [userId], references: [id])
   carrierId String
   carrier   Carrier  @relation(fields: [carrierId], references: [id])
-  role      Role
+  role      CarrierRole
   createdAt DateTime @default(now())
 
   ownedShipments Shipment[] @relation("ShipmentOwner")
+
+  // Prisma doesn't auto-index plain FK scalar columns on Postgres — this
+  // composite matches the exact shape of every carriers.service.ts query
+  // (`where: { carrierId, role: MANAGER }`, run on every list/detail/approve/
+  // reject call), not just a generic "there's a where clause" guess.
+  @@index([carrierId, role])
 }
 
 model Invite {
@@ -114,6 +136,11 @@ model Invite {
   status    InviteStatus @default(PENDING)
   expiresAt DateTime
   createdAt DateTime     @default(now())
+
+  // Anticipates Operator Management (SCREENS.md) — list invites for one
+  // carrier, expired ones shown distinctly rather than filtered out. `token`
+  // already has its own index via @unique for the accept-flow lookup.
+  @@index([carrierId, status])
 }
 
 model CarrierCoverageArea {
@@ -125,6 +152,13 @@ model CarrierCoverageArea {
   createdAt DateTime @default(now())
 
   @@unique([carrierId, state, city])
+  // The unique constraint above only serves lookups that start with
+  // `carrierId` (leftmost-prefix rule) — but the actual hot-path query at
+  // shipment-creation time (DESIGN.md § 10) runs in the OPPOSITE direction:
+  // "given this address's state/city, which carriers cover it?" `carrierId`
+  // isn't known yet, it's what we're solving for. Without this index, that
+  // query would sequential-scan the whole table on every shipment created.
+  @@index([state, city])
 }
 
 // ---------- delivery modality ----------
@@ -150,6 +184,13 @@ model CarrierModality {
   createdAt  DateTime         @default(now())
 
   @@unique([carrierId, modalityId])
+  // Same leftmost-prefix reasoning as CarrierCoverageArea: the unique
+  // constraint serves "modalities for carrier X", but shipment creation also
+  // needs the reverse — "carriers offering modality Y" — as part of the same
+  // coverage+modality+status filter. SellerModality doesn't get an
+  // equivalent index: there's no documented "sellers using modality Y" query,
+  // and indexing without a real access pattern is its own anti-pattern.
+  @@index([modalityId])
 }
 
 model SellerModality {
@@ -190,6 +231,18 @@ model Shipment {
   updatedAt DateTime @updatedAt
 
   trackingEvents TrackingEvent[]
+
+  // Seller's Shipments List (own shipments, optionally by status) and the
+  // Carrier's shared queue (assigned shipments, optionally by status) are
+  // the two highest-traffic reads in the whole product — this is the table
+  // DESIGN.md § 12's performance guidance already singled out by name.
+  @@index([sellerId, status])
+  @@index([carrierId, status])
+  // "No owner yet" (claim eligibility) and "shipments I own" both filter on
+  // this column directly; nullable FKs still benefit from an index in
+  // Postgres (a partial index on `ownerId IS NULL` would be even more
+  // targeted, but isn't worth the extra migration complexity yet).
+  @@index([ownerId])
 }
 
 model TrackingEvent {
@@ -199,4 +252,9 @@ model TrackingEvent {
   status     ShipmentStatus
   note       String?
   createdAt  DateTime       @default(now()) // immutable — never has an updatedAt
+
+  // Composite, not just `[shipmentId]` — Shipment Detail always reads one
+  // shipment's full timeline pre-sorted by time; this index serves the
+  // filter AND the sort order in one pass, no separate sort step needed.
+  @@index([shipmentId, createdAt])
 }
