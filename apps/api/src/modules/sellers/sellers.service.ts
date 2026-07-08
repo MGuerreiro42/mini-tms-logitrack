@@ -1,9 +1,16 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '../../../generated/prisma/client';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { ApprovalStatus, Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
+
+type SellerWithUser = Prisma.SellerGetPayload<{ include: { user: true } }>;
 
 @Injectable()
 export class SellersService {
@@ -72,5 +79,73 @@ export class SellersService {
       }
       throw error;
     }
+  }
+
+  async findAll(status?: ApprovalStatus): Promise<SellerResponseDto[]> {
+    const sellers = await this.prisma.seller.findMany({
+      where: status ? { status } : undefined,
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return sellers.map((seller) => this.toResponseDto(seller));
+  }
+
+  async findOne(id: string): Promise<SellerResponseDto> {
+    const seller = await this.findSellerOrThrow(id);
+    return this.toResponseDto(seller);
+  }
+
+  async approve(id: string): Promise<SellerResponseDto> {
+    return this.updateStatus(id, ApprovalStatus.APPROVED);
+  }
+
+  async reject(id: string): Promise<SellerResponseDto> {
+    return this.updateStatus(id, ApprovalStatus.REJECTED);
+  }
+
+  private async updateStatus(
+    id: string,
+    status: ApprovalStatus,
+  ): Promise<SellerResponseDto> {
+    const seller = await this.findSellerOrThrow(id);
+
+    if (seller.status !== ApprovalStatus.PENDING) {
+      throw new ConflictException(
+        `Seller is already ${seller.status.toLowerCase()}`,
+      );
+    }
+
+    const updated = await this.prisma.seller.update({
+      where: { id },
+      data: { status },
+      include: { user: true },
+    });
+
+    return this.toResponseDto(updated);
+  }
+
+  private async findSellerOrThrow(id: string): Promise<SellerWithUser> {
+    const seller = await this.prisma.seller.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+
+    return seller;
+  }
+
+  private toResponseDto(seller: SellerWithUser): SellerResponseDto {
+    return {
+      id: seller.id,
+      email: seller.user.email,
+      companyName: seller.companyName,
+      document: seller.document,
+      status: seller.status,
+      createdAt: seller.createdAt,
+    };
   }
 }

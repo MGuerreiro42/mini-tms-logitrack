@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
@@ -10,6 +10,9 @@ describe('SellersService', () => {
   let sellersService: SellersService;
   const userCreate = vi.fn();
   const sellerCreate = vi.fn();
+  const sellerFindMany = vi.fn();
+  const sellerFindUnique = vi.fn();
+  const sellerUpdate = vi.fn();
   const transaction = vi.fn((callback) =>
     callback({
       user: { create: userCreate },
@@ -25,16 +28,38 @@ describe('SellersService', () => {
     document: '12345678000199',
   };
 
+  const sellerWithUser = {
+    id: 'seller-1',
+    companyName: 'Example Store',
+    document: '12345678000199',
+    status: 'PENDING',
+    createdAt: new Date('2026-01-01'),
+    user: { email: 'seller@example.com' },
+  };
+
   beforeEach(async () => {
     userCreate.mockReset();
     sellerCreate.mockReset();
+    sellerFindMany.mockReset();
+    sellerFindUnique.mockReset();
+    sellerUpdate.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SellersService,
-        { provide: PrismaService, useValue: { $transaction: transaction } },
+        {
+          provide: PrismaService,
+          useValue: {
+            $transaction: transaction,
+            seller: {
+              findMany: sellerFindMany,
+              findUnique: sellerFindUnique,
+              update: sellerUpdate,
+            },
+          },
+        },
         { provide: PasswordService, useValue: { hash } },
       ],
     }).compile();
@@ -116,6 +141,116 @@ describe('SellersService', () => {
 
     await expect(sellersService.signup(dto)).rejects.toMatchObject({
       response: { message: 'Email or document already registered' },
+    });
+  });
+
+  describe('findAll', () => {
+    it('lists sellers mapped to safe fields, using the email from the linked User', async () => {
+      sellerFindMany.mockResolvedValue([sellerWithUser]);
+
+      const result = await sellersService.findAll();
+
+      expect(sellerFindMany).toHaveBeenCalledWith({
+        where: undefined,
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual([
+        {
+          id: 'seller-1',
+          email: 'seller@example.com',
+          companyName: 'Example Store',
+          document: '12345678000199',
+          status: 'PENDING',
+          createdAt: new Date('2026-01-01'),
+        },
+      ]);
+    });
+
+    it('filters by status when provided', async () => {
+      sellerFindMany.mockResolvedValue([]);
+
+      await sellersService.findAll('APPROVED');
+
+      expect(sellerFindMany).toHaveBeenCalledWith({
+        where: { status: 'APPROVED' },
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+  });
+
+  describe('findOne', () => {
+    it('returns the seller when found', async () => {
+      sellerFindUnique.mockResolvedValue(sellerWithUser);
+
+      const result = await sellersService.findOne('seller-1');
+
+      expect(result.email).toBe('seller@example.com');
+    });
+
+    it('throws NotFoundException when the seller does not exist', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(sellersService.findOne('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('approve / reject', () => {
+    it('approves a pending seller', async () => {
+      sellerFindUnique.mockResolvedValue(sellerWithUser);
+      sellerUpdate.mockResolvedValue({
+        ...sellerWithUser,
+        status: 'APPROVED',
+      });
+
+      const result = await sellersService.approve('seller-1');
+
+      expect(sellerUpdate).toHaveBeenCalledWith({
+        where: { id: 'seller-1' },
+        data: { status: 'APPROVED' },
+        include: { user: true },
+      });
+      expect(result.status).toBe('APPROVED');
+    });
+
+    it('rejects a pending seller', async () => {
+      sellerFindUnique.mockResolvedValue(sellerWithUser);
+      sellerUpdate.mockResolvedValue({
+        ...sellerWithUser,
+        status: 'REJECTED',
+      });
+
+      const result = await sellersService.reject('seller-1');
+
+      expect(sellerUpdate).toHaveBeenCalledWith({
+        where: { id: 'seller-1' },
+        data: { status: 'REJECTED' },
+        include: { user: true },
+      });
+      expect(result.status).toBe('REJECTED');
+    });
+
+    it('throws ConflictException when the seller is not pending', async () => {
+      sellerFindUnique.mockResolvedValue({
+        ...sellerWithUser,
+        status: 'APPROVED',
+      });
+
+      await expect(sellersService.approve('seller-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(sellerUpdate).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the seller does not exist', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(sellersService.reject('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

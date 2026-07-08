@@ -15,11 +15,21 @@ datasource db {
 
 // ---------- enums ----------
 
-enum Role {
+// Global identity role, held once per User — drives which linked profile
+// (Seller? / CarrierUser?) exists and what the JWT/RolesGuard checks.
+enum GlobalRole {
   ADMIN
   SELLER
   CARRIER_MANAGER
   CARRIER_OPERATOR
+}
+
+// Role scoped to a single CarrierUser within one Carrier — kept separate from
+// GlobalRole so an invalid combination (e.g. a CarrierUser typed ADMIN) is a
+// compile-time impossibility, not just an app-level convention. See DESIGN.md.
+enum CarrierRole {
+  MANAGER
+  OPERATOR
 }
 
 enum ApprovalStatus {
@@ -52,7 +62,7 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
-  role         Role
+  role         GlobalRole
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -99,7 +109,7 @@ model CarrierUser {
   user      User     @relation(fields: [userId], references: [id])
   carrierId String
   carrier   Carrier  @relation(fields: [carrierId], references: [id])
-  role      Role
+  role      CarrierRole
   createdAt DateTime @default(now())
 
   ownedShipments Shipment[] @relation("ShipmentOwner")

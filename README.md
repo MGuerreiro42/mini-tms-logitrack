@@ -56,7 +56,7 @@ CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs o
 
 ## Status
 
-Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)). Missing: domain module logic (sellers/carriers/shipments/tracking/notifications), frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
+Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)); `sellers` self-signup + admin approval implemented ([`DESIGN.md` § 16](./DESIGN.md#16-sellers--first-domain-module-with-real-logic)); `carriers` company registration + admin approval implemented ([`DESIGN.md` § 17](./DESIGN.md#17-carriers--second-domain-module)). Missing: operator invites, `shipments`/`tracking`/`notifications` module logic, frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
 
 ## License
 

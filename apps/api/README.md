@@ -28,8 +28,8 @@ Changing `schema.prisma` and generating a new migration remains manual, on purpo
 src/
 ├── modules/
 │   ├── auth/            # implemented — Passport + JWT + bcrypt (see DESIGN.md § 11)
-│   ├── sellers/         # self-signup implemented (see DESIGN.md § 16); the rest is still a skeleton
-│   ├── carriers/        # skeleton (+ nested invites/)
+│   ├── sellers/         # signup + admin approval implemented (see DESIGN.md § 16); onboarding still pending
+│   ├── carriers/        # signup + admin approval implemented (see DESIGN.md § 17); invites/ still a skeleton
 │   ├── shipments/       # skeleton
 │   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
 │   └── notifications/   # skeleton — will become BullMQ workers
@@ -66,7 +66,37 @@ curl -X POST http://localhost:3333/sellers \
   -d '{"email":"seller@example.com","password":"password12345","companyName":"Example Store LLC","document":"12345678000199"}'
 ```
 
-Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transaction. A duplicate email/document returns 409. Admin approval doesn't exist yet — next step.
+Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transaction. A duplicate email/document returns 409.
+
+## Testing admin approval
+
+Requires an admin token (see login above) — these are `@Roles(Role.ADMIN)`-guarded, a non-admin token gets 403, no token gets 401.
+
+```bash
+curl http://localhost:3333/sellers -H "Authorization: Bearer <adminAccessToken>"
+curl "http://localhost:3333/sellers?status=PENDING" -H "Authorization: Bearer <adminAccessToken>"
+curl http://localhost:3333/sellers/<id> -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/sellers/<id>/approve -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/sellers/<id>/reject -H "Authorization: Bearer <adminAccessToken>"
+```
+
+Approving/rejecting a seller that isn't `PENDING` returns 409 — it's a state transition, not a raw field overwrite.
+
+## Testing carrier company registration + admin approval
+
+Same shape as sellers, one extra row: signup creates `User` (role `CARRIER_MANAGER`) + `Carrier` (`status: PENDING`) + `CarrierUser` (`role: MANAGER`) in one transaction.
+
+```bash
+curl -X POST http://localhost:3333/carriers \
+  -H "Content-Type: application/json" \
+  -d '{"email":"manager@example.com","password":"password12345","companyName":"Fast Freight LLC","document":"12345678000199"}'
+
+curl http://localhost:3333/carriers -H "Authorization: Bearer <adminAccessToken>"
+curl "http://localhost:3333/carriers?status=PENDING" -H "Authorization: Bearer <adminAccessToken>"
+curl http://localhost:3333/carriers/<id> -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/carriers/<id>/approve -H "Authorization: Bearer <adminAccessToken>"
+curl -X PATCH http://localhost:3333/carriers/<id>/reject -H "Authorization: Bearer <adminAccessToken>"
+```
 
 ## Tests
 
