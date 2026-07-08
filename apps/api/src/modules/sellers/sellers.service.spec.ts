@@ -19,9 +19,9 @@ describe('SellersService', () => {
   const hash = vi.fn();
 
   const dto: CreateSellerDto = {
-    email: 'loja@exemplo.com',
+    email: 'seller@example.com',
     password: 'password123',
-    companyName: 'Loja Exemplo',
+    companyName: 'Example Store',
     document: '12345678000199',
   };
 
@@ -81,16 +81,41 @@ describe('SellersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
+  // Prisma 7's driver adapters report the colliding unique field under
+  // meta.driverAdapterError.cause.constraint.fields, NOT meta.target (the
+  // shape used by older Prisma versions / non-adapter engines) — this is
+  // the real shape observed against Postgres via @prisma/adapter-pg, not a
+  // guess, so the test exercises the actual code path in production.
+  const uniqueConstraintError = (field: string) =>
+    new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: '7.8.0',
+      meta: {
+        modelName: field === 'email' ? 'User' : 'Seller',
+        driverAdapterError: {
+          name: 'DriverAdapterError',
+          cause: {
+            originalCode: '23505',
+            kind: 'UniqueConstraintViolation',
+            constraint: { fields: [field] },
+          },
+        },
+      },
+    });
+
   it('throws ConflictException when email or document is already registered', async () => {
     hash.mockResolvedValue('hashed-password');
-    transaction.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '7.8.0',
-        meta: { target: ['email'] },
-      }),
-    );
+    transaction.mockRejectedValueOnce(uniqueConstraintError('email'));
 
     await expect(sellersService.signup(dto)).rejects.toThrow(ConflictException);
+  });
+
+  it('never reveals which field (email vs document) caused the conflict', async () => {
+    hash.mockResolvedValue('hashed-password');
+    transaction.mockRejectedValueOnce(uniqueConstraintError('document'));
+
+    await expect(sellersService.signup(dto)).rejects.toMatchObject({
+      response: { message: 'Email or document already registered' },
+    });
   });
 });
