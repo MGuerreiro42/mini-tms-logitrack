@@ -13,6 +13,7 @@ describe('SellersService', () => {
   const sellerFindMany = vi.fn();
   const sellerFindUnique = vi.fn();
   const sellerUpdate = vi.fn();
+  const sellerCount = vi.fn();
   const transaction = vi.fn((callback) =>
     callback({
       user: { create: userCreate },
@@ -43,6 +44,7 @@ describe('SellersService', () => {
     sellerFindMany.mockReset();
     sellerFindUnique.mockReset();
     sellerUpdate.mockReset();
+    sellerCount.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -57,6 +59,7 @@ describe('SellersService', () => {
               findMany: sellerFindMany,
               findUnique: sellerFindUnique,
               update: sellerUpdate,
+              count: sellerCount,
             },
           },
         },
@@ -145,8 +148,9 @@ describe('SellersService', () => {
   });
 
   describe('findAll', () => {
-    it('lists sellers mapped to safe fields, using the email from the linked User', async () => {
+    it('lists sellers mapped to safe fields, using the email from the linked User, wrapped in pagination meta', async () => {
       sellerFindMany.mockResolvedValue([sellerWithUser]);
+      sellerCount.mockResolvedValue(1);
 
       const result = await sellersService.findAll();
 
@@ -154,28 +158,46 @@ describe('SellersService', () => {
         where: undefined,
         include: { user: true },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 20,
       });
-      expect(result).toEqual([
-        {
-          id: 'seller-1',
-          email: 'seller@example.com',
-          companyName: 'Example Store',
-          document: '12345678000199',
-          status: 'PENDING',
-          createdAt: new Date('2026-01-01'),
-        },
-      ]);
+      expect(sellerCount).toHaveBeenCalledWith({ where: undefined });
+      expect(result).toEqual({
+        data: [
+          {
+            id: 'seller-1',
+            email: 'seller@example.com',
+            companyName: 'Example Store',
+            document: '12345678000199',
+            status: 'PENDING',
+            createdAt: new Date('2026-01-01'),
+          },
+        ],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      });
     });
 
-    it('filters by status when provided', async () => {
+    it('filters by status and paginates when provided', async () => {
       sellerFindMany.mockResolvedValue([]);
+      sellerCount.mockResolvedValue(45);
 
-      await sellersService.findAll('APPROVED');
+      const result = await sellersService.findAll('APPROVED', 2, 10);
 
       expect(sellerFindMany).toHaveBeenCalledWith({
         where: { status: 'APPROVED' },
         include: { user: true },
         orderBy: { createdAt: 'desc' },
+        skip: 10,
+        take: 10,
+      });
+      expect(sellerCount).toHaveBeenCalledWith({
+        where: { status: 'APPROVED' },
+      });
+      expect(result.meta).toEqual({
+        total: 45,
+        page: 2,
+        limit: 10,
+        totalPages: 5,
       });
     });
   });

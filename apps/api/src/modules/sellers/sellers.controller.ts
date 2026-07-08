@@ -15,6 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
+import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -44,15 +45,18 @@ export class SellersController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List sellers, optionally filtered by status' })
-  @ApiResponse({ status: 200, type: [SellerResponseDto] })
+  @ApiOperation({
+    summary:
+      'List sellers, optionally filtered by status — paginated (default 20/page, max 100)',
+  })
+  @ApiPaginatedResponse(SellerResponseDto)
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
   @ApiResponse({ status: 403, description: 'Not an admin' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(GlobalRole.ADMIN)
   @Get()
   findAll(@Query() query: ListSellersQueryDto) {
-    return this.sellersService.findAll(query.status);
+    return this.sellersService.findAll(query.status, query.page, query.limit);
   }
 
   @ApiBearerAuth()

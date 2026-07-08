@@ -14,6 +14,7 @@ describe('CarriersService', () => {
   const carrierFindMany = vi.fn();
   const carrierFindUnique = vi.fn();
   const carrierUpdate = vi.fn();
+  const carrierCount = vi.fn();
   const transaction = vi.fn((callback) =>
     callback({
       user: { create: userCreate },
@@ -47,6 +48,7 @@ describe('CarriersService', () => {
     carrierFindMany.mockReset();
     carrierFindUnique.mockReset();
     carrierUpdate.mockReset();
+    carrierCount.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -61,6 +63,7 @@ describe('CarriersService', () => {
               findMany: carrierFindMany,
               findUnique: carrierFindUnique,
               update: carrierUpdate,
+              count: carrierCount,
             },
           },
         },
@@ -150,35 +153,51 @@ describe('CarriersService', () => {
   });
 
   describe('findAll', () => {
-    it('lists carriers mapped to safe fields, using the manager email and user count', async () => {
+    it('lists carriers mapped to safe fields, using the manager email and user count, wrapped in pagination meta', async () => {
       carrierFindMany.mockResolvedValue([carrierWithManager]);
+      carrierCount.mockResolvedValue(1);
 
       const result = await carriersService.findAll();
 
       expect(carrierFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: undefined }),
+        expect.objectContaining({ where: undefined, skip: 0, take: 20 }),
       );
-      expect(result).toEqual([
-        {
-          id: 'carrier-1',
-          email: 'manager@carrier.example.com',
-          companyName: 'Fast Freight',
-          document: '12345678000199',
-          status: 'PENDING',
-          userCount: 1,
-          createdAt: new Date('2026-01-01'),
-        },
-      ]);
+      expect(carrierCount).toHaveBeenCalledWith({ where: undefined });
+      expect(result).toEqual({
+        data: [
+          {
+            id: 'carrier-1',
+            email: 'manager@carrier.example.com',
+            companyName: 'Fast Freight',
+            document: '12345678000199',
+            status: 'PENDING',
+            userCount: 1,
+            createdAt: new Date('2026-01-01'),
+          },
+        ],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      });
     });
 
-    it('filters by status when provided', async () => {
+    it('filters by status and paginates when provided', async () => {
       carrierFindMany.mockResolvedValue([]);
+      carrierCount.mockResolvedValue(45);
 
-      await carriersService.findAll('APPROVED');
+      const result = await carriersService.findAll('APPROVED', 2, 10);
 
       expect(carrierFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { status: 'APPROVED' } }),
+        expect.objectContaining({
+          where: { status: 'APPROVED' },
+          skip: 10,
+          take: 10,
+        }),
       );
+      expect(result.meta).toEqual({
+        total: 45,
+        page: 2,
+        limit: 10,
+        totalPages: 5,
+      });
     });
   });
 

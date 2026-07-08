@@ -70,7 +70,7 @@ Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transacti
 
 ## Testing admin approval
 
-Requires an admin token (see login above) — these are `@Roles(Role.ADMIN)`-guarded, a non-admin token gets 403, no token gets 401.
+Requires an admin token (see login above) — these are `@Roles(GlobalRole.ADMIN)`-guarded, a non-admin token gets 403, no token gets 401. `GET /sellers` is paginated (`?page=`/`?limit=`, default 20, capped at 100) — see § "Pagination and filtering" below.
 
 ```bash
 curl http://localhost:3333/sellers -H "Authorization: Bearer <adminAccessToken>"
@@ -96,6 +96,14 @@ curl "http://localhost:3333/carriers?status=PENDING" -H "Authorization: Bearer <
 curl http://localhost:3333/carriers/<id> -H "Authorization: Bearer <adminAccessToken>"
 curl -X PATCH http://localhost:3333/carriers/<id>/approve -H "Authorization: Bearer <adminAccessToken>"
 curl -X PATCH http://localhost:3333/carriers/<id>/reject -H "Authorization: Bearer <adminAccessToken>"
+```
+
+## Pagination and filtering
+
+`GET /sellers` and `GET /carriers` share the same shape: `?status=` filters, `?page=`/`?limit=` paginate (default `page=1&limit=20`, `limit` capped at 100). Response is always `{ data: [...], meta: { total, page, limit, totalPages } }`, never a bare array — documented in Swagger via a reusable `ApiPaginatedResponse` decorator (`src/shared/pagination/`). Why offset-based instead of cursor/keyset pagination, and the reasoning behind every index added to support these queries at scale: [`DESIGN.md` § 18](../../DESIGN.md#18-scale--pagination-and-indexing).
+
+```bash
+curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <adminAccessToken>"
 ```
 
 ## Tests

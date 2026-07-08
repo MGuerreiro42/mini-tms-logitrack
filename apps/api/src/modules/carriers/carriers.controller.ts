@@ -15,6 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
+import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -44,15 +45,18 @@ export class CarriersController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List carriers, optionally filtered by status' })
-  @ApiResponse({ status: 200, type: [CarrierResponseDto] })
+  @ApiOperation({
+    summary:
+      'List carriers, optionally filtered by status — paginated (default 20/page, max 100)',
+  })
+  @ApiPaginatedResponse(CarrierResponseDto)
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
   @ApiResponse({ status: 403, description: 'Not an admin' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(GlobalRole.ADMIN)
   @Get()
   findAll(@Query() query: ListCarriersQueryDto) {
-    return this.carriersService.findAll(query.status);
+    return this.carriersService.findAll(query.status, query.page, query.limit);
   }
 
   @ApiBearerAuth()

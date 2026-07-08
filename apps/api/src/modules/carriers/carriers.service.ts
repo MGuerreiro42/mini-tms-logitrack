@@ -9,6 +9,10 @@ import {
   CarrierRole,
   Prisma,
 } from '../../../generated/prisma/client';
+import {
+  type PaginatedResult,
+  paginate,
+} from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
@@ -92,13 +96,29 @@ export class CarriersService {
     }
   }
 
-  async findAll(status?: ApprovalStatus): Promise<CarrierResponseDto[]> {
-    const carriers = await this.prisma.carrier.findMany({
-      where: status ? { status } : undefined,
-      include: managerInclude,
-      orderBy: { createdAt: 'desc' },
-    });
-    return carriers.map((carrier) => this.toResponseDto(carrier));
+  async findAll(
+    status?: ApprovalStatus,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<CarrierResponseDto>> {
+    const where = status ? { status } : undefined;
+    const [carriers, total] = await Promise.all([
+      this.prisma.carrier.findMany({
+        where,
+        include: managerInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.carrier.count({ where }),
+    ]);
+
+    return paginate(
+      carriers.map((carrier) => this.toResponseDto(carrier)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<CarrierResponseDto> {

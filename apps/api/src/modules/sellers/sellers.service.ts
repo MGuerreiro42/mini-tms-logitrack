@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApprovalStatus, Prisma } from '../../../generated/prisma/client';
+import {
+  type PaginatedResult,
+  paginate,
+} from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateSellerDto } from './dto/create-seller.dto';
@@ -81,14 +85,30 @@ export class SellersService {
     }
   }
 
-  async findAll(status?: ApprovalStatus): Promise<SellerResponseDto[]> {
-    const sellers = await this.prisma.seller.findMany({
-      where: status ? { status } : undefined,
-      include: { user: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(
+    status?: ApprovalStatus,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<SellerResponseDto>> {
+    const where = status ? { status } : undefined;
+    // Independent reads — run in parallel instead of awaiting sequentially.
+    const [sellers, total] = await Promise.all([
+      this.prisma.seller.findMany({
+        where,
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.seller.count({ where }),
+    ]);
 
-    return sellers.map((seller) => this.toResponseDto(seller));
+    return paginate(
+      sellers.map((seller) => this.toResponseDto(seller)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(id: string): Promise<SellerResponseDto> {
