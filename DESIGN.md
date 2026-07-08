@@ -415,6 +415,18 @@ Criado um `package.json` de raiz **só pra ferramentas de repositório** (`lefth
 
 Testado de ponta a ponta (não só configurado): commit com mensagem fora do padrão foi rejeitado (`subject-empty`, `type-empty`); commit com mensagem válida passou; um arquivo staged deliberadamente mal formatado (`{a:1,b:2,c:3}`) foi reformatado automaticamente pelo Biome antes do commit se concretizar.
 
+### Estrutura de repositório — nem workspace unificado, nem repos separados
+
+Duas perguntas que discutimos e resolvemos deliberadamente na mesma direção: "não". Registrado aqui porque as duas tendem a voltar conforme o projeto cresce.
+
+**Por que não virar um monorepo de verdade (pnpm workspace unificado, Turborepo/Nx, `packages/` compartilhado):** hoje `apps/api` e `apps/web` não compartilham nenhum código — cada um com seu `node_modules`/lockfile próprio, e o `package.json` de raiz existe só pra hospedar tooling (acima). Adicionar ferramenta de monorepo de verdade sem ter código compartilhado é resolver um problema que o projeto não tem (build lento entre pacotes, duplicação de código) — é o erro mais comum de projeto de portfolio nessa área: Turborepo/Nx por cima de dois apps que não trocam nada entre si é cargo culting, não maturidade.
+
+**Onde isso vai ser testado de verdade:** o dia que `features/*/types.ts` no front precisarem do shape de `Shipment`/`Seller`/`Carrier`. Nesse momento a resposta não é "virar workspace unificado e importar `.ts` do `apps/api` direto no `apps/web`" — é gerar um **contrato** (OpenAPI via `@nestjs/swagger`, tipos gerados no front via `openapi-typescript`/orval) e não compartilhar source TypeScript. Motivo: os dois apps têm deploy declaradamente independente (Vercel + Railway/Fly, seção 6) — acoplar via workspace um par de serviços que sobem em momentos diferentes, potencialmente em versões diferentes, é mais frágil do que sincronizar via contrato.
+
+**Por que não separar em dois repos git, então:** o motivo mais óbvio pra fazer isso — "preciso de deploy independente" — já está resolvido sem separar nada: Vercel e Railway suportam apontar pra uma subpasta de um monorepo ("root directory" / serviço por diretório). Separar repo custaria coisa real agora: este `DESIGN.md` é uma narrativa única atravessando front+back+infra (virar 2 repos = duplicar ele ou eleger um "principal"); o `docker-compose.yml` orquestra os dois apps juntos pro dev local; e não existe fronteira de equipe/acesso pra proteger (projeto solo). Nessa fase, mudança de ponta a ponta (schema + tipo/form no front na mesma sessão) ainda é comum — 2 repos vira 2 PRs pra uma coisa só, fricção sem ganho.
+
+**Gatilho pra revisitar:** a maioria das mudanças passar a ser só de um lado (front OU back, não os dois juntos — sinal de que o contrato estabilizou), ou surgir alguém que devesse enxergar só metade do código. Ao contrário de decisão de schema (cara de mudar depois de aplicada), separar repo é reversível a qualquer momento sem custo retroativo — não é uma porta que precisa ficar aberta "só por garantia".
+
 ### Vitest, não Jest
 
 `apps/api` trocou Jest por Vitest — e isso resolveu de graça um problema que tínhamos acabado de documentar aqui como "gap conhecido": rodando `pnpm test:e2e` com Jest, o Nest travava no `PrismaService.$connect()` com `TypeError: A dynamic import callback was invoked without --experimental-vm-modules`, porque o query compiler WASM do Prisma 7 usa `import()` dinâmico e o `ts-jest` (CommonJS) não suporta isso sem flag experimental do Node. O transform do Vitest é nativo em ESM/Vite — o e2e passa a rodar limpo, sem nenhuma configuração extra pra isso.
@@ -440,3 +452,35 @@ Testado de ponta a ponta (não só configurado): commit com mensagem fora do pad
 **Por que `lint:ci` e não `lint`:** o script `lint` local usa `biome check --write .` (corrige na hora, bom pro dia a dia). Em CI isso mascararia problema — o job passaria "verde" mesmo com código formatado errado, só porque o Biome corrigiu silenciosamente durante o job (e essa correção não volta pro repo). `lint:ci` roda `biome check .` sem `--write`, falha se tiver qualquer coisa a corrigir.
 
 **Não validado de ponta a ponta ainda** (diferente do resto deste projeto): não tem como rodar GitHub Actions localmente — cada comando do workflow foi testado individualmente no terminal (`lint:ci`, `build`, `test`, `test:e2e` com Postgres local), e o YAML foi validado sintaticamente, mas o workflow em si só roda de verdade no primeiro push/PR.
+
+## 14. Validação de ambiente e CORS
+
+Dois gaps de "pré-config" identificados numa revisão deliberada do que faltava antes de seguir pra lógica de negócio: CORS nunca tinha sido habilitado (quebraria a primeira chamada real do front pro back), e as env vars eram lidas direto de `process.env` sem validação — faltando uma, o erro apareceria tarde e confuso (ex.: JWT assinando com `undefined`), não na subida da aplicação.
+
+### Zod, não Joi
+
+`@nestjs/config` tem receita oficial pro Joi (`validationSchema: Joi.object({...})`), e é a única vantagem real dele aqui — nem o `@nestjs/config` restringe a Zod, só que o caminho é a opção `validate` (função customizada) em vez de `validationSchema`. Zod ganha em tudo que importa mais pro projeto: inferência de tipo em TS (`z.infer<typeof envSchema>` dá o tipo pronto; Joi exige anotar manualmente) e é a ferramenta que já se usa por padrão. Ponto de atenção real, não estético: env var sempre chega como string — `z.number()` rejeitaria `"3333"`; o schema usa `z.coerce.number()` explicitamente pra `PORT`.
+
+`src/shared/config/env.validation.ts` — schema com `DATABASE_URL` (url), `PORT` (coerced, default 3333), `JWT_SECRET` (mínimo 16 caracteres), `CORS_ORIGIN` (url, default `http://localhost:3000`), `NODE_ENV` (enum, default `development`). `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` no `AppModule` — falha a subida com mensagem clara (`Invalid environment variables: - JWT_SECRET: Too small...`) em vez de deixar pra descobrir depois.
+
+**Adoção completa, não pela metade:** os lugares que liam `process.env` direto (`PrismaService`, `JwtStrategy`, `AuthModule`'s `JwtModule`, `main.ts`) foram migrados pra `ConfigService` via DI (`JwtModule.registerAsync` no lugar de `.register`, já que o secret agora vem de injeção assíncrona). `prisma.config.ts` continua lendo `process.env.DATABASE_URL` direto via `dotenv` — roda fora do container do Nest (é o CLI do Prisma), não tem `ConfigService` pra injetar ali, e está certo que seja assim.
+
+**Validado nas duas direções, não só "compila":** com um `JWT_SECRET` curto de propósito no `.env`, a aplicação recusou subir com a mensagem de erro exata do Zod; restaurado o valor correto, voltou a funcionar. Também confirmado que o Vitest carrega `.env` automaticamente (herdado do Vite) — diferente do `ts-jest` antigo, que exigia `import 'dotenv/config'` manual em cada entrypoint.
+
+### CORS
+
+`app.enableCors({ origin: <CORS_ORIGIN>, credentials: true })` em `main.ts`. Testado com `curl -X OPTIONS` simulando origem permitida e não-permitida — os dois retornam o mesmo header `Access-Control-Allow-Origin` (o valor configurado), porque **quem aplica a política é o browser, não o servidor**: ele compara esse header com a própria origem da página e bloqueia a leitura da resposta se não bater. `curl` não reproduz esse enforcement — é só um jeito de confirmar que o header devolvido é o esperado, não uma prova de bloqueio real (isso exigiria um teste rodando num browser de verdade).
+
+## 15. OpenAPI (Swagger) e versão do Node
+
+### Swagger — só a base, sem inventar contrato
+
+`@nestjs/swagger` configurado em `main.ts` (`DocumentBuilder` + `SwaggerModule.setup('docs', ...)`, com `addBearerAuth()` pro esquema de autenticação). Deliberadamente **não** documentei os módulos que ainda são esqueleto (`sellers`, `carriers`, `shipments`, `tracking`, `notifications`) — não existe contrato real ali ainda, documentar um endpoint que não faz nada seria mentira na especificação. O que existe (`AuthController`) ganhou decorators completos: `@ApiTags`, `@ApiOperation`, `@ApiResponse` (200/400/401) em cada rota, `@ApiBearerAuth()` em `/auth/me`, e `@ApiProperty()` no `LoginDto` e nos DTOs de resposta novos (`AuthenticatedUserDto`, `LoginResponseDto` — criados só pra dar forma tipada ao retorno do login, que antes era um objeto solto sem classe). A ideia é que isso vire hábito por padrão em cada controller novo, não um retrofit depois de 20 endpoints sem documentação.
+
+Validado subindo a aplicação de verdade: `/docs` responde 200, e `/docs-json` mostra os 2 paths de auth, os 3 schemas com os campos certos, e o `securitySchemes.bearer` registrado — não só "o Nest não reclamou ao compilar".
+
+**Gotcha pequeno, mesma família de "aprovar build script sem pensar":** `@nestjs/swagger` traz `@scarf/scarf` (telemetria de instalação) como dependência transitiva, que o pnpm bloqueia por padrão (`ERR_PNPM_IGNORED_BUILDS`). Em vez de aprovar (rodar o script), configurei `allowBuilds: { '@scarf/scarf': false }` no `pnpm-workspace.yaml` — recusa permanentemente sem travar toda instalação futura pedindo decisão de novo.
+
+### `.nvmrc` e `engines`
+
+Registrado ontem como discrepância consciente: CI fixo em Node 24, ambiente local rodando 26 (fora da lista de versões oficialmente suportadas pelo Prisma, mesmo funcionando sem problema). `.nvmrc` na raiz (`24`) e `"engines": { "node": ">=24.0.0" }` em ambos os `package.json` — alinha o valor "oficial" com o que qualquer `nvm use`/instalação nova vai pegar, mesmo que a máquina de desenvolvimento atual continue em 26 por conveniência.

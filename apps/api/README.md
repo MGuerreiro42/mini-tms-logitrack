@@ -77,15 +77,27 @@ pnpm format   # biome format --write .
 
 Biome, não ESLint/Prettier — gotchas específicos do NestJS (parameter decorators, `useImportType` quebrando DI) em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código). Roda automaticamente no `pre-commit` (lefthook, configurado na raiz do repo).
 
+## Documentação da API
+
+```bash
+pnpm start:dev
+# abrir http://localhost:3333/docs
+```
+
+Swagger/OpenAPI via `@nestjs/swagger`. Só `auth/` está documentado — os módulos esqueleto não têm contrato real ainda, documentar não faria sentido. Detalhes em [`DESIGN.md` § 15](../../DESIGN.md#15-openapi-swagger-e-versão-do-node).
+
 ## Nota técnica — Prisma 7
 
 O generator usa `moduleFormat = "cjs"` no `schema.prisma` — o padrão da v7 gera um client ESM-only (`import.meta.url`), incompatível com o build CommonJS do Nest. O client também exige um driver adapter explícito no construtor (`PrismaService` passa `new PrismaPg({ connectionString: ... })`), em vez de resolver a conexão implicitamente a partir de `DATABASE_URL`. Detalhes em [`DESIGN.md` § 8](../../DESIGN.md#8-como-rodar-localmente).
 
 ## Variáveis de ambiente
 
+Validadas na subida via Zod (`src/shared/config/env.validation.ts`) — falta ou valor inválido derruba a aplicação com mensagem clara em vez de erro confuso mais tarde. Detalhes em [`DESIGN.md` § 14](../../DESIGN.md#14-validação-de-ambiente-e-cors).
+
 | Var | Default | Descrição |
 |---|---|---|
 | `DATABASE_URL` | — | connection string do Postgres (ver `docker-compose.yml` na raiz) |
 | `PORT` | `3333` | porta do servidor — Next.js usa 3000 por padrão |
-| `JWT_SECRET` | — | assinatura dos tokens — trocar em produção |
+| `JWT_SECRET` | — | assinatura dos tokens — trocar em produção, mínimo 16 caracteres |
+| `CORS_ORIGIN` | `http://localhost:3000` | única origem liberada pro CORS |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` | credenciais do seed do Admin |
