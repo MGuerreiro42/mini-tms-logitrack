@@ -1,45 +1,45 @@
 # Mini TMS — Web
 
-Frontend do [Mini TMS](../../README.md), em Next.js (App Router). Racional completo das decisões de arquitetura em [`DESIGN.md`](../../DESIGN.md) na raiz do repo — este README cobre só o que é específico deste app.
+Frontend of [Mini TMS](../../README.md), in Next.js (App Router). Full architecture-decision reasoning in [`DESIGN.md`](../../DESIGN.md) at the repo root — this README only covers what's specific to this app.
 
 ## Stack
 
 - Next.js 16 (App Router, Turbopack)
-- TanStack Query — estado de servidor
-- Zustand — estado de UI (só o que é genuinamente global)
+- TanStack Query — server state
+- Zustand — UI state (only what's genuinely global)
 - Tailwind CSS
-- shadcn/ui — planejado, ainda não integrado
+- shadcn/ui — planned, not integrated yet
 
-## Rodando
+## Running
 
-Precisa da API rodando em paralelo (`apps/api`, porta `3333`).
+Needs the API running alongside it (`apps/api`, port `3333`).
 
 ```bash
 pnpm install
 pnpm dev   # http://localhost:3000
 ```
 
-`.env.local` já aponta `NEXT_PUBLIC_API_URL` para `http://localhost:3333`.
+`.env.local` already points `NEXT_PUBLIC_API_URL` at `http://localhost:3333`.
 
-## Estrutura
+## Structure
 
 ```
 src/
-├── app/            # roteamento — route groups (admin)/(seller)/(carrier), + invite/accept, track
-├── features/       # um domínio por pasta: auth, sellers, carriers, shipments, invites, tracking
-├── components/     # UI compartilhada (ui/, common/)
+├── app/            # routing — route groups (admin)/(seller)/(carrier), + invite/accept, track
+├── features/       # one domain per folder: auth, sellers, carriers, shipments, invites, tracking
+├── components/     # shared UI (ui/, common/)
 ├── lib/            # utils (cn), query-client
 ├── services/       # api-client (fetch), websocket-client (socket.io)
 └── store/          # Zustand
 ```
 
-## Regras da arquitetura
+## Architecture rules
 
-- Dependência de mão única: `shared → features → app`. Uma feature nunca importa outra feature diretamente — exceção documentada: `shipments`, consumido por `sellers` e `carriers`.
-- Servidor → sempre TanStack Query. Estado de UI pura → Zustand. Nunca duplicar resposta de API em store.
-- Server Components por padrão; `'use client'` só nas folhas da árvore (hoje, só `app/providers.tsx`).
+- One-way dependency: `shared → features → app`. A feature never imports another feature directly — documented exception: `shipments`, consumed by both `sellers` and `carriers`.
+- Server data → always TanStack Query. Pure UI state → Zustand. Never duplicate an API response into a store.
+- Server Components by default; `'use client'` only at the leaves of the tree (today, only `app/providers.tsx`).
 
-Cada `features/*` ainda são placeholders (`types.ts`, `api/index.ts`, `index.ts` vazios) — modelagem por domínio é o próximo passo. Detalhes e racional completo em [`DESIGN.md` § 9](../../DESIGN.md#9-arquitetura-do-frontend).
+Each `features/*` folder is still a placeholder (`types.ts`, `api/index.ts`, `index.ts` empty) — modeling each domain is the next step. Details and full reasoning in [`DESIGN.md` § 9](../../DESIGN.md#9-frontend-architecture).
 
 ## Lint & format
 
@@ -48,10 +48,10 @@ pnpm lint     # biome check --write .
 pnpm format   # biome format --write .
 ```
 
-Biome, não ESLint — perde as regras específicas do `eslint-config-next`, ganha `linter.domains: { next, react }` do Biome no lugar (racional em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código)). Roda automaticamente no `pre-commit` (lefthook, configurado na raiz do repo).
+Biome, not ESLint — loses `eslint-config-next`'s specific rules, gains Biome's `linter.domains: { next, react }` in their place (reasoning in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality)). Runs automatically on `pre-commit` (lefthook, configured at the repo root).
 
-## Variáveis de ambiente
+## Environment variables
 
-| Var | Default | Descrição |
+| Var | Default | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:3333` | base URL da API |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3333` | API base URL |

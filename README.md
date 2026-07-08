@@ -2,18 +2,18 @@
 
 [![CI](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml)
 
-Sistema de gestão de transporte (Transportation Management System) multi-tenant, com onboarding de sellers, gestão de transportadoras e rastreamento de entregas em tempo real.
+Multi-tenant Transportation Management System (TMS), with seller onboarding, carrier management, and real-time delivery tracking.
 
-Projeto de portfolio: não busca ser um produto comercializável, mas um artefato técnico que demonstra modelagem de domínio real, RBAC em múltiplas camadas e uma arquitetura de tempo real que escala horizontalmente (WebSocket + Redis pub/sub). Decisões de stack e arquitetura, com o porquê de cada uma, estão documentadas em [`DESIGN.md`](./DESIGN.md).
+Portfolio project: it doesn't aim to be a commercializable product, but a technical artifact demonstrating real domain modeling, multi-layer RBAC, and a horizontally-scalable real-time architecture (WebSocket + Redis pub/sub). Stack and architecture decisions, with the reasoning behind each one, are documented in [`DESIGN.md`](./DESIGN.md).
 
 ## Stack
 
 - **Backend:** NestJS, PostgreSQL (Prisma), Redis (pub/sub, cache, BullMQ)
 - **Frontend:** Next.js (App Router), TanStack Query, Zustand, Tailwind
-- **Tempo real:** Socket.io com adapter Redis (escala entre múltiplas instâncias da API)
-- **Infra local:** Docker Compose (Postgres + Redis)
+- **Real-time:** Socket.io with a Redis adapter (scales across multiple API instances)
+- **Local infra:** Docker Compose (Postgres + Redis)
 
-## Estrutura
+## Structure
 
 ```
 apps/
@@ -21,15 +21,17 @@ apps/
 └── web/   # Next.js — frontend
 ```
 
-Ver seção 8 e 9 do [`DESIGN.md`](./DESIGN.md) para a árvore de pastas completa e a lógica por trás dela. Especificação tela a tela (papéis, dados, ações) em [`SCREENS.md`](./SCREENS.md).
+See sections 8 and 9 of [`DESIGN.md`](./DESIGN.md) for the full folder tree and the reasoning behind it. Screen-by-screen specification (roles, data, actions) in [`SCREENS.md`](./SCREENS.md).
 
-## Rodando localmente
+`apps/api` and `apps/web` are independent projects, each with its own `tsconfig.json` — opening the repo root directly in VS Code can make the TypeScript server fall back to an implicit project and misreport errors (e.g. spurious `strictPropertyInitialization` complaints). Open [`mini-tms.code-workspace`](./mini-tms.code-workspace) instead (`File > Open Workspace from File...`) — it lists both apps as separate roots so each gets its own `tsconfig.json` resolved correctly, in one window.
+
+## Running locally
 
 ```bash
 # 1. Infra (Postgres + Redis)
 docker compose up -d
 
-# 2. Backend — http://localhost:3333 (generate + migrate rodam sozinhos)
+# 2. Backend — http://localhost:3333 (generate + migrate run on their own)
 cd apps/api
 pnpm install
 pnpm start:dev
@@ -40,22 +42,22 @@ pnpm install
 pnpm dev
 ```
 
-Detalhes de configuração (`.env`, credenciais de dev, notas técnicas do Prisma) em [`DESIGN.md` § 8](./DESIGN.md#8-como-rodar-localmente).
+Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DESIGN.md` § 8](./DESIGN.md#8-running-locally).
 
-## Qualidade de código
+## Code quality
 
-Biome (format + lint, um binário só nos dois apps) + lefthook (`pre-commit` roda lint-staged, `commit-msg` valida Conventional Commits) + Vitest (`apps/api`, unitário e e2e). O `package.json` da raiz existe só pra hospedar esse tooling — `apps/api` e `apps/web` continuam projetos pnpm independentes. Racional completo (incluindo os gotchas reais de Biome/Vitest com NestJS) em [`DESIGN.md` § 12](./DESIGN.md#12-qualidade-de-código).
+Biome (format + lint, a single binary across both apps) + lefthook (`pre-commit` runs lint-staged, `commit-msg` validates Conventional Commits) + Vitest (`apps/api`, unit and e2e). The root `package.json` exists only to host this tooling — `apps/api` and `apps/web` remain independent pnpm projects. Full reasoning (including the real Biome/Vitest gotchas with NestJS) in [`DESIGN.md` § 12](./DESIGN.md#12-code-quality).
 
 ```bash
-pnpm install   # na raiz — instala lefthook/lint-staged/commitlint e ativa os git hooks
+pnpm install   # at the root — installs lefthook/lint-staged/commitlint and activates the git hooks
 ```
 
-CI no GitHub Actions (lint + build + testes, com Postgres real pro e2e) roda em todo push/PR pra `main` — existe porque hook local sozinho não garante nada pra quem clona o repo ou commita com `--no-verify`. Detalhes em [`DESIGN.md` § 13](./DESIGN.md#13-ci--github-actions).
+CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs on every push/PR to `main` — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 13](./DESIGN.md#13-ci--github-actions).
 
 ## Status
 
-Em desenvolvimento. Scaffold de backend e frontend prontos e validados; modelagem de domínio fechada ([`DESIGN.md` § 10](./DESIGN.md#10-modelo-de-dados), 11 tabelas, migration aplicada); `AuthModule` implementado e testado ponta a ponta ([`DESIGN.md` § 11](./DESIGN.md#11-arquitetura-de-módulos-do-backend)). Faltam: lógica dos módulos de domínio (sellers/carriers/shipments/tracking/notifications), features do frontend — acompanhe o [roadmap](./DESIGN.md#7-roadmap-features-avançadas--próximos-passos) e as seções de arquitetura no `DESIGN.md`.
+Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)). Missing: domain module logic (sellers/carriers/shipments/tracking/notifications), frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
 
-## Licença
+## License
 
 [MIT](./LICENSE)

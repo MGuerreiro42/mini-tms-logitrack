@@ -1,54 +1,55 @@
 # Mini TMS — API
 
-Backend do [Mini TMS](../../README.md), em NestJS. Racional completo das decisões de arquitetura em [`DESIGN.md`](../../DESIGN.md) na raiz do repo — este README cobre só o que é específico deste app.
+Backend of [Mini TMS](../../README.md), in NestJS. Full architecture-decision reasoning in [`DESIGN.md`](../../DESIGN.md) at the repo root — this README only covers what's specific to this app.
 
 ## Stack
 
 - NestJS 11
-- PostgreSQL via Prisma 7, com driver adapter (`@prisma/adapter-pg`)
-- Redis (pub/sub, cache, BullMQ) — integração ainda pendente
-- Socket.io — gateway de tempo real ainda pendente
+- PostgreSQL via Prisma 7, with a driver adapter (`@prisma/adapter-pg`)
+- Redis (pub/sub, cache, BullMQ) — integration still pending
+- Socket.io — real-time gateway still pending
 
-## Rodando
+## Running
 
 ```bash
-# infra (na raiz do repo)
+# infra (at the repo root)
 docker compose up -d
 
-# aqui — postinstall roda `prisma generate`, prestart:dev roda `prisma migrate deploy`
+# here — postinstall runs `prisma generate`, prestart:dev runs `prisma migrate deploy`
 pnpm install
 pnpm start:dev   # http://localhost:3333
 ```
 
-Alterar `schema.prisma` e gerar uma migration nova continua manual, de propósito: `pnpm exec prisma migrate dev --name <nome>`.
+Changing `schema.prisma` and generating a new migration remains manual, on purpose: `pnpm exec prisma migrate dev --name <name>`.
 
-## Estrutura
+## Structure
 
 ```
 src/
 ├── modules/
-│   ├── auth/            # implementado — Passport + JWT + bcrypt (ver DESIGN.md § 11)
-│   ├── sellers/         # skeleton
-│   ├── carriers/        # skeleton (+ invites/ aninhado)
+│   ├── auth/            # implemented — Passport + JWT + bcrypt (see DESIGN.md § 11)
+│   ├── sellers/         # self-signup implemented (see DESIGN.md § 16); the rest is still a skeleton
+│   ├── carriers/        # skeleton (+ nested invites/)
 │   ├── shipments/       # skeleton
-│   ├── tracking/        # skeleton — vira Gateway WS + Redis adapter
-│   └── notifications/   # skeleton — vira workers BullMQ
+│   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
+│   └── notifications/   # skeleton — will become BullMQ workers
 ├── shared/
-│   └── prisma/          # PrismaModule + PrismaService — @Global()
+│   ├── prisma/          # PrismaModule + PrismaService — @Global()
+│   └── password/        # PasswordService (bcrypt hash/compare) — @Global()
 ├── app.module.ts
 └── main.ts
 prisma/
-├── schema.prisma     # 11 models — ver DESIGN.md § 10
-├── seed.ts           # cria o Admin — `pnpm exec prisma db seed`
-└── migrations/       # versionadas no git, aplicadas via `prisma migrate deploy`
+├── schema.prisma     # 11 models — see DESIGN.md § 10
+├── seed.ts           # creates the Admin — `pnpm exec prisma db seed`
+└── migrations/       # versioned in git, applied via `prisma migrate deploy`
 ```
 
-Agrupado por domínio, não por camada técnica — mesma filosofia do front (`DESIGN.md` § 9). Só `auth/` tem lógica de verdade; os demais são esqueletos prontos pra receber implementação módulo a módulo.
+Grouped by domain, not by technical layer — same philosophy as the frontend (`DESIGN.md` § 9). Only `auth/` has real logic so far; the rest are skeletons ready to receive implementation module by module.
 
-## Testando o login
+## Testing login
 
 ```bash
-pnpm exec prisma db seed   # cria admin@minitms.dev / admin12345 (ou ADMIN_EMAIL/ADMIN_PASSWORD)
+pnpm exec prisma db seed   # creates admin@minitms.dev / admin12345 (or ADMIN_EMAIL/ADMIN_PASSWORD)
 
 curl -X POST http://localhost:3333/auth/login \
   -H "Content-Type: application/json" \
@@ -57,16 +58,26 @@ curl -X POST http://localhost:3333/auth/login \
 curl http://localhost:3333/auth/me -H "Authorization: Bearer <accessToken>"
 ```
 
-## Testes
+## Testing seller self-signup
 
 ```bash
-pnpm test        # unitários (vitest run)
-pnpm test:watch  # unitários, watch mode
-pnpm test:cov    # com cobertura (@vitest/coverage-v8)
-pnpm test:e2e    # sobe o AppModule inteiro + Postgres real, via supertest
+curl -X POST http://localhost:3333/sellers \
+  -H "Content-Type: application/json" \
+  -d '{"email":"seller@example.com","password":"password12345","companyName":"Example Store LLC","document":"12345678000199"}'
 ```
 
-Vitest, não Jest — o transform padrão dele não implementa `emitDecoratorMetadata` (usado pelo Nest pra resolver DI), então tem um plugin SWC configurado nos dois `vitest.config*.ts` especificamente pra isso. Detalhes e o porquê em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código).
+Creates a `User` (role `SELLER`) + `Seller` (`status: PENDING`) in one transaction. A duplicate email/document returns 409. Admin approval doesn't exist yet — next step.
+
+## Tests
+
+```bash
+pnpm test        # unit (vitest run)
+pnpm test:watch  # unit, watch mode
+pnpm test:cov    # with coverage (@vitest/coverage-v8)
+pnpm test:e2e    # boots the whole AppModule + a real Postgres, via supertest
+```
+
+Vitest, not Jest — its default transform doesn't implement `emitDecoratorMetadata` (used by Nest to resolve DI), so there's an SWC plugin configured in both `vitest.config*.ts` files specifically for that. Details and reasoning in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality).
 
 ## Lint & format
 
@@ -75,29 +86,29 @@ pnpm lint     # biome check --write .
 pnpm format   # biome format --write .
 ```
 
-Biome, não ESLint/Prettier — gotchas específicos do NestJS (parameter decorators, `useImportType` quebrando DI) em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código). Roda automaticamente no `pre-commit` (lefthook, configurado na raiz do repo).
+Biome, not ESLint/Prettier — NestJS-specific gotchas (parameter decorators, `useImportType` breaking DI) in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality). Runs automatically on `pre-commit` (lefthook, configured at the repo root).
 
-## Documentação da API
+## API documentation
 
 ```bash
 pnpm start:dev
-# abrir http://localhost:3333/docs
+# open http://localhost:3333/docs
 ```
 
-Swagger/OpenAPI via `@nestjs/swagger`. Só `auth/` está documentado — os módulos esqueleto não têm contrato real ainda, documentar não faria sentido. Detalhes em [`DESIGN.md` § 15](../../DESIGN.md#15-openapi-swagger-e-versão-do-node).
+Swagger/OpenAPI via `@nestjs/swagger`. Only `auth/` is documented — the skeleton modules have no real contract yet, so documenting them wouldn't make sense. Details in [`DESIGN.md` § 15](../../DESIGN.md#15-openapi-swagger-and-node-version).
 
-## Nota técnica — Prisma 7
+## Technical note — Prisma 7
 
-O generator usa `moduleFormat = "cjs"` no `schema.prisma` — o padrão da v7 gera um client ESM-only (`import.meta.url`), incompatível com o build CommonJS do Nest. O client também exige um driver adapter explícito no construtor (`PrismaService` passa `new PrismaPg({ connectionString: ... })`), em vez de resolver a conexão implicitamente a partir de `DATABASE_URL`. Detalhes em [`DESIGN.md` § 8](../../DESIGN.md#8-como-rodar-localmente).
+The generator uses `moduleFormat = "cjs"` in `schema.prisma` — v7's default generates an ESM-only client (`import.meta.url`), incompatible with Nest's CommonJS build. The client also requires an explicit driver adapter in the constructor (`PrismaService` passes `new PrismaPg({ connectionString: ... })`), instead of implicitly resolving the connection from `DATABASE_URL`. Details in [`DESIGN.md` § 8](../../DESIGN.md#8-running-locally).
 
-## Variáveis de ambiente
+## Environment variables
 
-Validadas na subida via Zod (`src/shared/config/env.validation.ts`) — falta ou valor inválido derruba a aplicação com mensagem clara em vez de erro confuso mais tarde. Detalhes em [`DESIGN.md` § 14](../../DESIGN.md#14-validação-de-ambiente-e-cors).
+Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing or invalid value crashes the application with a clear message instead of a confusing error down the line. Details in [`DESIGN.md` § 14](../../DESIGN.md#14-environment-validation-and-cors).
 
-| Var | Default | Descrição |
+| Var | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | connection string do Postgres (ver `docker-compose.yml` na raiz) |
-| `PORT` | `3333` | porta do servidor — Next.js usa 3000 por padrão |
-| `JWT_SECRET` | — | assinatura dos tokens — trocar em produção, mínimo 16 caracteres |
-| `CORS_ORIGIN` | `http://localhost:3000` | única origem liberada pro CORS |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` | credenciais do seed do Admin |
+| `DATABASE_URL` | — | Postgres connection string (see `docker-compose.yml` at the root) |
+| `PORT` | `3333` | server port — Next.js defaults to 3000 |
+| `JWT_SECRET` | — | signs the tokens — change it in production, minimum 16 characters |
+| `CORS_ORIGIN` | `http://localhost:3000` | the single origin allowed for CORS |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` | Admin seed credentials |

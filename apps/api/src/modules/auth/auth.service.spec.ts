@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
+import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuthService } from './auth.service';
 
@@ -33,6 +34,7 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: { signAsync },
         },
+        PasswordService,
       ],
     }).compile();
 
