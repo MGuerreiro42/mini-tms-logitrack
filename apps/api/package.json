@@ -17,10 +17,12 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "biome check --write .",
+    "lint:ci": "biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism run",
+    "pretest:e2e": "prisma migrate deploy",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {

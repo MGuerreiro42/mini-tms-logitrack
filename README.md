@@ -1,5 +1,7 @@
 # Mini TMS
 
+[![CI](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml)
+
 Sistema de gestão de transporte (Transportation Management System) multi-tenant, com onboarding de sellers, gestão de transportadoras e rastreamento de entregas em tempo real.
 
 Projeto de portfolio: não busca ser um produto comercializável, mas um artefato técnico que demonstra modelagem de domínio real, RBAC em múltiplas camadas e uma arquitetura de tempo real que escala horizontalmente (WebSocket + Redis pub/sub). Decisões de stack e arquitetura, com o porquê de cada uma, estão documentadas em [`DESIGN.md`](./DESIGN.md).
@@ -42,11 +44,13 @@ Detalhes de configuração (`.env`, credenciais de dev, notas técnicas do Prism
 
 ## Qualidade de código
 
-Biome (format + lint, um binário só nos dois apps) + lefthook (`pre-commit` roda lint-staged, `commit-msg` valida Conventional Commits). O `package.json` da raiz existe só pra hospedar esse tooling — `apps/api` e `apps/web` continuam projetos pnpm independentes. Racional completo (incluindo os dois gotchas reais do Biome com NestJS) em [`DESIGN.md` § 12](./DESIGN.md#12-qualidade-de-código).
+Biome (format + lint, um binário só nos dois apps) + lefthook (`pre-commit` roda lint-staged, `commit-msg` valida Conventional Commits) + Vitest (`apps/api`, unitário e e2e). O `package.json` da raiz existe só pra hospedar esse tooling — `apps/api` e `apps/web` continuam projetos pnpm independentes. Racional completo (incluindo os gotchas reais de Biome/Vitest com NestJS) em [`DESIGN.md` § 12](./DESIGN.md#12-qualidade-de-código).
 
 ```bash
 pnpm install   # na raiz — instala lefthook/lint-staged/commitlint e ativa os git hooks
 ```
+
+CI no GitHub Actions (lint + build + testes, com Postgres real pro e2e) roda em todo push/PR pra `main` — existe porque hook local sozinho não garante nada pra quem clona o repo ou commita com `--no-verify`. Detalhes em [`DESIGN.md` § 13](./DESIGN.md#13-ci--github-actions).
 
 ## Status
 

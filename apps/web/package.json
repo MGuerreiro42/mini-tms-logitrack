@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "biome check --write .",
+    "lint:ci": "biome check .",
     "format": "biome format --write ."
   },
   "dependencies": {

@@ -427,3 +427,16 @@ Testado de ponta a ponta (não só configurado): commit com mensagem fora do pad
 - `tsconfig.json` ganhou `"types": ["vitest/globals"]` — `describe`/`it`/`expect`/`vi` sem import, validado com `tsc --noEmit` de verdade (não só "os testes rodam").
 
 **Teste unitário novo, com substância real:** `src/modules/auth/auth.service.spec.ts` — mocka `PrismaService`/`JwtService` via `Test.createTestingModule`, cobre os três caminhos de `AuthService.login()`: credenciais válidas (retorna token + user), senha errada e usuário inexistente (os dois lançam `UnauthorizedException`, sem chamar `signAsync`). Não é o placeholder "`AppController` deveria ser definido" — é a única peça de lógica de negócio real que existe até agora, e agora tem teste.
+
+## 13. CI — GitHub Actions
+
+`.github/workflows/ci.yml`, rodando em `push`/`pull_request` pra `main`. Existe porque o tooling local (Biome, lefthook, commitlint) só protege quem passa pela sua própria máquina — alguém pode commitar com `--no-verify`, clonar sem rodar `pnpm install` na raiz (hooks nunca instalados), ou simplesmente usar outra máquina. CI é o que garante que o que chega na branch principal passou pelos mesmos checks, independente de hook local.
+
+**Três jobs, paralelos:**
+- **`commitlint`** — só roda em PR (`if: github.event_name == 'pull_request'`), valida o range de commits do PR contra o `commitlint.config.js` da raiz via `wagoid/commitlint-github-action`. Reforça em CI o que o hook de `commit-msg` já faz localmente — sem isso, o hook local é só um "combinado", não uma garantia.
+- **`api`** — `apps/api`: install → `lint:ci` (Biome **sem** `--write` — CI deve falhar se tiver problema, não corrigir e mascarar) → build → testes unitários → e2e. O e2e precisa de Postgres de verdade (`PrismaService.$connect()` roda mesmo), então o job sobe um **service container** `postgres:16-alpine` com as mesmas credenciais do `docker-compose.yml` (`tms`/`tms`/`tms`) — não é segredo, é infra efêmera da CI. `pretest:e2e` (novo hook no `package.json`, mesmo padrão do `prestart:dev`) roda `prisma migrate deploy` automaticamente antes do e2e, tanto em CI quanto local.
+- **`web`** — `apps/web`: install → `lint:ci` → build (que já inclui type-check do Next).
+
+**Por que `lint:ci` e não `lint`:** o script `lint` local usa `biome check --write .` (corrige na hora, bom pro dia a dia). Em CI isso mascararia problema — o job passaria "verde" mesmo com código formatado errado, só porque o Biome corrigiu silenciosamente durante o job (e essa correção não volta pro repo). `lint:ci` roda `biome check .` sem `--write`, falha se tiver qualquer coisa a corrigir.
+
+**Não validado de ponta a ponta ainda** (diferente do resto deste projeto): não tem como rodar GitHub Actions localmente — cada comando do workflow foi testado individualmente no terminal (`lint:ci`, `build`, `test`, `test:e2e` com Postgres local), e o YAML foi validado sintaticamente, mas o workflow em si só roda de verdade no primeiro push/PR.
