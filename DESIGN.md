@@ -475,7 +475,7 @@ Dois gaps de "pré-config" identificados numa revisão deliberada do que faltava
 
 ### Swagger — só a base, sem inventar contrato
 
-`@nestjs/swagger` configurado em `main.ts` (`DocumentBuilder` + `SwaggerModule.setup('docs', ...)`, com `addBearerAuth()` pro esquema de autenticação). Deliberadamente **não** documentei os módulos que ainda são esqueleto (`sellers`, `carriers`, `shipments`, `tracking`, `notifications`) — não existe contrato real ali ainda, documentar um endpoint que não faz nada seria mentira na especificação. O que existe (`AuthController`) ganhou decorators completos: `@ApiTags`, `@ApiOperation`, `@ApiResponse` (200/400/401) em cada rota, `@ApiBearerAuth()` em `/auth/me`, e `@ApiProperty()` no `LoginDto` e nos DTOs de resposta novos (`AuthenticatedUserDto`, `LoginResponseDto` — criados só pra dar forma tipada ao retorno do login, que antes era um objeto solto sem classe). A ideia é que isso vire hábito por padrão em cada controller novo, não um retrofit depois de 20 endpoints sem documentação.
+`@nestjs/swagger` configurado em `main.ts` (`DocumentBuilder` + `SwaggerModule.setup('docs', ...)`, com `addBearerAuth()` pro esquema de autenticação). Deliberadamente **não** documentei os módulos que ainda eram esqueleto na época (`carriers`, `shipments`, `tracking`, `notifications` continuam assim — `sellers` ganhou seu primeiro endpoint real na seção 16) — não existe contrato real ali ainda, documentar um endpoint que não faz nada seria mentira na especificação. O que existia até então (`AuthController`) ganhou decorators completos: `@ApiTags`, `@ApiOperation`, `@ApiResponse` (200/400/401) em cada rota, `@ApiBearerAuth()` em `/auth/me`, e `@ApiProperty()` no `LoginDto` e nos DTOs de resposta novos (`AuthenticatedUserDto`, `LoginResponseDto` — criados só pra dar forma tipada ao retorno do login, que antes era um objeto solto sem classe). A ideia é que isso vire hábito por padrão em cada controller novo, não um retrofit depois de 20 endpoints sem documentação.
 
 Validado subindo a aplicação de verdade: `/docs` responde 200, e `/docs-json` mostra os 2 paths de auth, os 3 schemas com os campos certos, e o `securitySchemes.bearer` registrado — não só "o Nest não reclamou ao compilar".
 
@@ -484,3 +484,24 @@ Validado subindo a aplicação de verdade: `/docs` responde 200, e `/docs-json` 
 ### `.nvmrc` e `engines`
 
 Registrado ontem como discrepância consciente: CI fixo em Node 24, ambiente local rodando 26 (fora da lista de versões oficialmente suportadas pelo Prisma, mesmo funcionando sem problema). `.nvmrc` na raiz (`24`) e `"engines": { "node": ">=24.0.0" }` em ambos os `package.json` — alinha o valor "oficial" com o que qualquer `nvm use`/instalação nova vai pegar, mesmo que a máquina de desenvolvimento atual continue em 26 por conveniência.
+
+## 16. Sellers — primeiro módulo de domínio com lógica real
+
+`sellers` foi escolhido pra sair do esqueleto primeiro (em vez de `carriers`) por ser o fluxo mais simples de fechar de ponta a ponta: self-signup público → `status: PENDING`, sem a complexidade extra de `CarrierUser`/`Invite`. `POST /sellers` implementado; o resto do fluxo (onboarding multi-step, aprovação pelo admin) fica pros próximos passos.
+
+### Autorização por dono, não só por papel
+
+Antes de escrever o primeiro endpoint, valia separar duas coisas que pareciam a mesma: o **mecanismo** de RBAC (`JwtAuthGuard`/`RolesGuard`, já pronto e genérico — não sabe nada sobre seller/carrier especificamente) e a **autorização por dono do recurso** (um seller só pode ver o próprio registro, não o de outro seller). O segundo não tem guard genérico possível — cada entidade tem uma FK de dono diferente (`Shipment.sellerId`, `Seller.userId`, etc.) — então essa checagem mora no service de cada módulo, não numa peça reusável. `POST /sellers` em si não precisa dessa checagem (é público, sem usuário autenticado ainda), mas o padrão fica registrado aqui porque `GET /sellers/:id` (visão do próprio seller) e os endpoints de carrier vão precisar dele.
+
+### `PasswordService` extraído do `AuthModule`
+
+`bcrypt.hash`/`bcrypt.compare` agora vivem em `src/shared/password/` (`PasswordService`, módulo `@Global()` como o `PrismaModule`) — antes só existia `compare` dentro do `AuthService` pro login; o signup precisa de `hash`. Extrair evita duplicar o número mágico de salt rounds em dois lugares, e deixa pronto pra quando `carriers` precisar da mesma coisa. `AuthService` foi migrado pra injetar `PasswordService` em vez de chamar `bcrypt` direto — `auth.service.spec.ts` ajustado pra fornecer `PasswordService` real (não mockado, mesmo espírito de já usar bcrypt de verdade no teste).
+
+### `SellersService.signup`
+
+- Transação (`prisma.$transaction`) criando `User` (`role: SELLER`) e `Seller` juntos — os dois têm que existir ou nenhum, não dá pra ficar com um `User` órfão sem `Seller` se a segunda escrita falhar.
+- Email e documento duplicado capturados via `Prisma.PrismaClientKnownRequestError` com `code === 'P2002'` (constraint única do banco) e convertidos em `ConflictException` (409) com mensagem legível, incluindo qual campo colidiu (`error.meta.target`) — em vez de deixar vazar o erro cru do Prisma pro cliente.
+- Retorno é um objeto construído explicitamente (`SellerResponseDto`), não o registro cru do Prisma — garante que `passwordHash` nunca aparece na resposta, mesmo que o `select`/relação mude no futuro.
+- `@IsNotEmpty()` em `companyName`/`document` além de `@IsString()` — achado testando de propósito com string vazia: `@IsString()` sozinho aceita `""`.
+
+**Validado ponta a ponta, não só testes unitários com mock:** subi a aplicação de verdade, criei um seller via `curl`, confirmei no Postgres (`psql`) que `User` e `Seller` foram gravados corretamente com o relacionamento certo; testei email duplicado e documento duplicado (dois `curl` separados, ambos 409); testei DTO com todos os campos inválidos de uma vez (400 com as 4 mensagens); confirmei no `/docs-json` que `/sellers` e os schemas novos aparecem no contrato. Dados de teste removidos do banco depois.

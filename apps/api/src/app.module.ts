@@ -10,6 +10,7 @@ import { SellersModule } from './modules/sellers/sellers.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
 import { validateEnv } from './shared/config/env.validation';
+import { PasswordModule } from './shared/password/password.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     EventEmitterModule.forRoot(),
     PrismaModule,
+    PasswordModule,
     SellersModule,
     CarriersModule,
     ShipmentsModule,

@@ -28,13 +28,14 @@ Alterar `schema.prisma` e gerar uma migration nova continua manual, de propósit
 src/
 ├── modules/
 │   ├── auth/            # implementado — Passport + JWT + bcrypt (ver DESIGN.md § 11)
-│   ├── sellers/         # skeleton
+│   ├── sellers/         # self-signup implementado (ver DESIGN.md § 16); resto ainda skeleton
 │   ├── carriers/        # skeleton (+ invites/ aninhado)
 │   ├── shipments/       # skeleton
 │   ├── tracking/        # skeleton — vira Gateway WS + Redis adapter
 │   └── notifications/   # skeleton — vira workers BullMQ
 ├── shared/
-│   └── prisma/          # PrismaModule + PrismaService — @Global()
+│   ├── prisma/          # PrismaModule + PrismaService — @Global()
+│   └── password/        # PasswordService (bcrypt hash/compare) — @Global()
 ├── app.module.ts
 └── main.ts
 prisma/
@@ -56,6 +57,16 @@ curl -X POST http://localhost:3333/auth/login \
 
 curl http://localhost:3333/auth/me -H "Authorization: Bearer <accessToken>"
 ```
+
+## Testando o self-signup de seller
+
+```bash
+curl -X POST http://localhost:3333/sellers \
+  -H "Content-Type: application/json" \
+  -d '{"email":"loja@exemplo.com","password":"senha12345","companyName":"Loja Exemplo LTDA","document":"12345678000199"}'
+```
+
+Cria `User` (role `SELLER`) + `Seller` (`status: PENDING`) numa transação. Email/documento duplicado retorna 409. Aprovação pelo admin ainda não existe — próximo passo.
 
 ## Testes
 
