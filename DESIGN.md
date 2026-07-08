@@ -390,3 +390,40 @@ Passport (`@nestjs/passport` + `@nestjs/jwt` + `bcrypt`) em vez de Auth0/Clerk/S
 **Validado ponta a ponta** (não só compilado): seed de um Admin (`prisma/seed.ts`, rodando via `tsx` — `ts-node` falhou por causa da resolução de módulo `.js`→`.ts` do client gerado pelo Prisma 7, gotcha registrado aqui pra não repetir a investigação), login retornando JWT de verdade, `GET /auth/me` protegido respondendo 200 com token e 401 sem token, `ValidationPipe` global rejeitando DTO inválido com 400.
 
 **Seed do Prisma na v7:** o comando de seed não vai mais em `package.json#prisma.seed` (convenção antiga) — agora é `migrations.seed` dentro do `prisma.config.ts`.
+
+## 12. Qualidade de código
+
+### Biome — por quê, não ESLint + Prettier
+
+Um binário só (Rust), format + lint com uma config, ordens de magnitude mais rápido que ESLint+Prettier rodando separado — e resolve uma inconsistência que já existia entre os dois apps (`apps/api` tinha Prettier, `apps/web` não tinha nenhum formatter). Trade-off aceito conscientemente: Biome não tem equivalente ao `eslint-config-next` nem ao setup de ESLint que a comunidade NestJS usa — perde regras específicas de framework (uso de `next/image`/`next/link`, algumas regras de decorator do Nest). Não é grande perda no estágio atual do projeto, e "uma ferramenta rápida, uma config, escolha justificada" é melhor sinal de portfolio do que duas ferramentas com config divergente entre os apps.
+
+**Gotcha real, não cosmético — parameter decorators:** o parser do Biome não aceita decorators de parâmetro (`@Body() dto: LoginDto`) por padrão, o que é praticamente todo controller do NestJS. Precisa de `javascript.parser.unsafeParameterDecoratorsEnabled: true` no `biome.json` do `apps/api` — "unsafe" no sentido de "fora do padrão TC39 finalizado", não "perigoso pro seu código" (é exatamente o modelo que `experimentalDecorators`/`emitDecoratorMetadata` do NestJS já usa).
+
+**Gotcha mais sério — `useImportType` quebra a injeção de dependência do Nest:** a regra padrão do Biome converte automaticamente qualquer import usado só em posição de tipo pra `import type` — mas o NestJS precisa da referência real da classe em runtime pra resolver DI via `design:paramtypes` (reflection do `emitDecoratorMetadata`). `import type { PrismaService }` num construtor injetado compila sem erro, mas quebra em runtime com `Nest can't resolve dependencies (?, Function)` — a classe vira `Function` na metadata porque o import foi apagado. Isso **não aparece no build, só rodando a aplicação de verdade** (motivo pelo qual testamos com curl real, não só `nest build`). Fix: `style.useImportType: "off"` no `biome.json` do `apps/api`. Não é um problema no `apps/web` (React não depende de reflection de decorator pra funcionar).
+
+**`apps/web`:** habilitado `linter.domains: { next: "recommended", react: "recommended" }` (regras específicas que o Biome 2.x tem pra esses frameworks) e `css.parser.tailwindDirectives: true` (Tailwind v4 usa `@theme` no CSS, que o parser CSS do Biome não reconhece por padrão). SVGs estáticos em `public/` excluídos do lint — são asset, não markup de UI, a regra de acessibilidade (`noSvgWithoutTitle`) não se aplica.
+
+### Pre-commit — lefthook, não Husky
+
+O repo não tem workspace pnpm unificado — `apps/api` e `apps/web` são projetos independentes, sem `package.json` de raiz até agora. Husky quer viver num `package.json` de raiz com uma estrutura mais pesada; **lefthook** é um binário standalone (Go) configurado via `lefthook.yml`, com suporte nativo a rodar comandos por sub-diretório — cabe melhor nesse formato de "dois apps independentes" sem forçar um workspace unificado só pra hospedar tooling.
+
+Criado um `package.json` de raiz **só pra ferramentas de repositório** (`lefthook`, `lint-staged`, `commitlint`) — não é um workspace agregando as dependências de `api`/`web`, que continuam 100% independentes.
+
+- **`lint-staged.config.js`** — mapeia `apps/api/**` e `apps/web/**` pra `pnpm --dir <app> exec biome check --write`, cada um usando o Biome instalado no seu próprio `node_modules` (não precisa duplicar em lugar nenhum além disso).
+- **`lefthook.yml`** — `pre-commit` roda `lint-staged`; `commit-msg` roda `commitlint --edit`.
+- **`commitlint.config.js`** — Conventional Commits (`@commitlint/config-conventional`).
+
+Testado de ponta a ponta (não só configurado): commit com mensagem fora do padrão foi rejeitado (`subject-empty`, `type-empty`); commit com mensagem válida passou; um arquivo staged deliberadamente mal formatado (`{a:1,b:2,c:3}`) foi reformatado automaticamente pelo Biome antes do commit se concretizar.
+
+### Vitest, não Jest
+
+`apps/api` trocou Jest por Vitest — e isso resolveu de graça um problema que tínhamos acabado de documentar aqui como "gap conhecido": rodando `pnpm test:e2e` com Jest, o Nest travava no `PrismaService.$connect()` com `TypeError: A dynamic import callback was invoked without --experimental-vm-modules`, porque o query compiler WASM do Prisma 7 usa `import()` dinâmico e o `ts-jest` (CommonJS) não suporta isso sem flag experimental do Node. O transform do Vitest é nativo em ESM/Vite — o e2e passa a rodar limpo, sem nenhuma configuração extra pra isso.
+
+**O que exigiu atenção de verdade — decorator metadata de novo.** Mesmo alerta do Biome (acima): o transform padrão do Vitest (esbuild/Oxc) **não implementa `emitDecoratorMetadata`**, que é exatamente o que o NestJS usa pra resolver DI via `design:paramtypes`. Usar Vitest "out of the box" num projeto Nest quebraria a injeção de dependência do mesmo jeito que o `useImportType` do Biome quebrou — silenciosamente, só em runtime. Fix: `unplugin-swc` como plugin do Vitest, com `jsc.transform.decoratorMetadata: true` explícito (SWC, ao contrário do esbuild, implementa isso). Também precisou desligar `esbuild`/`oxc` explicitamente na config (`esbuild: false, oxc: false`) — do contrário o Vitest 4 tenta rodar o transform padrão dele em cima do SWC.
+
+- `vitest.config.ts` — testes unitários (`src/**/*.spec.ts`).
+- `vitest.config.e2e.ts` — testes e2e (`test/**/*.e2e-spec.ts`), mesma config de plugin/decorator.
+- Cobertura via `@vitest/coverage-v8`, excluindo o client gerado do Prisma e os próprios arquivos de teste do relatório.
+- `tsconfig.json` ganhou `"types": ["vitest/globals"]` — `describe`/`it`/`expect`/`vi` sem import, validado com `tsc --noEmit` de verdade (não só "os testes rodam").
+
+**Teste unitário novo, com substância real:** `src/modules/auth/auth.service.spec.ts` — mocka `PrismaService`/`JwtService` via `Test.createTestingModule`, cobre os três caminhos de `AuthService.login()`: credenciais válidas (retorna token + user), senha errada e usuário inexistente (os dois lançam `UnauthorizedException`, sem chamar `signAsync`). Não é o placeholder "`AppController` deveria ser definido" — é a única peça de lógica de negócio real que existe até agora, e agora tem teste.

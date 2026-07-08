@@ -40,9 +40,17 @@ pnpm dev
 
 Detalhes de configuração (`.env`, credenciais de dev, notas técnicas do Prisma) em [`DESIGN.md` § 8](./DESIGN.md#8-como-rodar-localmente).
 
+## Qualidade de código
+
+Biome (format + lint, um binário só nos dois apps) + lefthook (`pre-commit` roda lint-staged, `commit-msg` valida Conventional Commits). O `package.json` da raiz existe só pra hospedar esse tooling — `apps/api` e `apps/web` continuam projetos pnpm independentes. Racional completo (incluindo os dois gotchas reais do Biome com NestJS) em [`DESIGN.md` § 12](./DESIGN.md#12-qualidade-de-código).
+
+```bash
+pnpm install   # na raiz — instala lefthook/lint-staged/commitlint e ativa os git hooks
+```
+
 ## Status
 
-Em desenvolvimento. Scaffold de backend e frontend prontos e validados; modelagem de domínio fechada ([`DESIGN.md` § 10](./DESIGN.md#10-modelo-de-dados), 11 tabelas, migration aplicada). Faltam: módulos do backend, features do frontend — acompanhe o [roadmap](./DESIGN.md#7-roadmap-features-avançadas--próximos-passos) e as seções de arquitetura no `DESIGN.md`.
+Em desenvolvimento. Scaffold de backend e frontend prontos e validados; modelagem de domínio fechada ([`DESIGN.md` § 10](./DESIGN.md#10-modelo-de-dados), 11 tabelas, migration aplicada); `AuthModule` implementado e testado ponta a ponta ([`DESIGN.md` § 11](./DESIGN.md#11-arquitetura-de-módulos-do-backend)). Faltam: lógica dos módulos de domínio (sellers/carriers/shipments/tracking/notifications), features do frontend — acompanhe o [roadmap](./DESIGN.md#7-roadmap-features-avançadas--próximos-passos) e as seções de arquitetura no `DESIGN.md`.
 
 ## Licença
 

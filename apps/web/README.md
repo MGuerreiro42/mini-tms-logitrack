@@ -41,6 +41,15 @@ src/
 
 Cada `features/*` ainda são placeholders (`types.ts`, `api/index.ts`, `index.ts` vazios) — modelagem por domínio é o próximo passo. Detalhes e racional completo em [`DESIGN.md` § 9](../../DESIGN.md#9-arquitetura-do-frontend).
 
+## Lint & format
+
+```bash
+pnpm lint     # biome check --write .
+pnpm format   # biome format --write .
+```
+
+Biome, não ESLint — perde as regras específicas do `eslint-config-next`, ganha `linter.domains: { next, react }` do Biome no lugar (racional em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código)). Roda automaticamente no `pre-commit` (lefthook, configurado na raiz do repo).
+
 ## Variáveis de ambiente
 
 | Var | Default | Descrição |

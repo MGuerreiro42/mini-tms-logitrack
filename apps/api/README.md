@@ -57,6 +57,26 @@ curl -X POST http://localhost:3333/auth/login \
 curl http://localhost:3333/auth/me -H "Authorization: Bearer <accessToken>"
 ```
 
+## Testes
+
+```bash
+pnpm test        # unitários (vitest run)
+pnpm test:watch  # unitários, watch mode
+pnpm test:cov    # com cobertura (@vitest/coverage-v8)
+pnpm test:e2e    # sobe o AppModule inteiro + Postgres real, via supertest
+```
+
+Vitest, não Jest — o transform padrão dele não implementa `emitDecoratorMetadata` (usado pelo Nest pra resolver DI), então tem um plugin SWC configurado nos dois `vitest.config*.ts` especificamente pra isso. Detalhes e o porquê em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código).
+
+## Lint & format
+
+```bash
+pnpm lint     # biome check --write .
+pnpm format   # biome format --write .
+```
+
+Biome, não ESLint/Prettier — gotchas específicos do NestJS (parameter decorators, `useImportType` quebrando DI) em [`DESIGN.md` § 12](../../DESIGN.md#12-qualidade-de-código). Roda automaticamente no `pre-commit` (lefthook, configurado na raiz do repo).
+
 ## Nota técnica — Prisma 7
 
 O generator usa `moduleFormat = "cjs"` no `schema.prisma` — o padrão da v7 gera um client ESM-only (`import.meta.url`), incompatível com o build CommonJS do Nest. O client também exige um driver adapter explícito no construtor (`PrismaService` passa `new PrismaPg({ connectionString: ... })`), em vez de resolver a conexão implicitamente a partir de `DATABASE_URL`. Detalhes em [`DESIGN.md` § 8](../../DESIGN.md#8-como-rodar-localmente).
