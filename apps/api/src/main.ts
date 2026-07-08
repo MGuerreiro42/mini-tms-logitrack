@@ -19,7 +19,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Mini TMS API')
     .setDescription(
-      'Sistema de gestão de transporte — onboarding de sellers, transportadoras e tracking de entregas.',
+      'Transportation Management System — seller onboarding, carriers, and delivery tracking.',
     )
     .setVersion('0.1.0')
     .addBearerAuth()

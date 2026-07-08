@@ -35,15 +35,15 @@ enum InviteStatus {
 }
 
 enum ShipmentStatus {
-  PENDING // criado, sem dono, na fila da carrier
-  ACCEPTED // um operador assumiu (claim)
-  COLLECTED // coletado no seller
+  PENDING // created, no owner, in the carrier's queue
+  ACCEPTED // an operator claimed it
+  COLLECTED // picked up from the seller
   IN_TRANSIT
   OUT_FOR_DELIVERY
   DELIVERED
   FAILED_DELIVERY
-  CANCELLED // só possível antes de COLLECTED
-  RETURNED // saída de exceção após FAILED_DELIVERY
+  CANCELLED // only possible before COLLECTED
+  RETURNED // exception path after FAILED_DELIVERY
 }
 
 // ---------- auth ----------
@@ -121,7 +121,7 @@ model CarrierCoverageArea {
   carrierId String
   carrier   Carrier  @relation(fields: [carrierId], references: [id])
   state     String
-  city      String? // null = cobre o estado inteiro
+  city      String? // null = covers the entire state
   createdAt DateTime @default(now())
 
   @@unique([carrierId, state, city])
@@ -131,9 +131,9 @@ model CarrierCoverageArea {
 
 model DeliveryModality {
   id        String   @id @default(uuid())
-  code      String   @unique // "PADRAO", "FULL", "EXPRESSA"
+  code      String   @unique // "STANDARD", "FULL", "EXPRESS"
   name      String
-  slaHours  Int? // usado no futuro alerta de SLA estourado
+  slaHours  Int? // used by the future SLA-breach alert
   createdAt DateTime @default(now())
 
   carrierModalities CarrierModality[]
@@ -198,5 +198,5 @@ model TrackingEvent {
   shipment   Shipment       @relation(fields: [shipmentId], references: [id])
   status     ShipmentStatus
   note       String?
-  createdAt  DateTime       @default(now()) // imutável — nunca tem updatedAt
+  createdAt  DateTime       @default(now()) // immutable — never has an updatedAt
 }

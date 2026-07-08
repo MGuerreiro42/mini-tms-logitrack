@@ -1,136 +1,136 @@
 # Mini TMS — Design Doc
 
-> Sistema de gestão de transporte (Transportation Management System) simplificado, cobrindo onboarding de sellers, gestão multi-tenant de transportadoras e tracking de entregas em tempo real.
+> Simplified Transportation Management System (TMS), covering seller onboarding, multi-tenant carrier management, and real-time delivery tracking.
 
 ---
 
-## 1. Objetivo do projeto
+## 1. Project Goal
 
-Construir um sistema full-stack que reflita, de forma simplificada mas arquiteturalmente honesta, os desafios reais de uma plataforma de logística: múltiplos tipos de organização interagindo (sellers e transportadoras), aprovação e onboarding controlados, rastreamento de entregas em tempo real, e multi-tenancy de verdade — não um CRUD genérico com autenticação.
+Build a full-stack system that reflects, in a simplified but architecturally honest way, the real challenges of a logistics platform: multiple organization types interacting (sellers and carriers), controlled approval and onboarding, real-time delivery tracking, and genuine multi-tenancy — not a generic CRUD app with authentication bolted on.
 
-O projeto não busca ser um produto comercializável, mas um artefato técnico que demonstre:
+The project doesn't aim to be a commercializable product, but a technical artifact that demonstrates:
 
-- Modelagem de domínio com relacionamentos reais (não um schema de tutorial).
-- Autorização em múltiplas camadas (RBAC aplicado no backend, não só escondendo botão no front).
-- Arquitetura de tempo real que escala horizontalmente (WebSocket + Redis pub/sub), não um `socket.emit` solto.
-- Decisões técnicas justificadas — cada escolha de stack tem um porquê documentado, não é "porque é o que todo mundo usa".
+- Domain modeling with real relationships (not a tutorial schema).
+- Multi-layer authorization (RBAC enforced in the backend, not just hiding a button in the front end).
+- A real-time architecture that scales horizontally (WebSocket + Redis pub/sub), not a loose `socket.emit`.
+- Justified technical decisions — every stack choice has a documented reason, not "because it's what everyone uses."
 
-## 2. Papéis do sistema
+## 2. System Roles
 
-| Papel | Quem é | Como entra no sistema |
+| Role | Who they are | How they enter the system |
 |---|---|---|
-| **Admin** | Dono da plataforma | Nasce via seed, nunca via tela pública |
-| **Seller** | Lojista que precisa despachar produtos | Self-signup público → onboarding → aprovação |
-| **Carrier (gestor)** | Responsável pela transportadora | Cadastro da empresa → aprovação do admin |
-| **Carrier (operador)** | Executa as entregas no dia a dia | Convite por token, enviado pelo gestor da carrier |
+| **Admin** | Platform owner | Created via seed, never through a public screen |
+| **Seller** | Merchant who needs to ship products | Public self-signup → onboarding → approval |
+| **Carrier (manager)** | Responsible for the carrier company | Company registration → admin approval |
+| **Carrier (operator)** | Executes day-to-day deliveries | Invited via token, sent by the carrier's manager |
 
-A decisão de separar Carrier em empresa + operadores (em vez de um único login por transportadora) foi deliberada: reflete como sistemas B2B reais lidam com múltiplos funcionários de uma mesma organização, e é o que torna o multi-tenancy genuíno em vez de só um campo `role` na tabela de usuário.
+The decision to split Carrier into company + operators (instead of a single login per carrier) was deliberate: it reflects how real B2B systems handle multiple employees from the same organization, and it's what makes multi-tenancy genuine instead of just a `role` column on the user table.
 
-## 3. Jornada do usuário
+## 3. User Journey
 
-Fluxo completo por papel, incluindo os pontos de entrada (self-signup vs. convite vs. seed) e as telas de cada etapa.
+Full flow per role, including entry points (self-signup vs. invite vs. seed) and the screens at each step.
 
 ```mermaid
 flowchart TD
-    subgraph ENTRADA["🔑 Entrada no Sistema"]
+    subgraph ENTRADA["🔑 System Entry"]
         Login[/"Login"/]
-        SignupSeller[/"Cadastro Seller (público)"/]
-        InviteAccept[/"Aceite de Convite (token)"/]
-        PublicTracking[/"Rastreio Público (sem login)"/]
+        SignupSeller[/"Seller Signup (public)"/]
+        InviteAccept[/"Invite Acceptance (token)"/]
+        PublicTracking[/"Public Tracking (no login)"/]
     end
 
     Login -->|"role: admin"| AdminDash
-    Login -->|"role: seller"| SellerCheck{"Status aprovado?"}
+    Login -->|"role: seller"| SellerCheck{"Approved status?"}
     Login -->|"role: carrier_manager / carrier_operator"| CarrierDash
 
     SignupSeller --> SellerOnboarding
-    InviteAccept -->|"cria conta vinculada ao carrier_id do token"| CarrierDash
+    InviteAccept -->|"creates account linked to the token's carrier_id"| CarrierDash
 
     subgraph ADMIN["👤 Admin"]
-        AdminDash["Dashboard Geral"]
-        SellersList["Lista de Sellers"]
-        SellerDetail["Detalhe do Seller"]
-        CarriersList["Lista de Carriers"]
-        CarrierDetail["Detalhe da Carrier"]
-        OperatorsMgmt["Gestão de Operadores"]
-        GlobalMonitor["Monitoramento Global"]
+        AdminDash["General Dashboard"]
+        SellersList["Sellers List"]
+        SellerDetail["Seller Detail"]
+        CarriersList["Carriers List"]
+        CarrierDetail["Carrier Detail"]
+        OperatorsMgmt["Operator Management"]
+        GlobalMonitor["Global Monitoring"]
 
         AdminDash --> SellersList --> SellerDetail
-        SellerDetail -->|"aprovar / rejeitar"| SellersList
+        SellerDetail -->|"approve / reject"| SellersList
         AdminDash --> CarriersList --> CarrierDetail --> OperatorsMgmt
-        CarrierDetail -->|"aprovar / rejeitar empresa"| CarriersList
-        OperatorsMgmt -->|"convidar operador"| InviteAccept
+        CarrierDetail -->|"approve / reject company"| CarriersList
+        OperatorsMgmt -->|"invite operator"| InviteAccept
         AdminDash --> GlobalMonitor
     end
 
     subgraph SELLER["🏪 Seller"]
-        SellerOnboarding["Onboarding Multi-step<br/>(dados → docs → modalidades)"]
-        SellerPending["Aguardando Aprovação"]
+        SellerOnboarding["Multi-step Onboarding<br/>(data → docs → modalities)"]
+        SellerPending["Awaiting Approval"]
         SellerDash["Dashboard"]
-        CreateShipment["Criar Envio"]
-        ShipmentsList["Lista de Envios"]
-        ShipmentDetail["Detalhe do Envio"]
-        DeliveryConfig["Config. de Modalidades"]
+        CreateShipment["Create Shipment"]
+        ShipmentsList["Shipments List"]
+        ShipmentDetail["Shipment Detail"]
+        DeliveryConfig["Modality Config"]
 
         SellerOnboarding --> SellerPending --> SellerCheck
-        SellerCheck -->|"sim"| SellerDash
-        SellerCheck -->|"não"| SellerPending
+        SellerCheck -->|"yes"| SellerDash
+        SellerCheck -->|"no"| SellerPending
         SellerDash --> CreateShipment --> ShipmentsList
         SellerDash --> ShipmentsList --> ShipmentDetail
         SellerDash --> DeliveryConfig
     end
 
-    subgraph CARRIER["🚚 Carrier (Empresa)"]
-        CarrierOnboarding["Cadastro da Empresa"]
-        CarrierPendingApproval["Aguardando Aprovação"]
-        CarrierDash["Dashboard / Fila Compartilhada<br/>(todos veem tudo)"]
-        ClaimCheck{"Envio já tem dono?"}
-        Claim["Assumir Envio"]
-        ViewOnly["Somente visualização"]
-        UpdateStatus["Atualizar Status"]
-        Performance["Performance da Carrier"]
+    subgraph CARRIER["🚚 Carrier (Company)"]
+        CarrierOnboarding["Company Registration"]
+        CarrierPendingApproval["Awaiting Approval"]
+        CarrierDash["Dashboard / Shared Queue<br/>(everyone sees everything)"]
+        ClaimCheck{"Does the shipment already have an owner?"}
+        Claim["Claim Shipment"]
+        ViewOnly["View only"]
+        UpdateStatus["Update Status"]
+        Performance["Carrier Performance"]
 
         CarrierOnboarding --> CarrierPendingApproval
         CarrierDash --> ClaimCheck
-        ClaimCheck -->|"não tem dono"| Claim
-        ClaimCheck -->|"dono sou eu"| UpdateStatus
-        ClaimCheck -->|"dono é outro operador"| ViewOnly
+        ClaimCheck -->|"no owner"| Claim
+        ClaimCheck -->|"I'm the owner"| UpdateStatus
+        ClaimCheck -->|"another operator owns it"| ViewOnly
         Claim --> UpdateStatus
         CarrierDash --> Performance
     end
 
-    ShipmentDetail -.->|"tempo real (SSE/WebSocket)"| GlobalMonitor
-    UpdateStatus -.->|"evento de status"| ShipmentDetail
-    UpdateStatus -.->|"evento de status"| GlobalMonitor
-    UpdateStatus -.->|"evento de atribuição"| GlobalMonitor
-    ShipmentDetail -.->|"link público"| PublicTracking
+    ShipmentDetail -.->|"real time (SSE/WebSocket)"| GlobalMonitor
+    UpdateStatus -.->|"status event"| ShipmentDetail
+    UpdateStatus -.->|"status event"| GlobalMonitor
+    UpdateStatus -.->|"assignment event"| GlobalMonitor
+    ShipmentDetail -.->|"public link"| PublicTracking
 ```
 
-**Decisão de produto — atribuição de entregas:** a fila de envios é compartilhada dentro de cada carrier (todos os operadores veem tudo), mas cada envio tem um "dono" opcional. Sem dono, qualquer operador pode assumir (`self-assign`); com dono, só o próprio dono (ou o gestor, para destravar operação) pode agir. Isso prioriza transparência operacional sobre isolamento rígido de fila — reflete melhor como pequenas/médias transportadoras trabalham na prática.
+**Product decision — delivery assignment:** the shipment queue is shared within each carrier (every operator sees everything), but each shipment has an optional "owner." With no owner, any operator can claim it (`self-assign`); with an owner, only that owner (or the manager, to unblock operations) can act on it. This prioritizes operational transparency over strict queue isolation — it better reflects how small/medium carriers actually work in practice.
 
-## 4. Telas do sistema
+## 4. System Screens
 
-**Admin:** Dashboard, Lista de Sellers, Detalhe de Seller, Lista de Carriers, Detalhe de Carrier (com sub-lista de operadores e convites), Monitoramento Global.
+**Admin:** Dashboard, Sellers List, Seller Detail, Carriers List, Carrier Detail (with a sub-list of operators and invites), Global Monitoring.
 
-**Seller:** Onboarding (multi-step com draft), Dashboard, Criar Envio, Lista de Envios, Detalhe de Envio, Configuração de Modalidades.
+**Seller:** Onboarding (multi-step with draft), Dashboard, Create Shipment, Shipments List, Shipment Detail, Modality Configuration.
 
-**Carrier:** Cadastro da Empresa, Gestão de Operadores (só gestor vê), Aceite de Convite, Dashboard/Fila, Atualização de Status, Performance.
+**Carrier:** Company Registration, Operator Management (manager only), Invite Acceptance, Dashboard/Queue, Status Update, Performance.
 
-**Público:** Aceite de Convite, Rastreio sem login.
+**Public:** Invite Acceptance, Tracking without login.
 
-Especificação detalhada tela a tela — papel, dados exibidos (campos reais do schema), ações e estados — em [`SCREENS.md`](./SCREENS.md).
+Detailed screen-by-screen specification — role, displayed data (real schema fields), actions, and states — in [`SCREENS.md`](./SCREENS.md).
 
-## 5. Arquitetura técnica
+## 5. Technical Architecture
 
 ```mermaid
 flowchart TB
-    subgraph CLIENT["🖥️ Cliente"]
+    subgraph CLIENT["🖥️ Client"]
         Browser["Browser<br/>React + Next.js (App Router)<br/>shadcn/ui + Tailwind + Zustand"]
     end
 
     subgraph EDGE["🌐 Edge / Deploy"]
         Vercel["Next.js Frontend<br/>(Vercel)"]
-        LB["Load Balancer<br/>(Railway/Fly.io — se escalar)"]
+        LB["Load Balancer<br/>(Railway/Fly.io — if scaling)"]
     end
 
     Browser -->|"HTTPS (REST)"| Vercel
@@ -138,7 +138,7 @@ flowchart TB
     Vercel -->|"REST API calls"| LB
 
     subgraph API["⚙️ Backend — NestJS"]
-        RestModules["Módulos REST<br/>(Auth, Sellers, Carriers,<br/>Shipments, Invites)"]
+        RestModules["REST Modules<br/>(Auth, Sellers, Carriers,<br/>Shipments, Invites)"]
         Guards["Guards / RBAC<br/>(@Roles decorator)"]
         Gateway["WebSocket Gateway<br/>(Socket.io)"]
         RedisAdapter["Redis Adapter<br/>(@socket.io/redis-adapter)"]
@@ -149,87 +149,87 @@ flowchart TB
     RestModules --> Guards
     Gateway --> RedisAdapter
 
-    subgraph DATA["💾 Dados"]
+    subgraph DATA["💾 Data"]
         Postgres[("PostgreSQL<br/>via Prisma ORM<br/><br/>seller, carrier,<br/>carrier_user, shipment,<br/>tracking_event, invite")]
-        Redis[("Redis<br/><br/>• Pub/Sub (eventos WS)<br/>• Cache (zonas, config)<br/>• BullMQ (filas)")]
+        Redis[("Redis<br/><br/>• Pub/Sub (WS events)<br/>• Cache (zones, config)<br/>• BullMQ (queues)")]
     end
 
-    RestModules -->|"CRUD / transações"| Postgres
-    RestModules -->|"enfileira job"| Redis
-    RedisAdapter <-->|"pub/sub cross-instance"| Redis
+    RestModules -->|"CRUD / transactions"| Postgres
+    RestModules -->|"enqueues job"| Redis
+    RedisAdapter <-->|"cross-instance pub/sub"| Redis
 
-    subgraph WORKERS["🔄 Workers Assíncronos (BullMQ)"]
-        EmailWorker["Worker: E-mail<br/>(convite, aprovação)"]
-        NotifyWorker["Worker: Notificação<br/>(SLA estourado)"]
+    subgraph WORKERS["🔄 Async Workers (BullMQ)"]
+        EmailWorker["Worker: Email<br/>(invite, approval)"]
+        NotifyWorker["Worker: Notification<br/>(SLA breach)"]
     end
 
-    Redis -->|"consome fila"| EmailWorker
-    Redis -->|"consome fila"| NotifyWorker
+    Redis -->|"consumes queue"| EmailWorker
+    Redis -->|"consumes queue"| NotifyWorker
 
-    subgraph EXTERNAL["📡 Externos"]
-        MapAPI["Mapbox / Google Maps API<br/>(geocoding + rota)"]
-        EmailProvider["Provedor de E-mail<br/>(Resend/SendGrid)"]
+    subgraph EXTERNAL["📡 External"]
+        MapAPI["Mapbox / Google Maps API<br/>(geocoding + route)"]
+        EmailProvider["Email Provider<br/>(Resend/SendGrid)"]
     end
 
     RestModules -.->|"geocoding"| MapAPI
-    EmailWorker -.->|"envio"| EmailProvider
+    EmailWorker -.->|"send"| EmailProvider
 
-    RestModules -->|"1. operador atualiza status"| Postgres
-    RestModules -->|"2. grava tracking_event"| Postgres
-    RestModules -->|"3. publica evento"| Redis
-    Redis -->|"4. propaga"| RedisAdapter
-    RedisAdapter -->|"5. emite via WSS"| Gateway
-    Gateway -.->|"6. push em tempo real"| Browser
+    RestModules -->|"1. operator updates status"| Postgres
+    RestModules -->|"2. writes tracking_event"| Postgres
+    RestModules -->|"3. publishes event"| Redis
+    Redis -->|"4. propagates"| RedisAdapter
+    RedisAdapter -->|"5. emits via WSS"| Gateway
+    Gateway -.->|"6. real-time push"| Browser
 ```
 
-### Fluxo de tempo real (o núcleo técnico do projeto)
+### Real-time flow (the project's technical core)
 
-1. Operador atualiza o status de um envio via REST.
-2. Backend grava um novo `tracking_event` no Postgres (histórico imutável — nunca sobrescreve o status anterior).
-3. Backend publica o evento num canal Redis.
-4. Redis propaga o evento para todas as instâncias da API inscritas (é isso que permite escalar horizontalmente sem perder mensagens entre servidores diferentes).
-5. O adapter de Redis entrega o evento ao WebSocket Gateway correspondente.
-6. O Gateway emite via WSS para os clientes conectados (seller acompanhando o envio, admin no monitoramento global).
+1. An operator updates a shipment's status via REST.
+2. The backend writes a new `tracking_event` to Postgres (immutable history — it never overwrites the previous status).
+3. The backend publishes the event on a Redis channel.
+4. Redis propagates the event to every subscribed API instance (this is what allows horizontal scaling without losing messages between different servers).
+5. The Redis adapter delivers the event to the corresponding WebSocket Gateway.
+6. The Gateway emits it via WSS to connected clients (the seller following the shipment, the admin on the global monitor).
 
-## 6. Decisões de stack — por quê
+## 6. Stack Decisions — Why
 
-| Camada | Escolha | Alternativa considerada | Por quê |
+| Layer | Choice | Alternative considered | Why |
 |---|---|---|---|
-| Backend | NestJS (Node) | Spring Boot (Java) | Real-time é o core do projeto — WebSocket é nativo em Node, sem exigir WebFlux para I/O não-bloqueante. Também é onde tenho mais fluência de dia a dia; Java eu manejo mas sem profundidade de produção. NestJS aproxima a estrutura de módulos/DI do que Spring oferece, o que mantém a porta aberta pra falar de arquitetura em entrevista mesmo com quem vem de Java. |
-| Banco | PostgreSQL + Prisma | MongoDB | Domínio com relacionamento forte (seller → shipment → tracking_event → carrier) e necessidade de integridade transacional. NoSQL resolveria um problema de escala horizontal massiva ou schema flexível que este projeto não tem. |
-| Tempo real | WebSocket (Socket.io) + Redis pub/sub | SSE puro / polling | Socket.io com adapter Redis permite escalar para múltiplas instâncias sem perder mensagens entre servidores — arquitetura pensada para produção real, não só uma demo de um único processo. |
-| Fila | BullMQ (sobre Redis) | RabbitMQ/SQS | Reaproveita a mesma infra de Redis já necessária para pub/sub, evitando um serviço extra só para filas leves (e-mail de convite, alertas de SLA). |
-| Frontend | React + Next.js | — | Padrão de mercado, App Router para rotas por papel (admin/seller/carrier) com layouts distintos. |
-| Design system | shadcn/ui + Tailwind (Radix por baixo) | MUI | MUI já é ferramenta do dia a dia no trabalho — replicense não mostra nada novo. shadcn/ui virou padrão de facto em projetos React/Next.js modernos, e construir componentes de tabela/dashboard densos em cima de primitivas headless prova entendimento de design system, não só consumo de biblioteca pronta. |
-| Infra | Docker Compose local, deploy em Railway/Fly.io | AWS completo | Custo e velocidade de setup adequados a portfólio, sem abrir mão de containerização real. |
+| Backend | NestJS (Node) | Spring Boot (Java) | Real-time is the core of the project — WebSocket is native to Node, without requiring WebFlux for non-blocking I/O. It's also where I have the most day-to-day fluency; I can work with Java but without production depth. NestJS mirrors the module/DI structure Spring offers, which keeps the door open to discuss architecture in an interview even with someone coming from Java. |
+| Database | PostgreSQL + Prisma | MongoDB | Domain with strong relationships (seller → shipment → tracking_event → carrier) and a need for transactional integrity. NoSQL would solve a massive horizontal-scale or flexible-schema problem that this project doesn't have. |
+| Real-time | WebSocket (Socket.io) + Redis pub/sub | Plain SSE / polling | Socket.io with the Redis adapter allows scaling to multiple instances without losing messages between servers — an architecture designed for real production, not just a single-process demo. |
+| Queue | BullMQ (on top of Redis) | RabbitMQ/SQS | Reuses the same Redis infra already needed for pub/sub, avoiding an extra service just for lightweight queues (invite emails, SLA alerts). |
+| Frontend | React + Next.js | — | Market standard, App Router for role-based routes (admin/seller/carrier) with distinct layouts. |
+| Design system | shadcn/ui + Tailwind (Radix underneath) | MUI | MUI is already a day-to-day tool at work — reusing it wouldn't show anything new. shadcn/ui has become the de facto standard in modern React/Next.js projects, and building dense table/dashboard components on top of headless primitives proves an understanding of design systems, not just consumption of a ready-made library. |
+| Infra | Local Docker Compose, deploy on Railway/Fly.io | Full AWS | Cost and setup speed appropriate for a portfolio project, without giving up real containerization. |
 
-## 7. Roadmap (features avançadas / próximos passos)
+## 7. Roadmap (Advanced Features / Next Steps)
 
-Itens fora do escopo do MVP mas documentados como evolução planejada — sinaliza visão de produto além do que foi entregue:
+Items out of MVP scope but documented as planned evolution — signals product vision beyond what's been delivered:
 
-- Atribuição automática por regra (round-robin ou zona de cobertura do operador).
-- Motor de roteirização (sugestão de ordem ótima de entregas).
-- Previsão de atraso via modelo simples de dados históricos.
-- Assistente em linguagem natural consultando métricas ("quantas entregas atrasadas essa semana").
-- Multi-tenancy com isolamento de dados por rate limiting dedicado.
+- Automatic rule-based assignment (round-robin or operator coverage zone).
+- Routing engine (suggesting the optimal delivery order).
+- Delay prediction via a simple model over historical data.
+- Natural-language assistant querying metrics ("how many late deliveries this week").
+- Multi-tenancy with data isolation via dedicated rate limiting.
 
-## 8. Como rodar localmente
+## 8. Running Locally
 
-### Estrutura do repositório
+### Repository Structure
 
 ```
 tms/
 ├── DESIGN.md
-├── docker-compose.yml       # infra local: Postgres + Redis
+├── docker-compose.yml       # local infra: Postgres + Redis
 └── apps/
     ├── api/                 # NestJS — backend
     │   ├── prisma/schema.prisma
     │   ├── src/prisma/      # PrismaModule + PrismaService (global)
-    │   └── .env             # DATABASE_URL (não versionado)
+    │   └── .env             # DATABASE_URL (not versioned)
     └── web/                 # Next.js — frontend
 ```
 
-Monorepo simples por pastas (`apps/api`, `apps/web`), cada um com seu próprio `package.json`/lockfile — sem tooling de monorepo (Turborepo/Nx) por enquanto, já que os dois apps ainda não compartilham código entre si. Isso é revisitado se/quando surgir necessidade real de pacote compartilhado (ex.: tipos de DTO entre front e back).
+Simple folder-based "monorepo" (`apps/api`, `apps/web`), each with its own `package.json`/lockfile — no monorepo tooling (Turborepo/Nx) for now, since the two apps don't share any code with each other yet. Revisited if/when a real need for a shared package emerges (e.g., DTO types between front and back).
 
 ### Infra (Postgres + Redis)
 
@@ -237,32 +237,32 @@ Monorepo simples por pastas (`apps/api`, `apps/web`), cada um com seu próprio `
 docker compose up -d
 ```
 
-Sobe dois serviços com healthcheck e volume nomeado (dados sobrevivem a um `down`/`up`):
+Brings up two services with healthchecks and a named volume (data survives a `down`/`up`):
 
-| Serviço | Porta | Credenciais (dev) |
+| Service | Port | Credentials (dev) |
 |---|---|---|
 | `postgres` (postgres:16-alpine) | `localhost:5432` | `tms` / `tms` / db `tms` |
-| `redis` (redis:7-alpine) | `localhost:6379` | sem senha |
+| `redis` (redis:7-alpine) | `localhost:6379` | no password |
 
 ### Backend (`apps/api`)
 
 ```bash
 cd apps/api
-pnpm install       # postinstall roda `prisma generate` sozinho
-pnpm start:dev     # prestart:dev roda `prisma migrate deploy` sozinho — http://localhost:3333
+pnpm install       # postinstall runs `prisma generate` on its own
+pnpm start:dev     # prestart:dev runs `prisma migrate deploy` on its own — http://localhost:3333
 ```
 
-O `.env` já aponta pra infra do compose (`DATABASE_URL="postgresql://tms:tms@localhost:5432/tms?schema=public"`) e fixa `PORT=3333`, já que o Next.js também usa 3000 por padrão — os dois dev servers rodam ao mesmo tempo sem conflito.
+`.env` already points at the compose infra (`DATABASE_URL="postgresql://tms:tms@localhost:5432/tms?schema=public"`) and fixes `PORT=3333`, since Next.js also defaults to 3000 — both dev servers run at the same time without conflict.
 
-**Migrations — o que é automático e o que não é.** O `docker-compose.yml` só sobe um Postgres vazio; ele não sabe nada sobre Prisma. Quem aplica o schema é o Prisma, e isso está automatizado via hooks do npm/pnpm no `package.json` do `apps/api`:
-- `postinstall` → `prisma generate` (sempre que instalar dependências, o client fica em dia).
-- `prestart` / `prestart:dev` / `prestart:prod` → `prisma migrate deploy` (aplica migrations já commitadas em `prisma/migrations/`, de forma não-interativa e segura — nunca cria migration nova nem reseta dado).
+**Migrations — what's automatic and what isn't.** `docker-compose.yml` only brings up an empty Postgres; it knows nothing about Prisma. Prisma is what applies the schema, and that's automated via npm/pnpm hooks in `apps/api`'s `package.json`:
+- `postinstall` → `prisma generate` (whenever dependencies are installed, the client stays up to date).
+- `prestart` / `prestart:dev` / `prestart:prod` → `prisma migrate deploy` (applies migrations already committed under `prisma/migrations/`, non-interactively and safely — never creates a new migration or resets data).
 
-Isso cobre "banco vazio → schema aplicado sozinho ao rodar `pnpm start:dev`". O que **continua manual, de propósito**: alterar `schema.prisma` e gerar uma migration nova é sempre `pnpm exec prisma migrate dev --name <nome>` — um passo deliberado, não automatizado, porque envolve decidir o nome/conteúdo da migration.
+This covers "empty database → schema applied automatically when running `pnpm start:dev`." What **stays manual, on purpose**: changing `schema.prisma` and generating a new migration is always `pnpm exec prisma migrate dev --name <name>` — a deliberate, non-automated step, since it involves deciding the migration's name/content.
 
-**Nota técnica — Prisma 7 e driver adapters:** a partir da v7, o Prisma trocou o client gerado por engine Rust implícita por uma arquitetura de *driver adapters*: o `PrismaClient` recebe explicitamente um adapter (`@prisma/adapter-pg`, sobre `pg`) construído com a connection string, em vez de resolver a conexão sozinho a partir de `DATABASE_URL`. Duas implicações práticas registradas aqui porque não são óbvias vindo de versões anteriores do Prisma:
-- O generator precisa de `moduleFormat = "cjs"` explícito no `schema.prisma` — o padrão da v7 gera um client ESM-only (usa `import.meta.url`), incompatível com o build CommonJS padrão do Nest.
-- `PrismaService` (`src/prisma/prisma.service.ts`) estende `PrismaClient` passando o adapter no `constructor`, e implementa `OnModuleInit`/`OnModuleDestroy` pra conectar/desconectar junto do ciclo de vida do Nest. É um `@Global()` module, então qualquer módulo futuro injeta `PrismaService` sem reimportar.
+**Technical note — Prisma 7 and driver adapters:** starting with v7, Prisma replaced the generated client's implicit Rust engine with a *driver adapter* architecture: `PrismaClient` explicitly receives an adapter (`@prisma/adapter-pg`, on top of `pg`) built with the connection string, instead of resolving the connection on its own from `DATABASE_URL`. Two practical implications recorded here because they aren't obvious coming from earlier Prisma versions:
+- The generator needs explicit `moduleFormat = "cjs"` in `schema.prisma` — v7's default generates an ESM-only client (uses `import.meta.url`), incompatible with Nest's default CommonJS build.
+- `PrismaService` (`src/prisma/prisma.service.ts`) extends `PrismaClient`, passing the adapter in the `constructor`, and implements `OnModuleInit`/`OnModuleDestroy` to connect/disconnect along with Nest's lifecycle. It's a `@Global()` module, so any future module injects `PrismaService` without re-importing it.
 
 ### Frontend (`apps/web`)
 
@@ -272,22 +272,22 @@ pnpm install
 pnpm dev                    # http://localhost:3000
 ```
 
-`NEXT_PUBLIC_API_URL` (em `.env.local`) aponta pra API em `http://localhost:3333`. Ainda sem o design system definitivo (shadcn/ui) — isso é o próximo passo depois da estrutura de pastas descrita abaixo.
+`NEXT_PUBLIC_API_URL` (in `.env.local`) points to the API at `http://localhost:3333`. Still without the final design system (shadcn/ui) — that's the next step after the folder structure described below.
 
-## 9. Arquitetura do frontend
+## 9. Frontend Architecture
 
-Estrutura inspirada em [bulletproof-react](https://github.com/alan2207/bulletproof-react), adaptada ao domínio do TMS. A ideia central: organizar por **domínio de negócio**, não por tipo técnico de arquivo — a pasta `features/sellers` tem tudo relacionado a sellers (componentes, hooks, chamadas de API, tipos); não existe uma pasta `hooks/` genérica cheia de hooks de features diferentes misturados.
+Structure inspired by [bulletproof-react](https://github.com/alan2207/bulletproof-react), adapted to the TMS domain. The core idea: organize by **business domain**, not by technical file type — the `features/sellers` folder has everything related to sellers (components, hooks, API calls, types); there's no generic `hooks/` folder full of hooks from different features mixed together.
 
 ```
 apps/web/src/
-├── app/                      # SÓ roteamento (App Router) — layouts, pages, route groups
+├── app/                      # ONLY routing (App Router) — layouts, pages, route groups
 │   ├── (admin)/              # dashboard, sellers, carriers, monitoring
 │   ├── (seller)/             # dashboard, shipments, onboarding
 │   ├── (carrier)/            # dashboard, operators
-│   ├── invite/accept/        # aceite de convite (público, via token)
-│   ├── track/                # rastreio público (sem login)
-│   └── providers.tsx         # único client component na raiz — QueryClientProvider
-├── features/                 # o core do projeto — um domínio por pasta
+│   ├── invite/accept/        # invite acceptance (public, via token)
+│   ├── track/                # public tracking (no login)
+│   └── providers.tsx         # the only client component at the root — QueryClientProvider
+├── features/                 # the project's core — one domain per folder
 │   ├── auth/
 │   ├── sellers/
 │   ├── carriers/
@@ -296,212 +296,216 @@ apps/web/src/
 │   └── tracking/
 │       ├── components/
 │       ├── hooks/
-│       ├── api/              # chamadas + tipos de resposta desse domínio
+│       ├── api/              # calls + response types for that domain
 │       └── types.ts
-├── components/                # UI verdadeiramente compartilhada (ui/ e common/)
-├── hooks/                     # hooks genéricos, não ligados a nenhum domínio
-├── lib/                       # utilitários agnósticos de domínio
+├── components/                # truly shared UI (ui/ and common/)
+├── hooks/                     # generic hooks, not tied to any domain
+├── lib/                       # domain-agnostic utilities
 │   ├── utils.ts               # cn() — clsx + tailwind-merge
-│   └── query-client.ts        # factory do QueryClient (padrão App Router: singleton no browser, novo por request no servidor)
-├── services/                  # clientes de infraestrutura externa
-│   ├── api-client.ts          # wrapper fetch tipado sobre NEXT_PUBLIC_API_URL
-│   └── websocket-client.ts    # singleton do socket.io-client (autoConnect: false)
+│   └── query-client.ts        # QueryClient factory (App Router pattern: singleton in the browser, new one per request on the server)
+├── services/                  # external infrastructure clients
+│   ├── api-client.ts          # typed fetch wrapper over NEXT_PUBLIC_API_URL
+│   └── websocket-client.ts    # socket.io-client singleton (autoConnect: false)
 ├── store/
-│   └── ui-store.ts            # Zustand — só estado genuinamente global de UI
-└── types/                     # tipos compartilhados entre features
+│   └── ui-store.ts            # Zustand — only genuinely global UI state
+└── types/                     # types shared across features
 ```
 
-### A regra que evita a bagunça: dependência unidirecional
+### The Rule That Prevents Chaos: Unidirectional Dependency
 
-`shared (components/, lib/, hooks/) → features/ → app/`. Ou seja: `components/` e `lib/` nunca importam de `features/`; uma feature pode importar de shared mas nunca de outra feature diretamente; `app/` importa de `features/` pra compor as páginas. É o que impede `sellers/` de depender de `carriers/` que depende de `shipments/` que depende de `sellers/` de novo — o emaranhado que transforma "modular" em "modular só no nome".
+`shared (components/, lib/, hooks/) → features/ → app/`. In other words: `components/` and `lib/` never import from `features/`; a feature can import from shared but never directly from another feature; `app/` imports from `features/` to compose pages. This is what keeps `sellers/` from depending on `carriers/`, which depends on `shipments/`, which depends on `sellers/` again — the tangle that turns "modular" into "modular in name only."
 
-Exceção prevista: `shipments` vai ser consumido tanto por `sellers` (cria e acompanha envio) quanto por `carriers` (atualiza status) — nesse caso ele é uma feature "mais shared" que as outras duas dependem, o que é aceitável desde que a dependência continue de mão única. **Pendente:** vale reforçar essa regra com lint (`eslint-plugin-boundaries` ou `import/no-restricted-paths`) quando as features começarem a ter conteúdo de verdade — hoje ainda são só esqueletos, então o lint não teria o que verificar.
+Planned exception: `shipments` will be consumed both by `sellers` (creates and tracks a shipment) and by `carriers` (updates status) — in that case it's a "more shared" feature that the other two depend on, which is acceptable as long as the dependency stays one-way. **Pending:** worth enforcing this rule with a lint plugin (`eslint-plugin-boundaries` or `import/no-restricted-paths`) once the features start having real content — today they're still just skeletons, so the linter wouldn't have anything to check.
 
-### Onde mora o estado
+### Where State Lives
 
-Regra fixa: se o dado vem do servidor, é **TanStack Query**; se é estado de UI pura do client, é **Zustand** (ou `useState` local quando nem precisa ser global). Nunca guardar resposta de API dentro de Zustand — isso vira sincronização manual que o Query já resolve (cache, revalidação, invalidação após mutação). No TMS: lista de shipments, status de aprovação de seller, dados de carrier → tudo Query, via os arquivos `features/*/api/`. Filtro de tabela selecionado, sidebar aberta/fechada, tema → `store/ui-store.ts`.
+Fixed rule: if the data comes from the server, it's **TanStack Query**; if it's pure client-side UI state, it's **Zustand** (or local `useState` when it doesn't even need to be global). Never store an API response inside Zustand — that turns into manual synchronization that Query already solves (caching, revalidation, invalidation after mutation). In the TMS: shipments list, seller approval status, carrier data → all Query, via the `features/*/api/` files. Selected table filter, sidebar open/closed, theme → `store/ui-store.ts`.
 
 ### Server vs. Client Components
 
-Por padrão, tudo é Server Component — só existe `'use client'` onde há interatividade real (formulário, WebSocket, hooks de estado). A prática adotada é empurrar o `'use client'` pras folhas da árvore: hoje só `app/providers.tsx` é client component (porque `QueryClientProvider` precisa de contexto React), e o `layout.tsx` raiz continua Server Component, só envolvendo `{children}` com `<Providers>`. Conforme as features ganharem componentes interativos (ex.: o componente que escuta o WebSocket de tracking), só eles viram client component — não a página ou o layout inteiro em volta.
+By default, everything is a Server Component — `'use client'` only exists where there's real interactivity (form, WebSocket, state hooks). The adopted practice is to push `'use client'` to the leaves of the tree: today only `app/providers.tsx` is a client component (because `QueryClientProvider` needs React context), and the root `layout.tsx` stays a Server Component, only wrapping `{children}` with `<Providers>`. As features gain interactive components (e.g., the component that listens to the tracking WebSocket), only those become client components — not the whole page or layout around them.
 
-### Status atual
+### Current Status
 
-Esqueleto de pastas criado e validado (`pnpm build` e `pnpm dev` rodando limpos). `@tanstack/react-query` e `zustand` instalados e conectados (`Providers`, `ui-store.ts`). `features/*` ainda vazias (`types.ts`, `api/index.ts`, `index.ts` placeholders) — modelagem de cada domínio é o próximo passo, feature por feature.
+Folder skeleton created and validated (`pnpm build` and `pnpm dev` running clean). `@tanstack/react-query` and `zustand` installed and wired up (`Providers`, `ui-store.ts`). `features/*` are still empty (`types.ts`, `api/index.ts`, `index.ts` placeholders) — modeling each domain is the next step, feature by feature.
 
-## 10. Modelo de dados
+## 10. Data Model
 
-11 tabelas em `apps/api/prisma/schema.prisma`, aplicadas via `prisma migrate dev` contra o Postgres do compose. Auth (`User`) separada de perfil de domínio (`Seller`, `CarrierUser`) — o Admin é só um `User` com `role: ADMIN`, sem tabela própria.
+11 tables in `apps/api/prisma/schema.prisma`, applied via `prisma migrate dev` against the compose Postgres. Auth (`User`) separated from domain profile (`Seller`, `CarrierUser`) — Admin is just a `User` with `role: ADMIN`, with no table of its own.
 
 ```
 User ──1:1── Seller ──1:N── Shipment ──N:1── DeliveryModality
   └──1:1── CarrierUser ──N:1── Carrier ──1:N── Invite
                                   ├──1:N── CarrierCoverageArea
                                   ├──1:N── CarrierModality ──N:1── DeliveryModality
-                                  └──1:N── Shipment (owner opcional via CarrierUser)
+                                  └──1:N── Shipment (optional owner via CarrierUser)
 
 Seller ──1:N── SellerModality ──N:1── DeliveryModality
-Shipment ──1:N── TrackingEvent (histórico imutável, nunca UPDATE)
+Shipment ──1:N── TrackingEvent (immutable history, never UPDATE)
 ```
 
-### Decisões que não estavam óbvias na primeira passada
+### Decisions That Weren't Obvious at First
 
-- **Endereço em campos soltos, não `Json`** — `Shipment.addressCity`/`addressState`/etc. como colunas reais. Perde a conveniência de um blob único, mas ganha índice e busca por cidade/UF — que é exatamente o que a atribuição de carrier por cobertura (abaixo) precisa.
-- **`ShipmentStatus` com 9 estados**, não 4 — `COLLECTED` marca a coleta física (sem isso, não dá pra distinguir "criado" de "já saiu do seller"); `FAILED_DELIVERY` + `RETURNED` cobrem a tentativa frustrada (sem eles, um envio que falha na entrega ficaria preso em `IN_TRANSIT` pra sempre). `CANCELLED` só é possível antes de `COLLECTED` — depois disso a única saída de exceção é `FAILED_DELIVERY → RETURNED`.
-- **Atribuição de carrier por cobertura de cidade/UF, não geoespacial** — `CarrierCoverageArea` (`carrierId`, `state`, `city` nullable = "estado inteiro"). Na criação do envio, filtra carriers aprovadas cuja cobertura bate com o endereço; o seller escolhe entre as que aparecem. Geocoding/PostGIS fica pro roadmap (seção 7) — não é escopo do MVP.
-- **Modalidades como catálogo configurável, não enum fixo** — a existência da tela "Configuração de Modalidades" (seção 4) só faz sentido se há algo pra configurar. `DeliveryModality` é o catálogo (`code`, `name`, `slaHours` — este último pensado pro alerta de SLA estourado do roadmap); `CarrierModality` e `SellerModality` são junções N:N — a carrier declara o que opera, o seller declara o que habilita. **Decisão deliberada:** a configuração do seller é independente da oferta real de carriers (o seller liga/desliga do catálogo inteiro, sem saber se hoje existe carrier compatível na região dele) — mais simples, e evita acoplar a tela de config ao estado de onboarding de carriers. Sem carrier compatível na criação do envio vira um estado vazio tratado ali, não uma restrição na tela de configuração.
-- **`Shipment` aponta pra uma única `Carrier`** — a fila compartilhada (seção 3) é *dentro* de uma carrier já atribuída; o "sem dono" é só sobre qual *operador* assume via `CarrierUser.ownedShipments` (`ownerId` nullable), não sobre qual carrier.
+- **Address as loose columns, not `Json`** — `Shipment.addressCity`/`addressState`/etc. as real columns. Loses the convenience of a single blob, but gains indexing and search by city/state — which is exactly what coverage-based carrier assignment (below) needs.
+- **`ShipmentStatus` with 9 states**, not 4 — `COLLECTED` marks physical pickup (without it, there's no way to distinguish "created" from "already left the seller"); `FAILED_DELIVERY` + `RETURNED` cover a failed attempt (without them, a shipment that fails delivery would stay stuck in `IN_TRANSIT` forever). `CANCELLED` is only possible before `COLLECTED` — after that, the only exception path is `FAILED_DELIVERY → RETURNED`.
+- **Carrier assignment by city/state coverage, not geospatial** — `CarrierCoverageArea` (`carrierId`, `state`, `city` nullable = "entire state"). When creating a shipment, it filters approved carriers whose coverage matches the address; the seller picks among the ones that show up. Geocoding/PostGIS is left for the roadmap (section 7) — not MVP scope.
+- **Modalities as a configurable catalog, not a fixed enum** — the existence of the "Modality Configuration" screen (section 4) only makes sense if there's something to configure. `DeliveryModality` is the catalog (`code`, `name`, `slaHours` — the latter meant for the roadmap's SLA-breach alert); `CarrierModality` and `SellerModality` are N:N join tables — the carrier declares what it operates, the seller declares what it enables. **Deliberate decision:** the seller's configuration is independent of carriers' actual offering (the seller toggles the whole catalog on/off, without knowing whether a compatible carrier currently exists in their region) — simpler, and it avoids coupling the config screen to carrier onboarding state. No compatible carrier at shipment-creation time becomes an empty state handled there, not a restriction on the config screen.
+- **`Shipment` points to a single `Carrier`** — the shared queue (section 3) is *within* an already-assigned carrier; "no owner" is only about which *operator* claims it via `CarrierUser.ownedShipments` (`ownerId` nullable), not about which carrier.
 
-Rascunho visual (ER completo + fluxo de status) documentado à parte durante a discussão de modelagem — este documento reflete a versão final aplicada na migration `20260707213521_init_domain`.
+A visual draft (full ER + status flow) was documented separately during the modeling discussion — this document reflects the final version applied in migration `20260707213521_init_domain`.
 
-## 11. Arquitetura de módulos do backend
+## 11. Backend Module Architecture
 
 ```
 apps/api/src/
 ├── modules/
-│   ├── auth/            # implementado — Passport + JWT + bcrypt
+│   ├── auth/            # implemented — Passport + JWT + bcrypt
 │   │   ├── auth.module.ts / .controller.ts / .service.ts
 │   │   ├── strategies/jwt.strategy.ts
 │   │   ├── guards/jwt-auth.guard.ts, roles.guard.ts
 │   │   ├── decorators/roles.decorator.ts, current-user.decorator.ts
 │   │   └── dto/login.dto.ts
-│   ├── sellers/         # skeleton — module/controller/service vazios
-│   ├── carriers/        # skeleton, com invites/ como sub-módulo aninhado
+│   ├── sellers/         # skeleton — empty module/controller/service
+│   ├── carriers/        # skeleton, with invites/ as a nested sub-module
 │   ├── shipments/       # skeleton
-│   ├── tracking/        # skeleton — vai virar Gateway WS + Redis adapter
-│   └── notifications/   # skeleton — vai virar workers BullMQ
+│   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
+│   └── notifications/   # skeleton — will become BullMQ workers
 ├── shared/
-│   └── prisma/          # PrismaModule/PrismaService, movido de src/prisma — @Global()
+│   └── prisma/          # PrismaModule/PrismaService, moved from src/prisma — @Global()
 └── main.ts
 ```
 
-Grupo por domínio, não por camada técnica — é a mesma filosofia da arquitetura do front (§9): cada módulo é dono do que é dele, `common/` (filters/interceptors/pipes cross-cutting) fica de fora até existir uma necessidade real — criar essa pasta vazia hoje seria abstração sem uso. `EventEmitterModule` (`@nestjs/event-emitter`) já está registrado globalmente no `AppModule`, mas sem nenhum listener fake — o padrão de desacoplar módulos via evento (`ShipmentsService` emite, `TrackingModule`/`NotificationsModule` escutam) só faz sentido quando esses módulos tiverem lógica de verdade.
+Grouped by domain, not by technical layer — same philosophy as the frontend architecture (§9): each module owns what belongs to it, `common/` (cross-cutting filters/interceptors/pipes) stays out until there's a real need for it — creating that folder empty today would be unused abstraction. `EventEmitterModule` (`@nestjs/event-emitter`) is already registered globally in `AppModule`, but with no fake listener — the pattern of decoupling modules via events (`ShipmentsService` emits, `TrackingModule`/`NotificationsModule` listen) only makes sense once those modules have real logic.
 
-### AuthModule — por quê Passport, não um provedor hospedado
+### AuthModule — Why Passport, Not a Hosted Provider
 
-Passport (`@nestjs/passport` + `@nestjs/jwt` + `bcrypt`) em vez de Auth0/Clerk/Supabase Auth ou NextAuth: é o padrão oficial do NestJS e o mais comum em vaga real de backend Node, e não terceiriza a parte que é o próprio objetivo do projeto (RBAC aplicado no backend, §1). Um provedor hospedado tiraria justamente essa lógica pra fora do código; NextAuth encaixaria mal porque assume que o Next.js é dono da sessão — aqui quem autoriza cada request é a API NestJS (e, no futuro, o Gateway WebSocket), não o front.
+Passport (`@nestjs/passport` + `@nestjs/jwt` + `bcrypt`) instead of Auth0/Clerk/Supabase Auth or NextAuth: it's the official NestJS pattern and the most common one in real Node backend job postings, and it doesn't outsource the part that's the project's own goal (RBAC enforced in the backend, §1). A hosted provider would take exactly that logic out of the codebase; NextAuth would fit poorly because it assumes Next.js owns the session — here, what authorizes every request is the NestJS API (and, in the future, the WebSocket Gateway), not the front end.
 
-**Como funciona:**
-- `POST /auth/login` — valida email/senha (`bcrypt.compare` contra `User.passwordHash`), assina um JWT (`sub`, `email`, `role`) via `JwtModule`.
-- `JwtStrategy` (Passport) valida o token em cada request protegida e recarrega o `User` do banco — garante que um usuário deletado não continua "autenticado" só porque o token ainda não expirou.
-- `JwtAuthGuard` — exige token válido. `RolesGuard` + `@Roles(...)` — exige um `role` específico, lendo metadata via `Reflector`. Os dois se combinam com `@UseGuards(JwtAuthGuard, RolesGuard)` nos controllers dos outros módulos.
-- `@CurrentUser()` — decorator de parâmetro que extrai o usuário autenticado do request, evitando repetir `request.user` em cada handler.
+**How it works:**
+- `POST /auth/login` — validates email/password (`bcrypt.compare` against `User.passwordHash`), signs a JWT (`sub`, `email`, `role`) via `JwtModule`.
+- `JwtStrategy` (Passport) validates the token on every protected request and reloads the `User` from the database — this guarantees that a deleted user doesn't stay "authenticated" just because the token hasn't expired yet.
+- `JwtAuthGuard` — requires a valid token. `RolesGuard` + `@Roles(...)` — requires a specific `role`, reading metadata via `Reflector`. The two combine via `@UseGuards(JwtAuthGuard, RolesGuard)` in the other modules' controllers.
+- `@CurrentUser()` — a parameter decorator that extracts the authenticated user from the request, avoiding repeating `request.user` in every handler.
 
-**Validado ponta a ponta** (não só compilado): seed de um Admin (`prisma/seed.ts`, rodando via `tsx` — `ts-node` falhou por causa da resolução de módulo `.js`→`.ts` do client gerado pelo Prisma 7, gotcha registrado aqui pra não repetir a investigação), login retornando JWT de verdade, `GET /auth/me` protegido respondendo 200 com token e 401 sem token, `ValidationPipe` global rejeitando DTO inválido com 400.
+**Validated end-to-end** (not just compiled): seeded an Admin (`prisma/seed.ts`, run via `tsx` — `ts-node` failed because of `.js`→`.ts` module resolution on the client generated by Prisma 7, a gotcha recorded here so the investigation isn't repeated), login returning a real JWT, protected `GET /auth/me` responding 200 with a token and 401 without one, the global `ValidationPipe` rejecting an invalid DTO with 400.
 
-**Seed do Prisma na v7:** o comando de seed não vai mais em `package.json#prisma.seed` (convenção antiga) — agora é `migrations.seed` dentro do `prisma.config.ts`.
+**Prisma seed on v7:** the seed command no longer goes in `package.json#prisma.seed` (the old convention) — now it's `migrations.seed` inside `prisma.config.ts`.
 
-## 12. Qualidade de código
+## 12. Code Quality
 
-### Biome — por quê, não ESLint + Prettier
+### Biome — Why, Not ESLint + Prettier
 
-Um binário só (Rust), format + lint com uma config, ordens de magnitude mais rápido que ESLint+Prettier rodando separado — e resolve uma inconsistência que já existia entre os dois apps (`apps/api` tinha Prettier, `apps/web` não tinha nenhum formatter). Trade-off aceito conscientemente: Biome não tem equivalente ao `eslint-config-next` nem ao setup de ESLint que a comunidade NestJS usa — perde regras específicas de framework (uso de `next/image`/`next/link`, algumas regras de decorator do Nest). Não é grande perda no estágio atual do projeto, e "uma ferramenta rápida, uma config, escolha justificada" é melhor sinal de portfolio do que duas ferramentas com config divergente entre os apps.
+A single binary (Rust), format + lint with one config, orders of magnitude faster than ESLint+Prettier running separately — and it resolves an inconsistency that already existed between the two apps (`apps/api` had Prettier, `apps/web` had no formatter at all). Trade-off consciously accepted: Biome has no equivalent to `eslint-config-next` or to the ESLint setup the NestJS community uses — it loses framework-specific rules (correct use of `next/image`/`next/link`, some Nest decorator rules). Not a big loss at the project's current stage, and "one fast tool, one config, a justified choice" is a better portfolio signal than two tools with diverging configs between the apps.
 
-**Gotcha real, não cosmético — parameter decorators:** o parser do Biome não aceita decorators de parâmetro (`@Body() dto: LoginDto`) por padrão, o que é praticamente todo controller do NestJS. Precisa de `javascript.parser.unsafeParameterDecoratorsEnabled: true` no `biome.json` do `apps/api` — "unsafe" no sentido de "fora do padrão TC39 finalizado", não "perigoso pro seu código" (é exatamente o modelo que `experimentalDecorators`/`emitDecoratorMetadata` do NestJS já usa).
+**A real gotcha, not a cosmetic one — parameter decorators:** Biome's parser doesn't accept parameter decorators (`@Body() dto: LoginDto`) by default, which is practically every NestJS controller. Needs `javascript.parser.unsafeParameterDecoratorsEnabled: true` in `apps/api`'s `biome.json` — "unsafe" in the sense of "outside the finalized TC39 standard," not "dangerous for your code" (it's exactly the model NestJS's `experimentalDecorators`/`emitDecoratorMetadata` already uses).
 
-**Gotcha mais sério — `useImportType` quebra a injeção de dependência do Nest:** a regra padrão do Biome converte automaticamente qualquer import usado só em posição de tipo pra `import type` — mas o NestJS precisa da referência real da classe em runtime pra resolver DI via `design:paramtypes` (reflection do `emitDecoratorMetadata`). `import type { PrismaService }` num construtor injetado compila sem erro, mas quebra em runtime com `Nest can't resolve dependencies (?, Function)` — a classe vira `Function` na metadata porque o import foi apagado. Isso **não aparece no build, só rodando a aplicação de verdade** (motivo pelo qual testamos com curl real, não só `nest build`). Fix: `style.useImportType: "off"` no `biome.json` do `apps/api`. Não é um problema no `apps/web` (React não depende de reflection de decorator pra funcionar).
+**A more serious gotcha — `useImportType` breaks Nest's dependency injection:** Biome's default rule automatically converts any import used only in a type position to `import type` — but NestJS needs the real class reference at runtime to resolve DI via `design:paramtypes` (`emitDecoratorMetadata` reflection). `import type { PrismaService }` in an injected constructor compiles without error, but breaks at runtime with `Nest can't resolve dependencies (?, Function)` — the class turns into `Function` in the metadata because the import was erased. This **doesn't show up in the build, only when actually running the application** (which is why we test with real curl requests, not just `nest build`). Fix: `style.useImportType: "off"` in `apps/api`'s `biome.json`. Not an issue in `apps/web` (React doesn't depend on decorator reflection to work).
 
-**`apps/web`:** habilitado `linter.domains: { next: "recommended", react: "recommended" }` (regras específicas que o Biome 2.x tem pra esses frameworks) e `css.parser.tailwindDirectives: true` (Tailwind v4 usa `@theme` no CSS, que o parser CSS do Biome não reconhece por padrão). SVGs estáticos em `public/` excluídos do lint — são asset, não markup de UI, a regra de acessibilidade (`noSvgWithoutTitle`) não se aplica.
+**`apps/web`:** enabled `linter.domains: { next: "recommended", react: "recommended" }` (framework-specific rules Biome 2.x has for these) and `css.parser.tailwindDirectives: true` (Tailwind v4 uses `@theme` in CSS, which Biome's CSS parser doesn't recognize by default). Static SVGs under `public/` excluded from lint — they're assets, not UI markup, so the accessibility rule (`noSvgWithoutTitle`) doesn't apply.
 
-### Pre-commit — lefthook, não Husky
+### Pre-commit — lefthook, Not Husky
 
-O repo não tem workspace pnpm unificado — `apps/api` e `apps/web` são projetos independentes, sem `package.json` de raiz até agora. Husky quer viver num `package.json` de raiz com uma estrutura mais pesada; **lefthook** é um binário standalone (Go) configurado via `lefthook.yml`, com suporte nativo a rodar comandos por sub-diretório — cabe melhor nesse formato de "dois apps independentes" sem forçar um workspace unificado só pra hospedar tooling.
+The repo has no unified pnpm workspace — `apps/api` and `apps/web` are independent projects, with no root `package.json` until now. Husky wants to live in a root `package.json` with a heavier setup; **lefthook** is a standalone (Go) binary configured via `lefthook.yml`, with native support for running commands per sub-directory — it fits better with this "two independent apps" shape without forcing a unified workspace just to host tooling.
 
-Criado um `package.json` de raiz **só pra ferramentas de repositório** (`lefthook`, `lint-staged`, `commitlint`) — não é um workspace agregando as dependências de `api`/`web`, que continuam 100% independentes.
+Created a root `package.json` **only for repository tooling** (`lefthook`, `lint-staged`, `commitlint`) — not a workspace aggregating `api`/`web`'s dependencies, which remain 100% independent.
 
-- **`lint-staged.config.js`** — mapeia `apps/api/**` e `apps/web/**` pra `pnpm --dir <app> exec biome check --write`, cada um usando o Biome instalado no seu próprio `node_modules` (não precisa duplicar em lugar nenhum além disso).
-- **`lefthook.yml`** — `pre-commit` roda `lint-staged`; `commit-msg` roda `commitlint --edit`.
+- **`lint-staged.config.js`** — maps `apps/api/**` and `apps/web/**` to `pnpm --dir <app> exec biome check --write`, each using the Biome installed in its own `node_modules` (no need to duplicate it anywhere beyond that).
+- **`lefthook.yml`** — `pre-commit` runs `lint-staged`; `commit-msg` runs `commitlint --edit`.
 - **`commitlint.config.js`** — Conventional Commits (`@commitlint/config-conventional`).
 
-Testado de ponta a ponta (não só configurado): commit com mensagem fora do padrão foi rejeitado (`subject-empty`, `type-empty`); commit com mensagem válida passou; um arquivo staged deliberadamente mal formatado (`{a:1,b:2,c:3}`) foi reformatado automaticamente pelo Biome antes do commit se concretizar.
+Tested end-to-end (not just configured): a commit with a non-conforming message was rejected (`subject-empty`, `type-empty`); a commit with a valid message went through; a deliberately malformed staged file (`{a:1,b:2,c:3}`) was automatically reformatted by Biome before the commit landed.
 
-### Estrutura de repositório — nem workspace unificado, nem repos separados
+### Repository Structure — Neither a Unified Workspace nor Separate Repos
 
-Duas perguntas que discutimos e resolvemos deliberadamente na mesma direção: "não". Registrado aqui porque as duas tendem a voltar conforme o projeto cresce.
+Two questions we discussed and deliberately resolved in the same direction: "no." Recorded here because both tend to come back up as the project grows.
 
-**Por que não virar um monorepo de verdade (pnpm workspace unificado, Turborepo/Nx, `packages/` compartilhado):** hoje `apps/api` e `apps/web` não compartilham nenhum código — cada um com seu `node_modules`/lockfile próprio, e o `package.json` de raiz existe só pra hospedar tooling (acima). Adicionar ferramenta de monorepo de verdade sem ter código compartilhado é resolver um problema que o projeto não tem (build lento entre pacotes, duplicação de código) — é o erro mais comum de projeto de portfolio nessa área: Turborepo/Nx por cima de dois apps que não trocam nada entre si é cargo culting, não maturidade.
+**Why not turn it into a real monorepo (unified pnpm workspace, Turborepo/Nx, shared `packages/`):** today `apps/api` and `apps/web` don't share any code — each has its own `node_modules`/lockfile, and the root `package.json` exists only to host tooling (above). Adding real monorepo tooling without shared code is solving a problem the project doesn't have (slow cross-package builds, code duplication) — it's the most common mistake in portfolio projects in this area: Turborepo/Nx on top of two apps that exchange nothing is cargo culting, not maturity.
 
-**Onde isso vai ser testado de verdade:** o dia que `features/*/types.ts` no front precisarem do shape de `Shipment`/`Seller`/`Carrier`. Nesse momento a resposta não é "virar workspace unificado e importar `.ts` do `apps/api` direto no `apps/web`" — é gerar um **contrato** (OpenAPI via `@nestjs/swagger`, tipos gerados no front via `openapi-typescript`/orval) e não compartilhar source TypeScript. Motivo: os dois apps têm deploy declaradamente independente (Vercel + Railway/Fly, seção 6) — acoplar via workspace um par de serviços que sobem em momentos diferentes, potencialmente em versões diferentes, é mais frágil do que sincronizar via contrato.
+**Where this will actually get tested:** the day `features/*/types.ts` on the front end need the shape of `Shipment`/`Seller`/`Carrier`. At that point the answer isn't "turn into a unified workspace and import `.ts` from `apps/api` directly into `apps/web`" — it's generating a **contract** (OpenAPI via `@nestjs/swagger`, types generated on the front via `openapi-typescript`/orval) and not sharing TypeScript source. Reason: the two apps have explicitly independent deploys (Vercel + Railway/Fly, section 6) — coupling via a workspace two services that go up at different times, potentially in different versions, is more fragile than syncing via a contract.
 
-**Por que não separar em dois repos git, então:** o motivo mais óbvio pra fazer isso — "preciso de deploy independente" — já está resolvido sem separar nada: Vercel e Railway suportam apontar pra uma subpasta de um monorepo ("root directory" / serviço por diretório). Separar repo custaria coisa real agora: este `DESIGN.md` é uma narrativa única atravessando front+back+infra (virar 2 repos = duplicar ele ou eleger um "principal"); o `docker-compose.yml` orquestra os dois apps juntos pro dev local; e não existe fronteira de equipe/acesso pra proteger (projeto solo). Nessa fase, mudança de ponta a ponta (schema + tipo/form no front na mesma sessão) ainda é comum — 2 repos vira 2 PRs pra uma coisa só, fricção sem ganho.
+**Why not split into two git repos, then:** the most obvious reason to do that — "I need independent deploys" — is already solved without separating anything: Vercel and Railway both support pointing at a subfolder of a monorepo ("root directory" / one service per directory). Splitting the repo would cost something real right now: this `DESIGN.md` is a single narrative spanning front+back+infra (turning it into 2 repos means duplicating it or electing one as "primary"); `docker-compose.yml` orchestrates both apps together for local dev; and there's no team/access boundary to protect (solo project). At this stage, end-to-end changes (schema + front-end type/form in the same session) are still common — 2 repos becomes 2 PRs for one single thing, friction with no gain.
 
-**Gatilho pra revisitar:** a maioria das mudanças passar a ser só de um lado (front OU back, não os dois juntos — sinal de que o contrato estabilizou), ou surgir alguém que devesse enxergar só metade do código. Ao contrário de decisão de schema (cara de mudar depois de aplicada), separar repo é reversível a qualquer momento sem custo retroativo — não é uma porta que precisa ficar aberta "só por garantia".
+**Trigger to revisit:** most changes start being one-sided (front OR back, not both together — a sign the contract has stabilized), or someone shows up who should only see half the code. Unlike a schema decision (expensive to change once applied), splitting the repo is reversible at any time with no retroactive cost — it's not a door that needs to stay open "just in case."
 
-### Vitest, não Jest
+### Vitest, Not Jest
 
-`apps/api` trocou Jest por Vitest — e isso resolveu de graça um problema que tínhamos acabado de documentar aqui como "gap conhecido": rodando `pnpm test:e2e` com Jest, o Nest travava no `PrismaService.$connect()` com `TypeError: A dynamic import callback was invoked without --experimental-vm-modules`, porque o query compiler WASM do Prisma 7 usa `import()` dinâmico e o `ts-jest` (CommonJS) não suporta isso sem flag experimental do Node. O transform do Vitest é nativo em ESM/Vite — o e2e passa a rodar limpo, sem nenhuma configuração extra pra isso.
+`apps/api` swapped Jest for Vitest — and that resolved, as a side effect, a problem we had just documented here as a "known gap": running `pnpm test:e2e` with Jest, Nest would hang at `PrismaService.$connect()` with `TypeError: A dynamic import callback was invoked without --experimental-vm-modules`, because Prisma 7's WASM query compiler uses dynamic `import()` and `ts-jest` (CommonJS) doesn't support that without a Node experimental flag. Vitest's transform is native to ESM/Vite — e2e now runs clean, with no extra config for this.
 
-**O que exigiu atenção de verdade — decorator metadata de novo.** Mesmo alerta do Biome (acima): o transform padrão do Vitest (esbuild/Oxc) **não implementa `emitDecoratorMetadata`**, que é exatamente o que o NestJS usa pra resolver DI via `design:paramtypes`. Usar Vitest "out of the box" num projeto Nest quebraria a injeção de dependência do mesmo jeito que o `useImportType` do Biome quebrou — silenciosamente, só em runtime. Fix: `unplugin-swc` como plugin do Vitest, com `jsc.transform.decoratorMetadata: true` explícito (SWC, ao contrário do esbuild, implementa isso). Também precisou desligar `esbuild`/`oxc` explicitamente na config (`esbuild: false, oxc: false`) — do contrário o Vitest 4 tenta rodar o transform padrão dele em cima do SWC.
+**What actually needed attention — decorator metadata, again.** Same warning as Biome (above): Vitest's default transform (esbuild/Oxc) **doesn't implement `emitDecoratorMetadata`**, which is exactly what NestJS uses to resolve DI via `design:paramtypes`. Using Vitest "out of the box" on a Nest project would break dependency injection the same way Biome's `useImportType` did — silently, only at runtime. Fix: `unplugin-swc` as a Vitest plugin, with `jsc.transform.decoratorMetadata: true` explicit (SWC, unlike esbuild, implements this). Also needed to explicitly disable `esbuild`/`oxc` in the config (`esbuild: false, oxc: false`) — otherwise Vitest 4 tries to run its default transform on top of SWC's.
 
-- `vitest.config.ts` — testes unitários (`src/**/*.spec.ts`).
-- `vitest.config.e2e.ts` — testes e2e (`test/**/*.e2e-spec.ts`), mesma config de plugin/decorator.
-- Cobertura via `@vitest/coverage-v8`, excluindo o client gerado do Prisma e os próprios arquivos de teste do relatório.
-- `tsconfig.json` ganhou `"types": ["vitest/globals"]` — `describe`/`it`/`expect`/`vi` sem import, validado com `tsc --noEmit` de verdade (não só "os testes rodam").
+- `vitest.config.ts` — unit tests (`src/**/*.spec.ts`).
+- `vitest.config.e2e.ts` — e2e tests (`test/**/*.e2e-spec.ts`), same plugin/decorator config.
+- Coverage via `@vitest/coverage-v8`, excluding the generated Prisma client and the test files themselves from the report.
+- `tsconfig.json` got `"types": ["vitest/globals"]` — `describe`/`it`/`expect`/`vi` without imports, validated with a real `tsc --noEmit` (not just "the tests run").
 
-**Teste unitário novo, com substância real:** `src/modules/auth/auth.service.spec.ts` — mocka `PrismaService`/`JwtService` via `Test.createTestingModule`, cobre os três caminhos de `AuthService.login()`: credenciais válidas (retorna token + user), senha errada e usuário inexistente (os dois lançam `UnauthorizedException`, sem chamar `signAsync`). Não é o placeholder "`AppController` deveria ser definido" — é a única peça de lógica de negócio real que existe até agora, e agora tem teste.
+**New unit test, with real substance:** `src/modules/auth/auth.service.spec.ts` — mocks `PrismaService`/`JwtService` via `Test.createTestingModule`, covers `AuthService.login()`'s three paths: valid credentials (returns token + user), wrong password, and non-existent user (both throw `UnauthorizedException`, without calling `signAsync`). It's not the "`AppController` should be defined" placeholder — it's the only piece of real business logic that exists so far, and now it has a test.
 
 ## 13. CI — GitHub Actions
 
-`.github/workflows/ci.yml`, rodando em `push`/`pull_request` pra `main`. Existe porque o tooling local (Biome, lefthook, commitlint) só protege quem passa pela sua própria máquina — alguém pode commitar com `--no-verify`, clonar sem rodar `pnpm install` na raiz (hooks nunca instalados), ou simplesmente usar outra máquina. CI é o que garante que o que chega na branch principal passou pelos mesmos checks, independente de hook local.
+`.github/workflows/ci.yml`, running on `push`/`pull_request` against `main`. It exists because local tooling (Biome, lefthook, commitlint) only protects whoever goes through their own machine — someone can commit with `--no-verify`, clone the repo without running `pnpm install` at the root (hooks never installed), or simply use a different machine. CI is what guarantees that whatever lands on the main branch went through the same checks, independent of local hooks.
 
-**Três jobs, paralelos:**
-- **`commitlint`** — só roda em PR (`if: github.event_name == 'pull_request'`), valida o range de commits do PR contra o `commitlint.config.js` da raiz via `wagoid/commitlint-github-action`. Reforça em CI o que o hook de `commit-msg` já faz localmente — sem isso, o hook local é só um "combinado", não uma garantia.
-- **`api`** — `apps/api`: install → `lint:ci` (Biome **sem** `--write` — CI deve falhar se tiver problema, não corrigir e mascarar) → build → testes unitários → e2e. O e2e precisa de Postgres de verdade (`PrismaService.$connect()` roda mesmo), então o job sobe um **service container** `postgres:16-alpine` com as mesmas credenciais do `docker-compose.yml` (`tms`/`tms`/`tms`) — não é segredo, é infra efêmera da CI. `pretest:e2e` (novo hook no `package.json`, mesmo padrão do `prestart:dev`) roda `prisma migrate deploy` automaticamente antes do e2e, tanto em CI quanto local.
-- **`web`** — `apps/web`: install → `lint:ci` → build (que já inclui type-check do Next).
+**Three parallel jobs:**
+- **`commitlint`** — only runs on PRs (`if: github.event_name == 'pull_request'`), validates the PR's commit range against the root `commitlint.config.js` via `wagoid/commitlint-github-action`. Reinforces in CI what the `commit-msg` hook already does locally — without it, the local hook is just a "gentleman's agreement," not a guarantee.
+- **`api`** — `apps/api`: install → `lint:ci` (Biome **without** `--write` — CI should fail on a problem, not fix and mask it) → build → unit tests → e2e. E2e needs a real Postgres (`PrismaService.$connect()` really runs), so the job spins up a **service container** `postgres:16-alpine` with the same credentials as `docker-compose.yml` (`tms`/`tms`/`tms`) — not a secret, just ephemeral CI infra. `pretest:e2e` (a new hook in `package.json`, same pattern as `prestart:dev`) automatically runs `prisma migrate deploy` before e2e, both in CI and locally.
+- **`web`** — `apps/web`: install → `lint:ci` → build (which already includes Next's type-check).
 
-**Por que `lint:ci` e não `lint`:** o script `lint` local usa `biome check --write .` (corrige na hora, bom pro dia a dia). Em CI isso mascararia problema — o job passaria "verde" mesmo com código formatado errado, só porque o Biome corrigiu silenciosamente durante o job (e essa correção não volta pro repo). `lint:ci` roda `biome check .` sem `--write`, falha se tiver qualquer coisa a corrigir.
+**Why `lint:ci` and not `lint`:** the local `lint` script uses `biome check --write .` (fixes on the spot, good for day-to-day work). In CI that would mask problems — the job would pass "green" even with badly formatted code, just because Biome silently fixed it during the job (and that fix doesn't make it back into the repo). `lint:ci` runs `biome check .` without `--write`, failing if there's anything to fix.
 
-**Não validado de ponta a ponta ainda** (diferente do resto deste projeto): não tem como rodar GitHub Actions localmente — cada comando do workflow foi testado individualmente no terminal (`lint:ci`, `build`, `test`, `test:e2e` com Postgres local), e o YAML foi validado sintaticamente, mas o workflow em si só roda de verdade no primeiro push/PR.
+**Not validated end-to-end yet** (unlike the rest of this project): there's no way to run GitHub Actions locally — every command in the workflow was tested individually in the terminal (`lint:ci`, `build`, `test`, `test:e2e` against local Postgres), and the YAML was syntactically validated, but the workflow itself only runs for real on the first push/PR.
 
-## 14. Validação de ambiente e CORS
+### PR Flow, Even Solo
 
-Dois gaps de "pré-config" identificados numa revisão deliberada do que faltava antes de seguir pra lógica de negócio: CORS nunca tinha sido habilitado (quebraria a primeira chamada real do front pro back), e as env vars eram lidas direto de `process.env` sem validação — faltando uma, o erro apareceria tarde e confuso (ex.: JWT assinando com `undefined`), não na subida da aplicação.
+A single-developer repo, but the workflow is still branch → PR → green CI → merge, not direct pushes to `main`. Branch protection on `main` requires the status checks (`api`, `web`, `commitlint`) — deliberately **without** requiring review approval, because GitHub doesn't let the author approve their own PR, and that would block every merge in a solo repo. `.github/PULL_REQUEST_TEMPLATE.md` auto-fills the description on every new PR: what/why, type of change (mapped to the categories `commitlint` already validates), how it was validated (the same "actually ran it" habit from the rest of the project), and a checklist (local lint/test/build, `DESIGN.md` updated if it's an architecture decision, no committed secret, migration included if the schema changed).
 
-### Zod, não Joi
+## 14. Environment Validation and CORS
 
-`@nestjs/config` tem receita oficial pro Joi (`validationSchema: Joi.object({...})`), e é a única vantagem real dele aqui — nem o `@nestjs/config` restringe a Zod, só que o caminho é a opção `validate` (função customizada) em vez de `validationSchema`. Zod ganha em tudo que importa mais pro projeto: inferência de tipo em TS (`z.infer<typeof envSchema>` dá o tipo pronto; Joi exige anotar manualmente) e é a ferramenta que já se usa por padrão. Ponto de atenção real, não estético: env var sempre chega como string — `z.number()` rejeitaria `"3333"`; o schema usa `z.coerce.number()` explicitamente pra `PORT`.
+Two "pre-config" gaps identified during a deliberate review of what was missing before moving on to business logic: CORS had never been enabled (would break the frontend's first real call to the backend), and env vars were read straight from `process.env` with no validation — if one were missing, the error would show up late and confusing (e.g., JWT signing with `undefined`), not at application boot.
 
-`src/shared/config/env.validation.ts` — schema com `DATABASE_URL` (url), `PORT` (coerced, default 3333), `JWT_SECRET` (mínimo 16 caracteres), `CORS_ORIGIN` (url, default `http://localhost:3000`), `NODE_ENV` (enum, default `development`). `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` no `AppModule` — falha a subida com mensagem clara (`Invalid environment variables: - JWT_SECRET: Too small...`) em vez de deixar pra descobrir depois.
+### Zod, Not Joi
 
-**Adoção completa, não pela metade:** os lugares que liam `process.env` direto (`PrismaService`, `JwtStrategy`, `AuthModule`'s `JwtModule`, `main.ts`) foram migrados pra `ConfigService` via DI (`JwtModule.registerAsync` no lugar de `.register`, já que o secret agora vem de injeção assíncrona). `prisma.config.ts` continua lendo `process.env.DATABASE_URL` direto via `dotenv` — roda fora do container do Nest (é o CLI do Prisma), não tem `ConfigService` pra injetar ali, e está certo que seja assim.
+`@nestjs/config` has an official recipe for Joi (`validationSchema: Joi.object({...})`), and that's its only real advantage here — `@nestjs/config` doesn't restrict you to Zod either, it's just that the path is the `validate` option (a custom function) instead of `validationSchema`. Zod wins on everything that matters more for the project: TS type inference (`z.infer<typeof envSchema>` gives you the type ready-made; Joi requires manual annotation) and it's the tool already used by default. Real, non-cosmetic gotcha: an env var always arrives as a string — `z.number()` would reject `"3333"`; the schema explicitly uses `z.coerce.number()` for `PORT`.
 
-**Validado nas duas direções, não só "compila":** com um `JWT_SECRET` curto de propósito no `.env`, a aplicação recusou subir com a mensagem de erro exata do Zod; restaurado o valor correto, voltou a funcionar. Também confirmado que o Vitest carrega `.env` automaticamente (herdado do Vite) — diferente do `ts-jest` antigo, que exigia `import 'dotenv/config'` manual em cada entrypoint.
+`src/shared/config/env.validation.ts` — schema with `DATABASE_URL` (url), `PORT` (coerced, default 3333), `JWT_SECRET` (minimum 16 characters), `CORS_ORIGIN` (url, default `http://localhost:3000`), `NODE_ENV` (enum, default `development`). `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` in `AppModule` — fails to boot with a clear message (`Invalid environment variables: - JWT_SECRET: Too small...`) instead of leaving it to be discovered later.
+
+**Full adoption, not halfway:** the places that read `process.env` directly (`PrismaService`, `JwtStrategy`, `AuthModule`'s `JwtModule`, `main.ts`) were migrated to `ConfigService` via DI (`JwtModule.registerAsync` instead of `.register`, since the secret now comes from async injection). `prisma.config.ts` still reads `process.env.DATABASE_URL` directly via `dotenv` — it runs outside Nest's container (it's the Prisma CLI), there's no `ConfigService` to inject there, and that's correctly so.
+
+**Validated in both directions, not just "it compiles":** with a deliberately short `JWT_SECRET` in `.env`, the application refused to boot with Zod's exact error message; once the correct value was restored, it worked again. Also confirmed that Vitest loads `.env` automatically (inherited from Vite) — unlike the old `ts-jest` setup, which required manually importing `dotenv/config` in every entrypoint.
 
 ### CORS
 
-`app.enableCors({ origin: <CORS_ORIGIN>, credentials: true })` em `main.ts`. Testado com `curl -X OPTIONS` simulando origem permitida e não-permitida — os dois retornam o mesmo header `Access-Control-Allow-Origin` (o valor configurado), porque **quem aplica a política é o browser, não o servidor**: ele compara esse header com a própria origem da página e bloqueia a leitura da resposta se não bater. `curl` não reproduz esse enforcement — é só um jeito de confirmar que o header devolvido é o esperado, não uma prova de bloqueio real (isso exigiria um teste rodando num browser de verdade).
+`app.enableCors({ origin: <CORS_ORIGIN>, credentials: true })` in `main.ts`. Tested with `curl -X OPTIONS` simulating an allowed origin and a disallowed one — both return the same `Access-Control-Allow-Origin` header (the configured value), because **it's the browser, not the server, that enforces the policy**: it compares that header against the page's own origin and blocks reading the response if they don't match. `curl` doesn't reproduce that enforcement — it's just a way to confirm the returned header is the expected one, not proof of an actual block (that would require a test running in a real browser).
 
-## 15. OpenAPI (Swagger) e versão do Node
+## 15. OpenAPI (Swagger) and Node Version
 
-### Swagger — só a base, sem inventar contrato
+### Swagger — Just the Base, No Invented Contract
 
-`@nestjs/swagger` configurado em `main.ts` (`DocumentBuilder` + `SwaggerModule.setup('docs', ...)`, com `addBearerAuth()` pro esquema de autenticação). Deliberadamente **não** documentei os módulos que ainda eram esqueleto na época (`carriers`, `shipments`, `tracking`, `notifications` continuam assim — `sellers` ganhou seu primeiro endpoint real na seção 16) — não existe contrato real ali ainda, documentar um endpoint que não faz nada seria mentira na especificação. O que existia até então (`AuthController`) ganhou decorators completos: `@ApiTags`, `@ApiOperation`, `@ApiResponse` (200/400/401) em cada rota, `@ApiBearerAuth()` em `/auth/me`, e `@ApiProperty()` no `LoginDto` e nos DTOs de resposta novos (`AuthenticatedUserDto`, `LoginResponseDto` — criados só pra dar forma tipada ao retorno do login, que antes era um objeto solto sem classe). A ideia é que isso vire hábito por padrão em cada controller novo, não um retrofit depois de 20 endpoints sem documentação.
+`@nestjs/swagger` configured in `main.ts` (`DocumentBuilder` + `SwaggerModule.setup('docs', ...)`, with `addBearerAuth()` for the authentication scheme). Deliberately **did not** document the modules that were still skeletons at the time (`carriers`, `shipments`, `tracking`, `notifications` remain so — `sellers` got its first real endpoint in section 16) — there's no real contract there yet, and documenting an endpoint that does nothing would be a lie in the spec. What existed at the time (`AuthController`) got full decorators: `@ApiTags`, `@ApiOperation`, `@ApiResponse` (200/400/401) on every route, `@ApiBearerAuth()` on `/auth/me`, and `@ApiProperty()` on `LoginDto` and the new response DTOs (`AuthenticatedUserDto`, `LoginResponseDto` — created just to give the login response a typed shape, which used to be a loose object with no class). The idea is for this to become the default habit on every new controller, not a retrofit after 20 undocumented endpoints.
 
-Validado subindo a aplicação de verdade: `/docs` responde 200, e `/docs-json` mostra os 2 paths de auth, os 3 schemas com os campos certos, e o `securitySchemes.bearer` registrado — não só "o Nest não reclamou ao compilar".
+Validated by actually booting the application: `/docs` responds 200, and `/docs-json` shows the 2 auth paths, the 3 schemas with the right fields, and `securitySchemes.bearer` registered — not just "Nest didn't complain at compile time."
 
-**Gotcha pequeno, mesma família de "aprovar build script sem pensar":** `@nestjs/swagger` traz `@scarf/scarf` (telemetria de instalação) como dependência transitiva, que o pnpm bloqueia por padrão (`ERR_PNPM_IGNORED_BUILDS`). Em vez de aprovar (rodar o script), configurei `allowBuilds: { '@scarf/scarf': false }` no `pnpm-workspace.yaml` — recusa permanentemente sem travar toda instalação futura pedindo decisão de novo.
+**Small gotcha, same family as "approving a build script without thinking":** `@nestjs/swagger` brings in `@scarf/scarf` (install telemetry) as a transitive dependency, which pnpm blocks by default (`ERR_PNPM_IGNORED_BUILDS`). Instead of approving it (running the script), configured `allowBuilds: { '@scarf/scarf': false }` in `pnpm-workspace.yaml` — permanently declines it without blocking every future install with a fresh prompt.
 
-### `.nvmrc` e `engines`
+### `.nvmrc` and `engines`
 
-Registrado ontem como discrepância consciente: CI fixo em Node 24, ambiente local rodando 26 (fora da lista de versões oficialmente suportadas pelo Prisma, mesmo funcionando sem problema). `.nvmrc` na raiz (`24`) e `"engines": { "node": ">=24.0.0" }` em ambos os `package.json` — alinha o valor "oficial" com o que qualquer `nvm use`/instalação nova vai pegar, mesmo que a máquina de desenvolvimento atual continue em 26 por conveniência.
+Recorded earlier as a conscious discrepancy: CI pinned to Node 24, local environment running 26 (outside Prisma's list of officially supported versions, even though it works fine). `.nvmrc` at the root (`24`) and `"engines": { "node": ">=24.0.0" }` in both `package.json` files — aligns the "official" value with whatever any `nvm use`/fresh install will pick up, even though the current development machine keeps running 26 for convenience.
 
-## 16. Sellers — primeiro módulo de domínio com lógica real
+## 16. Sellers — First Domain Module with Real Logic
 
-`sellers` foi escolhido pra sair do esqueleto primeiro (em vez de `carriers`) por ser o fluxo mais simples de fechar de ponta a ponta: self-signup público → `status: PENDING`, sem a complexidade extra de `CarrierUser`/`Invite`. `POST /sellers` implementado; o resto do fluxo (onboarding multi-step, aprovação pelo admin) fica pros próximos passos.
+`sellers` was chosen to come out of skeleton status first (instead of `carriers`) for being the simplest flow to close end-to-end: public self-signup → `status: PENDING`, without the extra complexity of `CarrierUser`/`Invite`. `POST /sellers` implemented; the rest of the flow (multi-step onboarding, admin approval) is left for the next steps.
 
-### Autorização por dono, não só por papel
+### Ownership-Based Authorization, Not Just Role-Based
 
-Antes de escrever o primeiro endpoint, valia separar duas coisas que pareciam a mesma: o **mecanismo** de RBAC (`JwtAuthGuard`/`RolesGuard`, já pronto e genérico — não sabe nada sobre seller/carrier especificamente) e a **autorização por dono do recurso** (um seller só pode ver o próprio registro, não o de outro seller). O segundo não tem guard genérico possível — cada entidade tem uma FK de dono diferente (`Shipment.sellerId`, `Seller.userId`, etc.) — então essa checagem mora no service de cada módulo, não numa peça reusável. `POST /sellers` em si não precisa dessa checagem (é público, sem usuário autenticado ainda), mas o padrão fica registrado aqui porque `GET /sellers/:id` (visão do próprio seller) e os endpoints de carrier vão precisar dele.
+Before writing the first endpoint, it was worth separating two things that looked like the same one: the RBAC **mechanism** (`JwtAuthGuard`/`RolesGuard`, already in place and generic — it knows nothing about seller/carrier specifically) and **ownership-based authorization** (a seller can only see their own record, not someone else's). The second one has no possible generic guard — every entity has a different owner FK (`Shipment.sellerId`, `Seller.userId`, etc.) — so that check lives in each module's service, not in a reusable piece. `POST /sellers` itself doesn't need this check (it's public, no authenticated user yet), but the pattern is recorded here because `GET /sellers/:id` (a seller's own view) and the carrier endpoints will need it.
 
-### `PasswordService` extraído do `AuthModule`
+### `PasswordService` Extracted from `AuthModule`
 
-`bcrypt.hash`/`bcrypt.compare` agora vivem em `src/shared/password/` (`PasswordService`, módulo `@Global()` como o `PrismaModule`) — antes só existia `compare` dentro do `AuthService` pro login; o signup precisa de `hash`. Extrair evita duplicar o número mágico de salt rounds em dois lugares, e deixa pronto pra quando `carriers` precisar da mesma coisa. `AuthService` foi migrado pra injetar `PasswordService` em vez de chamar `bcrypt` direto — `auth.service.spec.ts` ajustado pra fornecer `PasswordService` real (não mockado, mesmo espírito de já usar bcrypt de verdade no teste).
+`bcrypt.hash`/`bcrypt.compare` now live in `src/shared/password/` (`PasswordService`, a `@Global()` module like `PrismaModule`) — before, only `compare` existed inside `AuthService` for login; signup needs `hash`. Extracting it avoids duplicating the magic salt-rounds number in two places, and it's ready for when `carriers` needs the same thing. `AuthService` was migrated to inject `PasswordService` instead of calling `bcrypt` directly — `auth.service.spec.ts` adjusted to provide a real `PasswordService` (not mocked, same spirit as already using real bcrypt in the test).
 
 ### `SellersService.signup`
 
-- Transação (`prisma.$transaction`) criando `User` (`role: SELLER`) e `Seller` juntos — os dois têm que existir ou nenhum, não dá pra ficar com um `User` órfão sem `Seller` se a segunda escrita falhar.
-- Email e documento duplicado capturados via `Prisma.PrismaClientKnownRequestError` com `code === 'P2002'` (constraint única do banco) e convertidos em `ConflictException` (409) com mensagem legível, incluindo qual campo colidiu (`error.meta.target`) — em vez de deixar vazar o erro cru do Prisma pro cliente.
-- Retorno é um objeto construído explicitamente (`SellerResponseDto`), não o registro cru do Prisma — garante que `passwordHash` nunca aparece na resposta, mesmo que o `select`/relação mude no futuro.
-- `@IsNotEmpty()` em `companyName`/`document` além de `@IsString()` — achado testando de propósito com string vazia: `@IsString()` sozinho aceita `""`.
+- A transaction (`prisma.$transaction`) creates `User` (`role: SELLER`) and `Seller` together — both have to exist or neither does; there's no room for an orphaned `User` with no `Seller` if the second write fails.
+- Duplicate email and document are caught via `Prisma.PrismaClientKnownRequestError` with `code === 'P2002'` (the database's unique constraint) and converted into a `ConflictException` (409) with a readable message, including which field collided (`error.meta.target`) — instead of leaking Prisma's raw error to the client.
+- The return value is an explicitly built object (`SellerResponseDto`), not the raw Prisma record — guarantees `passwordHash` can never show up in the response, even if the query/relations change later.
+- `@IsNotEmpty()` on `companyName`/`document` in addition to `@IsString()` — found by testing on purpose with an empty string: `@IsString()` alone accepts `""`.
 
-**Validado ponta a ponta, não só testes unitários com mock:** subi a aplicação de verdade, criei um seller via `curl`, confirmei no Postgres (`psql`) que `User` e `Seller` foram gravados corretamente com o relacionamento certo; testei email duplicado e documento duplicado (dois `curl` separados, ambos 409); testei DTO com todos os campos inválidos de uma vez (400 com as 4 mensagens); confirmei no `/docs-json` que `/sellers` e os schemas novos aparecem no contrato. Dados de teste removidos do banco depois.
+**Validated end-to-end, not just unit tests with mocks:** booted the real application, created a seller via `curl`, confirmed in Postgres (`psql`) that `User` and `Seller` were written correctly with the right relationship; tested duplicate email and duplicate document (two separate `curl` calls, both 409); tested a DTO with every field invalid at once (400 with all 4 messages); confirmed in `/docs-json` that `/sellers` and the new schemas show up in the contract. Test data removed from the database afterward.

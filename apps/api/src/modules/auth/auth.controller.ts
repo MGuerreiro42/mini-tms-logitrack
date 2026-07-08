@@ -20,19 +20,21 @@ import type { AuthenticatedUser } from './strategies/jwt.strategy';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @ApiOperation({ summary: 'Autentica com email/senha e retorna um JWT' })
+  @ApiOperation({
+    summary: 'Authenticates with email/password and returns a JWT',
+  })
   @ApiResponse({ status: 200, type: LoginResponseDto })
-  @ApiResponse({ status: 400, description: 'DTO inválido' })
-  @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+  @ApiResponse({ status: 400, description: 'Invalid DTO' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Retorna o usuário autenticado do token atual' })
+  @ApiOperation({ summary: 'Returns the currently authenticated user' })
   @ApiResponse({ status: 200, type: AuthenticatedUserDto })
-  @ApiResponse({ status: 401, description: 'Token ausente ou inválido' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {

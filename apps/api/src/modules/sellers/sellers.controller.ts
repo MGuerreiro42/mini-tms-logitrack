@@ -10,11 +10,15 @@ export class SellersController {
   constructor(private readonly sellersService: SellersService) {}
 
   @ApiOperation({
-    summary: 'Self-signup público de seller — cria conta com status PENDING',
+    summary:
+      'Public seller self-signup — creates an account with PENDING status',
   })
   @ApiResponse({ status: 201, type: SellerResponseDto })
-  @ApiResponse({ status: 400, description: 'DTO inválido' })
-  @ApiResponse({ status: 409, description: 'Email ou documento já cadastrado' })
+  @ApiResponse({ status: 400, description: 'Invalid DTO' })
+  @ApiResponse({
+    status: 409,
+    description: 'Email or document already registered',
+  })
   @Post()
   signup(@Body() dto: CreateSellerDto) {
     return this.sellersService.signup(dto);

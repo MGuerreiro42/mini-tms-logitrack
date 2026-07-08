@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "tms (root)",
+      "path": "."
+    },
+    {
+      "name": "api",
+      "path": "apps/api"
+    },
+    {
+      "name": "web",
+      "path": "apps/web"
+    }
+  ],
+  "settings": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "quickfix.biome": "explicit",
+      "source.organizeImports.biome": "explicit"
+    }
+  },
+  "extensions": {
+    "recommendations": ["biomejs.biome", "prisma.prisma"]
+  }
+}
