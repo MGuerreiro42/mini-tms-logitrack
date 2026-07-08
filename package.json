@@ -1,0 +1,15 @@
+{
+  "name": "mini-tms-tooling",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repo-level tooling only (git hooks, commit lint) — apps/api and apps/web are independent pnpm projects, not part of this workspace.",
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "lefthook": "^1.9.3",
+    "lint-staged": "^15.3.0"
+  }
+}

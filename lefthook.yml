@@ -1,0 +1,9 @@
+pre-commit:
+  jobs:
+    - name: lint-staged
+      run: pnpm exec lint-staged
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
