@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
@@ -14,11 +18,18 @@ describe('SellersService', () => {
   const sellerFindUnique = vi.fn();
   const sellerUpdate = vi.fn();
   const sellerCount = vi.fn();
-  const transaction = vi.fn((callback) =>
-    callback({
-      user: { create: userCreate },
-      seller: { create: sellerCreate },
-    }),
+  const deliveryModalityCount = vi.fn();
+  const deliveryModalityFindMany = vi.fn();
+  const sellerModalityFindMany = vi.fn();
+  const sellerModalityDeleteMany = vi.fn();
+  const sellerModalityCreateMany = vi.fn();
+  const transaction = vi.fn((arg) =>
+    typeof arg === 'function'
+      ? arg({
+          user: { create: userCreate },
+          seller: { create: sellerCreate },
+        })
+      : Promise.all(arg),
   );
   const hash = vi.fn();
 
@@ -45,6 +56,11 @@ describe('SellersService', () => {
     sellerFindUnique.mockReset();
     sellerUpdate.mockReset();
     sellerCount.mockReset();
+    deliveryModalityCount.mockReset();
+    deliveryModalityFindMany.mockReset();
+    sellerModalityFindMany.mockReset();
+    sellerModalityDeleteMany.mockReset();
+    sellerModalityCreateMany.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -60,6 +76,15 @@ describe('SellersService', () => {
               findUnique: sellerFindUnique,
               update: sellerUpdate,
               count: sellerCount,
+            },
+            deliveryModality: {
+              count: deliveryModalityCount,
+              findMany: deliveryModalityFindMany,
+            },
+            sellerModality: {
+              findMany: sellerModalityFindMany,
+              deleteMany: sellerModalityDeleteMany,
+              createMany: sellerModalityCreateMany,
             },
           },
         },
@@ -271,6 +296,104 @@ describe('SellersService', () => {
       sellerFindUnique.mockResolvedValue(null);
 
       await expect(sellersService.reject('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('findByUserId', () => {
+    it('returns the seller owned by the given userId', async () => {
+      sellerFindUnique.mockResolvedValue(sellerWithUser);
+
+      const result = await sellersService.findByUserId('user-1');
+
+      expect(sellerFindUnique).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        include: { user: true },
+      });
+      expect(result.id).toBe('seller-1');
+    });
+
+    it('throws NotFoundException when the user has no Seller profile', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(sellersService.findByUserId('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('getModalities', () => {
+    it('returns the full catalog with enabled flags for the seller', async () => {
+      sellerFindUnique.mockResolvedValue({ id: 'seller-1' });
+      deliveryModalityFindMany.mockResolvedValue([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard' },
+        { id: 'modality-2', code: 'EXPRESS', name: 'Express' },
+      ]);
+      sellerModalityFindMany.mockResolvedValue([{ modalityId: 'modality-1' }]);
+
+      const result = await sellersService.getModalities('user-1');
+
+      expect(sellerModalityFindMany).toHaveBeenCalledWith({
+        where: { sellerId: 'seller-1' },
+        select: { modalityId: true },
+      });
+      expect(result).toEqual([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
+        { id: 'modality-2', code: 'EXPRESS', name: 'Express', enabled: false },
+      ]);
+    });
+
+    it('throws NotFoundException when the user has no Seller profile', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(sellersService.getModalities('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('setModalities', () => {
+    it('throws BadRequestException when a modalityId does not exist in the catalog', async () => {
+      sellerFindUnique.mockResolvedValue({ id: 'seller-1' });
+      deliveryModalityCount.mockResolvedValue(1);
+
+      await expect(
+        sellersService.setModalities('user-1', ['modality-1', 'modality-2']),
+      ).rejects.toThrow(BadRequestException);
+      expect(transaction).not.toHaveBeenCalled();
+    });
+
+    it('replaces the seller modalities and returns the updated toggles', async () => {
+      sellerFindUnique.mockResolvedValue({ id: 'seller-1' });
+      deliveryModalityCount.mockResolvedValue(1);
+      sellerModalityDeleteMany.mockResolvedValue({ count: 1 });
+      sellerModalityCreateMany.mockResolvedValue({ count: 1 });
+      deliveryModalityFindMany.mockResolvedValue([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard' },
+      ]);
+      sellerModalityFindMany.mockResolvedValue([{ modalityId: 'modality-1' }]);
+
+      const result = await sellersService.setModalities('user-1', [
+        'modality-1',
+      ]);
+
+      expect(sellerModalityDeleteMany).toHaveBeenCalledWith({
+        where: { sellerId: 'seller-1' },
+      });
+      expect(sellerModalityCreateMany).toHaveBeenCalledWith({
+        data: [{ sellerId: 'seller-1', modalityId: 'modality-1' }],
+      });
+      expect(transaction).toHaveBeenCalled();
+      expect(result).toEqual([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
+      ]);
+    });
+
+    it('throws NotFoundException when the user has no Seller profile', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(sellersService.setModalities('user-1', [])).rejects.toThrow(
         NotFoundException,
       );
     });

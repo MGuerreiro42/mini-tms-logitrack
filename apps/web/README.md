@@ -41,6 +41,18 @@ src/
 
 Each `features/*` folder is still a placeholder (`types.ts`, `api/index.ts`, `index.ts` empty) — modeling each domain is the next step. Details and full reasoning in [`DESIGN.md` § 9](../../DESIGN.md#9-frontend-architecture).
 
+## Tests
+
+```bash
+pnpm test        # unit/component (vitest run)
+pnpm test:watch  # unit/component, watch mode
+pnpm test:cov    # with coverage (@vitest/coverage-v8)
+```
+
+Vitest + React Testing Library + `@testing-library/user-event`, same runner as `apps/api` (one test tool across the monorepo instead of two). API calls are mocked at the network level with MSW (`src/test/msw/`) rather than mocking the `api-client` module — tests exercise the real `fetch` + error-parsing path, not just the component's reaction to a resolved/rejected promise. Each test file registers only the handlers it needs via `server.use(...)`; an unmocked request fails the test loudly (`onUnhandledRequest: 'error'`) instead of silently falling through.
+
+Only Client Components, hooks, and pure functions are realistic RTL targets — most of `src/app/**` is Server Components (layouts doing an auth gate + redirect), which aren't something RTL renders; those stay covered by manual browser testing, same as before. `vitest.config.ts` excludes `src/app/**` and `src/components/ui/**` (shadcn-generated) from the coverage report accordingly.
+
 ## Lint & format
 
 ```bash

@@ -25,13 +25,22 @@ type WizardState =
 
 export function CreateShipmentWizard() {
   const [state, setState] = useState<WizardState>({ step: 1 });
+  // Step 1's own state ({ step: 1 }) carries no address, so coming back to
+  // it from step 2 needs the last-known values kept somewhere that survives
+  // the step change — otherwise "Back" silently drops everything the seller
+  // already typed.
+  const [savedAddress, setSavedAddress] = useState<
+    AddressFormValues | undefined
+  >();
 
   if (state.step === 1) {
     return (
       <ShipmentAddressForm
-        onNext={(address, modalityName) =>
-          setState({ step: 2, address, modalityName })
-        }
+        defaultValues={savedAddress}
+        onNext={(address, modalityName) => {
+          setSavedAddress(address);
+          setState({ step: 2, address, modalityName });
+        }}
       />
     );
   }

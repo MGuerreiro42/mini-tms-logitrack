@@ -49,6 +49,7 @@ export function ModalityToggleList({
               <div className="text-xs text-muted-foreground">{item.code}</div>
             </div>
             <Switch
+              aria-label={item.name}
               checked={staged.has(item.id)}
               onCheckedChange={() => toggle(item.id)}
               disabled={readOnly}

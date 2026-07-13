@@ -29,6 +29,7 @@ export function CarrierSignupForm() {
   return (
     <form
       className="space-y-4"
+      noValidate
       onSubmit={handleSubmit((values) => signup.mutate(values))}
     >
       <div className="space-y-1.5">

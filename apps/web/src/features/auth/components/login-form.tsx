@@ -29,6 +29,7 @@ export function LoginForm() {
   return (
     <form
       className="space-y-4"
+      noValidate
       onSubmit={handleSubmit((values) => loginMutation.mutate(values))}
     >
       <div className="space-y-1.5">

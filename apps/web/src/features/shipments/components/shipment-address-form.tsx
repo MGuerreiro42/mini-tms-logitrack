@@ -42,7 +42,11 @@ export function ShipmentAddressForm({
     formState: { errors },
   } = useForm<AddressFormValues>({
     resolver: zodResolver(schema),
-    defaultValues,
+    // modalityId starts unset (never register()'d — it's only set via the
+    // button clicks below), so it defaults to '' rather than undefined:
+    // zod's `.min(1, 'Pick a modality')` message only applies to a string
+    // that's too short, not to a value failing the base type check.
+    defaultValues: { modalityId: '', ...defaultValues },
   });
 
   const selectedModalityId = watch('modalityId');
@@ -65,37 +69,65 @@ export function ShipmentAddressForm({
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit(submit)}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Zip code" error={errors.addressZipCode?.message}>
-              <Input {...register('addressZipCode')} />
+            <Field
+              id="addressZipCode"
+              label="Zip code"
+              error={errors.addressZipCode?.message}
+            >
+              <Input id="addressZipCode" {...register('addressZipCode')} />
             </Field>
-            <Field label="State (UF)" error={errors.addressState?.message}>
+            <Field
+              id="addressState"
+              label="State (UF)"
+              error={errors.addressState?.message}
+            >
               <Input
+                id="addressState"
                 {...register('addressState')}
                 maxLength={2}
                 className="uppercase"
               />
             </Field>
           </div>
-          <Field label="City" error={errors.addressCity?.message}>
-            <Input {...register('addressCity')} />
+          <Field
+            id="addressCity"
+            label="City"
+            error={errors.addressCity?.message}
+          >
+            <Input id="addressCity" {...register('addressCity')} />
           </Field>
           <div className="grid grid-cols-[1fr_120px] gap-3">
-            <Field label="Street" error={errors.addressStreet?.message}>
-              <Input {...register('addressStreet')} />
+            <Field
+              id="addressStreet"
+              label="Street"
+              error={errors.addressStreet?.message}
+            >
+              <Input id="addressStreet" {...register('addressStreet')} />
             </Field>
-            <Field label="Number" error={errors.addressNumber?.message}>
-              <Input {...register('addressNumber')} />
+            <Field
+              id="addressNumber"
+              label="Number"
+              error={errors.addressNumber?.message}
+            >
+              <Input id="addressNumber" {...register('addressNumber')} />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field
+              id="addressNeighborhood"
               label="Neighborhood"
               error={errors.addressNeighborhood?.message}
             >
-              <Input {...register('addressNeighborhood')} />
+              <Input
+                id="addressNeighborhood"
+                {...register('addressNeighborhood')}
+              />
             </Field>
-            <Field label="Complement (optional)">
-              <Input {...register('addressComplement')} />
+            <Field id="addressComplement" label="Complement (optional)">
+              <Input
+                id="addressComplement"
+                {...register('addressComplement')}
+              />
             </Field>
           </div>
           <div className="space-y-1.5">
@@ -138,17 +170,19 @@ export function ShipmentAddressForm({
 }
 
 function Field({
+  id,
   label,
   error,
   children,
 }: {
+  id: string;
   label: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
