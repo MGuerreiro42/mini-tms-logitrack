@@ -24,6 +24,27 @@ async function main() {
   });
 
   console.log(`Admin seeded: ${admin.email}`);
+
+  // DeliveryModality is reference data (DESIGN.md § 10) — a fixed catalog,
+  // not something an admin CRUDs through a screen (none is speced), so it's
+  // seeded rather than exposed via a write endpoint.
+  const modalities = [
+    { code: 'STANDARD', name: 'Standard', slaHours: 72 },
+    { code: 'FULL', name: 'Full', slaHours: 48 },
+    { code: 'EXPRESS', name: 'Express', slaHours: 24 },
+  ];
+
+  for (const modality of modalities) {
+    await prisma.deliveryModality.upsert({
+      where: { code: modality.code },
+      update: {},
+      create: modality,
+    });
+  }
+
+  console.log(
+    `Delivery modalities seeded: ${modalities.map((m) => m.code).join(', ')}`,
+  );
 }
 
 main()

@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CarriersModule } from './modules/carriers/carriers.module';
+import { ModalitiesModule } from './modules/modalities/modalities.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SellersModule } from './modules/sellers/sellers.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
@@ -21,6 +22,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     PasswordModule,
     SellersModule,
     CarriersModule,
+    ModalitiesModule,
     ShipmentsModule,
     NotificationsModule,
     TrackingModule,

@@ -1,8 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { toLowerTrimmed } from '../../../shared/transforms/normalize';
 
 export class CreateCarrierDto {
   @ApiProperty({ example: 'manager@carrier.example.com' })
+  @Transform(toLowerTrimmed)
   @IsEmail()
   email: string;
 
