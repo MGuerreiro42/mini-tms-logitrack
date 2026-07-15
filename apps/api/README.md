@@ -28,9 +28,10 @@ Changing `schema.prisma` and generating a new migration remains manual, on purpo
 src/
 ├── modules/
 │   ├── auth/            # implemented — Passport + JWT + bcrypt (see DESIGN.md § 11)
-│   ├── sellers/         # signup + admin approval implemented (see DESIGN.md § 16); onboarding still pending
-│   ├── carriers/        # signup + admin approval implemented (see DESIGN.md § 17); invites/ still a skeleton
-│   ├── shipments/       # skeleton
+│   ├── sellers/         # signup + admin approval + own-modality config (see DESIGN.md § 16, § 19); onboarding still pending
+│   ├── carriers/        # signup + admin approval + own-modality/coverage config (see DESIGN.md § 17, § 19); invites/ still a skeleton
+│   ├── modalities/      # DeliveryModality catalog read endpoint (seeded, no CRUD — see DESIGN.md § 19)
+│   ├── shipments/       # creation with real coverage+modality matching (see DESIGN.md § 19); carrier-side queue still pending
 │   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
 │   └── notifications/   # skeleton — will become BullMQ workers
 ├── shared/
@@ -101,6 +102,35 @@ curl -X PATCH http://localhost:3333/carriers/<id>/reject -H "Authorization: Bear
 ## Pagination and filtering
 
 `GET /sellers` and `GET /carriers` share the same shape: `?status=` filters, `?page=`/`?limit=` paginate (default `page=1&limit=20`, `limit` capped at 100). Response is always `{ data: [...], meta: { total, page, limit, totalPages } }`, never a bare array — documented in Swagger via a reusable `ApiPaginatedResponse` decorator (`src/shared/pagination/`). Why offset-based instead of cursor/keyset pagination, and the reasoning behind every index added to support these queries at scale: [`DESIGN.md` § 18](../../DESIGN.md#18-scale--pagination-and-indexing).
+
+## Testing your own modality/coverage config
+
+Ownership-based (each user manages their own record — no `:id` param, resolved from the JWT):
+
+```bash
+curl http://localhost:3333/sellers/me -H "Authorization: Bearer <sellerAccessToken>"
+curl http://localhost:3333/sellers/me/modalities -H "Authorization: Bearer <sellerAccessToken>"
+curl -X PUT http://localhost:3333/sellers/me/modalities -H "Authorization: Bearer <sellerAccessToken>" -H "Content-Type: application/json" -d '{"modalityIds":["<uuid>"]}'
+
+curl http://localhost:3333/carriers/me -H "Authorization: Bearer <carrierAccessToken>"
+curl -X PUT http://localhost:3333/carriers/me/modalities -H "Authorization: Bearer <managerAccessToken>" -H "Content-Type: application/json" -d '{"modalityIds":["<uuid>"]}'
+curl -X PUT http://localhost:3333/carriers/me/coverage-areas -H "Authorization: Bearer <managerAccessToken>" -H "Content-Type: application/json" -d '{"areas":[{"state":"SP","city":"São Paulo"}]}'
+```
+
+`PUT` on both modality and coverage endpoints is full-replace (submit the complete desired set every time). Carrier mutation is `CARRIER_MANAGER`-only; reads are open to `CARRIER_OPERATOR` too.
+
+## Testing shipment creation
+
+```bash
+curl "http://localhost:3333/shipments/eligible-carriers?state=SP&city=São Paulo&modalityId=<uuid>" -H "Authorization: Bearer <sellerAccessToken>"
+
+curl -X POST http://localhost:3333/shipments -H "Authorization: Bearer <sellerAccessToken>" -H "Content-Type: application/json" \
+  -d '{"addressStreet":"Av. Paulista","addressNumber":"1000","addressNeighborhood":"Bela Vista","addressCity":"São Paulo","addressState":"SP","addressZipCode":"01310-100","modalityId":"<uuid>","carrierId":"<uuid>"}'
+
+curl http://localhost:3333/shipments -H "Authorization: Bearer <sellerAccessToken>"
+```
+
+Every constraint from the eligible-carriers preview (seller approved, modality enabled, carrier approved+covers+offers) is re-validated server-side on `POST` — the preview is not trusted. `state` is normalized to uppercase and `email` to lowercase at the DTO boundary (so `"sp"`/`"SP"` and mixed-case emails behave identically); `city` is matched case-insensitively instead, since it has real display casing worth preserving. Full reasoning in [`DESIGN.md` § 19](../../DESIGN.md#19-shipments--the-core-business-logic-slice).
 
 ```bash
 curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <adminAccessToken>"

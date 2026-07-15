@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -11,6 +12,7 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
 
@@ -116,6 +118,22 @@ export class SellersService {
     return this.toResponseDto(seller);
   }
 
+  // Ownership-based, not role-based (DESIGN.md § 16) — looked up by the
+  // authenticated User's own id, not an :id param, so there's no way for
+  // one seller to read another's record through this route.
+  async findByUserId(userId: string): Promise<SellerResponseDto> {
+    const seller = await this.prisma.seller.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
+
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+
+    return this.toResponseDto(seller);
+  }
+
   async approve(id: string): Promise<SellerResponseDto> {
     return this.updateStatus(id, ApprovalStatus.APPROVED);
   }
@@ -156,6 +174,74 @@ export class SellersService {
     }
 
     return seller;
+  }
+
+  async getModalities(userId: string): Promise<ModalityToggleResponseDto[]> {
+    const seller = await this.findSellerByUserIdOrThrow(userId);
+    return this.buildModalityToggles(seller.id);
+  }
+
+  async setModalities(
+    userId: string,
+    modalityIds: string[],
+  ): Promise<ModalityToggleResponseDto[]> {
+    const seller = await this.findSellerByUserIdOrThrow(userId);
+
+    if (modalityIds.length > 0) {
+      const validCount = await this.prisma.deliveryModality.count({
+        where: { id: { in: modalityIds } },
+      });
+      if (validCount !== new Set(modalityIds).size) {
+        throw new BadRequestException(
+          'One or more modalityIds do not exist in the DeliveryModality catalog',
+        );
+      }
+    }
+
+    // Full-replace semantics — the client always sends the complete desired
+    // set (matches a checkbox-list UI), not an incremental enable/disable
+    // call, so there's no risk of server and client state drifting apart.
+    await this.prisma.$transaction([
+      this.prisma.sellerModality.deleteMany({
+        where: { sellerId: seller.id },
+      }),
+      this.prisma.sellerModality.createMany({
+        data: modalityIds.map((modalityId) => ({
+          sellerId: seller.id,
+          modalityId,
+        })),
+      }),
+    ]);
+
+    return this.buildModalityToggles(seller.id);
+  }
+
+  private async findSellerByUserIdOrThrow(userId: string) {
+    const seller = await this.prisma.seller.findUnique({ where: { userId } });
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+    return seller;
+  }
+
+  private async buildModalityToggles(
+    sellerId: string,
+  ): Promise<ModalityToggleResponseDto[]> {
+    const [catalog, enabled] = await Promise.all([
+      this.prisma.deliveryModality.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.sellerModality.findMany({
+        where: { sellerId },
+        select: { modalityId: true },
+      }),
+    ]);
+
+    const enabledIds = new Set(enabled.map((row) => row.modalityId));
+    return catalog.map((modality) => ({
+      id: modality.id,
+      code: modality.code,
+      name: modality.name,
+      enabled: enabledIds.has(modality.id),
+    }));
   }
 
   private toResponseDto(seller: SellerWithUser): SellerResponseDto {

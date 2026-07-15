@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -15,7 +16,9 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
+import type { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
 
 const managerInclude = {
@@ -124,6 +127,123 @@ export class CarriersService {
   async findOne(id: string): Promise<CarrierResponseDto> {
     const carrier = await this.findCarrierOrThrow(id);
     return this.toResponseDto(carrier);
+  }
+
+  // Ownership-based (DESIGN.md § 16), for both MANAGER and OPERATOR — unlike
+  // Seller, a Carrier isn't reached directly from userId; it goes through
+  // CarrierUser first (the join row identifying which carrier this specific
+  // user belongs to), then reuses findOne so the response shape stays
+  // identical to the admin-facing read path.
+  async findByUserId(userId: string): Promise<CarrierResponseDto> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    return this.findOne(carrierId);
+  }
+
+  async getModalities(userId: string): Promise<ModalityToggleResponseDto[]> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    return this.buildModalityToggles(carrierId);
+  }
+
+  async setModalities(
+    userId: string,
+    modalityIds: string[],
+  ): Promise<ModalityToggleResponseDto[]> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+
+    if (modalityIds.length > 0) {
+      const validCount = await this.prisma.deliveryModality.count({
+        where: { id: { in: modalityIds } },
+      });
+      if (validCount !== new Set(modalityIds).size) {
+        throw new BadRequestException(
+          'One or more modalityIds do not exist in the DeliveryModality catalog',
+        );
+      }
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.carrierModality.deleteMany({ where: { carrierId } }),
+      this.prisma.carrierModality.createMany({
+        data: modalityIds.map((modalityId) => ({ carrierId, modalityId })),
+      }),
+    ]);
+
+    return this.buildModalityToggles(carrierId);
+  }
+
+  async getCoverageAreas(userId: string): Promise<CoverageAreaResponseDto[]> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    return this.listCoverageAreas(carrierId);
+  }
+
+  async setCoverageAreas(
+    userId: string,
+    areas: { state: string; city?: string }[],
+  ): Promise<CoverageAreaResponseDto[]> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+
+    // Full-replace, same pattern as modalities — the client always submits
+    // the complete desired coverage list, not incremental add/remove calls.
+    // `skipDuplicates` guards against the client submitting the same
+    // (state, city) pair twice in one request, which would otherwise violate
+    // @@unique([carrierId, state, city]) on the second insert.
+    await this.prisma.$transaction([
+      this.prisma.carrierCoverageArea.deleteMany({ where: { carrierId } }),
+      this.prisma.carrierCoverageArea.createMany({
+        data: areas.map((area) => ({
+          carrierId,
+          state: area.state,
+          city: area.city ?? null,
+        })),
+        skipDuplicates: true,
+      }),
+    ]);
+
+    return this.listCoverageAreas(carrierId);
+  }
+
+  private async listCoverageAreas(
+    carrierId: string,
+  ): Promise<CoverageAreaResponseDto[]> {
+    const areas = await this.prisma.carrierCoverageArea.findMany({
+      where: { carrierId },
+      orderBy: [{ state: 'asc' }, { city: 'asc' }],
+    });
+    return areas.map((area) => ({
+      id: area.id,
+      state: area.state,
+      city: area.city,
+    }));
+  }
+
+  private async buildModalityToggles(
+    carrierId: string,
+  ): Promise<ModalityToggleResponseDto[]> {
+    const [catalog, enabled] = await Promise.all([
+      this.prisma.deliveryModality.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.carrierModality.findMany({
+        where: { carrierId },
+        select: { modalityId: true },
+      }),
+    ]);
+
+    const enabledIds = new Set(enabled.map((row) => row.modalityId));
+    return catalog.map((modality) => ({
+      id: modality.id,
+      code: modality.code,
+      name: modality.name,
+      enabled: enabledIds.has(modality.id),
+    }));
+  }
+
+  private async findCarrierIdForUserOrThrow(userId: string): Promise<string> {
+    const carrierUser = await this.prisma.carrierUser.findUnique({
+      where: { userId },
+    });
+    if (!carrierUser) {
+      throw new NotFoundException('Carrier not found');
+    }
+    return carrierUser.carrierId;
   }
 
   async approve(id: string): Promise<CarrierResponseDto> {

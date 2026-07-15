@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
@@ -15,12 +19,23 @@ describe('CarriersService', () => {
   const carrierFindUnique = vi.fn();
   const carrierUpdate = vi.fn();
   const carrierCount = vi.fn();
-  const transaction = vi.fn((callback) =>
-    callback({
-      user: { create: userCreate },
-      carrier: { create: carrierCreate },
-      carrierUser: { create: carrierUserCreate },
-    }),
+  const carrierUserFindUnique = vi.fn();
+  const deliveryModalityCount = vi.fn();
+  const deliveryModalityFindMany = vi.fn();
+  const carrierModalityFindMany = vi.fn();
+  const carrierModalityDeleteMany = vi.fn();
+  const carrierModalityCreateMany = vi.fn();
+  const carrierCoverageAreaFindMany = vi.fn();
+  const carrierCoverageAreaDeleteMany = vi.fn();
+  const carrierCoverageAreaCreateMany = vi.fn();
+  const transaction = vi.fn((arg) =>
+    typeof arg === 'function'
+      ? arg({
+          user: { create: userCreate },
+          carrier: { create: carrierCreate },
+          carrierUser: { create: carrierUserCreate },
+        })
+      : Promise.all(arg),
   );
   const hash = vi.fn();
 
@@ -49,6 +64,15 @@ describe('CarriersService', () => {
     carrierFindUnique.mockReset();
     carrierUpdate.mockReset();
     carrierCount.mockReset();
+    carrierUserFindUnique.mockReset();
+    deliveryModalityCount.mockReset();
+    deliveryModalityFindMany.mockReset();
+    carrierModalityFindMany.mockReset();
+    carrierModalityDeleteMany.mockReset();
+    carrierModalityCreateMany.mockReset();
+    carrierCoverageAreaFindMany.mockReset();
+    carrierCoverageAreaDeleteMany.mockReset();
+    carrierCoverageAreaCreateMany.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -64,6 +88,21 @@ describe('CarriersService', () => {
               findUnique: carrierFindUnique,
               update: carrierUpdate,
               count: carrierCount,
+            },
+            carrierUser: { findUnique: carrierUserFindUnique },
+            deliveryModality: {
+              count: deliveryModalityCount,
+              findMany: deliveryModalityFindMany,
+            },
+            carrierModality: {
+              findMany: carrierModalityFindMany,
+              deleteMany: carrierModalityDeleteMany,
+              createMany: carrierModalityCreateMany,
+            },
+            carrierCoverageArea: {
+              findMany: carrierCoverageAreaFindMany,
+              deleteMany: carrierCoverageAreaDeleteMany,
+              createMany: carrierCoverageAreaCreateMany,
             },
           },
         },
@@ -268,6 +307,154 @@ describe('CarriersService', () => {
       await expect(carriersService.reject('missing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('findByUserId', () => {
+    it('resolves the carrier through CarrierUser then reuses findOne', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      carrierFindUnique.mockResolvedValue(carrierWithManager);
+
+      const result = await carriersService.findByUserId('user-1');
+
+      expect(carrierUserFindUnique).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(result.id).toBe('carrier-1');
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(carriersService.findByUserId('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('getModalities', () => {
+    it('returns the full catalog with enabled flags for the carrier', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      deliveryModalityFindMany.mockResolvedValue([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard' },
+        { id: 'modality-2', code: 'EXPRESS', name: 'Express' },
+      ]);
+      carrierModalityFindMany.mockResolvedValue([{ modalityId: 'modality-1' }]);
+
+      const result = await carriersService.getModalities('user-1');
+
+      expect(carrierModalityFindMany).toHaveBeenCalledWith({
+        where: { carrierId: 'carrier-1' },
+        select: { modalityId: true },
+      });
+      expect(result).toEqual([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
+        { id: 'modality-2', code: 'EXPRESS', name: 'Express', enabled: false },
+      ]);
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(carriersService.getModalities('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('setModalities', () => {
+    it('throws BadRequestException when a modalityId does not exist in the catalog', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      deliveryModalityCount.mockResolvedValue(1);
+
+      await expect(
+        carriersService.setModalities('user-1', ['modality-1', 'modality-2']),
+      ).rejects.toThrow(BadRequestException);
+      expect(transaction).not.toHaveBeenCalled();
+    });
+
+    it('replaces the carrier modalities and returns the updated toggles', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      deliveryModalityCount.mockResolvedValue(1);
+      carrierModalityDeleteMany.mockResolvedValue({ count: 1 });
+      carrierModalityCreateMany.mockResolvedValue({ count: 1 });
+      deliveryModalityFindMany.mockResolvedValue([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard' },
+      ]);
+      carrierModalityFindMany.mockResolvedValue([{ modalityId: 'modality-1' }]);
+
+      const result = await carriersService.setModalities('user-1', [
+        'modality-1',
+      ]);
+
+      expect(carrierModalityDeleteMany).toHaveBeenCalledWith({
+        where: { carrierId: 'carrier-1' },
+      });
+      expect(carrierModalityCreateMany).toHaveBeenCalledWith({
+        data: [{ carrierId: 'carrier-1', modalityId: 'modality-1' }],
+      });
+      expect(result).toEqual([
+        { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
+      ]);
+    });
+  });
+
+  describe('getCoverageAreas', () => {
+    it('returns the coverage areas ordered by state then city', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      carrierCoverageAreaFindMany.mockResolvedValue([
+        { id: 'area-1', state: 'SP', city: 'São Paulo' },
+      ]);
+
+      const result = await carriersService.getCoverageAreas('user-1');
+
+      expect(carrierCoverageAreaFindMany).toHaveBeenCalledWith({
+        where: { carrierId: 'carrier-1' },
+        orderBy: [{ state: 'asc' }, { city: 'asc' }],
+      });
+      expect(result).toEqual([
+        { id: 'area-1', state: 'SP', city: 'São Paulo' },
+      ]);
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(carriersService.getCoverageAreas('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('setCoverageAreas', () => {
+    it('replaces the coverage areas and returns the updated list', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      carrierCoverageAreaDeleteMany.mockResolvedValue({ count: 1 });
+      carrierCoverageAreaCreateMany.mockResolvedValue({ count: 1 });
+      carrierCoverageAreaFindMany.mockResolvedValue([
+        { id: 'area-1', state: 'SP', city: null },
+      ]);
+
+      const result = await carriersService.setCoverageAreas('user-1', [
+        { state: 'SP' },
+      ]);
+
+      expect(carrierCoverageAreaDeleteMany).toHaveBeenCalledWith({
+        where: { carrierId: 'carrier-1' },
+      });
+      expect(carrierCoverageAreaCreateMany).toHaveBeenCalledWith({
+        data: [{ carrierId: 'carrier-1', state: 'SP', city: null }],
+        skipDuplicates: true,
+      });
+      expect(result).toEqual([{ id: 'area-1', state: 'SP', city: null }]);
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(
+        carriersService.setCoverageAreas('user-1', [{ state: 'SP' }]),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
