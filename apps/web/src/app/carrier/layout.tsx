@@ -9,6 +9,7 @@ import { ApiError } from '@/services/api-client';
 
 const CARRIER_NAV: NavItem[] = [
   { name: 'Company', href: '/carrier' },
+  { name: 'Shipment queue', href: '/carrier/queue' },
   { name: 'Modalities & Coverage', href: '/carrier/settings' },
 ];
 

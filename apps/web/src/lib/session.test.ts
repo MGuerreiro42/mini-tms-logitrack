@@ -59,4 +59,24 @@ describe('setSession / getSessionFromDocument / clearSession', () => {
 
     expect(getSessionFromDocument()).toBeNull();
   });
+
+  it('returns the same object reference across calls when the cookie is unchanged (regression: consumers that put the session in a dependency array must not see a spurious change)', () => {
+    setSession(session);
+
+    const first = getSessionFromDocument();
+    const second = getSessionFromDocument();
+
+    expect(first).toBe(second);
+  });
+
+  it('returns a new object once the cookie actually changes', () => {
+    setSession(session);
+    const first = getSessionFromDocument();
+
+    setSession({ ...session, token: 'a-different-token' });
+    const second = getSessionFromDocument();
+
+    expect(second).not.toBe(first);
+    expect(second?.token).toBe('a-different-token');
+  });
 });

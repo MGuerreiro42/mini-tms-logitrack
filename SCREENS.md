@@ -122,6 +122,17 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Actions:** create account.
 - **Navigation →** Awaiting Approval (same conceptual screen as the seller's, reusable).
 
+### Modality & Coverage Configuration
+
+- **Role:** `CARRIER_MANAGER` only — mutation is manager-only, mirroring Operator Management's RBAC rule; `CARRIER_OPERATOR` can view but not change (matches the read access the shared queue already gives operators over their own company's data).
+- **Goal:** two related settings the carrier declares about itself before it can match any shipment: which `DeliveryModality` entries it operates (`CarrierModality`) and which `state`/`city` combinations it covers (`CarrierCoverageArea`, `city` blank = entire state).
+- **Data:** the full `DeliveryModality` catalog with a toggle (same shape as the seller's Modality Configuration, `enabled` reflects `CarrierModality`); the carrier's own list of coverage rows (`state`, `city`).
+- **Actions:** toggle modalities (full replace of the enabled set); add/remove coverage rows (full replace of the list, not incremental).
+- **States:** empty coverage list → the carrier won't show up in any seller's eligible-carriers match until at least one row exists — worth a visible warning here, not a silent gap.
+- **Navigation:** reachable from the Dashboard, alongside Operator Management.
+
+> Added after the fact: this screen wasn't in the original spec (only the seller side had a documented "Modality Configuration"), but `CarrierModality`/`CarrierCoverageArea` existed in the schema since §10 with no screen ever declaring who sets them — a real gap, not a deliberate omission. Closed once the backend endpoints were built (DESIGN.md §19).
+
 ### Dashboard / Shared Queue
 
 - **Role:** `CARRIER_MANAGER` and `CARRIER_OPERATOR` (same screen, actions vary)
