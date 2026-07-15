@@ -8,8 +8,10 @@ import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
 import { ApiError } from '@/services/api-client';
 
 const SELLER_NAV: NavItem[] = [
-  { name: 'Profile', href: '/seller' },
+  { name: 'Dashboard', href: '/seller' },
+  { name: 'Profile', href: '/seller/profile' },
   { name: 'Modalities', href: '/seller/modalities' },
+  { name: 'Create shipment', href: '/seller/shipments/new' },
   { name: 'Shipments', href: '/seller/shipments' },
 ];
 
