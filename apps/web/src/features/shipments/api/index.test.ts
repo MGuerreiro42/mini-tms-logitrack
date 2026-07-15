@@ -1,9 +1,13 @@
 import { apiClient } from '@/services/api-client';
 import {
+  claimShipment,
   createShipment,
   getEligibleCarriers,
+  getQueueShipment,
   getShipment,
+  listQueue,
   listShipments,
+  updateShipmentStatus,
 } from './index';
 
 vi.mock('@/services/api-client', () => ({ apiClient: vi.fn() }));
@@ -65,6 +69,63 @@ describe('shipments api', () => {
     expect(apiClient).toHaveBeenCalledWith(
       '/shipments/shipment-1',
       undefined,
+      'token',
+    );
+  });
+
+  it('listQueue omits query params that are not provided', async () => {
+    await listQueue({}, 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/queue',
+      undefined,
+      'token',
+    );
+  });
+
+  it('listQueue includes only the query params that are provided', async () => {
+    await listQueue({ status: 'ACCEPTED', page: 2, limit: 10 }, 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/queue?status=ACCEPTED&page=2&limit=10',
+      undefined,
+      'token',
+    );
+  });
+
+  it('getQueueShipment gets /shipments/queue/:id', async () => {
+    await getQueueShipment('shipment-1', 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/queue/shipment-1',
+      undefined,
+      'token',
+    );
+  });
+
+  it('claimShipment patches /shipments/:id/claim', async () => {
+    await claimShipment('shipment-1', 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/shipment-1/claim',
+      { method: 'PATCH' },
+      'token',
+    );
+  });
+
+  it('updateShipmentStatus patches /shipments/:id/status with the body', async () => {
+    await updateShipmentStatus(
+      'shipment-1',
+      { status: 'COLLECTED', note: 'left the seller' },
+      'token',
+    );
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/shipment-1/status',
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'COLLECTED', note: 'left the seller' }),
+      },
       'token',
     );
   });

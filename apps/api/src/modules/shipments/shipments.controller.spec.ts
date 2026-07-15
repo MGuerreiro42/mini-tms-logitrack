@@ -9,6 +9,10 @@ describe('ShipmentsController', () => {
   const create = vi.fn();
   const findAllForSeller = vi.fn();
   const findOneForSeller = vi.fn();
+  const findAllForCarrier = vi.fn();
+  const findOneForCarrier = vi.fn();
+  const claim = vi.fn();
+  const updateStatus = vi.fn();
 
   const user: AuthenticatedUser = {
     id: 'user-1',
@@ -16,11 +20,21 @@ describe('ShipmentsController', () => {
     role: 'SELLER',
   };
 
+  const carrierUser: AuthenticatedUser = {
+    id: 'user-2',
+    email: 'operator@example.com',
+    role: 'CARRIER_OPERATOR',
+  };
+
   beforeEach(async () => {
     findEligibleCarriers.mockReset();
     create.mockReset();
     findAllForSeller.mockReset();
     findOneForSeller.mockReset();
+    findAllForCarrier.mockReset();
+    findOneForCarrier.mockReset();
+    claim.mockReset();
+    updateStatus.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ShipmentsController],
@@ -32,6 +46,10 @@ describe('ShipmentsController', () => {
             create,
             findAllForSeller,
             findOneForSeller,
+            findAllForCarrier,
+            findOneForCarrier,
+            claim,
+            updateStatus,
           },
         },
       ],
@@ -96,5 +114,50 @@ describe('ShipmentsController', () => {
 
     expect(findOneForSeller).toHaveBeenCalledWith('user-1', 'shipment-1');
     expect(result).toEqual({ id: 'shipment-1' });
+  });
+
+  it('findQueue delegates to ShipmentsService.findAllForCarrier with the user id and query params', async () => {
+    findAllForCarrier.mockResolvedValue({ data: [], meta: {} });
+
+    const result = await controller.findQueue(carrierUser, {
+      status: 'PENDING',
+      page: 2,
+      limit: 10,
+    });
+
+    expect(findAllForCarrier).toHaveBeenCalledWith('user-2', 'PENDING', 2, 10);
+    expect(result).toEqual({ data: [], meta: {} });
+  });
+
+  it('findQueueOne delegates to ShipmentsService.findOneForCarrier with the user id and id param', async () => {
+    findOneForCarrier.mockResolvedValue({ id: 'shipment-1' });
+
+    const result = await controller.findQueueOne(carrierUser, 'shipment-1');
+
+    expect(findOneForCarrier).toHaveBeenCalledWith('user-2', 'shipment-1');
+    expect(result).toEqual({ id: 'shipment-1' });
+  });
+
+  it('claim delegates to ShipmentsService.claim with the user id and id param', async () => {
+    claim.mockResolvedValue({ id: 'shipment-1', status: 'ACCEPTED' });
+
+    const result = await controller.claim(carrierUser, 'shipment-1');
+
+    expect(claim).toHaveBeenCalledWith('user-2', 'shipment-1');
+    expect(result).toEqual({ id: 'shipment-1', status: 'ACCEPTED' });
+  });
+
+  it('updateStatus delegates to ShipmentsService.updateStatus with the user id, id param, and DTO', async () => {
+    const dto = { status: 'COLLECTED' as const };
+    updateStatus.mockResolvedValue({ id: 'shipment-1', status: 'COLLECTED' });
+
+    const result = await controller.updateStatus(
+      carrierUser,
+      'shipment-1',
+      dto,
+    );
+
+    expect(updateStatus).toHaveBeenCalledWith('user-2', 'shipment-1', dto);
+    expect(result).toEqual({ id: 'shipment-1', status: 'COLLECTED' });
   });
 });

@@ -21,7 +21,7 @@ apps/
 └── web/   # Next.js — frontend
 ```
 
-See sections 8 and 9 of [`DESIGN.md`](./DESIGN.md) for the full folder tree and the reasoning behind it. Screen-by-screen specification (roles, data, actions) in [`SCREENS.md`](./SCREENS.md).
+See sections 8 and 9 of [`DESIGN.md`](./DESIGN.md) for the full folder tree and the reasoning behind it. Screen-by-screen specification (roles, data, actions) in [`SCREENS.md`](./SCREENS.md); a sequential, frame-by-frame walkthrough of the flow that's actually built and validated today (used to brief design-prototyping tools) in [`FLOW.md`](./FLOW.md).
 
 `apps/api` and `apps/web` are independent projects, each with its own `tsconfig.json` — opening the repo root directly in VS Code can make the TypeScript server fall back to an implicit project and misreport errors (e.g. spurious `strictPropertyInitialization` complaints). Open [`mini-tms.code-workspace`](./mini-tms.code-workspace) instead (`File > Open Workspace from File...`) — it lists both apps as separate roots so each gets its own `tsconfig.json` resolved correctly, in one window.
 
@@ -56,7 +56,7 @@ CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs o
 
 ## Status
 
-Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)); `sellers` self-signup + admin approval implemented ([`DESIGN.md` § 16](./DESIGN.md#16-sellers--first-domain-module-with-real-logic)); `carriers` company registration + admin approval implemented ([`DESIGN.md` § 17](./DESIGN.md#17-carriers--second-domain-module)). Missing: operator invites, `shipments`/`tracking`/`notifications` module logic, frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
+Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)); `sellers` self-signup + admin approval + own-modality config implemented ([`DESIGN.md` § 16](./DESIGN.md#16-sellers--first-domain-module-with-real-logic), [§ 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)); `carriers` company registration + admin approval + own-modality/coverage config implemented ([`DESIGN.md` § 17](./DESIGN.md#17-carriers--second-domain-module), [§ 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)); `shipments` creation with real coverage+modality matching implemented ([`DESIGN.md` § 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)). Missing: operator invites, carrier-side shipment queue (claim/status/tracking), `notifications` module logic, frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
 
 ## License
 

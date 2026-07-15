@@ -18,6 +18,7 @@ describe('validateEnv', () => {
       PORT: 3333,
       JWT_SECRET: validConfig.JWT_SECRET,
       CORS_ORIGIN: 'http://localhost:3000',
+      REDIS_URL: 'redis://localhost:6379',
     });
   });
 
@@ -27,7 +28,7 @@ describe('validateEnv', () => {
     expect(result.PORT).toBe(8080);
   });
 
-  it('defaults NODE_ENV, PORT, and CORS_ORIGIN when omitted', () => {
+  it('defaults NODE_ENV, PORT, CORS_ORIGIN, and REDIS_URL when omitted', () => {
     const { NODE_ENV, PORT, CORS_ORIGIN, ...rest } = validConfig;
 
     const result = validateEnv(rest);
@@ -35,6 +36,13 @@ describe('validateEnv', () => {
     expect(result.NODE_ENV).toBe('development');
     expect(result.PORT).toBe(3333);
     expect(result.CORS_ORIGIN).toBe('http://localhost:3000');
+    expect(result.REDIS_URL).toBe('redis://localhost:6379');
+  });
+
+  it('throws when REDIS_URL is not a valid URL', () => {
+    expect(() =>
+      validateEnv({ ...validConfig, REDIS_URL: 'not-a-url' }),
+    ).toThrow(/REDIS_URL/);
   });
 
   it('throws when JWT_SECRET is shorter than 16 characters', () => {

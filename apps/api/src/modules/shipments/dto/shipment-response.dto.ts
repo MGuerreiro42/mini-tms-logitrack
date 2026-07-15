@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TrackingEventDto } from './tracking-event.dto';
 
 export class ShipmentResponseDto {
   @ApiProperty()
@@ -57,4 +58,10 @@ export class ShipmentResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  // Only populated on the single-record read (findOneForSeller) — never on
+  // the paginated list, to avoid pulling a full event history onto every row
+  // of a 20-row page (same over-fetch-avoidance reasoning as DESIGN.md § 18).
+  @ApiPropertyOptional({ type: [TrackingEventDto] })
+  trackingEvents?: TrackingEventDto[];
 }

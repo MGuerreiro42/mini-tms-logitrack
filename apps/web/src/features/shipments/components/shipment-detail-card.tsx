@@ -1,11 +1,15 @@
 'use client';
 
+import { DetailRow } from '@/components/common/detail-row';
+import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useShipment } from '../hooks/use-shipment';
+import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
   const { data: shipment, isLoading } = useShipment(id);
+  useShipmentTracking({ shipmentId: id });
 
   if (isLoading || !shipment) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
@@ -21,18 +25,21 @@ export function ShipmentDetailCard({ id }: { id: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <Row label="Carrier" value={shipment.carrierName} />
-          <Row label="Modality" value={shipment.modalityName} />
-          <Row
+          <DetailRow label="Carrier" value={shipment.carrierName} />
+          <DetailRow label="Modality" value={shipment.modalityName} />
+          <DetailRow
             label="Address"
             value={`${shipment.addressStreet}, ${shipment.addressNumber}`}
           />
-          <Row label="Neighborhood" value={`${shipment.addressNeighborhood}`} />
-          <Row
+          <DetailRow
+            label="Neighborhood"
+            value={`${shipment.addressNeighborhood}`}
+          />
+          <DetailRow
             label="City"
             value={`${shipment.addressCity}/${shipment.addressState}`}
           />
-          <Row label="Zip code" value={shipment.addressZipCode} mono />
+          <DetailRow label="Zip code" value={shipment.addressZipCode} mono />
         </CardContent>
       </Card>
       <div className="space-y-4">
@@ -46,31 +53,15 @@ export function ShipmentDetailCard({ id }: { id: string }) {
             </div>
           </CardContent>
         </Card>
-        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-          Current scope: address + status + carrier/modality only. The real-time
-          TrackingEvent timeline is part of the carrier-side queue work, still
-          deferred.
-        </p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Tracking</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TrackingTimeline events={shipment.trackingEvents ?? []} />
+          </CardContent>
+        </Card>
       </div>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between border-b py-2 last:border-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? 'font-mono text-xs' : 'font-medium'}>
-        {value}
-      </span>
     </div>
   );
 }
