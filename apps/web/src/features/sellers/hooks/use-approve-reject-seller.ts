@@ -16,6 +16,7 @@ export function useApproveSeller(id: string) {
       toast.success('Seller approved');
       queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
     },
     onError: (error) => {
       toast.error(
@@ -35,6 +36,7 @@ export function useRejectSeller(id: string) {
       toast.success('Seller rejected');
       queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
     },
     onError: (error) => {
       toast.error(

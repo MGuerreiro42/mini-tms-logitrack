@@ -1,16 +1,15 @@
-import { SellerProfileCard } from '@/features/sellers/components/seller-profile-card';
+import { SellerDashboard } from '@/features/shipments/components/seller-dashboard';
 
-export default function SellerProfilePage() {
+export default function SellerDashboardPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">My profile</h1>
+        <h1 className="text-xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Resolved from your session token — you can never read another seller's
-          record here.
+          Overview of your shipments.
         </p>
       </div>
-      <SellerProfileCard />
+      <SellerDashboard />
     </div>
   );
 }

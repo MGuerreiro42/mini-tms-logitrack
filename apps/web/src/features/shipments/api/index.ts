@@ -1,12 +1,15 @@
 import { apiClient } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
+  AdminShipment,
   CarrierShipment,
   CreateShipmentInput,
   EligibleCarrier,
+  ListAdminShipmentsQuery,
   ListQueueQuery,
   ListShipmentsQuery,
   Shipment,
+  ShipmentStatusCounts,
   UpdateShipmentStatusInput,
 } from '../types';
 
@@ -55,6 +58,16 @@ export function getShipment(id: string, token: string): Promise<Shipment> {
   return apiClient<Shipment>(`/shipments/${id}`, undefined, token);
 }
 
+export function getShipmentStatusCounts(
+  token: string,
+): Promise<ShipmentStatusCounts> {
+  return apiClient<ShipmentStatusCounts>(
+    '/shipments/status-counts',
+    undefined,
+    token,
+  );
+}
+
 export function listQueue(
   query: ListQueueQuery,
   token: string,
@@ -66,6 +79,24 @@ export function listQueue(
   const qs = params.toString();
   return apiClient<Paginated<CarrierShipment>>(
     `/shipments/queue${qs ? `?${qs}` : ''}`,
+    undefined,
+    token,
+  );
+}
+
+export function listAdminShipments(
+  query: ListAdminShipmentsQuery,
+  token: string,
+): Promise<Paginated<AdminShipment>> {
+  const params = new URLSearchParams();
+  if (query.status) params.set('status', query.status);
+  if (query.carrierId) params.set('carrierId', query.carrierId);
+  if (query.sellerId) params.set('sellerId', query.sellerId);
+  if (query.page) params.set('page', String(query.page));
+  if (query.limit) params.set('limit', String(query.limit));
+  const qs = params.toString();
+  return apiClient<Paginated<AdminShipment>>(
+    `/admin/shipments${qs ? `?${qs}` : ''}`,
     undefined,
     token,
   );

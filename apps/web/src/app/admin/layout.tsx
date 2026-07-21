@@ -5,8 +5,10 @@ import type { NavItem } from '@/components/common/nav-list';
 import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
 
 const ADMIN_NAV: NavItem[] = [
+  { name: 'Dashboard', href: '/admin' },
   { name: 'Sellers', href: '/admin/sellers' },
   { name: 'Carriers', href: '/admin/carriers' },
+  { name: 'Monitoring', href: '/admin/monitoring' },
 ];
 
 export default async function AdminLayout({

@@ -21,5 +21,9 @@ export class TrackingListener {
     this.gateway.server
       .to(`carrier:${event.carrierId}`)
       .emit('shipment:updated', event);
+    // Third fan-out target — every status change, platform-wide, reaches the
+    // admin Global Monitoring view live (SCREENS.md), same 'shipment:updated'
+    // "go refetch" message as the other two rooms, not a distinct payload.
+    this.gateway.server.to('admin:monitoring').emit('shipment:updated', event);
   }
 }

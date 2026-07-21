@@ -9,6 +9,7 @@ import {
   ApprovalStatus,
   CarrierRole,
   Prisma,
+  ShipmentStatus,
 } from '../../../generated/prisma/client';
 import {
   type PaginatedResult,
@@ -17,9 +18,11 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
+import type { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
 import type { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
+import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
 const managerInclude = {
   users: {
@@ -124,6 +127,25 @@ export class CarriersService {
     );
   }
 
+  // Same reasoning as SellersService.countsByStatus — one groupBy query
+  // instead of 2 separate `findAll(status, limit:1)` calls.
+  async countsByStatus(): Promise<CarrierStatusCountsResponseDto> {
+    const groups = await this.prisma.carrier.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+
+    const counts: CarrierStatusCountsResponseDto = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+    };
+    for (const group of groups) {
+      counts[group.status] = group._count;
+    }
+    return counts;
+  }
+
   async findOne(id: string): Promise<CarrierResponseDto> {
     const carrier = await this.findCarrierOrThrow(id);
     return this.toResponseDto(carrier);
@@ -169,6 +191,88 @@ export class CarriersService {
     ]);
 
     return this.buildModalityToggles(carrierId);
+  }
+
+  // FLOW.md Frame 24's proposed contract. `shipmentCountsByStatus` reuses
+  // the same groupBy technique as ShipmentsService.countsByStatusForSeller
+  // and SellersService/CarriersService.countsByStatus, just scoped to this
+  // carrierId instead. avgHoursBetweenEvents can't be a groupBy/aggregate —
+  // it needs the gap between *consecutive* events per shipment, which
+  // Prisma has no window-function equivalent for — so it's computed in
+  // application code over each shipment's own ordered event list, not a
+  // raw SQL window function (no $queryRaw precedent anywhere else in this
+  // codebase, and this keeps the logic unit-testable against mocked rows).
+  async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+
+    const [groups, events] = await Promise.all([
+      this.prisma.shipment.groupBy({
+        by: ['status'],
+        where: { carrierId },
+        _count: true,
+      }),
+      this.prisma.trackingEvent.findMany({
+        where: { shipment: { carrierId } },
+        select: { shipmentId: true, createdAt: true },
+        orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
+      }),
+    ]);
+
+    const shipmentCountsByStatus = {
+      PENDING: 0,
+      ACCEPTED: 0,
+      COLLECTED: 0,
+      IN_TRANSIT: 0,
+      OUT_FOR_DELIVERY: 0,
+      DELIVERED: 0,
+      FAILED_DELIVERY: 0,
+      CANCELLED: 0,
+      RETURNED: 0,
+    };
+    for (const group of groups) {
+      shipmentCountsByStatus[group.status] = group._count;
+    }
+    const totalShipments = Object.values(shipmentCountsByStatus).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+
+    // `events` is already ordered by (shipmentId, createdAt) — consecutive
+    // rows for the same shipmentId are consecutive events in time, so a
+    // single pass catches every gap without grouping into a Map first.
+    const gapsInHours: number[] = [];
+    for (let i = 1; i < events.length; i++) {
+      if (events[i].shipmentId === events[i - 1].shipmentId) {
+        const gapMs =
+          events[i].createdAt.getTime() - events[i - 1].createdAt.getTime();
+        gapsInHours.push(gapMs / (1000 * 60 * 60));
+      }
+    }
+    const avgHoursBetweenEvents =
+      gapsInHours.length > 0
+        ? gapsInHours.reduce((sum, hours) => sum + hours, 0) /
+          gapsInHours.length
+        : null;
+
+    const failedDeliveryRate =
+      totalShipments > 0
+        ? (shipmentCountsByStatus[ShipmentStatus.FAILED_DELIVERY] /
+            totalShipments) *
+          100
+        : 0;
+    const returnedRate =
+      totalShipments > 0
+        ? (shipmentCountsByStatus[ShipmentStatus.RETURNED] / totalShipments) *
+          100
+        : 0;
+
+    return {
+      shipmentCountsByStatus,
+      totalShipments,
+      avgHoursBetweenEvents,
+      failedDeliveryRate,
+      returnedRate,
+    };
   }
 
   async getCoverageAreas(userId: string): Promise<CoverageAreaResponseDto[]> {

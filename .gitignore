@@ -26,5 +26,9 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 
+# claude code — settings.json (time compartilhado) fica versionado;
+# settings.local.json e permissões pessoais, não
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo

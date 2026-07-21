@@ -24,12 +24,14 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { CarriersService } from './carriers.service';
+import { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
 import { CarrierResponseDto } from './dto/carrier-response.dto';
 import { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import { CreateCarrierDto } from './dto/create-carrier.dto';
 import { ListCarriersQueryDto } from './dto/list-carriers-query.dto';
 import { SetCarrierModalitiesDto } from './dto/set-carrier-modalities.dto';
 import { SetCoverageAreasDto } from './dto/set-coverage-areas.dto';
+import { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
 @ApiTags('carriers')
 @Controller('carriers')
@@ -140,6 +142,22 @@ export class CarriersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary:
+      "Aggregated metrics scoped to the authenticated carrier's own shipments — read-only for both manager and operator",
+  })
+  @ApiResponse({ status: 200, type: CarrierPerformanceResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not a carrier user' })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.CARRIER_MANAGER, GlobalRole.CARRIER_OPERATOR)
+  @Get('me/performance')
+  performance(@CurrentUser() user: AuthenticatedUser) {
+    return this.carriersService.performance(user.id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
       'List carriers, optionally filtered by status — paginated (default 20/page, max 100)',
   })
   @ApiPaginatedResponse(CarrierResponseDto)
@@ -150,6 +168,21 @@ export class CarriersController {
   @Get()
   findAll(@Query() query: ListCarriersQueryDto) {
     return this.carriersService.findAll(query.status, query.page, query.limit);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Count carriers by ApprovalStatus, platform-wide — admin dashboard',
+  })
+  @ApiResponse({ status: 200, type: CarrierStatusCountsResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not an admin' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.ADMIN)
+  @Get('status-counts')
+  countsByStatus() {
+    return this.carriersService.countsByStatus();
   }
 
   @ApiBearerAuth()

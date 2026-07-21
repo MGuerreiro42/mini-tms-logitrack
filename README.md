@@ -46,17 +46,19 @@ Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DES
 
 ## Code quality
 
-Biome (format + lint, a single binary across both apps) + lefthook (`pre-commit` runs lint-staged, `commit-msg` validates Conventional Commits) + Vitest (`apps/api`, unit and e2e). The root `package.json` exists only to host this tooling — `apps/api` and `apps/web` remain independent pnpm projects. Full reasoning (including the real Biome/Vitest gotchas with NestJS) in [`DESIGN.md` § 12](./DESIGN.md#12-code-quality).
+Biome (format + lint, a single binary across both apps) + lefthook (`pre-commit` runs lint-staged, `commit-msg` validates Conventional Commits) + Vitest (`apps/api`, unit and e2e). The root `package.json` exists only to host this tooling — `apps/api` and `apps/web` remain independent pnpm projects. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
 
 ```bash
 pnpm install   # at the root — installs lefthook/lint-staged/commitlint and activates the git hooks
 ```
 
-CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs on every push/PR to `main` — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 13](./DESIGN.md#13-ci--github-actions).
+CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs on every push/PR to `main` — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
 
 ## Status
 
-Under development. Backend and frontend scaffolding ready and validated; data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables, migration applied); `AuthModule` implemented and tested end-to-end ([`DESIGN.md` § 11](./DESIGN.md#11-backend-module-architecture)); `sellers` self-signup + admin approval + own-modality config implemented ([`DESIGN.md` § 16](./DESIGN.md#16-sellers--first-domain-module-with-real-logic), [§ 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)); `carriers` company registration + admin approval + own-modality/coverage config implemented ([`DESIGN.md` § 17](./DESIGN.md#17-carriers--second-domain-module), [§ 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)); `shipments` creation with real coverage+modality matching implemented ([`DESIGN.md` § 19](./DESIGN.md#19-shipments--the-core-business-logic-slice)). Missing: operator invites, carrier-side shipment queue (claim/status/tracking), `notifications` module logic, frontend features — follow the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) and the architecture sections in `DESIGN.md`.
+Under development, but the core product loop is complete end-to-end and tested (226 backend + 147 frontend tests): data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables); auth + RBAC ([§ 11](./DESIGN.md#11-auth--authorization)); sellers ([§ 12](./DESIGN.md#12-sellers)) and carriers ([§ 13](./DESIGN.md#13-carriers)) self-signup + admin approval + own-modality/coverage config; shipment creation with real coverage+modality matching ([§ 14](./DESIGN.md#14-shipments)); carrier queue (claim/status) and real-time tracking over WebSocket + Redis, including public tracking ([§ 15](./DESIGN.md#15-carrier-queue--real-time-tracking)); dashboards for all three roles, carrier performance metrics, and admin global monitoring ([§ 16](./DESIGN.md#16-dashboards-carrier-performance-and-global-monitoring)).
+
+**Not started yet:** operator invites (`Invite` token flow, Operator Management screen) and the `notifications` module (currently an empty scaffold — will host BullMQ workers for email/SLA alerts). See the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) for these and further-out ideas.
 
 ## License
 

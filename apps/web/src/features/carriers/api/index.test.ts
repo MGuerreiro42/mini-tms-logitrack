@@ -2,8 +2,10 @@ import { apiClient } from '@/services/api-client';
 import {
   approveCarrier,
   getCarrier,
+  getCarrierStatusCounts,
   getMyCarrier,
   getMyCarrierModalities,
+  getMyCarrierPerformance,
   getMyCoverageAreas,
   listCarriers,
   rejectCarrier,
@@ -60,6 +62,16 @@ describe('carriers api', () => {
     );
   });
 
+  it('getCarrierStatusCounts gets /carriers/status-counts', async () => {
+    await getCarrierStatusCounts('token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/carriers/status-counts',
+      undefined,
+      'token',
+    );
+  });
+
   it('approveCarrier patches /carriers/:id/approve', async () => {
     await approveCarrier('carrier-1', 'token');
 
@@ -105,6 +117,16 @@ describe('carriers api', () => {
         method: 'PUT',
         body: JSON.stringify({ modalityIds: ['modality-1', 'modality-2'] }),
       },
+      'token',
+    );
+  });
+
+  it('getMyCarrierPerformance gets /carriers/me/performance', async () => {
+    await getMyCarrierPerformance('token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/carriers/me/performance',
+      undefined,
       'token',
     );
   });

@@ -21,7 +21,8 @@ describe('TrackingListener', () => {
 
     expect(to).toHaveBeenCalledWith('shipment:shipment-1');
     expect(to).toHaveBeenCalledWith('carrier:carrier-1');
+    expect(to).toHaveBeenCalledWith('admin:monitoring');
     expect(emit).toHaveBeenCalledWith('shipment:updated', event);
-    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenCalledTimes(3);
   });
 });

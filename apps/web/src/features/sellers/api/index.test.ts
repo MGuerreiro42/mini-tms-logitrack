@@ -4,6 +4,7 @@ import {
   getMyModalities,
   getMySeller,
   getSeller,
+  getSellerStatusCounts,
   listSellers,
   rejectSeller,
   setMyModalities,
@@ -53,6 +54,16 @@ describe('sellers api', () => {
 
     expect(apiClient).toHaveBeenCalledWith(
       '/sellers/seller-1',
+      undefined,
+      'token',
+    );
+  });
+
+  it('getSellerStatusCounts gets /sellers/status-counts', async () => {
+    await getSellerStatusCounts('token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/sellers/status-counts',
       undefined,
       'token',
     );

@@ -1,5 +1,8 @@
+import type { ShipmentStatusCounts } from '@/features/shipments/types';
 import type { ApprovalStatus } from '@/lib/status-colors';
 import type { PaginationQuery } from '@/types/pagination';
+
+export type ApprovalStatusCounts = Record<ApprovalStatus, number>;
 
 export interface Carrier {
   id: string;
@@ -31,4 +34,12 @@ export interface CoverageArea {
 export interface CoverageAreaInput {
   state: string;
   city?: string;
+}
+
+export interface CarrierPerformance {
+  shipmentCountsByStatus: ShipmentStatusCounts;
+  totalShipments: number;
+  avgHoursBetweenEvents: number | null;
+  failedDeliveryRate: number;
+  returnedRate: number;
 }

@@ -22,6 +22,7 @@ describe('ShipmentsService', () => {
   const shipmentFindMany = vi.fn();
   const shipmentFindFirst = vi.fn();
   const shipmentCount = vi.fn();
+  const shipmentGroupBy = vi.fn();
   const shipmentUpdateMany = vi.fn();
   const shipmentFindUniqueOrThrow = vi.fn();
   const trackingEventCreate = vi.fn();
@@ -109,6 +110,7 @@ describe('ShipmentsService', () => {
     shipmentFindMany.mockReset();
     shipmentFindFirst.mockReset();
     shipmentCount.mockReset();
+    shipmentGroupBy.mockReset();
     shipmentUpdateMany.mockReset();
     shipmentFindUniqueOrThrow.mockReset();
     trackingEventCreate.mockReset();
@@ -146,6 +148,7 @@ describe('ShipmentsService', () => {
               findFirst: shipmentFindFirst,
               findUniqueOrThrow: shipmentFindUniqueOrThrow,
               count: shipmentCount,
+              groupBy: shipmentGroupBy,
               updateMany: shipmentUpdateMany,
             },
             trackingEvent: { create: trackingEventCreate },
@@ -307,6 +310,43 @@ describe('ShipmentsService', () => {
     });
   });
 
+  describe('countsByStatusForSeller', () => {
+    it('fills every ShipmentStatus with 0 by default, then overlays the groupBy result', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentGroupBy.mockResolvedValue([
+        { status: 'PENDING', _count: 2 },
+        { status: 'DELIVERED', _count: 5 },
+      ]);
+
+      const result = await shipmentsService.countsByStatusForSeller('user-1');
+
+      expect(shipmentGroupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        where: { sellerId: 'seller-1' },
+        _count: true,
+      });
+      expect(result).toEqual({
+        PENDING: 2,
+        ACCEPTED: 0,
+        COLLECTED: 0,
+        IN_TRANSIT: 0,
+        OUT_FOR_DELIVERY: 0,
+        DELIVERED: 5,
+        FAILED_DELIVERY: 0,
+        CANCELLED: 0,
+        RETURNED: 0,
+      });
+    });
+
+    it('throws NotFoundException when the seller is not found', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(
+        shipmentsService.countsByStatusForSeller('user-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('findAllForCarrier', () => {
     it('scopes the list to the carrier resolved from userId', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
@@ -328,6 +368,48 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.findAllForCarrier('stranger'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('findAllForAdmin', () => {
+    it('applies no ownership scoping and includes the carrier company name', async () => {
+      shipmentFindMany.mockResolvedValue([
+        { ...carrierShipment, carrier: { companyName: 'Fast Freight' } },
+      ]);
+      shipmentCount.mockResolvedValue(1);
+
+      const result = await shipmentsService.findAllForAdmin();
+
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
+      expect(result.data[0].carrierCompanyName).toBe('Fast Freight');
+      expect(result.data[0].sellerCompanyName).toBe('Acme Store');
+    });
+
+    it('filters by status, carrierId, and sellerId together when provided', async () => {
+      shipmentFindMany.mockResolvedValue([]);
+      shipmentCount.mockResolvedValue(0);
+
+      await shipmentsService.findAllForAdmin(
+        'DELIVERED',
+        'carrier-1',
+        'seller-1',
+        2,
+        10,
+      );
+
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: 'DELIVERED',
+            carrierId: 'carrier-1',
+            sellerId: 'seller-1',
+          },
+          skip: 10,
+          take: 10,
+        }),
+      );
     });
   });
 

@@ -13,6 +13,11 @@ interface UseShipmentTrackingOptions {
   // Subscribes to the caller's own carrier queue room — no id needed, the
   // backend derives the carrier from the authenticated socket itself.
   subscribeToQueue?: boolean;
+  // Subscribes to the shared admin:monitoring room — server-side gated to
+  // ADMIN sockets only (TrackingGateway.handleSubscribeMonitoring silently
+  // no-ops for anyone else), so this is safe to pass unconditionally from
+  // the admin monitoring page without a client-side role check of its own.
+  subscribeToMonitoring?: boolean;
 }
 
 // Connects on mount, disconnects on unmount — a per-page WS lifecycle, not a
@@ -23,6 +28,7 @@ interface UseShipmentTrackingOptions {
 export function useShipmentTracking({
   shipmentId,
   subscribeToQueue,
+  subscribeToMonitoring,
 }: UseShipmentTrackingOptions): void {
   // `useSession()` re-parses the cookie on every call and returns a brand
   // new object each time, even when its contents are unchanged — depending
@@ -80,6 +86,9 @@ export function useShipmentTracking({
       if (subscribeToQueue) {
         socket.emit('subscribe:queue');
       }
+      if (subscribeToMonitoring) {
+        socket.emit('subscribe:monitoring');
+      }
       invalidate();
     }
 
@@ -103,5 +112,5 @@ export function useShipmentTracking({
       socket.off('connect', subscribeAndCatchUp);
       socket.disconnect();
     };
-  }, [token, shipmentId, subscribeToQueue, queryClient]);
+  }, [token, shipmentId, subscribeToQueue, subscribeToMonitoring, queryClient]);
 }

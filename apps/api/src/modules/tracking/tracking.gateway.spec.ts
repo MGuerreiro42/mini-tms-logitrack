@@ -233,4 +233,27 @@ describe('TrackingGateway', () => {
       expect(socket.join).not.toHaveBeenCalled();
     });
   });
+
+  describe('handleSubscribeMonitoring', () => {
+    it('joins the shared admin room for an ADMIN socket', () => {
+      const socket = makeSocket();
+      socket.data = { user: { role: 'ADMIN' } };
+
+      gateway.handleSubscribeMonitoring(socket as never);
+
+      expect(socket.join).toHaveBeenCalledWith('admin:monitoring');
+    });
+
+    it('no-ops for a non-admin socket', () => {
+      const socket = makeSocket();
+      socket.data = {
+        user: { role: 'CARRIER_MANAGER' },
+        carrierId: 'carrier-1',
+      };
+
+      gateway.handleSubscribeMonitoring(socket as never);
+
+      expect(socket.join).not.toHaveBeenCalled();
+    });
+  });
 });

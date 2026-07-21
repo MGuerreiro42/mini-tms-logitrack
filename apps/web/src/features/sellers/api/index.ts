@@ -1,7 +1,12 @@
 import type { ModalityToggle } from '@/features/modalities/types';
 import { apiClient } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
-import type { ListSellersQuery, Seller, SellerSignupInput } from '../types';
+import type {
+  ApprovalStatusCounts,
+  ListSellersQuery,
+  Seller,
+  SellerSignupInput,
+} from '../types';
 
 export function signupSeller(input: SellerSignupInput): Promise<Seller> {
   return apiClient<Seller>('/sellers', {
@@ -28,6 +33,16 @@ export function listSellers(
 
 export function getSeller(id: string, token: string): Promise<Seller> {
   return apiClient<Seller>(`/sellers/${id}`, undefined, token);
+}
+
+export function getSellerStatusCounts(
+  token: string,
+): Promise<ApprovalStatusCounts> {
+  return apiClient<ApprovalStatusCounts>(
+    '/sellers/status-counts',
+    undefined,
+    token,
+  );
 }
 
 export function approveSeller(id: string, token: string): Promise<Seller> {

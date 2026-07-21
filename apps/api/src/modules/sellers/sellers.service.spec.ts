@@ -18,6 +18,7 @@ describe('SellersService', () => {
   const sellerFindUnique = vi.fn();
   const sellerUpdate = vi.fn();
   const sellerCount = vi.fn();
+  const sellerGroupBy = vi.fn();
   const deliveryModalityCount = vi.fn();
   const deliveryModalityFindMany = vi.fn();
   const sellerModalityFindMany = vi.fn();
@@ -56,6 +57,7 @@ describe('SellersService', () => {
     sellerFindUnique.mockReset();
     sellerUpdate.mockReset();
     sellerCount.mockReset();
+    sellerGroupBy.mockReset();
     deliveryModalityCount.mockReset();
     deliveryModalityFindMany.mockReset();
     sellerModalityFindMany.mockReset();
@@ -76,6 +78,7 @@ describe('SellersService', () => {
               findUnique: sellerFindUnique,
               update: sellerUpdate,
               count: sellerCount,
+              groupBy: sellerGroupBy,
             },
             deliveryModality: {
               count: deliveryModalityCount,
@@ -224,6 +227,23 @@ describe('SellersService', () => {
         limit: 10,
         totalPages: 5,
       });
+    });
+  });
+
+  describe('countsByStatus', () => {
+    it('fills every ApprovalStatus with 0 by default, then overlays the groupBy result', async () => {
+      sellerGroupBy.mockResolvedValue([
+        { status: 'PENDING', _count: 3 },
+        { status: 'APPROVED', _count: 7 },
+      ]);
+
+      const result = await sellersService.countsByStatus();
+
+      expect(sellerGroupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        _count: true,
+      });
+      expect(result).toEqual({ PENDING: 3, APPROVED: 7, REJECTED: 0 });
     });
   });
 

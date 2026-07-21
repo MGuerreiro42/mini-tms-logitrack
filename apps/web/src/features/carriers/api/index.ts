@@ -2,7 +2,9 @@ import type { ModalityToggle } from '@/features/modalities/types';
 import { apiClient } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
+  ApprovalStatusCounts,
   Carrier,
+  CarrierPerformance,
   CarrierSignupInput,
   CoverageArea,
   CoverageAreaInput,
@@ -34,6 +36,16 @@ export function listCarriers(
 
 export function getCarrier(id: string, token: string): Promise<Carrier> {
   return apiClient<Carrier>(`/carriers/${id}`, undefined, token);
+}
+
+export function getCarrierStatusCounts(
+  token: string,
+): Promise<ApprovalStatusCounts> {
+  return apiClient<ApprovalStatusCounts>(
+    '/carriers/status-counts',
+    undefined,
+    token,
+  );
 }
 
 export function approveCarrier(id: string, token: string): Promise<Carrier> {
@@ -80,6 +92,16 @@ export function setMyCarrierModalities(
 export function getMyCoverageAreas(token: string): Promise<CoverageArea[]> {
   return apiClient<CoverageArea[]>(
     '/carriers/me/coverage-areas',
+    undefined,
+    token,
+  );
+}
+
+export function getMyCarrierPerformance(
+  token: string,
+): Promise<CarrierPerformance> {
+  return apiClient<CarrierPerformance>(
+    '/carriers/me/performance',
     undefined,
     token,
   );

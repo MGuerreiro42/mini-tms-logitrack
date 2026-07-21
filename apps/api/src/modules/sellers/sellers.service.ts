@@ -15,6 +15,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
+import type { SellerStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
 type SellerWithUser = Prisma.SellerGetPayload<{ include: { user: true } }>;
 
@@ -111,6 +112,26 @@ export class SellersService {
       page,
       limit,
     );
+  }
+
+  // One query, not the 2 separate `findAll(status, limit:1)` calls the admin
+  // dashboard used before — those each ran a full joined `findMany` server
+  // side just to read `meta.total` off it (see DESIGN.md's dashboard slice).
+  async countsByStatus(): Promise<SellerStatusCountsResponseDto> {
+    const groups = await this.prisma.seller.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+
+    const counts: SellerStatusCountsResponseDto = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+    };
+    for (const group of groups) {
+      counts[group.status] = group._count;
+    }
+    return counts;
   }
 
   async findOne(id: string): Promise<SellerResponseDto> {
