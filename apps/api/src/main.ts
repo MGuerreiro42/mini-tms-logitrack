@@ -32,6 +32,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(configService.get('PORT', { infer: true }));
+  // Explicit 0.0.0.0, not just a bare port: Railway's edge proxy connects to
+  // the container over IPv4, and Node's default listen(port) with no host
+  // can resolve to an IPv6-only bind depending on the runtime image — the
+  // app then boots fine but is unreachable from outside (502 at the edge,
+  // no request ever logged by the app itself).
+  await app.listen(configService.get('PORT', { infer: true }), '0.0.0.0');
 }
 void bootstrap();
