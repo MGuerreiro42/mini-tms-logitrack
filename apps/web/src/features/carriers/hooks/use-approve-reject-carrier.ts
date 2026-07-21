@@ -16,6 +16,9 @@ export function useApproveCarrier(id: string) {
       toast.success('Carrier approved');
       queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: ['carriers', 'status-counts'],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -35,6 +38,9 @@ export function useRejectCarrier(id: string) {
       toast.success('Carrier rejected');
       queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: ['carriers', 'status-counts'],
+      });
     },
     onError: (error) => {
       toast.error(

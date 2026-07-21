@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAdminDashboard } from '../hooks/use-admin-dashboard';
 
 export function AdminDashboard() {
-  const { isLoading, counts } = useAdminDashboard();
+  const { isLoading, isError, counts } = useAdminDashboard();
 
   if (isLoading) {
     return (
@@ -17,9 +17,17 @@ export function AdminDashboard() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        Couldn't load the dashboard. Please refresh the page.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <StatTile label="Sellers" value={counts.sellersTotal} />
         <StatTile label="Carriers" value={counts.carriersTotal} />
       </div>

@@ -27,6 +27,7 @@ import { CreateSellerDto } from './dto/create-seller.dto';
 import { ListSellersQueryDto } from './dto/list-sellers-query.dto';
 import { SellerResponseDto } from './dto/seller-response.dto';
 import { SetModalitiesDto } from './dto/set-modalities.dto';
+import { SellerStatusCountsResponseDto } from './dto/status-counts-response.dto';
 import { SellersService } from './sellers.service';
 
 @ApiTags('sellers')
@@ -111,6 +112,20 @@ export class SellersController {
   @Get()
   findAll(@Query() query: ListSellersQueryDto) {
     return this.sellersService.findAll(query.status, query.page, query.limit);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Count sellers by ApprovalStatus, platform-wide — admin dashboard',
+  })
+  @ApiResponse({ status: 200, type: SellerStatusCountsResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not an admin' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.ADMIN)
+  @Get('status-counts')
+  countsByStatus() {
+    return this.sellersService.countsByStatus();
   }
 
   @ApiBearerAuth()

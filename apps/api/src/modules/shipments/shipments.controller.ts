@@ -31,6 +31,7 @@ import { EligibleCarriersQueryDto } from './dto/eligible-carriers-query.dto';
 import { ListQueueQueryDto } from './dto/list-queue-query.dto';
 import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
+import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { ShipmentsService } from './shipments.service';
 
@@ -197,6 +198,22 @@ export class ShipmentsController {
     @Body() dto: UpdateShipmentStatusDto,
   ) {
     return this.shipmentsService.updateStatus(user.id, id, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Count the authenticated seller's own shipments by ShipmentStatus — seller dashboard",
+  })
+  @ApiResponse({ status: 200, type: ShipmentStatusCountsResponseDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not a seller' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.SELLER)
+  @Get('status-counts')
+  countsByStatus(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.countsByStatusForSeller(user.id);
   }
 
   @ApiBearerAuth()

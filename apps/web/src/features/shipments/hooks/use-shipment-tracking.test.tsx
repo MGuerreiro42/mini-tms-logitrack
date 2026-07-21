@@ -90,7 +90,7 @@ describe('useShipmentTracking', () => {
     );
   });
 
-  it('invalidates shipment detail, queue detail, and queue list on shipment:updated', () => {
+  it('invalidates shipment detail, queue detail, queue list, and admin list on shipment:updated', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     const queryClient = new QueryClient();
@@ -114,6 +114,22 @@ describe('useShipmentTracking', () => {
     expect(invalidateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['shipments', 'queue', 'list'] }),
     );
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['shipments', 'admin', 'list'] }),
+    );
+  });
+
+  it('subscribes to the monitoring room when subscribeToMonitoring is set', () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    const queryClient = new QueryClient();
+
+    renderHook(() => useShipmentTracking({ subscribeToMonitoring: true }), {
+      wrapper: makeWrapper(queryClient),
+    });
+    socket.trigger('connect');
+
+    expect(socket.emit).toHaveBeenCalledWith('subscribe:monitoring');
   });
 
   it('invalidates on every (re)connect, not just on a received message (regression: a message missed during a disconnect must not leave the view stuck on stale data)', () => {

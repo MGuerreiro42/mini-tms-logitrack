@@ -19,6 +19,7 @@ describe('CarriersService', () => {
   const carrierFindUnique = vi.fn();
   const carrierUpdate = vi.fn();
   const carrierCount = vi.fn();
+  const carrierGroupBy = vi.fn();
   const carrierUserFindUnique = vi.fn();
   const deliveryModalityCount = vi.fn();
   const deliveryModalityFindMany = vi.fn();
@@ -28,6 +29,8 @@ describe('CarriersService', () => {
   const carrierCoverageAreaFindMany = vi.fn();
   const carrierCoverageAreaDeleteMany = vi.fn();
   const carrierCoverageAreaCreateMany = vi.fn();
+  const shipmentGroupBy = vi.fn();
+  const trackingEventFindMany = vi.fn();
   const transaction = vi.fn((arg) =>
     typeof arg === 'function'
       ? arg({
@@ -64,6 +67,7 @@ describe('CarriersService', () => {
     carrierFindUnique.mockReset();
     carrierUpdate.mockReset();
     carrierCount.mockReset();
+    carrierGroupBy.mockReset();
     carrierUserFindUnique.mockReset();
     deliveryModalityCount.mockReset();
     deliveryModalityFindMany.mockReset();
@@ -73,6 +77,8 @@ describe('CarriersService', () => {
     carrierCoverageAreaFindMany.mockReset();
     carrierCoverageAreaDeleteMany.mockReset();
     carrierCoverageAreaCreateMany.mockReset();
+    shipmentGroupBy.mockReset();
+    trackingEventFindMany.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -88,6 +94,7 @@ describe('CarriersService', () => {
               findUnique: carrierFindUnique,
               update: carrierUpdate,
               count: carrierCount,
+              groupBy: carrierGroupBy,
             },
             carrierUser: { findUnique: carrierUserFindUnique },
             deliveryModality: {
@@ -104,6 +111,8 @@ describe('CarriersService', () => {
               deleteMany: carrierCoverageAreaDeleteMany,
               createMany: carrierCoverageAreaCreateMany,
             },
+            shipment: { groupBy: shipmentGroupBy },
+            trackingEvent: { findMany: trackingEventFindMany },
           },
         },
         { provide: PasswordService, useValue: { hash } },
@@ -237,6 +246,23 @@ describe('CarriersService', () => {
         limit: 10,
         totalPages: 5,
       });
+    });
+  });
+
+  describe('countsByStatus', () => {
+    it('fills every ApprovalStatus with 0 by default, then overlays the groupBy result', async () => {
+      carrierGroupBy.mockResolvedValue([
+        { status: 'PENDING', _count: 1 },
+        { status: 'APPROVED', _count: 4 },
+      ]);
+
+      const result = await carriersService.countsByStatus();
+
+      expect(carrierGroupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        _count: true,
+      });
+      expect(result).toEqual({ PENDING: 1, APPROVED: 4, REJECTED: 0 });
     });
   });
 
@@ -421,6 +447,105 @@ describe('CarriersService', () => {
       carrierUserFindUnique.mockResolvedValue(null);
 
       await expect(carriersService.getCoverageAreas('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('performance', () => {
+    it('fills every ShipmentStatus with 0, computes rates, and averages the gap between consecutive events per shipment', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([
+        { status: 'DELIVERED', _count: 3 },
+        { status: 'FAILED_DELIVERY', _count: 1 },
+      ]);
+      trackingEventFindMany.mockResolvedValue([
+        // shipment-1: two gaps, 2h and 4h apart
+        {
+          shipmentId: 'shipment-1',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
+        {
+          shipmentId: 'shipment-1',
+          createdAt: new Date('2026-01-01T02:00:00Z'),
+        },
+        {
+          shipmentId: 'shipment-1',
+          createdAt: new Date('2026-01-01T06:00:00Z'),
+        },
+        // shipment-2: a single event, no gap to measure
+        {
+          shipmentId: 'shipment-2',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+        },
+      ]);
+
+      const result = await carriersService.performance('user-1');
+
+      expect(shipmentGroupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        where: { carrierId: 'carrier-1' },
+        _count: true,
+      });
+      expect(trackingEventFindMany).toHaveBeenCalledWith({
+        where: { shipment: { carrierId: 'carrier-1' } },
+        select: { shipmentId: true, createdAt: true },
+        orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
+      });
+      expect(result.shipmentCountsByStatus).toEqual({
+        PENDING: 0,
+        ACCEPTED: 0,
+        COLLECTED: 0,
+        IN_TRANSIT: 0,
+        OUT_FOR_DELIVERY: 0,
+        DELIVERED: 3,
+        FAILED_DELIVERY: 1,
+        CANCELLED: 0,
+        RETURNED: 0,
+      });
+      expect(result.totalShipments).toBe(4);
+      expect(result.avgHoursBetweenEvents).toBe(3); // (2 + 4) / 2
+      expect(result.failedDeliveryRate).toBe(25); // 1/4 * 100
+      expect(result.returnedRate).toBe(0);
+    });
+
+    it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([{ status: 'PENDING', _count: 2 }]);
+      trackingEventFindMany.mockResolvedValue([
+        {
+          shipmentId: 'shipment-1',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
+        {
+          shipmentId: 'shipment-2',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+        },
+      ]);
+
+      const result = await carriersService.performance('user-1');
+
+      expect(result.avgHoursBetweenEvents).toBeNull();
+      expect(result.failedDeliveryRate).toBe(0);
+    });
+
+    it('returns all-zero rates and a null average with no shipments at all', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([]);
+      trackingEventFindMany.mockResolvedValue([]);
+
+      const result = await carriersService.performance('user-1');
+
+      expect(result.totalShipments).toBe(0);
+      expect(result.avgHoursBetweenEvents).toBeNull();
+      expect(result.failedDeliveryRate).toBe(0);
+      expect(result.returnedRate).toBe(0);
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(carriersService.performance('user-1')).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -11,6 +11,7 @@ const CARRIER_NAV: NavItem[] = [
   { name: 'Company', href: '/carrier' },
   { name: 'Shipment queue', href: '/carrier/queue' },
   { name: 'Modalities & Coverage', href: '/carrier/settings' },
+  { name: 'Performance', href: '/carrier/performance' },
 ];
 
 export default async function CarrierLayout({

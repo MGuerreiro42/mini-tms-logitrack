@@ -2,32 +2,21 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { useSession } from '@/hooks/use-session';
-import { listShipments } from '../api';
-import type { ShipmentStatus } from '../types';
-
-// No dedicated aggregation endpoint — the dashboard mock itself notes
-// `GET /shipments (agregado no client)`. `limit: 1` on the per-status calls
-// means only `meta.total` is read from them, never `data`; the unfiltered
-// call doubles as both "recent shipments" (its `data`) and the grand total
-// (its `meta.total`), so this is 4 requests, not 5.
-const DASHBOARD_STATUSES: ShipmentStatus[] = [
-  'PENDING',
-  'IN_TRANSIT',
-  'DELIVERED',
-];
+import { sumRecord } from '@/lib/sum-record';
+import { getShipmentStatusCounts, listShipments } from '../api';
 
 export function useSellerDashboard() {
   const session = useSession();
   const token = session?.token ?? '';
   const enabled = Boolean(session);
 
-  const [pending, inTransit, delivered, recent] = useQueries({
+  const [counts, recent] = useQueries({
     queries: [
-      ...DASHBOARD_STATUSES.map((status) => ({
-        queryKey: ['shipments', 'dashboard-count', status],
-        queryFn: () => listShipments({ status, page: 1, limit: 1 }, token),
+      {
+        queryKey: ['shipments', 'status-counts'],
+        queryFn: () => getShipmentStatusCounts(token),
         enabled,
-      })),
+      },
       {
         queryKey: ['shipments', 'dashboard-recent'],
         queryFn: () => listShipments({ page: 1, limit: 5 }, token),
@@ -36,15 +25,35 @@ export function useSellerDashboard() {
     ],
   });
 
+  const total = counts.data ? sumRecord(counts.data) : 0;
+  // Everything that isn't one of the 3 tiles shown up front — surfaced as
+  // its own number rather than silently missing, so the tiles always add up
+  // to Total instead of leaving an unexplained gap (a real bug found in
+  // code review: ACCEPTED/COLLECTED/OUT_FOR_DELIVERY/FAILED_DELIVERY/
+  // CANCELLED/RETURNED used to count toward Total with no tile of their own).
+  const other = counts.data
+    ? total -
+      counts.data.PENDING -
+      counts.data.IN_TRANSIT -
+      counts.data.DELIVERED
+    : 0;
+
   return {
-    isLoading: enabled
-      ? [pending, inTransit, delivered, recent].some((r) => r.isLoading)
-      : false,
+    // `isPending`, not `isLoading` — a query disabled because the session
+    // hasn't hydrated yet (true during SSR, since useSession() reads
+    // document.cookie and document doesn't exist server-side) reports
+    // isLoading:false but isPending:true. Using isLoading here previously
+    // meant the server-rendered HTML (and the first client paint before
+    // hydration catches up) showed the "no shipments yet" empty state
+    // instead of a loading indicator, even for a seller with real shipments.
+    isLoading: [counts, recent].some((r) => r.isPending),
+    isError: [counts, recent].some((r) => r.isError),
     counts: {
-      pending: pending.data?.meta.total ?? 0,
-      inTransit: inTransit.data?.meta.total ?? 0,
-      delivered: delivered.data?.meta.total ?? 0,
-      total: recent.data?.meta.total ?? 0,
+      pending: counts.data?.PENDING ?? 0,
+      inTransit: counts.data?.IN_TRANSIT ?? 0,
+      delivered: counts.data?.DELIVERED ?? 0,
+      other,
+      total,
     },
     recentShipments: recent.data?.data ?? [],
   };

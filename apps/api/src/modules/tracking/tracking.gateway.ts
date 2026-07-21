@@ -134,4 +134,15 @@ export class TrackingGateway implements OnGatewayInit {
     if (!data?.carrierId) return;
     client.join(`carrier:${data.carrierId}`);
   }
+
+  // Single shared room, gated by role rather than any resolved id (unlike
+  // `carrier:{carrierId}` above) — same ownership-scoping discipline as
+  // every other room, just scoped to "is this caller an admin at all"
+  // instead of "does this caller own this specific resource".
+  @SubscribeMessage('subscribe:monitoring')
+  handleSubscribeMonitoring(client: Socket): void {
+    const data = client.data as SocketData;
+    if (data.user.role !== 'ADMIN') return;
+    client.join('admin:monitoring');
+  }
 }

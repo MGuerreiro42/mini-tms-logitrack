@@ -16,6 +16,12 @@ export function useCreateShipment() {
       createShipment(input, session?.token ?? ''),
     onSuccess: (shipment) => {
       queryClient.invalidateQueries({ queryKey: ['shipments', 'list'] });
+      queryClient.invalidateQueries({
+        queryKey: ['shipments', 'status-counts'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['shipments', 'dashboard-recent'],
+      });
       router.push(`/seller/shipments/${shipment.id}`);
     },
   });

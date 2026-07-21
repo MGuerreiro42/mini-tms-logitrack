@@ -5,6 +5,8 @@ import {
   getEligibleCarriers,
   getQueueShipment,
   getShipment,
+  getShipmentStatusCounts,
+  listAdminShipments,
   listQueue,
   listShipments,
   updateShipmentStatus,
@@ -68,6 +70,45 @@ describe('shipments api', () => {
 
     expect(apiClient).toHaveBeenCalledWith(
       '/shipments/shipment-1',
+      undefined,
+      'token',
+    );
+  });
+
+  it('getShipmentStatusCounts gets /shipments/status-counts', async () => {
+    await getShipmentStatusCounts('token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/status-counts',
+      undefined,
+      'token',
+    );
+  });
+
+  it('listAdminShipments omits query params that are not provided', async () => {
+    await listAdminShipments({}, 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/admin/shipments',
+      undefined,
+      'token',
+    );
+  });
+
+  it('listAdminShipments includes only the query params that are provided', async () => {
+    await listAdminShipments(
+      {
+        status: 'DELIVERED',
+        carrierId: 'carrier-1',
+        sellerId: 'seller-1',
+        page: 2,
+        limit: 10,
+      },
+      'token',
+    );
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/admin/shipments?status=DELIVERED&carrierId=carrier-1&sellerId=seller-1&page=2&limit=10',
       undefined,
       'token',
     );

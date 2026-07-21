@@ -11,6 +11,8 @@ export type ShipmentStatus =
   | 'CANCELLED'
   | 'RETURNED';
 
+export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
+
 export interface TrackingEvent {
   id: string;
   status: ShipmentStatus;
@@ -63,6 +65,20 @@ export interface CarrierShipment {
   addressZipCode: string;
   createdAt: string;
   trackingEvents?: TrackingEvent[];
+}
+
+// The admin-facing counterpart to CarrierShipment — same shape (seller info
+// already included there) plus the carrier's own name, since an admin
+// viewing platform-wide traffic has no "my own carrier" context to already
+// know it from.
+export interface AdminShipment extends CarrierShipment {
+  carrierCompanyName: string;
+}
+
+export interface ListAdminShipmentsQuery extends PaginationQuery {
+  status?: ShipmentStatus;
+  carrierId?: string;
+  sellerId?: string;
 }
 
 export interface CreateShipmentInput {

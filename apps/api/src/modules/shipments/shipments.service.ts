@@ -18,6 +18,7 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -26,6 +27,7 @@ import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
+import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
@@ -64,6 +66,17 @@ type ShipmentForCarrier = Prisma.ShipmentGetPayload<{
 
 type ShipmentForCarrierDetail = Prisma.ShipmentGetPayload<{
   include: typeof carrierDetailInclude;
+}>;
+
+// Admin-facing reads need the carrier's own name too — the queue include
+// never needed it (a carrier's own queue view already knows who it is).
+const adminShipmentInclude = {
+  ...carrierQueueInclude,
+  carrier: { select: { companyName: true } },
+} satisfies Prisma.ShipmentInclude;
+
+type ShipmentForAdmin = Prisma.ShipmentGetPayload<{
+  include: typeof adminShipmentInclude;
 }>;
 
 @Injectable()
@@ -249,6 +262,44 @@ export class ShipmentsService {
     );
   }
 
+  // One groupBy query, replacing the 3 separate `findAllForSeller(status,
+  // limit:1)` calls the seller dashboard used to make (each ran a full
+  // joined `findMany` server-side just to read `meta.total`). Also fixes a
+  // real bug those 3 calls had: they only covered PENDING/IN_TRANSIT/
+  // DELIVERED, so a "Total" tile built from a 4th, unfiltered call never
+  // reconciled with the sum of the other three whenever a shipment sat in
+  // any of the other 6 statuses. This covers all of them, always.
+  async countsByStatusForSeller(
+    userId: string,
+  ): Promise<ShipmentStatusCountsResponseDto> {
+    const seller = await this.prisma.seller.findUnique({ where: { userId } });
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+
+    const groups = await this.prisma.shipment.groupBy({
+      by: ['status'],
+      where: { sellerId: seller.id },
+      _count: true,
+    });
+
+    const counts: ShipmentStatusCountsResponseDto = {
+      PENDING: 0,
+      ACCEPTED: 0,
+      COLLECTED: 0,
+      IN_TRANSIT: 0,
+      OUT_FOR_DELIVERY: 0,
+      DELIVERED: 0,
+      FAILED_DELIVERY: 0,
+      CANCELLED: 0,
+      RETURNED: 0,
+    };
+    for (const group of groups) {
+      counts[group.status] = group._count;
+    }
+    return counts;
+  }
+
   async findOneForSeller(
     userId: string,
     id: string,
@@ -339,6 +390,41 @@ export class ShipmentsService {
 
     return paginate(
       shipments.map((shipment) => this.toCarrierResponseDto(shipment)),
+      total,
+      page,
+      limit,
+    );
+  }
+
+  // No ownership scoping at all, unlike every other list method here — this
+  // is the one read meant to see across every seller/carrier at once
+  // (SCREENS.md's Global Monitoring), gated by @Roles(ADMIN) at the
+  // controller instead of a WHERE clause derived from the caller's own id.
+  async findAllForAdmin(
+    status?: ShipmentStatus,
+    carrierId?: string,
+    sellerId?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<AdminShipmentResponseDto>> {
+    const where = {
+      ...(status ? { status } : {}),
+      ...(carrierId ? { carrierId } : {}),
+      ...(sellerId ? { sellerId } : {}),
+    };
+    const [shipments, total] = await Promise.all([
+      this.prisma.shipment.findMany({
+        where,
+        include: adminShipmentInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.shipment.count({ where }),
+    ]);
+
+    return paginate(
+      shipments.map((shipment) => this.toAdminResponseDto(shipment)),
       total,
       page,
       limit,
@@ -571,6 +657,18 @@ export class ShipmentsService {
       trackingEvents: shipment.trackingEvents.map((event) =>
         this.toTrackingEventDto(event),
       ),
+    };
+  }
+
+  // `ShipmentForAdmin` is a structural superset of `ShipmentForCarrier`
+  // (adminShipmentInclude spreads carrierQueueInclude, plus `carrier`) — so
+  // toCarrierResponseDto's own field mapping is reused as-is, not duplicated.
+  private toAdminResponseDto(
+    shipment: ShipmentForAdmin,
+  ): AdminShipmentResponseDto {
+    return {
+      ...this.toCarrierResponseDto(shipment),
+      carrierCompanyName: shipment.carrier.companyName,
     };
   }
 
