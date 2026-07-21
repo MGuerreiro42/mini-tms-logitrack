@@ -3,14 +3,14 @@
 import { useQueries } from '@tanstack/react-query';
 import { useSession } from '@/hooks/use-session';
 import { sumRecord } from '@/lib/sum-record';
-import { getShipmentStatusCounts, listShipments } from '../api';
+import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
 
 export function useSellerDashboard() {
   const session = useSession();
   const token = session?.token ?? '';
   const enabled = Boolean(session);
 
-  const [counts, recent] = useQueries({
+  const [counts, recent, slaSummary] = useQueries({
     queries: [
       {
         queryKey: ['shipments', 'status-counts'],
@@ -20,6 +20,11 @@ export function useSellerDashboard() {
       {
         queryKey: ['shipments', 'dashboard-recent'],
         queryFn: () => listShipments({ page: 1, limit: 5 }, token),
+        enabled,
+      },
+      {
+        queryKey: ['shipments', 'sla-summary'],
+        queryFn: () => getSlaSummary(token),
         enabled,
       },
     ],
@@ -46,8 +51,8 @@ export function useSellerDashboard() {
     // meant the server-rendered HTML (and the first client paint before
     // hydration catches up) showed the "no shipments yet" empty state
     // instead of a loading indicator, even for a seller with real shipments.
-    isLoading: [counts, recent].some((r) => r.isPending),
-    isError: [counts, recent].some((r) => r.isError),
+    isLoading: [counts, recent, slaSummary].some((r) => r.isPending),
+    isError: [counts, recent, slaSummary].some((r) => r.isError),
     counts: {
       pending: counts.data?.PENDING ?? 0,
       inTransit: counts.data?.IN_TRANSIT ?? 0,
@@ -56,5 +61,6 @@ export function useSellerDashboard() {
       total,
     },
     recentShipments: recent.data?.data ?? [],
+    slaSummary: slaSummary.data ?? [],
   };
 }

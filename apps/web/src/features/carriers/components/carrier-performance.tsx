@@ -4,9 +4,13 @@ import { StatTile } from '@/components/common/stat-tile';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import type { ShipmentStatus } from '@/lib/status-colors';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
+import { useOperatorRanking } from '../hooks/use-operator-ranking';
+import { OperatorRankingChart } from './operator-ranking-chart';
+import { StageDurationChart } from './stage-duration-chart';
 
 export function CarrierPerformance() {
   const { isLoading, isError, data } = useCarrierPerformance();
+  const operatorRanking = useOperatorRanking();
 
   if (isLoading) {
     return (
@@ -78,6 +82,12 @@ export function CarrierPerformance() {
           ))}
         </div>
       </div>
+
+      <StageDurationChart data={data.stageDurations} />
+
+      {operatorRanking.data && (
+        <OperatorRankingChart data={operatorRanking.data} />
+      )}
 
       <p className="text-xs text-muted-foreground">
         Scoped to this carrier's own shipments only — no visibility into other
