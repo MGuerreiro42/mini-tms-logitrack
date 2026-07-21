@@ -4,6 +4,7 @@
     "buildCommand": "pnpm run build"
   },
   "deploy": {
+    "preDeployCommand": ["npx prisma db seed"],
     "startCommand": "pnpm run build && pnpm run start:prod",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
