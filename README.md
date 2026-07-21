@@ -1,6 +1,7 @@
 # Mini TMS
 
-[![CI](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci.yml)
+[![CI (api)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-api.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-api.yml)
+[![CI (web)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-web.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-web.yml)
 
 Multi-tenant Transportation Management System (TMS), with seller onboarding, carrier management, and real-time delivery tracking.
 
@@ -43,6 +44,16 @@ pnpm dev
 ```
 
 Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DESIGN.md` § 8](./DESIGN.md#8-running-locally).
+
+## Deploying
+
+`apps/web` → **Vercel** ("Root Directory" = `apps/web`, env var `NEXT_PUBLIC_API_URL` pointing at the deployed API).
+
+`apps/api` → **Railway** ("Root Directory" = `apps/api`), not Vercel — the WebSocket gateway needs a persistent process, not a serverless function. Build/start commands and the healthcheck path are already versioned in `apps/api/railway.json`; what's left to configure per-environment on Railway:
+
+- Attach a **Postgres** and a **Redis** addon (Railway sets `DATABASE_URL`/`REDIS_URL` on its own).
+- Set `JWT_SECRET` (`openssl rand -hex 32`) and `CORS_ORIGIN` (the Vercel URL) manually.
+- Migrations apply themselves on boot (`prestart:prod` → `prisma migrate deploy`) — no manual step.
 
 ## Code quality
 
