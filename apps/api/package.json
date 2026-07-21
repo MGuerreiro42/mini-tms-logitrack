@@ -19,7 +19,7 @@
     "start:dev": "nest start --watch",
     "prestart:prod": "prisma migrate deploy",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "biome check --write .",
     "lint:ci": "biome check .",
     "test": "vitest run",
