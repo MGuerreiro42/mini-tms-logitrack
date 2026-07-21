@@ -31,6 +31,7 @@ describe('CarriersService', () => {
   const carrierCoverageAreaCreateMany = vi.fn();
   const shipmentGroupBy = vi.fn();
   const trackingEventFindMany = vi.fn();
+  const carrierUserFindMany = vi.fn();
   const transaction = vi.fn((arg) =>
     typeof arg === 'function'
       ? arg({
@@ -79,6 +80,7 @@ describe('CarriersService', () => {
     carrierCoverageAreaCreateMany.mockReset();
     shipmentGroupBy.mockReset();
     trackingEventFindMany.mockReset();
+    carrierUserFindMany.mockReset();
     transaction.mockClear();
     hash.mockReset();
 
@@ -96,7 +98,10 @@ describe('CarriersService', () => {
               count: carrierCount,
               groupBy: carrierGroupBy,
             },
-            carrierUser: { findUnique: carrierUserFindUnique },
+            carrierUser: {
+              findUnique: carrierUserFindUnique,
+              findMany: carrierUserFindMany,
+            },
             deliveryModality: {
               count: deliveryModalityCount,
               findMany: deliveryModalityFindMany,
@@ -460,22 +465,26 @@ describe('CarriersService', () => {
         { status: 'FAILED_DELIVERY', _count: 1 },
       ]);
       trackingEventFindMany.mockResolvedValue([
-        // shipment-1: two gaps, 2h and 4h apart
+        // shipment-1: PENDING -> ACCEPTED (2h), ACCEPTED -> COLLECTED (4h)
         {
           shipmentId: 'shipment-1',
+          status: 'PENDING',
           createdAt: new Date('2026-01-01T00:00:00Z'),
         },
         {
           shipmentId: 'shipment-1',
+          status: 'ACCEPTED',
           createdAt: new Date('2026-01-01T02:00:00Z'),
         },
         {
           shipmentId: 'shipment-1',
+          status: 'COLLECTED',
           createdAt: new Date('2026-01-01T06:00:00Z'),
         },
         // shipment-2: a single event, no gap to measure
         {
           shipmentId: 'shipment-2',
+          status: 'PENDING',
           createdAt: new Date('2026-01-02T00:00:00Z'),
         },
       ]);
@@ -489,7 +498,7 @@ describe('CarriersService', () => {
       });
       expect(trackingEventFindMany).toHaveBeenCalledWith({
         where: { shipment: { carrierId: 'carrier-1' } },
-        select: { shipmentId: true, createdAt: true },
+        select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       });
       expect(result.shipmentCountsByStatus).toEqual({
@@ -507,6 +516,38 @@ describe('CarriersService', () => {
       expect(result.avgHoursBetweenEvents).toBe(3); // (2 + 4) / 2
       expect(result.failedDeliveryRate).toBe(25); // 1/4 * 100
       expect(result.returnedRate).toBe(0);
+      expect(result.stageDurations).toEqual([
+        {
+          fromStatus: 'PENDING',
+          toStatus: 'ACCEPTED',
+          avgHours: 2,
+          sampleCount: 1,
+        },
+        {
+          fromStatus: 'ACCEPTED',
+          toStatus: 'COLLECTED',
+          avgHours: 4,
+          sampleCount: 1,
+        },
+        {
+          fromStatus: 'COLLECTED',
+          toStatus: 'IN_TRANSIT',
+          avgHours: null,
+          sampleCount: 0,
+        },
+        {
+          fromStatus: 'IN_TRANSIT',
+          toStatus: 'OUT_FOR_DELIVERY',
+          avgHours: null,
+          sampleCount: 0,
+        },
+        {
+          fromStatus: 'OUT_FOR_DELIVERY',
+          toStatus: 'DELIVERED',
+          avgHours: null,
+          sampleCount: 0,
+        },
+      ]);
     });
 
     it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {
@@ -515,10 +556,12 @@ describe('CarriersService', () => {
       trackingEventFindMany.mockResolvedValue([
         {
           shipmentId: 'shipment-1',
+          status: 'PENDING',
           createdAt: new Date('2026-01-01T00:00:00Z'),
         },
         {
           shipmentId: 'shipment-2',
+          status: 'PENDING',
           createdAt: new Date('2026-01-02T00:00:00Z'),
         },
       ]);
@@ -529,7 +572,7 @@ describe('CarriersService', () => {
       expect(result.failedDeliveryRate).toBe(0);
     });
 
-    it('returns all-zero rates and a null average with no shipments at all', async () => {
+    it('returns all-zero rates, a null average, and all-null stageDurations with no shipments at all', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
       shipmentGroupBy.mockResolvedValue([]);
       trackingEventFindMany.mockResolvedValue([]);
@@ -540,12 +583,80 @@ describe('CarriersService', () => {
       expect(result.avgHoursBetweenEvents).toBeNull();
       expect(result.failedDeliveryRate).toBe(0);
       expect(result.returnedRate).toBe(0);
+      expect(
+        result.stageDurations.every((stage) => stage.avgHours === null),
+      ).toBe(true);
     });
 
     it('throws NotFoundException when the user has no CarrierUser link', async () => {
       carrierUserFindUnique.mockResolvedValue(null);
 
       await expect(carriersService.performance('user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('operatorRanking', () => {
+    it('ranks CarrierUsers by total shipments owned, with delivered counts and emails', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy
+        .mockResolvedValueOnce([
+          { ownerId: 'carrier-user-1', _count: 5 },
+          { ownerId: 'carrier-user-2', _count: 2 },
+        ])
+        .mockResolvedValueOnce([{ ownerId: 'carrier-user-1', _count: 3 }]);
+      carrierUserFindMany.mockResolvedValue([
+        { id: 'carrier-user-1', user: { email: 'manager@example.com' } },
+        { id: 'carrier-user-2', user: { email: 'operator@example.com' } },
+      ]);
+
+      const result = await carriersService.operatorRanking('user-1');
+
+      expect(shipmentGroupBy).toHaveBeenNthCalledWith(1, {
+        by: ['ownerId'],
+        where: { carrierId: 'carrier-1', ownerId: { not: null } },
+        _count: true,
+      });
+      expect(shipmentGroupBy).toHaveBeenNthCalledWith(2, {
+        by: ['ownerId'],
+        where: {
+          carrierId: 'carrier-1',
+          ownerId: { not: null },
+          status: 'DELIVERED',
+        },
+        _count: true,
+      });
+      expect(result).toEqual([
+        {
+          carrierUserId: 'carrier-user-1',
+          email: 'manager@example.com',
+          totalOwned: 5,
+          delivered: 3,
+        },
+        {
+          carrierUserId: 'carrier-user-2',
+          email: 'operator@example.com',
+          totalOwned: 2,
+          delivered: 0,
+        },
+      ]);
+    });
+
+    it('returns an empty array when no shipment has an owner yet', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      const result = await carriersService.operatorRanking('user-1');
+
+      expect(result).toEqual([]);
+      expect(carrierUserFindMany).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the user has no CarrierUser link', async () => {
+      carrierUserFindUnique.mockResolvedValue(null);
+
+      await expect(carriersService.operatorRanking('user-1')).rejects.toThrow(
         NotFoundException,
       );
     });

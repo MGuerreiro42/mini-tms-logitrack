@@ -1,5 +1,26 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ShipmentStatus } from '../../../../generated/prisma/client';
 import { ShipmentStatusCountsResponseDto } from '../../shipments/dto/shipment-status-counts-response.dto';
+
+// One entry per happy-path transition in shipment-status.util.ts's
+// ALLOWED_TRANSITIONS, ending at DELIVERED — the failure branch
+// (OUT_FOR_DELIVERY -> FAILED_DELIVERY -> RETURNED) isn't part of this
+// "how long does a normal delivery take at each stage" funnel.
+export class StageDurationResponseDto {
+  @ApiProperty({ enum: ShipmentStatus })
+  fromStatus: ShipmentStatus;
+
+  @ApiProperty({ enum: ShipmentStatus })
+  toStatus: ShipmentStatus;
+
+  // null, not 0 — same reasoning as avgHoursBetweenEvents: no observed
+  // transition of this kind yet is a "no data" state, not an instant one.
+  @ApiPropertyOptional({ nullable: true })
+  avgHours: number | null;
+
+  @ApiProperty()
+  sampleCount: number;
+}
 
 // FLOW.md Frame 24's proposed contract, implemented as documented there —
 // deliberately narrower than the Claude Design mock's example numbers
@@ -27,4 +48,7 @@ export class CarrierPerformanceResponseDto {
 
   @ApiProperty()
   returnedRate: number;
+
+  @ApiProperty({ type: [StageDurationResponseDto] })
+  stageDurations: StageDurationResponseDto[];
 }
