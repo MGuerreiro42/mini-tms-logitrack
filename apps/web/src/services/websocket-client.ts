@@ -1,22 +1,39 @@
-import { io, type Socket } from 'socket.io-client';
+import {
+  io,
+  type ManagerOptions,
+  type Socket,
+  type SocketOptions,
+} from 'socket.io-client';
 import { getSessionFromDocument } from '@/lib/session';
 
 const WS_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
-let socket: Socket | undefined;
+const sockets = new Map<string, Socket>();
 
-// `auth` is the callback form, not a static object, so every (re)connect
-// attempt — including automatic reconnects after the 1-day JWT expires —
-// reads whatever token is current in the cookie at that moment, instead of
-// replaying whichever token was current the first time getSocket() ran.
-export function getSocket(): Socket {
+function socketFor(
+  url: string,
+  options?: Partial<ManagerOptions & SocketOptions>,
+): Socket {
+  let socket = sockets.get(url);
   if (!socket) {
-    socket = io(WS_URL, {
+    socket = io(url, {
       autoConnect: false,
       // Skip the long-polling handshake: it needs sticky sessions across multiple API instances.
       transports: ['websocket'],
-      auth: (cb) => cb({ token: getSessionFromDocument()?.token }),
+      ...options,
     });
+    sockets.set(url, socket);
   }
   return socket;
+}
+
+// Callback-form auth so every reconnect reads the current cookie token.
+export function getSocket(): Socket {
+  return socketFor(WS_URL, {
+    auth: (cb) => cb({ token: getSessionFromDocument()?.token }),
+  });
+}
+
+export function getPublicSocket(): Socket {
+  return socketFor(`${WS_URL}/public`);
 }
