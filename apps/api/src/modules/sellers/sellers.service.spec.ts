@@ -184,7 +184,7 @@ describe('SellersService', () => {
 
       expect(sellerFindMany).toHaveBeenCalledWith({
         where: undefined,
-        include: { user: true },
+        include: { user: { select: { email: true } } },
         orderBy: { createdAt: 'desc' },
         skip: 0,
         take: 20,
@@ -213,7 +213,7 @@ describe('SellersService', () => {
 
       expect(sellerFindMany).toHaveBeenCalledWith({
         where: { status: 'APPROVED' },
-        include: { user: true },
+        include: { user: { select: { email: true } } },
         orderBy: { createdAt: 'desc' },
         skip: 10,
         take: 10,
@@ -328,7 +328,7 @@ describe('SellersService', () => {
 
       expect(sellerFindUnique).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
-        include: { user: true },
+        include: { user: { select: { email: true } } },
       });
       expect(result.id).toBe('seller-1');
     });

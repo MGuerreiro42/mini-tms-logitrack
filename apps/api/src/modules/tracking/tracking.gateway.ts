@@ -72,7 +72,13 @@ export class TrackingGateway implements OnGatewayInit {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      include: { seller: true, carrierUser: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        seller: { select: { id: true } },
+        carrierUser: { select: { carrierId: true } },
+      },
     });
     if (!user) {
       throw new Error('User no longer exists');
