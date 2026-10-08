@@ -461,9 +461,13 @@ export class ShipmentsService {
   private async findCarrierUserOrThrow(userId: string) {
     const carrierUser = await this.prisma.carrierUser.findUnique({
       where: { userId },
+      include: { carrier: { select: { status: true } } },
     });
     if (!carrierUser) {
       throw new NotFoundException('Carrier not found');
+    }
+    if (carrierUser.carrier.status !== ApprovalStatus.APPROVED) {
+      throw new ForbiddenException('Carrier is not approved to operate');
     }
     return carrierUser;
   }
