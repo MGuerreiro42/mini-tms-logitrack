@@ -2,6 +2,7 @@
 
 import { DetailRow } from '@/components/common/detail-row';
 import { LiveIndicator } from '@/components/common/live-indicator';
+import { QueryState } from '@/components/common/query-state';
 import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,15 +43,25 @@ function getActionState(
 }
 
 export function CarrierShipmentDetail({ id }: { id: string }) {
-  const session = useSession();
-  const { data: shipment, isLoading } = useQueueShipment(id);
-  const claim = useClaimShipment();
-  const updateStatus = useUpdateShipmentStatus();
+  const query = useQueueShipment(id);
   useShipmentTracking({ shipmentId: id });
 
-  if (isLoading || !shipment) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
-  }
+  return (
+    <QueryState
+      query={query}
+      errorMessage="Couldn't load this shipment."
+      notFoundMessage="Shipment not found."
+    >
+      {(shipment) => <CarrierShipmentView shipment={shipment} />}
+    </QueryState>
+  );
+}
+
+function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
+  const { id } = shipment;
+  const session = useSession();
+  const claim = useClaimShipment();
+  const updateStatus = useUpdateShipmentStatus();
 
   // The owner can always act on their own shipment; a manager can act on any
   // shipment in the carrier to unblock operations (DESIGN.md § 3) — a

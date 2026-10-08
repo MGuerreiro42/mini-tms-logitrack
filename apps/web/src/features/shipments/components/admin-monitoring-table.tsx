@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import {
   Select,
   SelectContent,
@@ -42,7 +43,7 @@ export function AdminMonitoringTable() {
   const [sellerId, setSellerId] = useState<string | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useAdminShipments({
+  const query = useAdminShipments({
     status: status === 'ALL' ? undefined : status,
     carrierId: carrierId === 'ALL' ? undefined : carrierId,
     sellerId: sellerId === 'ALL' ? undefined : sellerId,
@@ -116,42 +117,40 @@ export function AdminMonitoringTable() {
         </Select>
       </div>
 
-      {isLoading || !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <PaginatedTable<AdminShipment>
-          data={data.data}
-          meta={data.meta}
-          onPageChange={setPage}
-          getRowKey={(s) => s.id}
-          emptyMessage="No shipments match this filter."
-          columns={[
-            {
-              header: 'Tracking code',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.trackingCode}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ShipmentStatusPill status={s.status} />,
-            },
-            {
-              header: 'Destination',
-              cell: (s) => `${s.addressCity}/${s.addressState}`,
-            },
-            { header: 'Seller', cell: (s) => s.sellerCompanyName },
-            { header: 'Carrier', cell: (s) => s.carrierCompanyName },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-            },
-          ]}
-        />
-      )}
+      <QueryState query={query} errorMessage="Couldn't load shipments.">
+        {(result) => (
+          <PaginatedTable<AdminShipment>
+            data={result.data}
+            meta={result.meta}
+            onPageChange={setPage}
+            getRowKey={(s) => s.id}
+            emptyMessage="No shipments match this filter."
+            columns={[
+              {
+                header: 'Tracking code',
+                cell: (s) => (
+                  <span className="font-mono text-xs">{s.trackingCode}</span>
+                ),
+              },
+              {
+                header: 'Status',
+                cell: (s) => <ShipmentStatusPill status={s.status} />,
+              },
+              {
+                header: 'Destination',
+                cell: (s) => `${s.addressCity}/${s.addressState}`,
+              },
+              { header: 'Seller', cell: (s) => s.sellerCompanyName },
+              { header: 'Carrier', cell: (s) => s.carrierCompanyName },
+              {
+                header: 'Created',
+                className: 'text-right text-muted-foreground',
+                cell: (s) => new Date(s.createdAt).toLocaleDateString(),
+              },
+            ]}
+          />
+        )}
+      </QueryState>
     </div>
   );
 }
