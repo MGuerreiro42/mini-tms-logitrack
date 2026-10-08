@@ -1,5 +1,6 @@
 'use client';
 
+import { DetailRow } from '@/components/common/detail-row';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import { useMyCarrier } from '../hooks/use-my-carrier';
@@ -18,11 +19,11 @@ export function CarrierProfileCard() {
           <CardTitle className="text-sm">Company details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <Row label="Company name" value={carrier.companyName} />
-          <Row label="Manager email" value={carrier.email} />
-          <Row label="Tax ID" value={carrier.document} mono />
-          <Row label="Users" value={String(carrier.userCount)} />
-          <Row
+          <DetailRow label="Company name" value={carrier.companyName} />
+          <DetailRow label="Manager email" value={carrier.email} />
+          <DetailRow label="Tax ID" value={carrier.document} mono />
+          <DetailRow label="Users" value={String(carrier.userCount)} />
+          <DetailRow
             label="Created"
             value={new Date(carrier.createdAt).toLocaleDateString()}
           />
@@ -36,25 +37,6 @@ export function CarrierProfileCard() {
           <ApprovalStatusPill status={carrier.status} />
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between border-b py-2 last:border-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? 'font-mono text-xs' : 'font-medium'}>
-        {value}
-      </span>
     </div>
   );
 }
