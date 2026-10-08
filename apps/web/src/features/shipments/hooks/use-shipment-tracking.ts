@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
+import { useRealtimeStore } from '@/store/realtime-store';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
 
 interface UseShipmentTrackingOptions {
@@ -20,6 +21,7 @@ export function useShipmentTracking({
   // Depend on the token string, not the session object, to avoid reconnecting on every render.
   const token = useSession()?.token;
   const queryClient = useQueryClient();
+  const setConnected = useRealtimeStore((state) => state.setConnected);
 
   useEffect(() => {
     if (!token) return;
@@ -32,14 +34,20 @@ export function useShipmentTracking({
 
     // Rooms aren't replayed after a reconnect, so re-subscribe and refetch to catch up.
     function handleConnect() {
+      setConnected(true);
       if (shipmentId) socket.emit('subscribe:shipment', shipmentId);
       if (subscribeToQueue) socket.emit('subscribe:queue');
       if (subscribeToMonitoring) socket.emit('subscribe:monitoring');
       invalidate();
     }
 
+    function handleDisconnect() {
+      setConnected(false);
+    }
+
     socket.on('shipment:updated', invalidate);
     socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
     socket.connect();
     if (socket.connected) handleConnect();
 
@@ -47,7 +55,16 @@ export function useShipmentTracking({
     return () => {
       socket.off('shipment:updated', invalidate);
       socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.disconnect();
+      setConnected(false);
     };
-  }, [token, shipmentId, subscribeToQueue, subscribeToMonitoring, queryClient]);
+  }, [
+    token,
+    shipmentId,
+    subscribeToQueue,
+    subscribeToMonitoring,
+    queryClient,
+    setConnected,
+  ]);
 }

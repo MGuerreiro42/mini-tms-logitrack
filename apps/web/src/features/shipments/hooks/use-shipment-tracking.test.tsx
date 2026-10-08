@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
+import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { useShipmentTracking } from './use-shipment-tracking';
 
@@ -102,6 +103,24 @@ describe('useShipmentTracking', () => {
     socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
+  });
+
+  it('tracks the connection state in the realtime store', () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+
+    const { unmount } = renderHook(
+      () => useShipmentTracking({ shipmentId: 'shipment-1' }),
+      { wrapper: makeWrapper(new QueryClient()) },
+    );
+
+    socket.trigger('connect');
+    expect(useRealtimeStore.getState().connected).toBe(true);
+    socket.trigger('disconnect');
+    expect(useRealtimeStore.getState().connected).toBe(false);
+    socket.trigger('connect');
+    unmount();
+    expect(useRealtimeStore.getState().connected).toBe(false);
   });
 
   it('subscribes to the monitoring room when subscribeToMonitoring is set', () => {
