@@ -53,6 +53,7 @@ describe('global 401 handling', () => {
 
   it('clears the session and redirects to /login on a 401', async () => {
     const client = getQueryClient();
+    client.setQueryData(['stale'], 'previous user data');
 
     await client
       .fetchQuery({
@@ -63,6 +64,7 @@ describe('global 401 handling', () => {
 
     expect(document.cookie).not.toContain('tms_session=signed');
     expect(window.location.href).toBe('/login');
+    expect(client.getQueryData(['stale'])).toBeUndefined();
   });
 
   it('leaves the session untouched for a non-401/403 query error', async () => {
