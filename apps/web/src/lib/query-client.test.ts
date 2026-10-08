@@ -1,6 +1,18 @@
 import { setSession } from '@/lib/session';
 import { ApiError } from '@/services/api-client';
-import { getQueryClient } from './query-client';
+import { getQueryClient, shouldRetry } from './query-client';
+
+describe('shouldRetry', () => {
+  it('never retries 4xx API errors', () => {
+    expect(shouldRetry(0, new ApiError(404, 'Not found'))).toBe(false);
+  });
+
+  it('retries server and network errors up to 3 times', () => {
+    expect(shouldRetry(0, new ApiError(503, 'Unavailable'))).toBe(true);
+    expect(shouldRetry(2, new TypeError('Failed to fetch'))).toBe(true);
+    expect(shouldRetry(3, new TypeError('Failed to fetch'))).toBe(false);
+  });
+});
 
 describe('getQueryClient (browser)', () => {
   it('reuses the same QueryClient instance across calls', () => {
