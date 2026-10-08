@@ -9,6 +9,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
 
 describe('ShipmentsService', () => {
@@ -221,6 +222,34 @@ describe('ShipmentsService', () => {
       );
       expect(result.trackingCode).toBe('TMS-ABC123');
       expect(result.carrierName).toBe('Fast Freight');
+    });
+
+    it('records the initial PENDING tracking event and notifies the carrier queue', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      sellerModalityFindUnique.mockResolvedValue({
+        sellerId: 'seller-1',
+        modalityId: 'modality-1',
+      });
+      carrierFindFirst.mockResolvedValue({ id: 'carrier-1' });
+      shipmentCreate.mockResolvedValue(shipmentWithRelations);
+
+      await shipmentsService.create('user-1', dto);
+
+      expect(shipmentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            trackingEvents: { create: { status: 'PENDING' } },
+          }),
+        }),
+      );
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_STATUS_CHANGED,
+        expect.objectContaining({
+          shipmentId: shipmentWithRelations.id,
+          carrierId: shipmentWithRelations.carrierId,
+          status: 'PENDING',
+        }),
+      );
     });
 
     it('throws NotFoundException when the user has no Seller profile', async () => {

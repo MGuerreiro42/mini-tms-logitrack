@@ -225,8 +225,19 @@ export class ShipmentsService {
         addressCity: dto.addressCity,
         addressState: dto.addressState,
         addressZipCode: dto.addressZipCode,
+        // Nested write: the shipment and its first timeline entry commit atomically.
+        trackingEvents: { create: { status: ShipmentStatus.PENDING } },
       },
       include: withCarrierAndModality,
+    });
+
+    // Lets the carrier queue pick up new shipments live instead of on the next poll.
+    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, {
+      shipmentId: shipment.id,
+      carrierId: shipment.carrierId,
+      sellerId: shipment.sellerId,
+      status: ShipmentStatus.PENDING,
+      trackingCode: shipment.trackingCode,
     });
 
     return this.toResponseDto(shipment);
