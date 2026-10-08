@@ -12,6 +12,7 @@
     "lint": "biome check --write .",
     "lint:ci": "biome check .",
     "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage"
