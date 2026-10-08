@@ -122,4 +122,18 @@ describe('global 401 handling', () => {
     expect(document.cookie).toContain('tms_session=');
     expect(window.location.href).toBe('');
   });
+
+  it('does NOT redirect on a 401 from a mutation that opts out via meta.skipAuthRedirect', async () => {
+    const client = getQueryClient();
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: () =>
+        Promise.reject(new ApiError(401, 'Invalid credentials')),
+      meta: { skipAuthRedirect: true },
+    });
+
+    await mutation.execute(undefined).catch(() => {});
+
+    expect(document.cookie).toContain('tms_session=');
+    expect(window.location.href).toBe('');
+  });
 });

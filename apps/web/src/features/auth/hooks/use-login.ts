@@ -27,6 +27,7 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationFn: (input: LoginInput) => login(input),
+    meta: { skipAuthRedirect: true },
     onSuccess: ({ accessToken, user }) => {
       setSession({
         token: accessToken,

@@ -38,10 +38,14 @@ export function LoginForm() {
           id="email"
           type="email"
           autoComplete="email"
+          aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p id="email-error" role="alert" className="text-sm text-destructive">
+            {errors.email.message}
+          </p>
         )}
       </div>
       <div className="space-y-1.5">
@@ -50,14 +54,25 @@ export function LoginForm() {
           id="password"
           type="password"
           autoComplete="current-password"
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? 'password-error' : undefined}
           {...register('password')}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p
+            id="password-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {errors.password.message}
+          </p>
         )}
       </div>
       {loginMutation.isError && (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
           {loginMutation.error instanceof ApiError
             ? loginMutation.error.message
             : 'Something went wrong. Please try again.'}
