@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import { getSessionFromDocument } from '@/lib/session';
-import { getSocket } from './websocket-client';
+import { getPublicSocket, getSocket } from './websocket-client';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({})) }));
 vi.mock('@/lib/session', () => ({ getSessionFromDocument: vi.fn() }));
@@ -40,5 +40,20 @@ describe('getSocket', () => {
     const secondCb = vi.fn();
     auth(secondCb);
     expect(secondCb).toHaveBeenCalledWith({ token: 'refreshed-token' });
+  });
+});
+
+describe('getPublicSocket', () => {
+  it('connects to the /public namespace over websocket without auth', () => {
+    vi.mocked(io).mockClear();
+
+    const socket = getPublicSocket();
+
+    expect(getPublicSocket()).toBe(socket);
+    expect(io).toHaveBeenCalledTimes(1);
+    const [url, options] = vi.mocked(io).mock.calls[0];
+    expect(url).toBe('http://localhost:3333/public');
+    expect(options).toMatchObject({ transports: ['websocket'] });
+    expect(options).not.toHaveProperty('auth');
   });
 });
