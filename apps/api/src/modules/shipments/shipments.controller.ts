@@ -21,6 +21,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -187,9 +188,11 @@ export class ShipmentsController {
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
   @ApiResponse({
     status: 403,
-    description: 'Not the owner nor the carrier manager',
+    description:
+      'Not the owner nor the carrier manager, or the target status is CANCELLED',
   })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
+  @ApiResponse({ status: 409, description: 'Status changed concurrently' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(GlobalRole.CARRIER_MANAGER, GlobalRole.CARRIER_OPERATOR)
   @Patch(':id/status')
@@ -199,6 +202,31 @@ export class ShipmentsController {
     @Body() dto: UpdateShipmentStatusDto,
   ) {
     return this.shipmentsService.updateStatus(user.id, id, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Cancel the authenticated seller's own shipment — only while PENDING or ACCEPTED",
+  })
+  @ApiResponse({ status: 200, type: ShipmentResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid DTO' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not a seller' })
+  @ApiResponse({ status: 404, description: 'Shipment not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'Shipment is no longer PENDING or ACCEPTED',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.SELLER)
+  @Patch(':id/cancel')
+  cancel(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CancelShipmentDto,
+  ) {
+    return this.shipmentsService.cancel(user.id, id, dto);
   }
 
   @ApiBearerAuth()
