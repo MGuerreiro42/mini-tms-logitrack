@@ -13,6 +13,7 @@ describe('ShipmentsController', () => {
   const findOneForCarrier = vi.fn();
   const claim = vi.fn();
   const updateStatus = vi.fn();
+  const cancel = vi.fn();
 
   const user: AuthenticatedUser = {
     id: 'user-1',
@@ -35,6 +36,7 @@ describe('ShipmentsController', () => {
     findOneForCarrier.mockReset();
     claim.mockReset();
     updateStatus.mockReset();
+    cancel.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ShipmentsController],
@@ -50,6 +52,7 @@ describe('ShipmentsController', () => {
             findOneForCarrier,
             claim,
             updateStatus,
+            cancel,
           },
         },
       ],
@@ -159,5 +162,15 @@ describe('ShipmentsController', () => {
 
     expect(updateStatus).toHaveBeenCalledWith('user-2', 'shipment-1', dto);
     expect(result).toEqual({ id: 'shipment-1', status: 'COLLECTED' });
+  });
+
+  it('cancel delegates to ShipmentsService.cancel with the user id, id param, and DTO', async () => {
+    const dto = { note: 'Customer gave up' };
+    cancel.mockResolvedValue({ id: 'shipment-1', status: 'CANCELLED' });
+
+    const result = await controller.cancel(user, 'shipment-1', dto);
+
+    expect(cancel).toHaveBeenCalledWith('user-1', 'shipment-1', dto);
+    expect(result).toEqual({ id: 'shipment-1', status: 'CANCELLED' });
   });
 });

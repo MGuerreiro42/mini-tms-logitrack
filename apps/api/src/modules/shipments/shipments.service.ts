@@ -20,6 +20,7 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
+import type { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -36,7 +37,10 @@ import {
   SHIPMENT_STATUS_CHANGED,
   type ShipmentStatusChangedEvent,
 } from './shipment-events';
-import { isValidTransition } from './shipment-status.util';
+import {
+  CANCELLABLE_STATUSES,
+  isValidTransition,
+} from './shipment-status.util';
 
 const withCarrierAndModality = {
   carrier: { select: { companyName: true } },
@@ -393,6 +397,60 @@ export class ShipmentsService {
     };
   }
 
+  async cancel(
+    userId: string,
+    shipmentId: string,
+    dto: CancelShipmentDto,
+  ): Promise<ShipmentResponseDto> {
+    const seller = await this.findSellerOrThrow(userId);
+    const shipment = await this.prisma.shipment.findFirst({
+      where: { id: shipmentId, sellerId: seller.id },
+      select: { status: true },
+    });
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+    if (!CANCELLABLE_STATUSES.includes(shipment.status)) {
+      throw new ConflictException(
+        `Cannot cancel a shipment that is ${shipment.status}`,
+      );
+    }
+
+    // Same compare-and-set as claim(): a carrier advancing it concurrently makes this a 409.
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.shipment.updateMany({
+        where: {
+          id: shipmentId,
+          sellerId: seller.id,
+          status: { in: CANCELLABLE_STATUSES },
+        },
+        data: { status: ShipmentStatus.CANCELLED },
+      });
+      if (count === 0) {
+        return false;
+      }
+      await tx.trackingEvent.create({
+        data: { shipmentId, status: ShipmentStatus.CANCELLED, note: dto.note },
+      });
+      return true;
+    });
+
+    if (!cancelled) {
+      throw new ConflictException(
+        'Shipment status changed concurrently, reload and try again',
+      );
+    }
+
+    const updated = await this.prisma.shipment.findUniqueOrThrow({
+      where: { id: shipmentId },
+      include: withCarrierAndModality,
+    });
+
+    this.emitStatusChanged(updated);
+
+    return this.toResponseDto(updated);
+  }
+
   // Distinct from (and deliberately not shared with) CarriersService's
   // private findCarrierIdForUserOrThrow: that one returns just a carrierId,
   // enough for its own callers. claim()/updateStatus() need the full row
@@ -569,6 +627,10 @@ export class ShipmentsService {
     shipmentId: string,
     dto: UpdateShipmentStatusDto,
   ): Promise<CarrierShipmentResponseDto> {
+    if (dto.status === ShipmentStatus.CANCELLED) {
+      throw new ForbiddenException('Only the seller can cancel a shipment');
+    }
+
     const carrierUser = await this.findCarrierUserOrThrow(userId);
     const shipment = await this.findCarrierShipmentOrThrow(
       carrierUser.carrierId,

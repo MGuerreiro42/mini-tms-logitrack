@@ -441,6 +441,100 @@ describe('ShipmentsService', () => {
     });
   });
 
+  describe('cancel', () => {
+    it('cancels a PENDING shipment: conditional write, CANCELLED event with note, emits', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({ status: 'PENDING' });
+      shipmentUpdateMany.mockResolvedValue({ count: 1 });
+      shipmentFindUniqueOrThrow.mockResolvedValue({
+        ...shipmentWithRelations,
+        sellerId: 'seller-1',
+        status: 'CANCELLED',
+      });
+
+      const result = await shipmentsService.cancel('user-1', 'shipment-1', {
+        note: 'Customer gave up',
+      });
+
+      expect(shipmentFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'shipment-1', sellerId: 'seller-1' },
+        }),
+      );
+      expect(shipmentUpdateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'shipment-1',
+          sellerId: 'seller-1',
+          status: { in: ['PENDING', 'ACCEPTED'] },
+        },
+        data: { status: 'CANCELLED' },
+      });
+      expect(trackingEventCreate).toHaveBeenCalledWith({
+        data: {
+          shipmentId: 'shipment-1',
+          status: 'CANCELLED',
+          note: 'Customer gave up',
+        },
+      });
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_STATUS_CHANGED,
+        expect.objectContaining({
+          shipmentId: 'shipment-1',
+          carrierId: 'carrier-1',
+          sellerId: 'seller-1',
+          status: 'CANCELLED',
+        }),
+      );
+      expect(result.status).toBe('CANCELLED');
+    });
+
+    it('cancels an ACCEPTED shipment', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({ status: 'ACCEPTED' });
+      shipmentUpdateMany.mockResolvedValue({ count: 1 });
+      shipmentFindUniqueOrThrow.mockResolvedValue({
+        ...shipmentWithRelations,
+        status: 'CANCELLED',
+      });
+
+      await shipmentsService.cancel('user-1', 'shipment-1', {});
+
+      expect(trackingEventCreate).toHaveBeenCalled();
+    });
+
+    it("throws NotFoundException for another seller's shipment (same as not existing)", async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue(null);
+
+      await expect(
+        shipmentsService.cancel('user-1', 'someone-elses-shipment', {}),
+      ).rejects.toThrow(NotFoundException);
+      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException once the shipment has been collected', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({ status: 'COLLECTED' });
+
+      await expect(
+        shipmentsService.cancel('user-1', 'shipment-1', {}),
+      ).rejects.toThrow(ConflictException);
+      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when a carrier advances it concurrently (updateMany affects 0 rows)', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({ status: 'ACCEPTED' });
+      shipmentUpdateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        shipmentsService.cancel('user-1', 'shipment-1', {}),
+      ).rejects.toThrow(ConflictException);
+      expect(trackingEventCreate).not.toHaveBeenCalled();
+      expect(emit).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findAllForCarrier', () => {
     it('scopes the list to the carrier resolved from userId', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
@@ -676,6 +770,18 @@ describe('ShipmentsService', () => {
           skipAheadDto,
         ),
       ).rejects.toThrow(BadRequestException);
+      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when a carrier tries to set CANCELLED, even a manager', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierManager);
+      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+
+      await expect(
+        shipmentsService.updateStatus('user-manager', 'shipment-1', {
+          status: 'CANCELLED',
+        }),
+      ).rejects.toThrow(ForbiddenException);
       expect(shipmentUpdateMany).not.toHaveBeenCalled();
     });
 
