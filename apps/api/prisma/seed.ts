@@ -12,9 +12,18 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
+function resolveAdminPassword(): string {
+  const password = process.env.ADMIN_PASSWORD;
+  if (password) return password;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ADMIN_PASSWORD must be set when seeding in production');
+  }
+  return 'admin12345';
+}
+
 async function main() {
   const email = process.env.ADMIN_EMAIL ?? 'admin@minitms.dev';
-  const password = process.env.ADMIN_PASSWORD ?? 'admin12345';
+  const password = resolveAdminPassword();
 
   const passwordHash = await bcrypt.hash(password, 10);
 
