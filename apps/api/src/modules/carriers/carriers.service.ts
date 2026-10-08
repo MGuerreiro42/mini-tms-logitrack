@@ -40,6 +40,9 @@ const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
   [ShipmentStatus.OUT_FOR_DELIVERY, ShipmentStatus.DELIVERED],
 ];
 
+const percentage = (part: number, total: number) =>
+  total > 0 ? (part / total) * 100 : 0;
+
 const managerInclude = {
   users: {
     where: { role: CarrierRole.MANAGER },
@@ -295,17 +298,20 @@ export class CarriersService {
         };
       });
 
-    const failedDeliveryRate =
-      totalShipments > 0
-        ? (shipmentCountsByStatus[ShipmentStatus.FAILED_DELIVERY] /
-            totalShipments) *
-          100
-        : 0;
-    const returnedRate =
-      totalShipments > 0
-        ? (shipmentCountsByStatus[ShipmentStatus.RETURNED] / totalShipments) *
-          100
-        : 0;
+    // From history, not current status: a FAILED_DELIVERY that moved on to RETURNED still failed.
+    const everFailedShipmentIds = new Set(
+      events
+        .filter((event) => event.status === ShipmentStatus.FAILED_DELIVERY)
+        .map((event) => event.shipmentId),
+    );
+    const failedDeliveryRate = percentage(
+      everFailedShipmentIds.size,
+      totalShipments,
+    );
+    const returnedRate = percentage(
+      shipmentCountsByStatus[ShipmentStatus.RETURNED],
+      totalShipments,
+    );
 
     return {
       shipmentCountsByStatus,

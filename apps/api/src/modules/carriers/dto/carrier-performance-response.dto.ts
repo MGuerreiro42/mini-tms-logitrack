@@ -43,7 +43,9 @@ export class CarrierPerformanceResponseDto {
 
   // Percentages (0-100), not pre-rounded — presentation formatting is the
   // frontend's job, not baked into the API response.
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Share of shipments that ever had a FAILED_DELIVERY event',
+  })
   failedDeliveryRate: number;
 
   @ApiProperty()

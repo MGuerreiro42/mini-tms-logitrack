@@ -465,7 +465,7 @@ describe('CarriersService', () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
       shipmentGroupBy.mockResolvedValue([
         { status: 'DELIVERED', _count: 3 },
-        { status: 'FAILED_DELIVERY', _count: 1 },
+        { status: 'PENDING', _count: 1 },
       ]);
       trackingEventFindMany.mockResolvedValue([
         // shipment-1: PENDING -> ACCEPTED (2h), ACCEPTED -> COLLECTED (4h)
@@ -505,19 +505,19 @@ describe('CarriersService', () => {
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       });
       expect(result.shipmentCountsByStatus).toEqual({
-        PENDING: 0,
+        PENDING: 1,
         ACCEPTED: 0,
         COLLECTED: 0,
         IN_TRANSIT: 0,
         OUT_FOR_DELIVERY: 0,
         DELIVERED: 3,
-        FAILED_DELIVERY: 1,
+        FAILED_DELIVERY: 0,
         CANCELLED: 0,
         RETURNED: 0,
       });
       expect(result.totalShipments).toBe(4);
       expect(result.avgHoursBetweenEvents).toBe(3); // (2 + 4) / 2
-      expect(result.failedDeliveryRate).toBe(25); // 1/4 * 100
+      expect(result.failedDeliveryRate).toBe(0);
       expect(result.returnedRate).toBe(0);
       expect(result.stageDurations).toEqual([
         {
@@ -551,6 +551,33 @@ describe('CarriersService', () => {
           sampleCount: 0,
         },
       ]);
+    });
+
+    it('counts a shipment that failed delivery and was then returned in both rates', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([
+        { status: 'RETURNED', _count: 1 },
+        { status: 'FAILED_DELIVERY', _count: 1 },
+        { status: 'DELIVERED', _count: 2 },
+      ]);
+      const at = (hour: number) =>
+        new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
+      trackingEventFindMany.mockResolvedValue([
+        {
+          shipmentId: 'returned',
+          status: 'OUT_FOR_DELIVERY',
+          createdAt: at(0),
+        },
+        { shipmentId: 'returned', status: 'FAILED_DELIVERY', createdAt: at(1) },
+        { shipmentId: 'returned', status: 'RETURNED', createdAt: at(2) },
+        { shipmentId: 'failed', status: 'OUT_FOR_DELIVERY', createdAt: at(0) },
+        { shipmentId: 'failed', status: 'FAILED_DELIVERY', createdAt: at(1) },
+      ]);
+
+      const result = await carriersService.performance('user-1');
+
+      expect(result.failedDeliveryRate).toBe(50); // 2 of 4 ever failed
+      expect(result.returnedRate).toBe(25);
     });
 
     it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {
