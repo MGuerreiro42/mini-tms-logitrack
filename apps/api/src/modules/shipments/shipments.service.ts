@@ -11,6 +11,7 @@ import {
   ApprovalStatus,
   CarrierRole,
   Prisma,
+  type Shipment,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
 import {
@@ -31,7 +32,10 @@ import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-coun
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
+import {
+  SHIPMENT_STATUS_CHANGED,
+  type ShipmentStatusChangedEvent,
+} from './shipment-events';
 import { isValidTransition } from './shipment-status.util';
 
 const withCarrierAndModality = {
@@ -156,10 +160,7 @@ export class ShipmentsService {
     userId: string,
     dto: CreateShipmentDto,
   ): Promise<ShipmentResponseDto> {
-    const seller = await this.prisma.seller.findUnique({ where: { userId } });
-    if (!seller) {
-      throw new NotFoundException('Seller not found');
-    }
+    const seller = await this.findSellerOrThrow(userId);
     if (seller.status !== ApprovalStatus.APPROVED) {
       throw new BadRequestException(
         'Only an approved seller can create shipments',
@@ -232,13 +233,7 @@ export class ShipmentsService {
     });
 
     // Lets the carrier queue pick up new shipments live instead of on the next poll.
-    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, {
-      shipmentId: shipment.id,
-      carrierId: shipment.carrierId,
-      sellerId: shipment.sellerId,
-      status: ShipmentStatus.PENDING,
-      trackingCode: shipment.trackingCode,
-    });
+    this.emitStatusChanged(shipment);
 
     return this.toResponseDto(shipment);
   }
@@ -249,10 +244,7 @@ export class ShipmentsService {
     page = 1,
     limit = 20,
   ): Promise<PaginatedResult<ShipmentResponseDto>> {
-    const seller = await this.prisma.seller.findUnique({ where: { userId } });
-    if (!seller) {
-      throw new NotFoundException('Seller not found');
-    }
+    const seller = await this.findSellerOrThrow(userId);
 
     const where = { sellerId: seller.id, ...(status ? { status } : {}) };
     const [shipments, total] = await Promise.all([
@@ -284,10 +276,7 @@ export class ShipmentsService {
   async countsByStatusForSeller(
     userId: string,
   ): Promise<ShipmentStatusCountsResponseDto> {
-    const seller = await this.prisma.seller.findUnique({ where: { userId } });
-    if (!seller) {
-      throw new NotFoundException('Seller not found');
-    }
+    const seller = await this.findSellerOrThrow(userId);
 
     const groups = await this.prisma.shipment.groupBy({
       by: ['status'],
@@ -321,10 +310,7 @@ export class ShipmentsService {
   async slaSummaryForSeller(
     userId: string,
   ): Promise<SlaSummaryItemResponseDto[]> {
-    const seller = await this.prisma.seller.findUnique({ where: { userId } });
-    if (!seller) {
-      throw new NotFoundException('Seller not found');
-    }
+    const seller = await this.findSellerOrThrow(userId);
 
     const shipments = await this.prisma.shipment.findMany({
       where: { sellerId: seller.id, status: ShipmentStatus.DELIVERED },
@@ -380,10 +366,7 @@ export class ShipmentsService {
     userId: string,
     id: string,
   ): Promise<ShipmentResponseDto> {
-    const seller = await this.prisma.seller.findUnique({ where: { userId } });
-    if (!seller) {
-      throw new NotFoundException('Seller not found');
-    }
+    const seller = await this.findSellerOrThrow(userId);
 
     // Scoped to sellerId in the query itself, not checked after the fact —
     // a shipment belonging to another seller returns the same 404 as one
@@ -576,13 +559,7 @@ export class ShipmentsService {
       include: carrierQueueInclude,
     });
 
-    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, {
-      shipmentId,
-      carrierId: carrierUser.carrierId,
-      sellerId: updated.sellerId,
-      status: ShipmentStatus.ACCEPTED,
-      trackingCode: updated.trackingCode,
-    });
+    this.emitStatusChanged(updated);
 
     return this.toCarrierResponseDto(updated);
   }
@@ -665,15 +642,33 @@ export class ShipmentsService {
       include: carrierQueueInclude,
     });
 
-    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, {
-      shipmentId,
-      carrierId: carrierUser.carrierId,
-      sellerId: updated.sellerId,
-      status: dto.status,
-      trackingCode: updated.trackingCode,
-    });
+    this.emitStatusChanged(updated);
 
     return this.toCarrierResponseDto(updated);
+  }
+
+  private async findSellerOrThrow(userId: string) {
+    const seller = await this.prisma.seller.findUnique({ where: { userId } });
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+    return seller;
+  }
+
+  private emitStatusChanged(
+    shipment: Pick<
+      Shipment,
+      'id' | 'carrierId' | 'sellerId' | 'status' | 'trackingCode'
+    >,
+  ): void {
+    const event: ShipmentStatusChangedEvent = {
+      shipmentId: shipment.id,
+      carrierId: shipment.carrierId,
+      sellerId: shipment.sellerId,
+      status: shipment.status,
+      trackingCode: shipment.trackingCode,
+    };
+    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, event);
   }
 
   private generateTrackingCode(): string {
