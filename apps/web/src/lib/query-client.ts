@@ -17,7 +17,10 @@ declare module '@tanstack/react-query' {
   }
 }
 
+let browserQueryClient: QueryClient | undefined;
+
 function forceReLogin() {
+  browserQueryClient?.clear();
   clearSession();
   window.location.href = '/login';
 }
@@ -76,8 +79,6 @@ function makeQueryClient() {
     mutationCache: new MutationCache({ onError: handleMutationError }),
   });
 }
-
-let browserQueryClient: QueryClient | undefined;
 
 export function getQueryClient() {
   if (isServer) {
