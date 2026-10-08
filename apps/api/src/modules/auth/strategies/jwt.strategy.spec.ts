@@ -31,7 +31,10 @@ describe('JwtStrategy', () => {
 
     const result = await jwtStrategy.validate(payload);
 
-    expect(findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      select: { id: true, email: true, role: true },
+    });
     expect(result).toEqual({
       id: 'user-1',
       email: 'seller@example.com',

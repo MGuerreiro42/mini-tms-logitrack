@@ -46,7 +46,7 @@ const percentage = (part: number, total: number) =>
 const managerInclude = {
   users: {
     where: { role: CarrierRole.MANAGER },
-    include: { user: true },
+    include: { user: { select: { email: true } } },
     take: 1,
   },
   _count: { select: { users: true } },

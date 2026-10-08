@@ -17,7 +17,13 @@ import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
 import type { SellerStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
-type SellerWithUser = Prisma.SellerGetPayload<{ include: { user: true } }>;
+const withUserEmail = {
+  user: { select: { email: true } },
+} satisfies Prisma.SellerInclude;
+
+type SellerWithUser = Prisma.SellerGetPayload<{
+  include: typeof withUserEmail;
+}>;
 
 @Injectable()
 export class SellersService {
@@ -98,7 +104,7 @@ export class SellersService {
     const [sellers, total] = await Promise.all([
       this.prisma.seller.findMany({
         where,
-        include: { user: true },
+        include: withUserEmail,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -145,7 +151,7 @@ export class SellersService {
   async findByUserId(userId: string): Promise<SellerResponseDto> {
     const seller = await this.prisma.seller.findUnique({
       where: { userId },
-      include: { user: true },
+      include: withUserEmail,
     });
 
     if (!seller) {
@@ -185,7 +191,7 @@ export class SellersService {
   private async findSellerOrThrow(id: string): Promise<SellerWithUser> {
     const seller = await this.prisma.seller.findUnique({
       where: { id },
-      include: { user: true },
+      include: withUserEmail,
     });
 
     if (!seller) {
