@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApprovalStatus } from '@/lib/status-colors';
@@ -19,7 +20,7 @@ export function CarriersTable() {
   const [status, setStatus] = useState<ApprovalStatus | 'ALL'>('PENDING');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useCarriersList({
+  const query = useCarriersList({
     status: status === 'ALL' ? undefined : status,
     page,
     limit: 20,
@@ -42,48 +43,46 @@ export function CarriersTable() {
           ))}
         </TabsList>
       </Tabs>
-      {isLoading || !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <PaginatedTable<Carrier>
-          data={data.data}
-          meta={data.meta}
-          onPageChange={setPage}
-          getRowKey={(carrier) => carrier.id}
-          getRowHref={(carrier) => `/admin/carriers/${carrier.id}`}
-          emptyMessage="No carriers match this filter."
-          columns={[
-            {
-              header: 'Company',
-              cell: (c) => (
-                <span className="font-semibold">{c.companyName}</span>
-              ),
-            },
-            {
-              header: 'Document',
-              cell: (c) => (
-                <span className="font-mono text-xs">{c.document}</span>
-              ),
-            },
-            {
-              header: 'Users',
-              className: 'text-center',
-              cell: (c) => c.userCount,
-            },
-            {
-              header: 'Status',
-              cell: (c) => <ApprovalStatusPill status={c.status} />,
-            },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (c) => new Date(c.createdAt).toLocaleDateString(),
-            },
-          ]}
-        />
-      )}
+      <QueryState query={query} errorMessage="Couldn't load carriers.">
+        {(result) => (
+          <PaginatedTable<Carrier>
+            data={result.data}
+            meta={result.meta}
+            onPageChange={setPage}
+            getRowKey={(carrier) => carrier.id}
+            getRowHref={(carrier) => `/admin/carriers/${carrier.id}`}
+            emptyMessage="No carriers match this filter."
+            columns={[
+              {
+                header: 'Company',
+                cell: (c) => (
+                  <span className="font-semibold">{c.companyName}</span>
+                ),
+              },
+              {
+                header: 'Document',
+                cell: (c) => (
+                  <span className="font-mono text-xs">{c.document}</span>
+                ),
+              },
+              {
+                header: 'Users',
+                className: 'text-center',
+                cell: (c) => c.userCount,
+              },
+              {
+                header: 'Status',
+                cell: (c) => <ApprovalStatusPill status={c.status} />,
+              },
+              {
+                header: 'Created',
+                className: 'text-right text-muted-foreground',
+                cell: (c) => new Date(c.createdAt).toLocaleDateString(),
+              },
+            ]}
+          />
+        )}
+      </QueryState>
     </div>
   );
 }

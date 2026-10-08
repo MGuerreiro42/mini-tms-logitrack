@@ -2,33 +2,32 @@
 
 import Link from 'next/link';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { useSellerDashboard } from '../hooks/use-seller-dashboard';
+import {
+  type SellerDashboardData,
+  useSellerDashboard,
+} from '../hooks/use-seller-dashboard';
 import type { Shipment } from '../types';
 import { SlaSummaryChart } from './sla-summary-chart';
 
 export function SellerDashboard() {
-  const { isLoading, isError, counts, recentShipments, slaSummary } =
-    useSellerDashboard();
+  const query = useSellerDashboard();
 
-  if (isLoading) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
+  return (
+    <QueryState query={query} errorMessage="Couldn't load your dashboard.">
+      {(data) => <SellerDashboardView {...data} />}
+    </QueryState>
+  );
+}
 
-  if (isError) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        Couldn't load your dashboard. Please refresh the page.
-      </div>
-    );
-  }
-
+function SellerDashboardView({
+  counts,
+  recentShipments,
+  slaSummary,
+}: SellerDashboardData) {
   // Zero shipments ever, not just zero on the current filter — the
   // create-shipment CTA takes over the whole screen instead of a row of
   // zero-count tiles nobody asked to see yet (FLOW.md Frame 19).

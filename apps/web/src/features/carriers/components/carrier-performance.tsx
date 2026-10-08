@@ -1,32 +1,27 @@
 'use client';
 
+import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import type { ShipmentStatus } from '@/lib/status-colors';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
+import type { CarrierPerformance as CarrierPerformanceData } from '../types';
 import { OperatorRankingChart } from './operator-ranking-chart';
 import { StageDurationChart } from './stage-duration-chart';
 
 export function CarrierPerformance() {
-  const { isLoading, isError, data } = useCarrierPerformance();
+  const query = useCarrierPerformance();
+
+  return (
+    <QueryState query={query} errorMessage="Couldn't load performance data.">
+      {(data) => <CarrierPerformanceView data={data} />}
+    </QueryState>
+  );
+}
+
+function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
   const operatorRanking = useOperatorRanking();
-
-  if (isLoading) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        Couldn't load performance data. Please refresh the page.
-      </div>
-    );
-  }
 
   // New carrier, no shipments yet — misleading 0%/0h figures would read as
   // real metrics rather than "nothing to measure yet" (FLOW.md Frame 24).

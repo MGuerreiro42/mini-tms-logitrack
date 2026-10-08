@@ -177,4 +177,25 @@ describe('CarrierShipmentDetail', () => {
     await screen.findByText('TMS-AAA111');
     expect(screen.getAllByText('Accepted').length).toBeGreaterThan(0);
   });
+
+  it('shows a not-found state instead of loading forever on a 404', async () => {
+    setSession({
+      token: 't',
+      role: 'CARRIER_MANAGER',
+      userId: 'user-3',
+      email: 'manager@example.com',
+    });
+    server.use(
+      http.get(`${API_URL}/shipments/queue/shipment-1`, () =>
+        HttpResponse.json(
+          { statusCode: 404, message: 'Shipment not found' },
+          { status: 404 },
+        ),
+      ),
+    );
+
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    expect(await screen.findByText('Shipment not found.')).toBeInTheDocument();
+  });
 });
