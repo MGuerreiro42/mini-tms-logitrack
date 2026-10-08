@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { useRouter } from 'next/navigation';
+import { getQueryClient } from '@/lib/query-client';
 import { getSessionFromDocument } from '@/lib/session';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
@@ -85,5 +86,53 @@ describe('LoginForm', () => {
 
     expect(await screen.findByText('Invalid credentials')).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('shows the 401 inline instead of triggering the global re-login redirect', async () => {
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, href: '' },
+    });
+    server.use(
+      http.post(`${API_URL}/auth/login`, () =>
+        HttpResponse.json(
+          { statusCode: 401, message: 'Invalid credentials' },
+          { status: 401 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginForm />, getQueryClient());
+
+    await user.type(screen.getByLabelText('Email'), 'seller@example.com');
+    await user.type(screen.getByLabelText('Password'), 'wrong-password');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid credentials',
+    );
+    expect(window.location.href).toBe('');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
+  it('marks invalid fields with aria-invalid', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginForm />);
+
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByLabelText('Email')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByLabelText('Password')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
   });
 });

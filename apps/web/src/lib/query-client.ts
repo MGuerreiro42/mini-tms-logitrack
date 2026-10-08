@@ -1,11 +1,21 @@
 import {
   isServer,
+  type Mutation,
   MutationCache,
   QueryCache,
   QueryClient,
 } from '@tanstack/react-query';
 import { clearSession } from '@/lib/session';
 import { ApiError } from '@/services/api-client';
+
+declare module '@tanstack/react-query' {
+  interface Register {
+    mutationMeta: {
+      // Set on mutations where a 401 is an expected outcome (e.g. wrong password), not an expired session.
+      skipAuthRedirect?: boolean;
+    };
+  }
+}
 
 function forceReLogin() {
   clearSession();
@@ -18,7 +28,13 @@ function isAuthError(error: unknown): error is ApiError {
 
 // The JWT expires in 1 day server-side — this is the one place that reacts
 // to that, instead of every query/mutation needing its own 401 branch.
-function handleMutationError(error: unknown) {
+function handleMutationError(
+  error: unknown,
+  _variables: unknown,
+  _context: unknown,
+  mutation: Mutation<unknown, unknown, unknown>,
+) {
+  if (mutation.meta?.skipAuthRedirect) return;
   if (isAuthError(error) && error.statusCode === 401) {
     forceReLogin();
   }
