@@ -17,7 +17,7 @@ describe('CarriersService', () => {
   const carrierUserCreate = vi.fn();
   const carrierFindMany = vi.fn();
   const carrierFindUnique = vi.fn();
-  const carrierUpdate = vi.fn();
+  const carrierUpdateMany = vi.fn();
   const carrierCount = vi.fn();
   const carrierGroupBy = vi.fn();
   const carrierUserFindUnique = vi.fn();
@@ -66,7 +66,7 @@ describe('CarriersService', () => {
     carrierUserCreate.mockReset();
     carrierFindMany.mockReset();
     carrierFindUnique.mockReset();
-    carrierUpdate.mockReset();
+    carrierUpdateMany.mockReset();
     carrierCount.mockReset();
     carrierGroupBy.mockReset();
     carrierUserFindUnique.mockReset();
@@ -94,7 +94,7 @@ describe('CarriersService', () => {
             carrier: {
               findMany: carrierFindMany,
               findUnique: carrierFindUnique,
-              update: carrierUpdate,
+              updateMany: carrierUpdateMany,
               count: carrierCount,
               groupBy: carrierGroupBy,
             },
@@ -290,37 +290,40 @@ describe('CarriersService', () => {
   });
 
   describe('approve / reject', () => {
-    it('approves a pending carrier', async () => {
-      carrierFindUnique.mockResolvedValue(carrierWithManager);
-      carrierUpdate.mockResolvedValue({
+    it('approves a pending carrier with a write conditional on PENDING', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 1 });
+      carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'APPROVED',
       });
 
       const result = await carriersService.approve('carrier-1');
 
-      expect(carrierUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'carrier-1' },
-          data: { status: 'APPROVED' },
-        }),
-      );
+      expect(carrierUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'carrier-1', status: 'PENDING' },
+        data: { status: 'APPROVED' },
+      });
       expect(result.status).toBe('APPROVED');
     });
 
     it('rejects a pending carrier', async () => {
-      carrierFindUnique.mockResolvedValue(carrierWithManager);
-      carrierUpdate.mockResolvedValue({
+      carrierUpdateMany.mockResolvedValue({ count: 1 });
+      carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'REJECTED',
       });
 
       const result = await carriersService.reject('carrier-1');
 
+      expect(carrierUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'carrier-1', status: 'PENDING' },
+        data: { status: 'REJECTED' },
+      });
       expect(result.status).toBe('REJECTED');
     });
 
-    it('throws ConflictException when the carrier is not pending', async () => {
+    it('throws ConflictException when the carrier is no longer pending (incl. a concurrent decision)', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 0 });
       carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'APPROVED',
@@ -329,10 +332,10 @@ describe('CarriersService', () => {
       await expect(carriersService.approve('carrier-1')).rejects.toThrow(
         ConflictException,
       );
-      expect(carrierUpdate).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when the carrier does not exist', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 0 });
       carrierFindUnique.mockResolvedValue(null);
 
       await expect(carriersService.reject('missing')).rejects.toThrow(

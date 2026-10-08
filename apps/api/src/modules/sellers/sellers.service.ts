@@ -167,21 +167,19 @@ export class SellersService {
     id: string,
     status: ApprovalStatus,
   ): Promise<SellerResponseDto> {
+    // Conditional write: of two concurrent decisions only one matches PENDING.
+    const { count } = await this.prisma.seller.updateMany({
+      where: { id, status: ApprovalStatus.PENDING },
+      data: { status },
+    });
     const seller = await this.findSellerOrThrow(id);
-
-    if (seller.status !== ApprovalStatus.PENDING) {
+    if (count === 0) {
       throw new ConflictException(
         `Seller is already ${seller.status.toLowerCase()}`,
       );
     }
 
-    const updated = await this.prisma.seller.update({
-      where: { id },
-      data: { status },
-      include: { user: true },
-    });
-
-    return this.toResponseDto(updated);
+    return this.toResponseDto(seller);
   }
 
   private async findSellerOrThrow(id: string): Promise<SellerWithUser> {

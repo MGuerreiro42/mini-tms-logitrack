@@ -466,18 +466,18 @@ export class CarriersService {
     id: string,
     status: ApprovalStatus,
   ): Promise<CarrierResponseDto> {
+    // Conditional write: of two concurrent decisions only one matches PENDING.
+    const { count } = await this.prisma.carrier.updateMany({
+      where: { id, status: ApprovalStatus.PENDING },
+      data: { status },
+    });
     const carrier = await this.findCarrierOrThrow(id);
-    if (carrier.status !== ApprovalStatus.PENDING) {
+    if (count === 0) {
       throw new ConflictException(
         `Carrier is already ${carrier.status.toLowerCase()}`,
       );
     }
-    const updated = await this.prisma.carrier.update({
-      where: { id },
-      data: { status },
-      include: managerInclude,
-    });
-    return this.toResponseDto(updated);
+    return this.toResponseDto(carrier);
   }
 
   private async findCarrierOrThrow(id: string): Promise<CarrierWithManager> {
