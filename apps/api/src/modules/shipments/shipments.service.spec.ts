@@ -67,6 +67,7 @@ describe('ShipmentsService', () => {
     userId: 'user-manager',
     carrierId: 'carrier-1',
     role: 'MANAGER',
+    carrier: { status: 'APPROVED' },
   };
 
   const carrierOperator = {
@@ -74,6 +75,7 @@ describe('ShipmentsService', () => {
     userId: 'user-operator',
     carrierId: 'carrier-1',
     role: 'OPERATOR',
+    carrier: { status: 'APPROVED' },
   };
 
   const carrierShipment = {
@@ -557,6 +559,40 @@ describe('ShipmentsService', () => {
         shipmentsService.findAllForCarrier('stranger'),
       ).rejects.toThrow(NotFoundException);
     });
+  });
+
+  describe('carrier approval', () => {
+    const operations = [
+      ['findAllForCarrier', () => shipmentsService.findAllForCarrier('u')],
+      [
+        'findOneForCarrier',
+        () => shipmentsService.findOneForCarrier('u', 'shipment-1'),
+      ],
+      ['claim', () => shipmentsService.claim('u', 'shipment-1')],
+      [
+        'updateStatus',
+        () =>
+          shipmentsService.updateStatus('u', 'shipment-1', {
+            status: 'COLLECTED',
+          }),
+      ],
+    ] as const;
+
+    for (const status of ['PENDING', 'REJECTED']) {
+      it.each(
+        operations,
+      )(`%s throws ForbiddenException for a ${status} carrier`, async (_name, operation) => {
+        carrierUserFindUnique.mockResolvedValue({
+          ...carrierManager,
+          carrier: { status },
+        });
+
+        await expect(operation()).rejects.toThrow(ForbiddenException);
+        expect(shipmentFindMany).not.toHaveBeenCalled();
+        expect(shipmentFindFirst).not.toHaveBeenCalled();
+        expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      });
+    }
   });
 
   describe('findAllForAdmin', () => {

@@ -123,7 +123,10 @@ export class ShipmentsController {
   })
   @ApiPaginatedResponse(CarrierShipmentResponseDto)
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
-  @ApiResponse({ status: 403, description: 'Not a carrier user' })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a carrier user, or the carrier is not approved',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(GlobalRole.CARRIER_MANAGER, GlobalRole.CARRIER_OPERATOR)
   @Get('queue')
@@ -146,7 +149,10 @@ export class ShipmentsController {
   })
   @ApiResponse({ status: 200, type: CarrierShipmentDetailResponseDto })
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
-  @ApiResponse({ status: 403, description: 'Not a carrier user' })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a carrier user, or the carrier is not approved',
+  })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(GlobalRole.CARRIER_MANAGER, GlobalRole.CARRIER_OPERATOR)
@@ -165,7 +171,10 @@ export class ShipmentsController {
   })
   @ApiResponse({ status: 200, type: CarrierShipmentResponseDto })
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
-  @ApiResponse({ status: 403, description: 'Not a carrier user' })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a carrier user, or the carrier is not approved',
+  })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
   @ApiResponse({ status: 409, description: 'Shipment already claimed' })
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -189,7 +198,7 @@ export class ShipmentsController {
   @ApiResponse({
     status: 403,
     description:
-      'Not the owner nor the carrier manager, or the target status is CANCELLED',
+      'Not the owner nor the manager, carrier not approved, or target status is CANCELLED',
   })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
   @ApiResponse({ status: 409, description: 'Status changed concurrently' })
