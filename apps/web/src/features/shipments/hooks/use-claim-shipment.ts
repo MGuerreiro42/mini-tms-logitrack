@@ -13,9 +13,9 @@ export function useClaimShipment() {
 
   return useMutation({
     mutationFn: (id: string) => claimShipment(id, session?.token ?? ''),
-    onSuccess: (shipment) => {
+    onSuccess: () => {
       toast.success('Shipment claimed');
-      invalidateShipmentQueries(queryClient, shipment.id);
+      invalidateShipmentQueries(queryClient);
     },
     onError: (error) => {
       toast.error(
