@@ -13,6 +13,8 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(WS_URL, {
       autoConnect: false,
+      // Skip the long-polling handshake: it needs sticky sessions across multiple API instances.
+      transports: ['websocket'],
       auth: (cb) => cb({ token: getSessionFromDocument()?.token }),
     });
   }
