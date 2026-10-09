@@ -10,7 +10,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { CarrierShipment, ShipmentStatus } from '../types';
+import {
+  type CarrierShipment,
+  isClaimable,
+  type ShipmentStatus,
+} from '../types';
 
 const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
   { label: 'All', value: 'ALL' },
@@ -83,7 +87,7 @@ export function CarrierQueueTable() {
                 header: '',
                 className: 'text-right',
                 cell: (s) =>
-                  s.ownerId ? null : (
+                  isClaimable(s) ? (
                     // A direct button, no confirm dialog — unlike admin
                     // approve/reject (infrequent, higher-consequence), claiming
                     // is meant to be a fast, in-the-flow action for an operator
@@ -99,7 +103,7 @@ export function CarrierQueueTable() {
                     >
                       Claim
                     </Button>
-                  ),
+                  ) : null,
               },
             ]}
           />
