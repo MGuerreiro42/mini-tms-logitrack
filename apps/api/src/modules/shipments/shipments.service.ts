@@ -301,12 +301,7 @@ export class ShipmentsService {
     return counts;
   }
 
-  // DeliveryModality.slaHours has had no reader anywhere until this (see
-  // sla-summary-response.dto.ts). Only DELIVERED shipments count — an
-  // in-flight shipment has no resolved outcome yet, on time or not. A
-  // modality with no `slaHours` configured is skipped entirely rather than
-  // folded in as an automatic miss, matching the null-over-0 discipline
-  // already used for avgHoursBetweenEvents.
+  // SLA clock starts at order creation; only delivered shipments have an outcome.
   async slaSummaryForSeller(
     userId: string,
   ): Promise<SlaSummaryItemResponseDto[]> {

@@ -465,7 +465,6 @@ describe('CarriersService', () => {
         { status: 'FAILED_DELIVERY', _count: 1 },
       ]);
       trackingEventFindMany.mockResolvedValue([
-        // shipment-1: PENDING -> ACCEPTED (2h), ACCEPTED -> COLLECTED (4h)
         {
           shipmentId: 'shipment-1',
           status: 'PENDING',

@@ -20,8 +20,7 @@ import { ordinalChartRamp } from '@/lib/ordinal-chart-ramp';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import type { StageDuration } from '../types';
 
-// Recharts doesn't export this type from the package root, only from an
-// internal component path — redeclared here to type the LabelList formatter.
+// Not exported from recharts' package root.
 type RenderableText = string | number | boolean | null | undefined;
 
 const chartConfig = {

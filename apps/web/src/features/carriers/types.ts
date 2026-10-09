@@ -39,9 +39,6 @@ export interface CoverageAreaInput {
   city?: string;
 }
 
-// One entry per happy-path transition, ending at DELIVERED — the failure
-// branch (OUT_FOR_DELIVERY -> FAILED_DELIVERY -> RETURNED) isn't part of
-// this "how long does a normal delivery take" funnel.
 export interface StageDuration {
   fromStatus: ShipmentStatus;
   toStatus: ShipmentStatus;
@@ -58,9 +55,6 @@ export interface CarrierPerformance {
   stageDurations: StageDuration[];
 }
 
-// Operator invites aren't built yet (DESIGN.md § 7) — today a carrier only
-// ever has one CarrierUser (the manager), so this is a single-row ranking
-// until that feature ships.
 export interface OperatorRankingItem {
   carrierUserId: string;
   email: string;

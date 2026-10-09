@@ -28,10 +28,6 @@ import type { CreateCarrierDto } from './dto/create-carrier.dto';
 import type { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
-// The happy-path segment of shipment-status.util.ts's ALLOWED_TRANSITIONS,
-// ending at DELIVERED — the failure branch (OUT_FOR_DELIVERY ->
-// FAILED_DELIVERY -> RETURNED) is a different, smaller-sample story that
-// doesn't belong in a "how long does a normal delivery take" funnel.
 const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
   [ShipmentStatus.PENDING, ShipmentStatus.ACCEPTED],
   [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED],
@@ -255,9 +251,6 @@ export class CarriersService {
 
     // `events` is already ordered by (shipmentId, createdAt) — consecutive
     // rows for the same shipmentId are consecutive events in time, so a
-    // single pass catches every gap without grouping into a Map first. Same
-    // pass also buckets each gap by its (fromStatus, toStatus) pair, so the
-    // per-stage funnel below costs nothing extra to compute.
     const gapsInHours: number[] = [];
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
@@ -317,14 +310,6 @@ export class CarriersService {
     };
   }
 
-  // Groups Shipment by ownerId within this carrier — today that's always
-  // exactly one CarrierUser (the manager; operator invites aren't built yet,
-  // DESIGN.md § 7), so this returns a single row until that feature ships.
-  // Built now anyway so it fills in on its own once invites exist, rather
-  // than being a second slice to build later. Two small groupBys + a lookup
-  // of the involved CarrierUsers' emails, merged in application code — same
-  // "no $queryRaw" style as performance() above, and cheap given the result
-  // set is bounded by headcount, not shipment volume.
   async operatorRanking(
     userId: string,
   ): Promise<OperatorRankingItemResponseDto[]> {

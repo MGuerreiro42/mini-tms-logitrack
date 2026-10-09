@@ -16,14 +16,9 @@ import {
 } from '@/components/ui/chart';
 import type { SlaSummaryItem } from '../types';
 
-// Recharts doesn't export this type from the package root, only from an
-// internal component path — redeclared here to type the LabelList formatter.
+// Not exported from recharts' package root.
 type RenderableText = string | number | boolean | null | undefined;
 
-// Single series (on-time rate) — one categorical hue (slot 1, per the
-// dataviz skill's reference palette), not a color per modality. Modality
-// identity is already carried by the x-axis labels, so color here would
-// only re-encode what the bar height already shows.
 const chartConfig = {
   onTimeRate: {
     label: 'On-time rate',
