@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { useRouter } from 'next/navigation';
-import { getQueryClient } from '@/lib/query-client';
+import { makeQueryClient } from '@/lib/query-client';
 import { getSessionFromDocument } from '@/lib/session';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
@@ -103,7 +103,7 @@ describe('LoginForm', () => {
       ),
     );
     const user = userEvent.setup();
-    renderWithQueryClient(<LoginForm />, getQueryClient());
+    renderWithQueryClient(<LoginForm />, makeQueryClient());
 
     await user.type(screen.getByLabelText('Email'), 'seller@example.com');
     await user.type(screen.getByLabelText('Password'), 'wrong-password');
