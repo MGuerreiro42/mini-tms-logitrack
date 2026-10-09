@@ -40,7 +40,7 @@ describe('EligibleCarriersList', () => {
     expect(screen.getByText(/Araraquara\/SP/)).toBeInTheDocument();
   });
 
-  it('lists matching carriers and calls onNext when one is chosen', async () => {
+  it('selects a carrier and only continues on Continue', async () => {
     server.use(
       http.get(`${API_URL}/shipments/eligible-carriers`, () =>
         HttpResponse.json([
@@ -62,8 +62,15 @@ describe('EligibleCarriersList', () => {
     );
 
     expect(await screen.findByText('2 matches')).toBeInTheDocument();
-    await user.click(screen.getByText('Fast Freight'));
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(continueButton).toBeDisabled();
 
+    const option = screen.getByRole('button', { name: /Fast Freight/ });
+    await user.click(option);
+    expect(option).toHaveAttribute('aria-pressed', 'true');
+    expect(onNext).not.toHaveBeenCalled();
+
+    await user.click(continueButton);
     expect(onNext).toHaveBeenCalledWith('carrier-1', 'Fast Freight');
   });
 
