@@ -8,6 +8,8 @@ import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
 import { shipmentKeys } from '../api/keys';
 import type { Shipment, ShipmentStatusCounts, SlaSummaryItem } from '../types';
 
+const RECENT_SHIPMENTS_LIMIT = 5;
+
 export interface SellerDashboardData {
   counts: ReturnType<typeof toCounts>;
   recentShipments: Shipment[];
@@ -38,7 +40,8 @@ export function useSellerDashboard() {
       },
       {
         queryKey: shipmentKeys.dashboardRecent(),
-        queryFn: () => listShipments({ page: 1, limit: 5 }, token),
+        queryFn: () =>
+          listShipments({ page: 1, limit: RECENT_SHIPMENTS_LIMIT }, token),
         enabled,
       },
       {

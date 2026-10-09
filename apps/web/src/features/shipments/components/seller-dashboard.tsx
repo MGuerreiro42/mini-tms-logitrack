@@ -72,13 +72,6 @@ function SellerDashboardView({
         </div>
         <PaginatedTable<Shipment>
           data={recentShipments}
-          meta={{
-            total: recentShipments.length,
-            page: 1,
-            limit: 5,
-            totalPages: 1,
-          }}
-          onPageChange={() => {}}
           getRowKey={(shipment) => shipment.id}
           getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
           emptyMessage="No shipments yet."
