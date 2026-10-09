@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+// One flag per route: each route mounts at most one socket subscription.
 interface RealtimeState {
   connected: boolean;
   setConnected: (connected: boolean) => void;
