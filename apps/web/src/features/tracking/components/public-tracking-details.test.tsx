@@ -38,16 +38,16 @@ describe('PublicTrackingDetails', () => {
     serveTracking(tracking);
   });
 
-  it('subscribes to the tracking room and goes live once the server acks', () => {
+  it('subscribes to the tracking room and goes live once the server acks', async () => {
     renderWithQueryClient(<PublicTrackingDetails initialData={tracking} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Reconnecting');
     act(() => socket.trigger('connect'));
 
-    const [event, code, ack] = socket.emit.mock.calls[0];
+    const [event, code] = socket.emit.mock.calls[0];
     expect(event).toBe('subscribe:tracking');
     expect(code).toBe('TMS-AAA111');
-    act(() => (ack as (res: { ok: boolean }) => void)({ ok: true }));
+    await act(async () => socket.ackAll({ ok: true }));
 
     expect(screen.getByRole('status')).toHaveTextContent('Live');
   });

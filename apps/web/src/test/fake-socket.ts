@@ -1,22 +1,33 @@
 import { vi } from 'vitest';
 
-// Minimal socket.io Socket fake with a manual event trigger.
+type Listener = (...args: unknown[]) => void;
+
+// Minimal socket.io Socket fake with manual event and ack triggers.
 export function makeFakeSocket() {
-  const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
-  return {
+  const listeners: Record<string, Listener[]> = {};
+  const socket = {
     connected: false,
-    on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+    on: vi.fn((event: string, cb: Listener) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(cb);
     }),
-    off: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+    off: vi.fn((event: string, cb: Listener) => {
       listeners[event] = (listeners[event] ?? []).filter((fn) => fn !== cb);
     }),
     emit: vi.fn(),
+    timeout: vi.fn(() => socket),
     connect: vi.fn(),
     disconnect: vi.fn(),
     trigger(event: string, ...args: unknown[]) {
       for (const cb of listeners[event] ?? []) cb(...args);
     },
+    // Answers every pending emit ack the way `socket.timeout().emit()` would.
+    ackAll(ack: unknown, error: unknown = null) {
+      for (const call of socket.emit.mock.calls) {
+        const cb = call.at(-1);
+        if (typeof cb === 'function') cb(error, ack);
+      }
+    },
   };
+  return socket;
 }
