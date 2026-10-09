@@ -1,18 +1,16 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getMyOperatorRanking } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useOperatorRanking() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
-  const query = useQuery({
-    queryKey: ['carriers', 'me', 'operator-ranking'],
-    queryFn: () => getMyOperatorRanking(session?.token ?? ''),
-    enabled: Boolean(session),
+  return useQuery({
+    queryKey: carrierKeys.operatorRanking(),
+    queryFn: () => getMyOperatorRanking(token),
+    enabled,
   });
-
-  // `isPending`, not `isLoading` — same reasoning as use-carrier-performance.ts.
-  return { ...query, isLoading: query.isPending };
 }

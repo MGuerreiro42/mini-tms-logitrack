@@ -1,11 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import {
-  APPROVAL_STATUS,
-  type ApprovalStatus,
-  SHIPMENT_STATUS,
-  type ShipmentStatus,
-} from '@/lib/status-colors';
+import { APPROVAL_STATUS, SHIPMENT_STATUS } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
+import type { ApprovalStatus, ShipmentStatus } from '@/types/status';
 
 export function ApprovalStatusPill({ status }: { status: ApprovalStatus }) {
   const meta = APPROVAL_STATUS[status];

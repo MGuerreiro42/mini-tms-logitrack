@@ -1,16 +1,17 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { listCarriers } from '../api';
+import { carrierKeys } from '../api/keys';
 import type { ListCarriersQuery } from '../types';
 
 export function useCarriersList(query: ListCarriersQuery) {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['carriers', 'list', query],
-    queryFn: () => listCarriers(query, session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: carrierKeys.list(query),
+    queryFn: () => listCarriers(query, token),
+    enabled,
   });
 }

@@ -1,18 +1,22 @@
+import { redirect } from 'next/navigation';
+import { PublicCard } from '@/components/common/public-card';
 import { PublicTrackingForm } from '@/features/tracking/components/public-tracking-form';
+import { publicTrackingPath } from '@/lib/public-tracking-path';
 
-export default function PublicTrackingPage() {
+export default async function PublicTrackingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const code = (await searchParams).code?.trim();
+  if (code) redirect(publicTrackingPath(code));
+
   return (
-    <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
-      <div className="space-y-1 text-center">
-        <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-primary font-mono text-sm font-semibold text-primary-foreground">
-          TMS
-        </div>
-        <h1 className="text-lg font-semibold">Track a shipment</h1>
-        <p className="text-sm text-muted-foreground">
-          No login needed — search by tracking code.
-        </p>
-      </div>
+    <PublicCard
+      title="Track a shipment"
+      description="No login needed — search by tracking code."
+    >
       <PublicTrackingForm />
-    </div>
+    </PublicCard>
   );
 }

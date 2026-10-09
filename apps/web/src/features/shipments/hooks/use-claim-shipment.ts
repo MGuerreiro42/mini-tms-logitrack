@@ -1,26 +1,13 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { claimShipment } from '../api';
-import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
+import { shipmentKeys } from '../api/keys';
 
 export function useClaimShipment() {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => claimShipment(id, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Shipment claimed');
-      invalidateShipmentQueries(queryClient);
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (id: string, token) => claimShipment(id, token),
+    successMessage: 'Shipment claimed',
+    invalidates: shipmentKeys.all,
   });
 }

@@ -10,7 +10,7 @@ export default function CarrierSettingsPage() {
           Modality &amp; coverage configuration
         </h1>
         <p className="text-sm text-muted-foreground">
-          Only the manager can change this. Full replace on save for both.
+          Choose which modalities you operate and where you deliver.
         </p>
       </div>
       <Card>

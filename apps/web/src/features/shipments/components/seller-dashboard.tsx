@@ -2,36 +2,32 @@
 
 import Link from 'next/link';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { useSellerDashboard } from '../hooks/use-seller-dashboard';
+import {
+  type SellerDashboardData,
+  useSellerDashboard,
+} from '../hooks/use-seller-dashboard';
 import type { Shipment } from '../types';
+import { shipmentColumns } from './shipment-columns';
 import { SlaSummaryChart } from './sla-summary-chart';
 
 export function SellerDashboard() {
-  const { isLoading, isError, counts, recentShipments, slaSummary } =
-    useSellerDashboard();
+  const query = useSellerDashboard();
 
-  if (isLoading) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
+  return (
+    <QueryState query={query} errorMessage="Couldn't load your dashboard.">
+      {(data) => <SellerDashboardView {...data} />}
+    </QueryState>
+  );
+}
 
-  if (isError) {
-    return (
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        Couldn't load your dashboard. Please refresh the page.
-      </div>
-    );
-  }
-
-  // Zero shipments ever, not just zero on the current filter — the
-  // create-shipment CTA takes over the whole screen instead of a row of
-  // zero-count tiles nobody asked to see yet (FLOW.md Frame 19).
+function SellerDashboardView({
+  counts,
+  recentShipments,
+  slaSummary,
+}: SellerDashboardData) {
   if (counts.total === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
@@ -75,36 +71,14 @@ export function SellerDashboard() {
         </div>
         <PaginatedTable<Shipment>
           data={recentShipments}
-          meta={{
-            total: recentShipments.length,
-            page: 1,
-            limit: 5,
-            totalPages: 1,
-          }}
-          onPageChange={() => {}}
           getRowKey={(shipment) => shipment.id}
           getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
           emptyMessage="No shipments yet."
           columns={[
-            {
-              header: 'Tracking code',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.trackingCode}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ShipmentStatusPill status={s.status} />,
-            },
-            {
-              header: 'Destination',
-              cell: (s) => `${s.addressCity}/${s.addressState}`,
-            },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-            },
+            shipmentColumns.trackingCode,
+            shipmentColumns.status,
+            shipmentColumns.destination,
+            shipmentColumns.created,
           ]}
         />
       </div>

@@ -1,21 +1,16 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getMyCarrierPerformance } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useCarrierPerformance() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
-  const query = useQuery({
-    queryKey: ['carriers', 'me', 'performance'],
-    queryFn: () => getMyCarrierPerformance(session?.token ?? ''),
-    enabled: Boolean(session),
+  return useQuery({
+    queryKey: carrierKeys.performance(),
+    queryFn: () => getMyCarrierPerformance(token),
+    enabled,
   });
-
-  // `isPending`, not `isLoading` — a query disabled because the session
-  // hasn't hydrated yet (true during SSR) reports isLoading:false but
-  // isPending:true (see the dashboards' equivalent hooks for the full
-  // reasoning behind this — the same code-review finding applies here).
-  return { ...query, isLoading: query.isPending };
 }

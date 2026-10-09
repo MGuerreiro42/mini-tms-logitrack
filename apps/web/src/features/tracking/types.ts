@@ -1,8 +1,8 @@
-import type { ShipmentStatus } from '@/features/shipments/types';
+import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 
-export interface PublicTrackingEvent {
+export interface TrackingUpdatedEvent {
+  trackingCode: string;
   status: ShipmentStatus;
-  createdAt: string;
 }
 
 export interface PublicTracking {
@@ -11,5 +11,5 @@ export interface PublicTracking {
   addressCity: string;
   addressState: string;
   modalityName: string;
-  events: PublicTrackingEvent[];
+  events: TimelineEvent[];
 }

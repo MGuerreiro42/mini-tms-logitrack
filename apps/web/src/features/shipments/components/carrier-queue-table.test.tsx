@@ -1,7 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { useRouter } from 'next/navigation';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
@@ -9,7 +8,6 @@ import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import { CarrierQueueTable } from './carrier-queue-table';
 
-vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
 vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
 
 const API_URL = 'http://localhost:3333';
@@ -38,14 +36,9 @@ const ownedShipment = {
 
 describe('CarrierQueueTable', () => {
   let requestedUrls: string[] = [];
-  let push: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     requestedUrls = [];
-    push = vi.fn();
-    vi.mocked(useRouter).mockReturnValue({
-      push,
-    } as unknown as ReturnType<typeof useRouter>);
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     setSession({
       token: 'signed.jwt.token',
@@ -95,7 +88,54 @@ describe('CarrierQueueTable', () => {
     await user.click(screen.getByRole('button', { name: 'Claim' }));
 
     await waitFor(() => expect(claimedId).toBe('shipment-1'));
-    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('disables only the Claim button of the row being claimed', async () => {
+    const secondUnowned = {
+      ...unownedShipment,
+      id: 'shipment-3',
+      trackingCode: 'TMS-CCC333',
+      sellerCompanyName: 'Third Store',
+    };
+    server.use(
+      http.get(`${API_URL}/shipments/queue`, () =>
+        HttpResponse.json({
+          data: [unownedShipment, secondUnowned],
+          meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.patch(`${API_URL}/shipments/:id/claim`, () => new Promise(() => {})),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierQueueTable />);
+    await screen.findByText('Third Store');
+
+    const [first, second] = screen.getAllByRole('button', { name: 'Claim' });
+    await user.click(first);
+
+    await waitFor(() => expect(first).toBeDisabled());
+    expect(second).toBeEnabled();
+  });
+
+  it('refetches the queue when a claim loses the race (409)', async () => {
+    server.use(
+      http.patch(`${API_URL}/shipments/:id/claim`, () =>
+        HttpResponse.json(
+          { statusCode: 409, message: 'Shipment already claimed' },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierQueueTable />);
+    await screen.findByText('Example Store');
+    const fetchesBefore = requestedUrls.length;
+
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
+
+    await waitFor(() =>
+      expect(requestedUrls.length).toBeGreaterThan(fetchesBefore),
+    );
   });
 
   it('switching the status tab refetches with the new filter and resets to page 1', async () => {

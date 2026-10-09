@@ -1,51 +1,21 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { approveCarrier, rejectCarrier } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useApproveCarrier(id: string) {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => approveCarrier(id, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Carrier approved');
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
-      queryClient.invalidateQueries({
-        queryKey: ['carriers', 'status-counts'],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (_, token) => approveCarrier(id, token),
+    successMessage: 'Carrier approved',
+    invalidates: carrierKeys.all,
   });
 }
 
 export function useRejectCarrier(id: string) {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => rejectCarrier(id, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Carrier rejected');
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
-      queryClient.invalidateQueries({
-        queryKey: ['carriers', 'status-counts'],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (_, token) => rejectCarrier(id, token),
+    successMessage: 'Carrier rejected',
+    invalidates: carrierKeys.all,
   });
 }

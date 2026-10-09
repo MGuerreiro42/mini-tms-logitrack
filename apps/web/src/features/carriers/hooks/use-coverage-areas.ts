@@ -1,39 +1,27 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useQuery } from '@tanstack/react-query';
+import { useApiMutation } from '@/hooks/use-api-mutation';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getMyCoverageAreas, setMyCoverageAreas } from '../api';
+import { carrierKeys } from '../api/keys';
 import type { CoverageAreaInput } from '../types';
 
 export function useCoverageAreas() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['carriers', 'me', 'coverage-areas'],
-    queryFn: () => getMyCoverageAreas(session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: carrierKeys.coverageAreas(),
+    queryFn: () => getMyCoverageAreas(token),
+    enabled,
   });
 }
 
 export function useSetCoverageAreas() {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (areas: CoverageAreaInput[]) =>
-      setMyCoverageAreas(areas, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Coverage areas saved');
-      queryClient.invalidateQueries({
-        queryKey: ['carriers', 'me', 'coverage-areas'],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (areas: CoverageAreaInput[], token) =>
+      setMyCoverageAreas(areas, token),
+    successMessage: 'Coverage areas saved',
+    invalidates: carrierKeys.coverageAreas(),
   });
 }

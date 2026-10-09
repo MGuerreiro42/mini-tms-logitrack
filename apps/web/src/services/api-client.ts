@@ -1,9 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+import { API_URL } from '@/lib/api-url';
 
-// NestJS's default exception filter shape: `message` is a plain string for
-// most exceptions (ConflictException, BadRequestException with a single
-// reason, NotFoundException) but an array for ValidationPipe failures — join
-// it so callers always get one displayable string.
+// Nest sends `message` as a string, or an array for validation errors.
 export class ApiError extends Error {
   constructor(
     public statusCode: number,
@@ -15,10 +12,6 @@ export class ApiError extends Error {
   }
 }
 
-// `token` is an explicit parameter, not read internally, so this function
-// works unchanged from Server Components (token read via next/headers'
-// cookies()) and client hooks (token read via document.cookie) without ever
-// importing next/headers into a file that also ships to the browser.
 export async function apiClient<T>(
   path: string,
   init?: RequestInit,
@@ -46,4 +39,15 @@ export async function apiClient<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+type QueryValue = string | number | undefined;
+
+export function toQueryString(params: Record<string, QueryValue>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
 }

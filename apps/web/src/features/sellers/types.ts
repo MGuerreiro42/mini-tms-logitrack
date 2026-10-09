@@ -1,7 +1,7 @@
-import type { ApprovalStatus } from '@/lib/status-colors';
 import type { PaginationQuery } from '@/types/pagination';
+import type { ApprovalStatus, ApprovalStatusCounts } from '@/types/status';
 
-export type ApprovalStatusCounts = Record<ApprovalStatus, number>;
+export type { ApprovalStatusCounts };
 
 export interface Seller {
   id: string;

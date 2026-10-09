@@ -13,30 +13,29 @@ const items = [
 ];
 
 describe('NavList', () => {
-  // Regression test for a real bug: a naive per-item `pathname.startsWith`
-  // check marked "Profile" (/seller) active on every nested seller route,
-  // since it's a literal string prefix of all of them.
   it('marks only the section root active when the pathname is exactly the root', () => {
     vi.mocked(usePathname).mockReturnValue('/seller');
     render(<NavList items={items} />);
 
-    expect(screen.getByRole('link', { name: /profile/i })).toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: /profile/i })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(screen.getByRole('link', { name: /modalities/i })).not.toHaveClass(
-      'bg-muted',
-    );
+    expect(
+      screen.getByRole('link', { name: /modalities/i }),
+    ).not.toHaveAttribute('aria-current');
   });
 
   it('marks the nested item active, not the section root, on a nested route', () => {
     vi.mocked(usePathname).mockReturnValue('/seller/modalities');
     render(<NavList items={items} />);
 
-    expect(screen.getByRole('link', { name: /modalities/i })).toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: /modalities/i })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveAttribute(
+      'aria-current',
     );
   });
 
@@ -44,11 +43,12 @@ describe('NavList', () => {
     vi.mocked(usePathname).mockReturnValue('/seller/shipments/new');
     render(<NavList items={items} />);
 
-    expect(screen.getByRole('link', { name: /shipments/i })).toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: /shipments/i })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveAttribute(
+      'aria-current',
     );
   });
 
@@ -57,8 +57,8 @@ describe('NavList', () => {
     render(<NavList items={items} />);
 
     for (const item of items) {
-      expect(screen.getByRole('link', { name: item.name })).not.toHaveClass(
-        'bg-muted',
+      expect(screen.getByRole('link', { name: item.name })).not.toHaveAttribute(
+        'aria-current',
       );
     }
   });

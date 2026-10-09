@@ -11,7 +11,10 @@ import {
   signupSeller,
 } from './index';
 
-vi.mock('@/services/api-client', () => ({ apiClient: vi.fn() }));
+vi.mock('@/services/api-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/api-client')>()),
+  apiClient: vi.fn(),
+}));
 
 describe('sellers api', () => {
   beforeEach(() => {

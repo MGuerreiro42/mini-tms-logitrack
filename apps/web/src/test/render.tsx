@@ -11,9 +11,10 @@ function createTestQueryClient() {
   });
 }
 
-export function renderWithQueryClient(ui: ReactElement) {
-  const queryClient = createTestQueryClient();
-
+export function renderWithQueryClient(
+  ui: ReactElement,
+  queryClient: QueryClient = createTestQueryClient(),
+) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

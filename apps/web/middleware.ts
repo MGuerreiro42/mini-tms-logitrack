@@ -1,12 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
 
-// This is a coarse, UX-only gate — a user can freely edit this cookie via
-// devtools, and that gains them nothing: every real check happens again, for
-// real, against the signed JWT in NestJS's JwtAuthGuard/RolesGuard/@Roles(),
-// which never trusts anything this middleware decided. It exists purely so
-// a legitimate, unmodified session doesn't land on a route that will 403
-// everywhere, not to stop anyone malicious.
+// UX-only gate: the API re-checks the signed JWT on every request.
 const ROLE_BY_PREFIX: Record<string, string[]> = {
   '/admin': ['ADMIN'],
   '/seller': ['SELLER'],

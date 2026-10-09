@@ -1,94 +1,70 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
+import {
+  type StatusFilter,
+  StatusFilterTabs,
+  statusFilterOptions,
+} from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
+import { shipmentColumns } from './shipment-columns';
 
-const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'In transit', value: 'IN_TRANSIT' },
-  { label: 'Delivered', value: 'DELIVERED' },
-];
+const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
+  'PENDING',
+  'IN_TRANSIT',
+  'DELIVERED',
+  'CANCELLED',
+]);
 
 export function ShipmentsTable() {
-  const [status, setStatus] = useState<ShipmentStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
-
-  const { data, isLoading } = useShipmentsList({
-    status: status === 'ALL' ? undefined : status,
-    page,
-    limit: 20,
+  const { filters, setFilter, setPage, params } = useFilteredPagination({
+    status: 'ALL' as StatusFilter<ShipmentStatus>,
   });
+
+  const query = useShipmentsList(params);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Tabs
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value as ShipmentStatus | 'ALL');
-            setPage(1);
-          }}
-        >
-          <TabsList>
-            {FILTERS.map((filter) => (
-              <TabsTrigger key={filter.value} value={filter.value}>
-                {filter.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <StatusFilterTabs
+          options={STATUS_OPTIONS}
+          value={filters.status}
+          onChange={(value) => setFilter('status', value)}
+        />
         <Button asChild>
           <Link href="/seller/shipments/new">+ Create shipment</Link>
         </Button>
       </div>
-      {isLoading || !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <PaginatedTable<Shipment>
-          data={data.data}
-          meta={data.meta}
-          onPageChange={setPage}
-          getRowKey={(shipment) => shipment.id}
-          getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
-          emptyMessage="No shipments yet — create your first one."
-          columns={[
-            {
-              header: 'Tracking code',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.trackingCode}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ShipmentStatusPill status={s.status} />,
-            },
-            {
-              header: 'Destination',
-              cell: (s) => `${s.addressCity}/${s.addressState}`,
-            },
-            {
-              header: 'Carrier',
-              cell: (s) => s.carrierName,
-              className: 'text-muted-foreground',
-            },
-            { header: 'Modality', cell: (s) => s.modalityName },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-            },
-          ]}
-        />
-      )}
+      <QueryState query={query} errorMessage="Couldn't load shipments.">
+        {(result) => (
+          <PaginatedTable<Shipment>
+            data={result.data}
+            meta={result.meta}
+            onPageChange={setPage}
+            getRowKey={(shipment) => shipment.id}
+            getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
+            emptyMessage="No shipments yet — create your first one."
+            columns={[
+              shipmentColumns.trackingCode,
+              shipmentColumns.status,
+              shipmentColumns.destination,
+              {
+                header: 'Carrier',
+                cell: (s) => s.carrierName,
+                className: 'text-muted-foreground',
+              },
+              { header: 'Modality', cell: (s) => s.modalityName },
+              shipmentColumns.created,
+            ]}
+          />
+        )}
+      </QueryState>
     </div>
   );
 }

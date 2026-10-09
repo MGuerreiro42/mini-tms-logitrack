@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -21,8 +21,8 @@ export interface Column<T> {
 interface PaginatedTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  meta: PaginationMeta;
-  onPageChange: (page: number) => void;
+  meta?: PaginationMeta;
+  onPageChange?: (page: number) => void;
   getRowHref?: (row: T) => string;
   emptyMessage?: string;
   getRowKey: (row: T) => string;
@@ -37,8 +37,6 @@ export function PaginatedTable<T>({
   emptyMessage = 'Nothing here yet.',
   getRowKey,
 }: PaginatedTableProps<T>) {
-  const router = useRouter();
-
   return (
     <div className="space-y-3">
       <div className="rounded-lg border">
@@ -66,14 +64,15 @@ export function PaginatedTable<T>({
             {data.map((row) => (
               <TableRow
                 key={getRowKey(row)}
-                className={getRowHref ? 'cursor-pointer' : undefined}
-                onClick={
-                  getRowHref ? () => router.push(getRowHref(row)) : undefined
-                }
+                className={getRowHref ? 'relative' : undefined}
               >
-                {columns.map((col) => (
+                {columns.map((col, index) => (
                   <TableCell key={col.header} className={col.className}>
-                    {col.cell(row)}
+                    {getRowHref && index === 0 ? (
+                      <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
+                    ) : (
+                      col.cell(row)
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
@@ -81,7 +80,7 @@ export function PaginatedTable<T>({
           </TableBody>
         </Table>
       </div>
-      {meta.totalPages > 1 && (
+      {meta && onPageChange && meta.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Page {meta.page} of {meta.totalPages} · {meta.total} total
@@ -107,5 +106,23 @@ export function PaginatedTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+// Stretched link: other interactive cells need `relative z-10` to stay clickable.
+function RowLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+    >
+      {children}
+    </Link>
   );
 }

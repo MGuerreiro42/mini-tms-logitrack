@@ -1,5 +1,6 @@
 'use client';
 
+import { QueryState } from '@/components/common/query-state';
 import { ModalityToggleList } from '@/features/modalities/components/modality-toggle-list';
 import {
   useMyModalities,
@@ -7,19 +8,19 @@ import {
 } from '../hooks/use-my-modalities';
 
 export function SellerModalityConfig() {
-  const { data: modalities, isLoading } = useMyModalities();
+  const query = useMyModalities();
   const setModalities = useSetMyModalities();
 
-  if (isLoading || !modalities) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
-  }
-
   return (
-    <ModalityToggleList
-      items={modalities}
-      onSave={(modalityIds) => setModalities.mutate(modalityIds)}
-      isSaving={setModalities.isPending}
-      note="Independent of what any carrier actually offers — checked only at shipment creation time, not enforced here."
-    />
+    <QueryState query={query} errorMessage="Couldn't load modalities.">
+      {(modalities) => (
+        <ModalityToggleList
+          items={modalities}
+          onSave={(modalityIds) => setModalities.mutate(modalityIds)}
+          isSaving={setModalities.isPending}
+          note="Carriers are matched against these when you create a shipment."
+        />
+      )}
+    </QueryState>
   );
 }

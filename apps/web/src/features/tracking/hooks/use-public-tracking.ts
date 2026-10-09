@@ -1,13 +1,21 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useFallbackPollInterval } from '@/hooks/use-fallback-poll-interval';
 import { getPublicTracking } from '../api';
+import type { PublicTracking } from '../types';
 
-// A mutation, not a query — this is a one-shot lookup triggered by the
-// visitor submitting a code, not something to keep fresh in the background
-// (no session, no WebSocket room to subscribe to on this screen).
-export function usePublicTrackingMutation() {
-  return useMutation({
-    mutationFn: (trackingCode: string) => getPublicTracking(trackingCode),
+export function publicTrackingKey(trackingCode: string) {
+  return ['public-tracking', trackingCode] as const;
+}
+
+export function usePublicTracking(initialData: PublicTracking) {
+  const fallbackPollInterval = useFallbackPollInterval();
+
+  return useQuery({
+    queryKey: publicTrackingKey(initialData.trackingCode),
+    queryFn: () => getPublicTracking(initialData.trackingCode),
+    initialData,
+    refetchInterval: fallbackPollInterval,
   });
 }

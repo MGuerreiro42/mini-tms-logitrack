@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CreateShipmentInput } from '../types';
+import type { CreateShipmentInput, ModalityOption } from '../types';
 import { EligibleCarriersList } from './eligible-carriers-list';
 import {
   type AddressFormValues,
@@ -9,12 +9,14 @@ import {
 } from './shipment-address-form';
 import { ShipmentConfirmReview } from './shipment-confirm-review';
 
-// One client component with internal step state, not 3 routes — nothing in
-// this draft needs to survive a page reload or be deep-linkable before the
-// final POST /shipments actually persists it.
 type WizardState =
   | { step: 1 }
-  | { step: 2; address: AddressFormValues; modalityName: string }
+  | {
+      step: 2;
+      address: AddressFormValues;
+      modalityName: string;
+      carrierId?: string;
+    }
   | {
       step: 3;
       address: AddressFormValues;
@@ -23,12 +25,12 @@ type WizardState =
       carrierName: string;
     };
 
-export function CreateShipmentWizard() {
+export function CreateShipmentWizard({
+  modalities,
+}: {
+  modalities: ModalityOption[];
+}) {
   const [state, setState] = useState<WizardState>({ step: 1 });
-  // Step 1's own state ({ step: 1 }) carries no address, so coming back to
-  // it from step 2 needs the last-known values kept somewhere that survives
-  // the step change — otherwise "Back" silently drops everything the seller
-  // already typed.
   const [savedAddress, setSavedAddress] = useState<
     AddressFormValues | undefined
   >();
@@ -36,6 +38,7 @@ export function CreateShipmentWizard() {
   if (state.step === 1) {
     return (
       <ShipmentAddressForm
+        modalities={modalities}
         defaultValues={savedAddress}
         onNext={(address, modalityName) => {
           setSavedAddress(address);
@@ -51,6 +54,7 @@ export function CreateShipmentWizard() {
         state={state.address.addressState}
         city={state.address.addressCity}
         modalityId={state.address.modalityId}
+        defaultCarrierId={state.carrierId}
         onBack={() => setState({ step: 1 })}
         onNext={(carrierId, carrierName) =>
           setState({ ...state, step: 3, carrierId, carrierName })
@@ -81,6 +85,7 @@ export function CreateShipmentWizard() {
           step: 2,
           address: state.address,
           modalityName: state.modalityName,
+          carrierId: state.carrierId,
         })
       }
     />

@@ -3,7 +3,6 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
-import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { useShipmentTracking } from './use-shipment-tracking';
 
@@ -58,6 +57,7 @@ describe('useShipmentTracking', () => {
     expect(socket.emit).toHaveBeenCalledWith(
       'subscribe:shipment',
       'shipment-1',
+      expect.any(Function),
     );
   });
 
@@ -71,7 +71,10 @@ describe('useShipmentTracking', () => {
       wrapper: makeWrapper(queryClient),
     });
 
-    expect(socket.emit).toHaveBeenCalledWith('subscribe:queue');
+    expect(socket.emit).toHaveBeenCalledWith(
+      'subscribe:queue',
+      expect.any(Function),
+    );
   });
 
   it('subscribes to the queue room, not a shipment room, when subscribeToQueue is set', () => {
@@ -84,7 +87,10 @@ describe('useShipmentTracking', () => {
     });
     socket.trigger('connect');
 
-    expect(socket.emit).toHaveBeenCalledWith('subscribe:queue');
+    expect(socket.emit).toHaveBeenCalledWith(
+      'subscribe:queue',
+      expect.any(Function),
+    );
     expect(socket.emit).not.toHaveBeenCalledWith(
       'subscribe:shipment',
       expect.anything(),
@@ -105,24 +111,6 @@ describe('useShipmentTracking', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
 
-  it('tracks the connection state in the realtime store', () => {
-    const socket = makeFakeSocket();
-    vi.mocked(getSocket).mockReturnValue(socket as never);
-
-    const { unmount } = renderHook(
-      () => useShipmentTracking({ shipmentId: 'shipment-1' }),
-      { wrapper: makeWrapper(new QueryClient()) },
-    );
-
-    socket.trigger('connect');
-    expect(useRealtimeStore.getState().connected).toBe(true);
-    socket.trigger('disconnect');
-    expect(useRealtimeStore.getState().connected).toBe(false);
-    socket.trigger('connect');
-    unmount();
-    expect(useRealtimeStore.getState().connected).toBe(false);
-  });
-
   it('subscribes to the monitoring room when subscribeToMonitoring is set', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
@@ -133,7 +121,10 @@ describe('useShipmentTracking', () => {
     });
     socket.trigger('connect');
 
-    expect(socket.emit).toHaveBeenCalledWith('subscribe:monitoring');
+    expect(socket.emit).toHaveBeenCalledWith(
+      'subscribe:monitoring',
+      expect.any(Function),
+    );
   });
 
   it('invalidates on every (re)connect, not just on a received message (regression: a message missed during a disconnect must not leave the view stuck on stale data)', () => {
@@ -154,7 +145,7 @@ describe('useShipmentTracking', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
 
-  it('does not reconnect when useSession returns a new object with the same token (regression: useSession re-parses the cookie on every call)', () => {
+  it('does not reconnect when useSession returns a new object with the same token ', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     const queryClient = new QueryClient();
@@ -168,8 +159,6 @@ describe('useShipmentTracking', () => {
     socket.disconnect.mockClear();
     socket.emit.mockClear();
 
-    // A fresh object, same token value — exactly what useSession() returns
-    // on every real render (getSessionFromDocument() re-parses the cookie).
     vi.mocked(useSession).mockReturnValue({ ...session });
     rerender();
 

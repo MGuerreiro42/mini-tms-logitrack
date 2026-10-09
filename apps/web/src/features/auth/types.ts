@@ -1,8 +1,6 @@
-export type GlobalRole =
-  | 'ADMIN'
-  | 'SELLER'
-  | 'CARRIER_MANAGER'
-  | 'CARRIER_OPERATOR';
+import type { GlobalRole } from '@/types/auth';
+
+export type { GlobalRole };
 
 export interface AuthenticatedUser {
   id: string;

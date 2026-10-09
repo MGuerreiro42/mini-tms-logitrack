@@ -1,4 +1,6 @@
 import { renderHook } from '@testing-library/react';
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
 import { setSession } from '@/lib/session';
 import { useSession } from './use-session';
 
@@ -29,5 +31,19 @@ describe('useSession', () => {
       userId: 'user-1',
       email: 'admin@example.com',
     });
+  });
+
+  it('renders signed-out on the server so hydration matches', () => {
+    setSession({
+      token: 'signed.jwt.token',
+      role: 'ADMIN',
+      userId: 'user-1',
+      email: 'admin@example.com',
+    });
+    function Email() {
+      return createElement('span', null, useSession()?.email ?? 'anonymous');
+    }
+
+    expect(renderToString(createElement(Email))).toContain('anonymous');
   });
 });

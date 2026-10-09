@@ -6,7 +6,7 @@ export default function SellerModalitiesPage() {
       <div>
         <h1 className="text-xl font-semibold">Modality configuration</h1>
         <p className="text-sm text-muted-foreground">
-          Full replace on save — the complete desired set is sent every time.
+          Choose the delivery modalities you offer.
         </p>
       </div>
       <SellerModalityConfig />

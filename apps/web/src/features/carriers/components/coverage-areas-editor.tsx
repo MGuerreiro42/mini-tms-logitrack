@@ -24,9 +24,7 @@ interface CoverageAreasEditorProps {
   readOnly?: boolean;
 }
 
-// Rendered only once initialAreas is known (parent gates on the query's
-// isLoading) — avoids reset()-timing issues from seeding RHF defaultValues
-// asynchronously.
+// Mount only once initialAreas is loaded, so RHF defaults are never seeded asynchronously.
 export function CoverageAreasEditor({
   initialAreas,
   onSave,
@@ -44,8 +42,6 @@ export function CoverageAreasEditor({
   const { fields, append, remove } = useFieldArray({ control, name: 'areas' });
 
   function submit(values: FormValues) {
-    // An empty/blank city means "covers the entire state" — matches the
-    // backend's null-city convention (CarrierCoverageArea.city nullable).
     onSave(
       values.areas.map((area) => ({
         state: area.state,
