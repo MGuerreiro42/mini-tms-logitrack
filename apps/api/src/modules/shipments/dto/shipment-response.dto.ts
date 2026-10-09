@@ -28,7 +28,6 @@ export class ShipmentResponseDto extends ShipmentAddressDto {
   @ApiProperty()
   createdAt: Date;
 
-  // Only on the single-record read; the paginated list skips the timeline.
   @ApiPropertyOptional({ type: [TrackingEventDto] })
   trackingEvents?: TrackingEventDto[];
 }

@@ -22,7 +22,6 @@ export const sellerShipmentDetailInclude = {
   ...timeline,
 } satisfies Prisma.ShipmentInclude;
 
-// Carrier-facing reads also need the seller's contact and the claiming CarrierUser.
 export const carrierShipmentInclude = {
   modality: { select: { name: true } },
   seller: { include: { user: { select: { email: true } } } },

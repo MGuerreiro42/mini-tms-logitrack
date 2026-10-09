@@ -137,7 +137,6 @@ describe('SellersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
-  // Real error shape from @prisma/adapter-pg: the field is under driverAdapterError, not meta.target.
   const uniqueConstraintError = (field: string) =>
     new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',

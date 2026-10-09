@@ -8,7 +8,6 @@ import {
 const ALL_STATUSES = Object.values(ShipmentStatus);
 
 describe('isValidTransition', () => {
-  // Exhaustive over the full status matrix, not just the happy path.
   for (const from of ALL_STATUSES) {
     for (const to of ALL_STATUSES) {
       const expected = ALLOWED_TRANSITIONS[from].includes(to);

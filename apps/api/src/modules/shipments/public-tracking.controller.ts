@@ -3,7 +3,6 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
 import { ShipmentsService } from './shipments.service';
 
-// No auth guards on purpose: the tracking code is the credential.
 @ApiTags('public-tracking')
 @Controller('public/tracking')
 export class PublicTrackingController {

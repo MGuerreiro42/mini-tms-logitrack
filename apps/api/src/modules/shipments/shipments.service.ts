@@ -55,7 +55,6 @@ import {
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
 
-// `state` is uppercased at the DTO boundary; `city` keeps display casing, hence insensitive.
 const eligibleCarrierWhere = (
   state: string,
   city: string,
@@ -90,7 +89,6 @@ export class ShipmentsService {
     });
   }
 
-  // Same 404 for unknown and mistyped codes, on purpose.
   async findPublicByTrackingCode(
     trackingCode: string,
   ): Promise<PublicTrackingResponseDto> {
@@ -361,7 +359,6 @@ export class ShipmentsService {
     );
   }
 
-  // Unscoped on purpose: admin-only global monitoring, gated by @Roles(ADMIN).
   async findAllForAdmin(
     status?: ShipmentStatus,
     carrierId?: string,
@@ -408,7 +405,6 @@ export class ShipmentsService {
       carrierUser.carrierId,
       shipmentId,
     );
-    // Friendly pre-check only; the conditional updateMany below is the real guard.
     if (shipment.ownerId) {
       throw new ConflictException('Shipment has already been claimed');
     }
@@ -452,7 +448,6 @@ export class ShipmentsService {
       );
     }
 
-    // Managers may act on any shipment of their carrier; operators only on their own.
     const isOwner = shipment.ownerId === carrierUser.id;
     const isManager = carrierUser.role === CarrierRole.MANAGER;
     if (!isOwner && !isManager) {
@@ -467,7 +462,6 @@ export class ShipmentsService {
       );
     }
 
-    // Compare-and-set on the validated status so concurrent advances can't both write.
     const updated = await this.transitionWithEvent({
       shipmentId,
       expected: { status: shipment.status },

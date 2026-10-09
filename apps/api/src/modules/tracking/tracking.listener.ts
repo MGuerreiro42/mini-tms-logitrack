@@ -13,7 +13,6 @@ import {
   trackingRoom,
 } from './tracking-rooms';
 
-// Kept separate from the gateways so the fan-out is unit-testable against mocked servers.
 @Injectable()
 export class TrackingListener {
   constructor(

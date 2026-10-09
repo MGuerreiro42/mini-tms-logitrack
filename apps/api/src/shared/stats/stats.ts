@@ -11,7 +11,6 @@ export const average = (values: number[]): number | null =>
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null;
 
-// Turns a Prisma groupBy over `status` into a count for every enum value, zeros included.
 export function countByStatus<S extends string>(
   statuses: Record<string, S>,
   groups: { status: S; _count: number }[],

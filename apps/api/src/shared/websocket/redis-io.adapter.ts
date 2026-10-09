@@ -6,7 +6,6 @@ import { Redis } from 'ioredis';
 import type { ServerOptions } from 'socket.io';
 import type { EnvConfig } from '../config/env.validation';
 
-// Redis pub/sub so room emits reach sockets connected to any API instance.
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor?: ReturnType<typeof createAdapter>;
   private configService?: ConfigService<EnvConfig, true>;
