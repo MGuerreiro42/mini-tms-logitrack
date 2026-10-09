@@ -34,6 +34,13 @@ describe('QueryState', () => {
     expect(screen.getByText('Shipment not found.')).toBeInTheDocument();
   });
 
+  it('shows an access message on a 403', () => {
+    renderState({ error: new ApiError(403, 'Carrier is not approved') });
+    expect(
+      screen.getByText("You don't have access to this."),
+    ).toBeInTheDocument();
+  });
+
   it('shows an error with a working retry button', async () => {
     const source = renderState({ error: new ApiError(500, 'Server error') });
 

@@ -25,27 +25,22 @@ function forceReLogin() {
   window.location.href = '/login';
 }
 
-function isAuthError(error: unknown): error is ApiError {
-  return !isServer && error instanceof ApiError;
+function isExpiredSession(error: unknown): boolean {
+  return !isServer && error instanceof ApiError && error.statusCode === 401;
 }
 
-// Single place that reacts to an expired session.
+// Only a 401 ends the session; a 403 is an authorization answer the screen shows itself.
+function handleQueryError(error: unknown) {
+  if (isExpiredSession(error)) forceReLogin();
+}
+
 function handleMutationError(
   error: unknown,
   _variables: unknown,
   _context: unknown,
   mutation: Mutation<unknown, unknown, unknown>,
 ) {
-  if (mutation.meta?.skipAuthRedirect) return;
-  if (isAuthError(error) && error.statusCode === 401) {
-    forceReLogin();
-  }
-}
-
-// Reads enforce ownership with 404, so a query 403 means the session no longer fits the page
-// (e.g. another tab logged in as a different role). A mutation 403 is a normal rejection.
-function handleQueryError(error: unknown) {
-  if (isAuthError(error) && [401, 403].includes(error.statusCode)) {
+  if (!mutation.meta?.skipAuthRedirect && isExpiredSession(error)) {
     forceReLogin();
   }
 }
