@@ -1,9 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ShipmentStatus } from '../../../../generated/prisma/client';
+import { ShipmentAddressDto } from './shipment-address.dto';
 import { TrackingEventDto } from './tracking-event.dto';
 
 // Separate from ShipmentResponseDto: seller contact and owner must not leak to the seller view.
-export class CarrierShipmentResponseDto {
+export class CarrierShipmentResponseDto extends ShipmentAddressDto {
   @ApiProperty()
   id: string;
 
@@ -39,27 +40,6 @@ export class CarrierShipmentResponseDto {
     description: "The owning CarrierUser's email, if claimed",
   })
   ownerEmail: string | null;
-
-  @ApiProperty()
-  addressStreet: string;
-
-  @ApiProperty()
-  addressNumber: string;
-
-  @ApiPropertyOptional({ nullable: true })
-  addressComplement: string | null;
-
-  @ApiProperty()
-  addressNeighborhood: string;
-
-  @ApiProperty()
-  addressCity: string;
-
-  @ApiProperty()
-  addressState: string;
-
-  @ApiProperty()
-  addressZipCode: string;
 
   @ApiProperty()
   createdAt: Date;
