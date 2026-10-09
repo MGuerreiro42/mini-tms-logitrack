@@ -1,8 +1,7 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
-import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
+import { getServerSession } from '@/lib/server-session';
 
 const ADMIN_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/admin' },
@@ -16,8 +15,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const session = parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
+  const session = await getServerSession();
 
   // The real gate; middleware only checks the cookie shape.
   if (!session || session.role !== 'ADMIN') {
