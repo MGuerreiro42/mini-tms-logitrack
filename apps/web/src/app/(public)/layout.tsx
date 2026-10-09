@@ -1,4 +1,4 @@
-import { CenteredPage } from '@/components/common/message-card';
+import { CenteredPage } from '@/components/common/centered-page';
 
 export default function PublicLayout({
   children,

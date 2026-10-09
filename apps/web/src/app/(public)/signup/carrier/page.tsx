@@ -1,15 +1,15 @@
 import Link from 'next/link';
+import { PublicCard } from '@/components/common/public-card';
 import { CarrierSignupForm } from '@/features/carriers/components/carrier-signup-form';
 
 export default function CarrierSignupPage() {
   return (
-    <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
-      <div className="space-y-1">
-        <h1 className="text-lg font-semibold">Carrier company registration</h1>
-        <p className="text-sm text-muted-foreground">
-          An administrator reviews your company before you can start operating.
-        </p>
-      </div>
+    <PublicCard
+      badge={false}
+      align="start"
+      title="Carrier company registration"
+      description="An administrator reviews your company before you can start operating."
+    >
       <CarrierSignupForm />
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
@@ -17,6 +17,6 @@ export default function CarrierSignupPage() {
           Sign in
         </Link>
       </p>
-    </div>
+    </PublicCard>
   );
 }

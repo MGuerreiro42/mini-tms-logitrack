@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { PublicCard } from '@/components/common/public-card';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
 import { getServerSession } from '@/lib/server-session';
@@ -56,18 +57,19 @@ export default async function StatusPage() {
 
 function StatusCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="w-full max-w-sm space-y-4 rounded-xl border bg-card p-8 text-center shadow-sm">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
-        ⏳
-      </div>
-      <h1 className="text-lg font-semibold">{title}</h1>
-      <p className="text-sm text-muted-foreground">{body}</p>
-      <Link
-        href="/login"
-        className="inline-block text-sm text-primary hover:underline"
-      >
-        Back to login
-      </Link>
-    </div>
+    <PublicCard
+      badge={
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
+          ⏳
+        </div>
+      }
+      title={title}
+      description={body}
+      actions={
+        <Link href="/login" className="text-sm text-primary hover:underline">
+          Back to login
+        </Link>
+      }
+    />
   );
 }
