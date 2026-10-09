@@ -21,8 +21,9 @@ export interface Column<T> {
 interface PaginatedTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  meta: PaginationMeta;
-  onPageChange: (page: number) => void;
+  // Omit both for a plain, single-page table.
+  meta?: PaginationMeta;
+  onPageChange?: (page: number) => void;
   getRowHref?: (row: T) => string;
   emptyMessage?: string;
   getRowKey: (row: T) => string;
@@ -80,7 +81,7 @@ export function PaginatedTable<T>({
           </TableBody>
         </Table>
       </div>
-      {meta.totalPages > 1 && (
+      {meta && onPageChange && meta.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Page {meta.page} of {meta.totalPages} · {meta.total} total

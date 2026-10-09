@@ -106,4 +106,17 @@ describe('PaginatedTable', () => {
 
     expect(screen.queryByRole('link')).toBeNull();
   });
+
+  it('works as a plain table without pagination props', () => {
+    render(
+      <PaginatedTable<Row>
+        columns={columns}
+        data={[{ id: 'row-1', name: 'Row 1' }]}
+        getRowKey={(row) => row.id}
+      />,
+    );
+
+    expect(screen.getByText('Row 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next/i })).toBeNull();
+  });
 });
