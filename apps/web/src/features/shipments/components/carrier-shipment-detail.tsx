@@ -1,5 +1,6 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { QueryState } from '@/components/common/query-state';
@@ -119,15 +120,12 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
             )}
             {actionState.kind === 'advance' &&
               actionState.statuses.map((next) => (
-                <Button
+                <AdvanceStatusButton
                   key={next}
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => updateStatus.mutate({ id, status: next })}
-                  disabled={updateStatus.isPending}
-                >
-                  Advance to {SHIPMENT_STATUS[next].label}
-                </Button>
+                  status={next}
+                  onAdvance={() => updateStatus.mutate({ id, status: next })}
+                  isPending={updateStatus.isPending}
+                />
               ))}
             {actionState.kind === 'terminal' && (
               <p className="text-xs text-muted-foreground">
@@ -152,5 +150,61 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+const SETBACK_CONFIRMATION: Partial<
+  Record<ShipmentStatus, { title: string; description: string }>
+> = {
+  FAILED_DELIVERY: {
+    title: 'Mark delivery as failed?',
+    description:
+      'The seller and the public tracking page will show that this delivery attempt failed.',
+  },
+  RETURNED: {
+    title: 'Return this shipment to the seller?',
+    description: "This closes the shipment as returned and can't be undone.",
+  },
+};
+
+function AdvanceStatusButton({
+  status,
+  onAdvance,
+  isPending,
+}: {
+  status: ShipmentStatus;
+  onAdvance: () => void;
+  isPending: boolean;
+}) {
+  const label = SHIPMENT_STATUS[status].label;
+  const confirmation = SETBACK_CONFIRMATION[status];
+
+  if (!confirmation) {
+    return (
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={onAdvance}
+        disabled={isPending}
+      >
+        Advance to {label}
+      </Button>
+    );
+  }
+
+  return (
+    <ConfirmDialog
+      trigger={
+        <Button variant="destructive" className="w-full" disabled={isPending}>
+          {label}
+        </Button>
+      }
+      title={confirmation.title}
+      description={confirmation.description}
+      confirmLabel={label}
+      variant="destructive"
+      onConfirm={onAdvance}
+      isConfirming={isPending}
+    />
   );
 }
