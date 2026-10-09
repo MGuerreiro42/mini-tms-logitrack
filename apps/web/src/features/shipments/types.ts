@@ -1,17 +1,11 @@
 import type { PaginationQuery } from '@/types/pagination';
+import type {
+  ShipmentStatus,
+  ShipmentStatusCounts,
+  TrackingEvent,
+} from '@/types/status';
 
-export type ShipmentStatus =
-  | 'PENDING'
-  | 'ACCEPTED'
-  | 'COLLECTED'
-  | 'IN_TRANSIT'
-  | 'OUT_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'FAILED_DELIVERY'
-  | 'CANCELLED'
-  | 'RETURNED';
-
-export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
+export type { ShipmentStatus, ShipmentStatusCounts, TrackingEvent };
 
 // Modalities without slaHours are omitted by the API, not reported as 0%.
 export interface SlaSummaryItem {
@@ -20,13 +14,6 @@ export interface SlaSummaryItem {
   deliveredCount: number;
   onTimeCount: number;
   onTimeRate: number;
-}
-
-export interface TrackingEvent {
-  id: string;
-  status: ShipmentStatus;
-  note: string | null;
-  createdAt: string;
 }
 
 export interface Shipment {

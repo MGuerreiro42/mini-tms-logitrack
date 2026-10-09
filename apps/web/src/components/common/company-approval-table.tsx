@@ -14,8 +14,9 @@ import {
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
-import { APPROVAL_STATUS, type ApprovalStatus } from '@/lib/status-colors';
+import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
+import type { ApprovalStatus } from '@/types/status';
 
 interface CompanyRow {
   id: string;

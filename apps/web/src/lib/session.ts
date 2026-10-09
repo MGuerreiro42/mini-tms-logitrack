@@ -1,4 +1,4 @@
-import type { GlobalRole } from '@/features/auth/types';
+import type { GlobalRole } from '@/types/auth';
 
 export const SESSION_COOKIE = 'tms_session';
 

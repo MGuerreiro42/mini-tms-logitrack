@@ -13,13 +13,11 @@ describe('TrackingTimeline', () => {
       <TrackingTimeline
         events={[
           {
-            id: 'event-1',
             status: 'ACCEPTED',
             note: null,
             createdAt: '2026-01-01T12:00:00.000Z',
           },
           {
-            id: 'event-2',
             status: 'COLLECTED',
             note: 'Picked up from the seller',
             createdAt: '2026-01-02T12:00:00.000Z',
