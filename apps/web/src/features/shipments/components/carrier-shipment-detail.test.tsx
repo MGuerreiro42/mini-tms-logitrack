@@ -178,6 +178,23 @@ describe('CarrierShipmentDetail', () => {
     expect(screen.getAllByText('Accepted').length).toBeGreaterThan(0);
   });
 
+  it('offers no claim or advance for an unclaimed cancelled shipment', async () => {
+    setSession({
+      token: 't',
+      role: 'CARRIER_MANAGER',
+      userId: 'user-3',
+      email: 'manager@example.com',
+    });
+    mockDetail({ ...unclaimedShipment, status: 'CANCELLED' });
+
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    expect(
+      await screen.findByText('No further action available.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim shipment' })).toBeNull();
+  });
+
   it('shows a not-found state instead of loading forever on a 404', async () => {
     setSession({
       token: 't',

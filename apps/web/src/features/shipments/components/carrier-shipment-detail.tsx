@@ -16,6 +16,7 @@ import { useUpdateShipmentStatus } from '../hooks/use-update-shipment-status';
 import {
   ALLOWED_NEXT_STATUSES,
   type CarrierShipment,
+  isClaimable,
   type ShipmentStatus,
 } from '../types';
 
@@ -34,12 +35,11 @@ function getActionState(
   shipment: CarrierShipment,
   canAdvance: boolean,
 ): ActionState {
-  if (!shipment.ownerId) return { kind: 'claim' };
-  if (!canAdvance) return { kind: 'not-authorized' };
+  if (isClaimable(shipment)) return { kind: 'claim' };
   const statuses = ALLOWED_NEXT_STATUSES[shipment.status];
-  return statuses.length === 0
-    ? { kind: 'terminal' }
-    : { kind: 'advance', statuses };
+  if (statuses.length === 0) return { kind: 'terminal' };
+  if (!canAdvance) return { kind: 'not-authorized' };
+  return { kind: 'advance', statuses };
 }
 
 export function CarrierShipmentDetail({ id }: { id: string }) {
