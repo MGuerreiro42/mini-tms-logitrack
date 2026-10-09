@@ -28,10 +28,7 @@ import type { CreateCarrierDto } from './dto/create-carrier.dto';
 import type { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
-// The happy-path segment of shipment-status.util.ts's ALLOWED_TRANSITIONS,
-// ending at DELIVERED — the failure branch (OUT_FOR_DELIVERY ->
-// FAILED_DELIVERY -> RETURNED) is a different, smaller-sample story that
-// doesn't belong in a "how long does a normal delivery take" funnel.
+// Happy path only: the failure branch is a different, smaller-sample story.
 const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
   [ShipmentStatus.PENDING, ShipmentStatus.ACCEPTED],
   [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED],
@@ -146,8 +143,6 @@ export class CarriersService {
     );
   }
 
-  // Same reasoning as SellersService.countsByStatus — one groupBy query
-  // instead of 2 separate `findAll(status, limit:1)` calls.
   async countsByStatus(): Promise<CarrierStatusCountsResponseDto> {
     const groups = await this.prisma.carrier.groupBy({
       by: ['status'],
@@ -170,11 +165,6 @@ export class CarriersService {
     return this.toResponseDto(carrier);
   }
 
-  // Ownership-based (DESIGN.md § 16), for both MANAGER and OPERATOR — unlike
-  // Seller, a Carrier isn't reached directly from userId; it goes through
-  // CarrierUser first (the join row identifying which carrier this specific
-  // user belongs to), then reuses findOne so the response shape stays
-  // identical to the admin-facing read path.
   async findByUserId(userId: string): Promise<CarrierResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
     return this.findOne(carrierId);
@@ -212,15 +202,7 @@ export class CarriersService {
     return this.buildModalityToggles(carrierId);
   }
 
-  // FLOW.md Frame 24's proposed contract. `shipmentCountsByStatus` reuses
-  // the same groupBy technique as ShipmentsService.countsByStatusForSeller
-  // and SellersService/CarriersService.countsByStatus, just scoped to this
-  // carrierId instead. avgHoursBetweenEvents can't be a groupBy/aggregate —
-  // it needs the gap between *consecutive* events per shipment, which
-  // Prisma has no window-function equivalent for — so it's computed in
-  // application code over each shipment's own ordered event list, not a
-  // raw SQL window function (no $queryRaw precedent anywhere else in this
-  // codebase, and this keeps the logic unit-testable against mocked rows).
+  // Consecutive-event gaps need a window function Prisma lacks, so they're computed in app code.
   async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
@@ -256,11 +238,7 @@ export class CarriersService {
       0,
     );
 
-    // `events` is already ordered by (shipmentId, createdAt) — consecutive
-    // rows for the same shipmentId are consecutive events in time, so a
-    // single pass catches every gap without grouping into a Map first. Same
-    // pass also buckets each gap by its (fromStatus, toStatus) pair, so the
-    // per-stage funnel below costs nothing extra to compute.
+    // Events are ordered by (shipmentId, createdAt), so one pass yields every gap and its stage.
     const gapsInHours: number[] = [];
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
@@ -323,14 +301,7 @@ export class CarriersService {
     };
   }
 
-  // Groups Shipment by ownerId within this carrier — today that's always
-  // exactly one CarrierUser (the manager; operator invites aren't built yet,
-  // DESIGN.md § 7), so this returns a single row until that feature ships.
-  // Built now anyway so it fills in on its own once invites exist, rather
-  // than being a second slice to build later. Two small groupBys + a lookup
-  // of the involved CarrierUsers' emails, merged in application code — same
-  // "no $queryRaw" style as performance() above, and cheap given the result
-  // set is bounded by headcount, not shipment volume.
+  // Two groupBys merged in app code; the result is bounded by headcount, not shipment volume.
   async operatorRanking(
     userId: string,
   ): Promise<OperatorRankingItemResponseDto[]> {
@@ -396,11 +367,7 @@ export class CarriersService {
   ): Promise<CoverageAreaResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    // Full-replace, same pattern as modalities — the client always submits
-    // the complete desired coverage list, not incremental add/remove calls.
-    // `skipDuplicates` guards against the client submitting the same
-    // (state, city) pair twice in one request, which would otherwise violate
-    // @@unique([carrierId, state, city]) on the second insert.
+    // skipDuplicates absorbs a repeated (state, city) pair in the same request.
     await this.prisma.$transaction([
       this.prisma.carrierCoverageArea.deleteMany({ where: { carrierId } }),
       this.prisma.carrierCoverageArea.createMany({

@@ -5,9 +5,7 @@ import { TrackingGateway } from './tracking.gateway';
 import { TrackingListener } from './tracking.listener';
 
 @Module({
-  // AuthModule already exports JwtModule (auth.module.ts) — reused here so
-  // TrackingGateway can verify a socket's JWT the same way JwtStrategy does,
-  // without a second JwtModule.registerAsync duplicating the same secret.
+  // Reuses AuthModule's JwtModule so the gateway verifies tokens with the same secret.
   imports: [AuthModule],
   providers: [TrackingGateway, PublicTrackingGateway, TrackingListener],
 })

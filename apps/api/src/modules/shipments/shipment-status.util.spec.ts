@@ -8,9 +8,7 @@ import {
 const ALL_STATUSES = Object.values(ShipmentStatus);
 
 describe('isValidTransition', () => {
-  // Exhaustive over the full 9x9 matrix, not just the happy path — this is
-  // the kind of real branching logic this project's tests hold to a full
-  // coverage bar (see DESIGN.md's testing philosophy).
+  // Exhaustive over the full status matrix, not just the happy path.
   for (const from of ALL_STATUSES) {
     for (const to of ALL_STATUSES) {
       const expected = ALLOWED_TRANSITIONS[from].includes(to);

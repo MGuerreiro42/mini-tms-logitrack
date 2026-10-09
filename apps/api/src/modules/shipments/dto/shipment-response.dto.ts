@@ -59,9 +59,7 @@ export class ShipmentResponseDto {
   @ApiProperty()
   createdAt: Date;
 
-  // Only populated on the single-record read (findOneForSeller) — never on
-  // the paginated list, to avoid pulling a full event history onto every row
-  // of a 20-row page (same over-fetch-avoidance reasoning as DESIGN.md § 18).
+  // Only on the single-record read; the paginated list skips the timeline.
   @ApiPropertyOptional({ type: [TrackingEventDto] })
   trackingEvents?: TrackingEventDto[];
 }

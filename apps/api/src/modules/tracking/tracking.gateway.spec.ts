@@ -29,9 +29,6 @@ describe('TrackingGateway', () => {
         {
           provide: PrismaService,
           useValue: {
-            // authenticate() resolves seller/carrierUser via a single
-            // `include`, not a separate query — the mock returns them
-            // nested on the user row, matching the real combined shape.
             user: { findUnique: userFindUnique },
             shipment: { findUnique: shipmentFindUnique },
           },
@@ -52,16 +49,7 @@ describe('TrackingGateway', () => {
     });
   });
 
-  // Auth runs as connection middleware (server.use), not handleConnection —
-  // handleConnection is async but Socket.IO already emits 'connect'
-  // client-side once the handshake itself completes, without waiting for
-  // handleConnection's promise to settle. A client that subscribes
-  // immediately after 'connect' could (and, in manual testing, reliably did)
-  // race ahead of two DB round-trips, arriving with client.data still empty.
-  // Middleware registered via server.use() is awaited by Socket.IO *before*
-  // 'connect' fires, closing that race — tested here by calling the private
-  // `authenticate` method directly (the function server.use() wraps), since
-  // that's where all the actual logic lives.
+  // authenticate() is the body server.use() wraps, so it's tested directly.
   describe('authenticate (the middleware body)', () => {
     function authenticate(socket: unknown) {
       return (

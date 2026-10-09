@@ -137,11 +137,7 @@ describe('SellersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
-  // Prisma 7's driver adapters report the colliding unique field under
-  // meta.driverAdapterError.cause.constraint.fields, NOT meta.target (the
-  // shape used by older Prisma versions / non-adapter engines) — this is
-  // the real shape observed against Postgres via @prisma/adapter-pg, not a
-  // guess, so the test exercises the actual code path in production.
+  // Real error shape from @prisma/adapter-pg: the field is under driverAdapterError, not meta.target.
   const uniqueConstraintError = (field: string) =>
     new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',

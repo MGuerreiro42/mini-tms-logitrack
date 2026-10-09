@@ -5,10 +5,7 @@ import { toUpperTrimmed } from '../../../shared/transforms/normalize';
 
 export class CoverageAreaInputDto {
   @ApiProperty({ example: 'SP' })
-  // Uppercased on write, unlike city — a UF code has no legitimate display
-  // casing to preserve (unlike a city name), so normalizing here means the
-  // comparison in ShipmentsService can stay a plain, indexable equality
-  // instead of a case-insensitive one.
+  // Uppercased so the coverage lookup stays a plain, indexable equality.
   @Transform(toUpperTrimmed)
   @IsString()
   @IsNotEmpty()

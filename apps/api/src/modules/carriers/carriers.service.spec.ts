@@ -167,9 +167,7 @@ describe('CarriersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
-  // Same real Prisma 7 driver-adapter error shape already documented/fixed
-  // for sellers (DESIGN.md § 16) — replicated here so the fix isn't
-  // re-discovered per module.
+  // Same Prisma 7 driver-adapter error shape as in the sellers spec.
   const uniqueConstraintError = (field: string) =>
     new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',

@@ -14,11 +14,7 @@ import { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import { ListAdminShipmentsQueryDto } from './dto/list-admin-shipments-query.dto';
 import { ShipmentsService } from './shipments.service';
 
-// Distinct `admin` prefix, not nested under `shipments` — the one route
-// deliberately unscoped by ownership (SCREENS.md's Global Monitoring), so it
-// gets its own namespace rather than living among ShipmentsController's
-// seller/carrier-scoped routes with a role check as the only thing telling
-// them apart.
+// Own `admin` prefix: the only route not scoped by ownership.
 @ApiTags('admin')
 @Controller('admin')
 export class AdminShipmentsController {

@@ -120,12 +120,7 @@ describe('ShipmentsService', () => {
     transaction.mockReset();
     emit.mockReset();
 
-    // Default transaction mock supports both the array form ($transaction([
-    // update, create])) used by earlier writes and the callback form
-    // (claim()/updateStatus()'s atomic updateMany-then-create) — the
-    // callback receives a `tx` exposing the same mocked shipment/
-    // trackingEvent methods as the top-level PrismaService, so assertions
-    // work the same regardless of which form a given write uses.
+    // Supports both $transaction forms: array and interactive callback.
     const tx = {
       shipment: { updateMany: shipmentUpdateMany },
       trackingEvent: { create: trackingEventCreate },
@@ -726,12 +721,7 @@ describe('ShipmentsService', () => {
     });
 
     it('throws ConflictException when a concurrent claim wins the race (updateMany affects 0 rows)', async () => {
-      // Regression test: the pre-check alone can't be trusted — two
-      // operators can both read ownerId: null before either writes. This
-      // simulates that: the read-based pre-check sees the shipment as
-      // still unowned, but the atomic updateMany (racing against another
-      // request) affects 0 rows because someone else's write already went
-      // through first.
+      // Pre-check sees no owner, but a concurrent claim wins the conditional write.
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(pendingShipment);
       shipmentUpdateMany.mockResolvedValue({ count: 0 });
@@ -837,10 +827,7 @@ describe('ShipmentsService', () => {
     });
 
     it('throws ConflictException when the status changed concurrently (updateMany affects 0 rows)', async () => {
-      // Regression test: two concurrent requests both validating against
-      // the same read (e.g. the owner and the manager both submitting
-      // "Advance to COLLECTED" moments apart) must not both succeed and
-      // both write a TrackingEvent for the same logical transition.
+      // Owner and manager advancing at once must not both write an event.
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
       shipmentUpdateMany.mockResolvedValue({ count: 0 });
