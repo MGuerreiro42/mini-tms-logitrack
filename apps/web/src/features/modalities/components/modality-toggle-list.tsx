@@ -13,7 +13,6 @@ interface ModalityToggleListProps {
   note?: string;
 }
 
-// One Save for the whole set: the endpoint is a full replace.
 export function ModalityToggleList({
   items,
   onSave,

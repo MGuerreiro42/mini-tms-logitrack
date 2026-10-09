@@ -8,7 +8,6 @@ import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
 import { useLoginMutation } from '../hooks/use-login';
 
-// Mirrors the API's LoginDto.
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),

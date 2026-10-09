@@ -159,7 +159,6 @@ describe('useShipmentTracking', () => {
     socket.disconnect.mockClear();
     socket.emit.mockClear();
 
-    // A fresh object with the same token must not reconnect.
     vi.mocked(useSession).mockReturnValue({ ...session });
     rerender();
 

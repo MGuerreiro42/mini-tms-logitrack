@@ -20,7 +20,6 @@ import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
 import { shipmentColumns } from './shipment-columns';
 
-// Monitoring exposes every status; the carrier queue only the ones operators act on.
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
 
 interface AdminMonitoringTableProps {

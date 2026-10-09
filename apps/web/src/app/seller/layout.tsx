@@ -25,7 +25,6 @@ export default async function SellerLayout({
     redirect('/login');
   }
 
-  // Only APPROVED sellers reach the dashboard, re-checked against the API on every request.
   let seller: Awaited<ReturnType<typeof getMySeller>>;
   try {
     seller = await getMySeller(session.token);

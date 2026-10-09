@@ -19,7 +19,6 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel: string;
   dismissLabel?: string;
-  // The dialog closes once this settles; failures are reported by the caller (e.g. a mutation toast).
   onConfirm: () => Promise<unknown>;
   onOpenChange?: (open: boolean) => void;
   variant?: 'default' | 'destructive';
@@ -50,7 +49,6 @@ export function ConfirmDialog({
     try {
       await onConfirm();
     } catch {
-      // Already surfaced by the caller.
     } finally {
       setIsConfirming(false);
       changeOpen(false);

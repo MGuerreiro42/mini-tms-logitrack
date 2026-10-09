@@ -70,7 +70,6 @@ export function CarrierQueueTable() {
                 className: 'text-right',
                 cell: (s) =>
                   isClaimable(s) ? (
-                    // No confirm dialog: claiming is meant to be fast.
                     <Button
                       size="sm"
                       className="relative z-10"

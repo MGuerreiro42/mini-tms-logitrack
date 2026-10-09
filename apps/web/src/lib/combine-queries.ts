@@ -10,7 +10,6 @@ type DataTuple<R extends readonly QueryLike[]> = {
   [K in keyof R]: NonNullable<R[K]['data']>;
 };
 
-// Folds parallel queries into one source: data only once every query has it, the first error otherwise.
 export function combineQueries<const R extends readonly QueryLike[], T>(
   results: R,
   select: (data: DataTuple<R>) => T,

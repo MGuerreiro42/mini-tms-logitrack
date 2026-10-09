@@ -1,4 +1,3 @@
-// Static UF list — Brazilian states, for the coverage-area editor's Select.
 export const BR_STATES = [
   'AC',
   'AL',

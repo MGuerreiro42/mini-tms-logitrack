@@ -17,7 +17,6 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession();
 
-  // The real gate; middleware only checks the cookie shape.
   if (session?.role !== 'ADMIN') {
     redirect('/login');
   }

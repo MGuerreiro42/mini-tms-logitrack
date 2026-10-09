@@ -13,11 +13,9 @@ export interface SocketSubscription {
 
 interface UseSocketSubscriptionOptions<P> {
   getSocket: () => Socket;
-  // Connects while set and reconnects when it changes, e.g. the session token.
   connectionKey: string | undefined;
   subscriptions: SocketSubscription[];
   updateEvent: string;
-  // Called with the event payload, and without one after every (re)connect.
   onUpdate: (payload?: P) => void;
 }
 
@@ -76,7 +74,6 @@ export function useSocketSubscription<P>({
     socket.connect();
     if (socket.connected) handleConnect();
 
-    // Safe while each route mounts at most one consumer per socket.
     return () => {
       active = false;
       socket.off(updateEvent, handleUpdate);

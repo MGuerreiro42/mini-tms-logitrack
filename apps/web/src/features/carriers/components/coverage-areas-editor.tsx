@@ -42,7 +42,6 @@ export function CoverageAreasEditor({
   const { fields, append, remove } = useFieldArray({ control, name: 'areas' });
 
   function submit(values: FormValues) {
-    // A blank city covers the whole state (the API's null city).
     onSave(
       values.areas.map((area) => ({
         state: area.state,

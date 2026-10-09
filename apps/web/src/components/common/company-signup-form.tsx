@@ -7,7 +7,6 @@ import { FormError } from '@/components/common/form-error';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
 
-// Mirrors the API's seller and carrier signup DTOs, which share these rules.
 const schema = z.object({
   companyName: z.string().min(1, 'Required'),
   document: z.string().min(1, 'Required'),

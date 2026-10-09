@@ -24,7 +24,6 @@ export function CarrierPerformance() {
 function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
   const operatorRanking = useOperatorRanking();
 
-  // No shipments yet: 0% figures would read as real metrics.
   if (data.totalShipments === 0) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">

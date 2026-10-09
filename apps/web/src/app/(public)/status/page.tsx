@@ -20,7 +20,6 @@ const MESSAGES = {
 export default async function StatusPage() {
   const session = await getServerSession();
 
-  // A fresh signup has no token yet, so the status is PENDING by construction.
   if (!session) {
     return (
       <StatusCard

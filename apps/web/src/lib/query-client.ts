@@ -47,7 +47,6 @@ function handleMutationError(
 
 const MAX_RETRIES = 3;
 
-// 4xx answers won't change on retry; retrying only delays the not-found/error UI.
 export function shouldRetry(failureCount: number, error: unknown): boolean {
   if (error instanceof ApiError && error.statusCode < 500) return false;
   return failureCount < MAX_RETRIES;

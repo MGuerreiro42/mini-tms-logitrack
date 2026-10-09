@@ -1,5 +1,3 @@
-// Single-hue ordinal ramp for charts where bar order carries meaning.
-// Bounds from the dataviz palette: light starts at step 250, dark stops at 600; index 0 is lightest.
 const LIGHT_STEPS = [
   '#86b6ef', // 250
   '#6da7ec', // 300
@@ -31,7 +29,6 @@ interface OrdinalRampStep {
   dark: string;
 }
 
-// Evenly spaced steps at the same relative positions in both modes.
 export function ordinalChartRamp(count: number): OrdinalRampStep[] {
   if (count <= 0) return [];
   if (count === 1) {

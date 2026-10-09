@@ -7,7 +7,6 @@ import type {
 
 export type { ShipmentStatus, ShipmentStatusCounts, TrackingEvent };
 
-// Modalities without slaHours are omitted by the API, not reported as 0%.
 export interface SlaSummaryItem {
   modalityCode: string;
   modalityName: string;
@@ -33,7 +32,6 @@ export interface ShipmentBase extends ShipmentAddress {
   modalityId: string;
   modalityName: string;
   createdAt: string;
-  // Only on single-record reads, never in lists.
   trackingEvents?: TrackingEvent[];
 }
 
@@ -42,7 +40,6 @@ export interface Shipment extends ShipmentBase {
   carrierName: string;
 }
 
-// Carrier view: adds seller contact and owner, which the seller's own view doesn't need.
 export interface CarrierShipment extends ShipmentBase {
   sellerId: string;
   sellerCompanyName: string;
@@ -51,7 +48,6 @@ export interface CarrierShipment extends ShipmentBase {
   ownerEmail: string | null;
 }
 
-// Admin view: CarrierShipment plus the carrier name.
 export interface AdminShipment extends CarrierShipment {
   carrierCompanyName: string;
 }
@@ -74,7 +70,6 @@ export interface CreateShipmentInput {
   carrierId: string;
 }
 
-// A modality the seller has enabled, offered when creating a shipment.
 export interface ModalityOption {
   id: string;
   name: string;
@@ -93,7 +88,6 @@ export interface ListQueueQuery extends PaginationQuery {
   status?: ShipmentStatus;
 }
 
-// Mirrors the API's limit on tracking event notes.
 export const TRACKING_NOTE_MAX_LENGTH = 500;
 
 export interface UpdateShipmentStatusInput {
@@ -120,7 +114,6 @@ export function isCancellableBySeller(status: ShipmentStatus): boolean {
   return SELLER_CANCELLABLE.includes(status);
 }
 
-// A cancelled shipment can also be unowned, so ownership alone isn't enough.
 export function isClaimable(shipment: CarrierShipment): boolean {
   return shipment.status === 'PENDING' && !shipment.ownerId;
 }

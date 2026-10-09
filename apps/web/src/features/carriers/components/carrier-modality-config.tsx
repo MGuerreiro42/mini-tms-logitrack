@@ -13,7 +13,6 @@ export function CarrierModalityConfig() {
   const query = useMyCarrierModalities();
   const setModalities = useSetMyCarrierModalities();
 
-  // Operators can read, only the manager can change it.
   const readOnly = session?.role !== 'CARRIER_MANAGER';
 
   return (

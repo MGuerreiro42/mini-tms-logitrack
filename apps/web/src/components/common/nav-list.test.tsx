@@ -13,7 +13,6 @@ const items = [
 ];
 
 describe('NavList', () => {
-  // Regression: /seller is a string prefix of every nested seller route.
   it('marks only the section root active when the pathname is exactly the root', () => {
     vi.mocked(usePathname).mockReturnValue('/seller');
     render(<NavList items={items} />);

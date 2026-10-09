@@ -10,14 +10,12 @@ const LOGO = (
 interface PublicCardProps {
   title: ReactNode;
   description?: ReactNode;
-  // Shown above the title; the TMS logo unless replaced or turned off.
   badge?: ReactNode | false;
   align?: 'center' | 'start';
   actions?: ReactNode;
   children?: ReactNode;
 }
 
-// The card shell shared by public, auth and error pages.
 export function PublicCard({
   title,
   description,
