@@ -16,16 +16,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { formatDuration } from '@/lib/format-duration';
 import { ordinalChartRamp } from '@/lib/ordinal-chart-ramp';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import type { StageDuration } from '../types';
 
-// Recharts doesn't export this type from the package root, only from an
-// internal component path — redeclared here to type the LabelList formatter.
-type RenderableText = string | number | boolean | null | undefined;
-
 const chartConfig = {
-  avgHours: { label: 'Avg. hours' },
+  avgHours: { label: 'Avg. duration' },
 } satisfies ChartConfig;
 
 export function StageDurationChart({ data }: { data: StageDuration[] }) {
@@ -35,6 +32,8 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
     label: `${SHIPMENT_STATUS[stage.fromStatus].label} → ${SHIPMENT_STATUS[stage.toStatus].label}`,
     avgHours: stage.avgHours ?? 0,
     hasData: stage.avgHours !== null,
+    display:
+      stage.avgHours === null ? 'no data' : formatDuration(stage.avgHours),
     sampleCount: stage.sampleCount,
     varName: `--ordinal-${rampId}-${index}`,
   }));
@@ -78,10 +77,10 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
           <ChartTooltip
             content={
               <ChartTooltipContent
-                formatter={(value, _name, item) => {
+                formatter={(_value, _name, item) => {
                   const row = item.payload as (typeof rows)[number];
                   return row.hasData
-                    ? `${Number(value).toFixed(1)}h avg (${row.sampleCount} sample${row.sampleCount === 1 ? '' : 's'})`
+                    ? `${row.display} avg (${row.sampleCount} sample${row.sampleCount === 1 ? '' : 's'})`
                     : 'Not enough data yet';
                 }}
               />
@@ -92,13 +91,8 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
               <Cell key={row.label} fill={`var(${row.varName})`} />
             ))}
             <LabelList
-              dataKey="avgHours"
+              dataKey="display"
               position="right"
-              formatter={(value: RenderableText) => {
-                const hours = Number(value);
-                const row = rows.find((r) => r.avgHours === hours);
-                return row?.hasData ? `${hours.toFixed(1)}h` : 'no data';
-              }}
               className="fill-muted-foreground text-xs"
             />
           </Bar>
