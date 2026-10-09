@@ -53,7 +53,7 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < MAX_RETRIES;
 }
 
-function makeQueryClient() {
+export function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
