@@ -1,24 +1,13 @@
 'use client';
 
-import {
-  type CompanyDetail,
-  CompanyReview,
-} from '@/components/common/company-cards';
+import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
 import {
   useApproveSeller,
   useRejectSeller,
 } from '../hooks/use-approve-reject-seller';
 import { useSeller } from '../hooks/use-seller';
-import type { Seller } from '../types';
-
-function sellerDetails(seller: Seller): CompanyDetail[] {
-  return [
-    { label: 'Email', value: seller.email },
-    { label: 'Tax ID', value: seller.document, mono: true },
-    { label: 'Created', value: new Date(seller.createdAt).toLocaleString() },
-  ];
-}
+import { sellerDetails } from '../lib/seller-details';
 
 export function SellerDetailCard({ id }: { id: string }) {
   const query = useSeller(id);
@@ -34,7 +23,7 @@ export function SellerDetailCard({ id }: { id: string }) {
       {(seller) => (
         <CompanyReview
           company={seller}
-          rows={sellerDetails(seller)}
+          rows={sellerDetails(seller, (iso) => new Date(iso).toLocaleString())}
           approve={approve}
           reject={reject}
         />

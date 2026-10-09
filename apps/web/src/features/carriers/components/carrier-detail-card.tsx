@@ -1,25 +1,13 @@
 'use client';
 
-import {
-  type CompanyDetail,
-  CompanyReview,
-} from '@/components/common/company-cards';
+import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
 import {
   useApproveCarrier,
   useRejectCarrier,
 } from '../hooks/use-approve-reject-carrier';
 import { useCarrier } from '../hooks/use-carrier';
-import type { Carrier } from '../types';
-
-function carrierDetails(carrier: Carrier): CompanyDetail[] {
-  return [
-    { label: 'Manager email', value: carrier.email },
-    { label: 'Tax ID', value: carrier.document, mono: true },
-    { label: 'Users', value: String(carrier.userCount) },
-    { label: 'Created', value: new Date(carrier.createdAt).toLocaleString() },
-  ];
-}
+import { carrierDetails } from '../lib/carrier-details';
 
 export function CarrierDetailCard({ id }: { id: string }) {
   const query = useCarrier(id);
@@ -35,7 +23,9 @@ export function CarrierDetailCard({ id }: { id: string }) {
       {(carrier) => (
         <CompanyReview
           company={carrier}
-          rows={carrierDetails(carrier)}
+          rows={carrierDetails(carrier, (iso) =>
+            new Date(iso).toLocaleString(),
+          )}
           approve={approve}
           reject={reject}
         />
