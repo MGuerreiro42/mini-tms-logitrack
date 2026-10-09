@@ -12,6 +12,8 @@ export interface QueryStateSource<T> {
   refetch: () => unknown;
 }
 
+const FORBIDDEN_MESSAGE = "You don't have access to this.";
+
 interface QueryStateProps<T> {
   query: QueryStateSource<T>;
   children: (data: T) => ReactNode;
@@ -32,10 +34,12 @@ export function QueryState<T>({
 
   if (!query.error) return skeleton;
 
-  if (query.error instanceof ApiError && query.error.statusCode === 404) {
+  const status =
+    query.error instanceof ApiError ? query.error.statusCode : undefined;
+  if (status === 404 || status === 403) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-        {notFoundMessage}
+        {status === 404 ? notFoundMessage : FORBIDDEN_MESSAGE}
       </div>
     );
   }
