@@ -5,12 +5,12 @@ import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import {
   type SellerDashboardData,
   useSellerDashboard,
 } from '../hooks/use-seller-dashboard';
 import type { Shipment } from '../types';
+import { shipmentColumns } from './shipment-columns';
 import { SlaSummaryChart } from './sla-summary-chart';
 
 export function SellerDashboard() {
@@ -83,25 +83,10 @@ function SellerDashboardView({
           getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
           emptyMessage="No shipments yet."
           columns={[
-            {
-              header: 'Tracking code',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.trackingCode}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ShipmentStatusPill status={s.status} />,
-            },
-            {
-              header: 'Destination',
-              cell: (s) => `${s.addressCity}/${s.addressState}`,
-            },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-            },
+            shipmentColumns.trackingCode,
+            shipmentColumns.status,
+            shipmentColumns.destination,
+            shipmentColumns.created,
           ]}
         />
       </div>

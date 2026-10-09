@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useCarriersList } from '@/features/carriers/hooks/use-carriers-list';
 import { useSellersList } from '@/features/sellers/hooks/use-sellers-list';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
@@ -27,6 +26,7 @@ import {
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
+import { shipmentColumns } from './shipment-columns';
 
 // Monitoring exposes every status; the carrier queue only the ones operators act on.
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
@@ -97,27 +97,12 @@ export function AdminMonitoringTable() {
             getRowKey={(s) => s.id}
             emptyMessage="No shipments match this filter."
             columns={[
-              {
-                header: 'Tracking code',
-                cell: (s) => (
-                  <span className="font-mono text-xs">{s.trackingCode}</span>
-                ),
-              },
-              {
-                header: 'Status',
-                cell: (s) => <ShipmentStatusPill status={s.status} />,
-              },
-              {
-                header: 'Destination',
-                cell: (s) => `${s.addressCity}/${s.addressState}`,
-              },
+              shipmentColumns.trackingCode,
+              shipmentColumns.status,
+              shipmentColumns.destination,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
               { header: 'Carrier', cell: (s) => s.carrierCompanyName },
-              {
-                header: 'Created',
-                className: 'text-right text-muted-foreground',
-                cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-              },
+              shipmentColumns.created,
             ]}
           />
         )}

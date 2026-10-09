@@ -9,7 +9,6 @@ import {
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -21,6 +20,7 @@ import {
   ownerLabel,
   type ShipmentStatus,
 } from '../types';
+import { shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -56,21 +56,10 @@ export function CarrierQueueTable() {
             getRowHref={(s) => `/carrier/queue/${s.id}`}
             emptyMessage="No shipments in the queue."
             columns={[
-              {
-                header: 'Tracking code',
-                cell: (s) => (
-                  <span className="font-mono text-xs">{s.trackingCode}</span>
-                ),
-              },
-              {
-                header: 'Status',
-                cell: (s) => <ShipmentStatusPill status={s.status} />,
-              },
+              shipmentColumns.trackingCode,
+              shipmentColumns.status,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
-              {
-                header: 'Destination',
-                cell: (s) => `${s.addressCity}/${s.addressState}`,
-              },
+              shipmentColumns.destination,
               {
                 header: 'Owner',
                 cell: ownerLabel,
