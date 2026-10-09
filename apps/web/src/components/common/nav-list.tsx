@@ -31,6 +31,7 @@ export function NavList({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm',
               active
