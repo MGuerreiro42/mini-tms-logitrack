@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { ApiError } from '@/services/api-client';
+import { toastApiError } from '@/lib/toast-api-error';
 import { updateShipmentStatus } from '../api';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
 import type { ShipmentStatus } from '../types';
@@ -26,10 +26,6 @@ export function useUpdateShipmentStatus() {
       toast.success('Status updated');
       invalidateShipmentQueries(queryClient);
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }

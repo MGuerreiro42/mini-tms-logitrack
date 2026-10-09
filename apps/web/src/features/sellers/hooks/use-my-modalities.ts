@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { ApiError } from '@/services/api-client';
+import { toastApiError } from '@/lib/toast-api-error';
 import { getMyModalities, setMyModalities } from '../api';
 
 export function useMyModalities() {
@@ -28,10 +28,6 @@ export function useSetMyModalities() {
         queryKey: ['sellers', 'me', 'modalities'],
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }

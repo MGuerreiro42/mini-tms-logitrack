@@ -1,9 +1,9 @@
 'use client';
 
 import { DetailRow } from '@/components/common/detail-row';
+import { FormError } from '@/components/common/form-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ApiError } from '@/services/api-client';
 import { useCreateShipment } from '../hooks/use-create-shipment';
 import type { CreateShipmentInput } from '../types';
 
@@ -43,13 +43,7 @@ export function ShipmentConfirmReview({
         <p className="text-xs text-muted-foreground">
           We'll check the carrier is still available when you confirm.
         </p>
-        {createShipment.isError && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {createShipment.error instanceof ApiError
-              ? createShipment.error.message
-              : 'Something went wrong.'}
-          </p>
-        )}
+        <FormError error={createShipment.error} />
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={onBack}>
             ← Back

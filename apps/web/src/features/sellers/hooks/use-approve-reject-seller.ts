@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { ApiError } from '@/services/api-client';
+import { toastApiError } from '@/lib/toast-api-error';
 import { approveSeller, rejectSeller } from '../api';
 
 export function useApproveSeller(id: string) {
@@ -18,11 +18,7 @@ export function useApproveSeller(id: string) {
       queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }
 
@@ -38,10 +34,6 @@ export function useRejectSeller(id: string) {
       queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }

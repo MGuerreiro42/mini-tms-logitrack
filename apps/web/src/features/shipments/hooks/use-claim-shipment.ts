@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { toastApiError } from '@/lib/toast-api-error';
 import { ApiError } from '@/services/api-client';
 import { claimShipment } from '../api';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
@@ -22,9 +23,7 @@ export function useClaimShipment() {
       if (error instanceof ApiError && error.statusCode === 409) {
         invalidateShipmentQueries(queryClient);
       }
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
+      toastApiError(error);
     },
   });
 }

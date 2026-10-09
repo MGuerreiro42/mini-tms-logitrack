@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { ApiError } from '@/services/api-client';
+import { toastApiError } from '@/lib/toast-api-error';
 import { getMyCoverageAreas, setMyCoverageAreas } from '../api';
 import type { CoverageAreaInput } from '../types';
 
@@ -30,10 +30,6 @@ export function useSetCoverageAreas() {
         queryKey: ['carriers', 'me', 'coverage-areas'],
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }
