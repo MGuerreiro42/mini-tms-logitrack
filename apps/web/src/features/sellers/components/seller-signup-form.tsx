@@ -1,72 +1,20 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { FormError } from '@/components/common/form-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { CompanySignupForm } from '@/components/common/company-signup-form';
 import { useSellerSignupMutation } from '../hooks/use-seller-signup';
 
-// Mirrors the backend's CreateSellerDto validation exactly.
-const schema = z.object({
-  companyName: z.string().min(1, 'Required'),
-  document: z.string().min(1, 'Required'),
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-});
-
-type FormValues = z.infer<typeof schema>;
+const LABELS = {
+  companyName: 'Company name',
+  document: 'Tax ID (CNPJ/CPF)',
+  email: 'Email',
+};
 
 export function SellerSignupForm() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
-  const signup = useSellerSignupMutation();
-
   return (
-    <form
-      className="space-y-4"
-      noValidate
-      onSubmit={handleSubmit((values) => signup.mutate(values))}
-    >
-      <div className="space-y-1.5">
-        <Label htmlFor="companyName">Company name</Label>
-        <Input id="companyName" {...register('companyName')} />
-        {errors.companyName && (
-          <p className="text-sm text-destructive">
-            {errors.companyName.message}
-          </p>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="document">Tax ID (CNPJ/CPF)</Label>
-        <Input id="document" {...register('document')} />
-        {errors.document && (
-          <p className="text-sm text-destructive">{errors.document.message}</p>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" {...register('email')} />
-        {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" {...register('password')} />
-        {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
-        )}
-      </div>
-      <FormError error={signup.error} />
-      <Button type="submit" className="w-full" disabled={signup.isPending}>
-        {signup.isPending ? 'Creating account…' : 'Create account and continue'}
-      </Button>
-    </form>
+    <CompanySignupForm
+      labels={LABELS}
+      submitLabel="Create account and continue"
+      signup={useSellerSignupMutation()}
+    />
   );
 }
