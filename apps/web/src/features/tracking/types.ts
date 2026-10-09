@@ -5,6 +5,11 @@ export interface PublicTrackingEvent {
   createdAt: string;
 }
 
+export interface TrackingUpdatedEvent {
+  trackingCode: string;
+  status: ShipmentStatus;
+}
+
 export interface PublicTracking {
   trackingCode: string;
   status: ShipmentStatus;
