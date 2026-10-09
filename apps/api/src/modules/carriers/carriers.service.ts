@@ -18,6 +18,7 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import {
   average,
   countByStatus,
@@ -99,26 +100,11 @@ export class CarriersService {
         createdAt: carrier.createdAt,
       };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        const meta = error.meta as
-          | {
-              target?: string[];
-              driverAdapterError?: {
-                cause?: { constraint?: { fields?: string[] } };
-              };
-            }
-          | undefined;
-        const target =
-          meta?.target?.join(', ') ??
-          meta?.driverAdapterError?.cause?.constraint?.fields?.join(', ') ??
-          'unknown';
-        this.logger.warn(`Carrier signup conflict on unique field: ${target}`);
-        throw new ConflictException('Email or document already registered');
-      }
-      throw error;
+      const target = uniqueViolationTarget(error);
+      if (!target) throw error;
+      // Logged only: a generic response keeps signup from enumerating registered emails/documents.
+      this.logger.warn(`Carrier signup conflict on unique field: ${target}`);
+      throw new ConflictException('Email or document already registered');
     }
   }
 
