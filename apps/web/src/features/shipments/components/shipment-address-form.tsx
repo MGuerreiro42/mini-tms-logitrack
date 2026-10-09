@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -132,11 +133,18 @@ export function ShipmentAddressForm({
             </Field>
           </div>
           <div className="space-y-1.5">
-            <Label>Modality — your own enabled modalities only</Label>
+            <Label>Modality</Label>
             {!modalities && <Skeleton className="h-9 w-48" />}
             {modalities && enabledModalities.length === 0 && (
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                You haven't enabled any modality yet. Go to Modalities first.
+                You haven't enabled any modality yet.{' '}
+                <Link
+                  href="/seller/modalities"
+                  className="font-medium underline"
+                >
+                  Enable one in Modalities
+                </Link>
+                .
               </p>
             )}
             <div className="flex flex-wrap gap-2">

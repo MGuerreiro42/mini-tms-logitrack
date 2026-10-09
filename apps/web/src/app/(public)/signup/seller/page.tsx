@@ -7,7 +7,7 @@ export default function SellerSignupPage() {
       <div className="space-y-1">
         <h1 className="text-lg font-semibold">Seller signup</h1>
         <p className="text-sm text-muted-foreground">
-          Creates an account with status pending review.
+          An administrator reviews new accounts before they go live.
         </p>
       </div>
       <SellerSignupForm />

@@ -5,8 +5,7 @@ export default function AdminSellersPage() {
     <div className="space-y-1">
       <h1 className="text-xl font-semibold">Sellers</h1>
       <p className="mb-4 text-sm text-muted-foreground">
-        The pending queue is the default view, since it's the recurring admin
-        action.
+        Review seller applications and manage approved accounts.
       </p>
       <SellersTable />
     </div>

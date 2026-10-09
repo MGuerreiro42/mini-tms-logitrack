@@ -6,8 +6,7 @@ export default function SellerProfilePage() {
       <div>
         <h1 className="text-xl font-semibold">My profile</h1>
         <p className="text-sm text-muted-foreground">
-          Resolved from your session token — you can never read another seller's
-          record here.
+          Your company details and account status.
         </p>
       </div>
       <SellerProfileCard />

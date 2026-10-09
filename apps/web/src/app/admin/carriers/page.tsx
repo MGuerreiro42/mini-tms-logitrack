@@ -5,7 +5,7 @@ export default function AdminCarriersPage() {
     <div className="space-y-1">
       <h1 className="text-xl font-semibold">Carriers</h1>
       <p className="mb-4 text-sm text-muted-foreground">
-        Users column shows how many CarrierUser accounts belong to each company.
+        Review carrier registrations and manage approved companies.
       </p>
       <CarriersTable />
     </div>

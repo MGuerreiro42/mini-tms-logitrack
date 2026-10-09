@@ -6,7 +6,7 @@ export default function CarrierPerformancePage() {
       <div>
         <h1 className="text-xl font-semibold">Performance</h1>
         <p className="text-sm text-muted-foreground">
-          Metrics restricted to shipments assigned to your own company.
+          How your company's shipments are performing.
         </p>
       </div>
       <CarrierPerformance />

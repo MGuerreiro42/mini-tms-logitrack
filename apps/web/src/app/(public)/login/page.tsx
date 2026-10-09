@@ -6,7 +6,7 @@ export default function LoginPage() {
   return (
     <PublicCard
       title="Sign in to Mini TMS"
-      description="Redirects based on your account role."
+      description="Sign in with your company account."
     >
       <LoginForm />
       <div className="space-y-1 text-center text-sm text-muted-foreground">
