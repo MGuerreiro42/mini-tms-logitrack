@@ -15,6 +15,7 @@ const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
   { label: 'Pending', value: 'PENDING' },
   { label: 'In transit', value: 'IN_TRANSIT' },
   { label: 'Delivered', value: 'DELIVERED' },
+  { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
 export function ShipmentsTable() {
