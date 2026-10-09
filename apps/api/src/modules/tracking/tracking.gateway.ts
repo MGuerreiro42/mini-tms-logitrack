@@ -95,39 +95,43 @@ export class TrackingGateway implements OnGatewayInit {
   }
 
   // Same ownership scoping as the REST endpoints.
+  // Each handler acks { ok } (true only once the room is joined); clients without a callback still work.
   @SubscribeMessage('subscribe:shipment')
   async handleSubscribeShipment(
     client: Socket,
-    shipmentId: string,
-  ): Promise<void> {
+    shipmentId: unknown,
+  ): Promise<{ ok: boolean }> {
+    if (typeof shipmentId !== 'string') return { ok: false };
     const data = client.data as SocketData;
 
     const shipment = await this.prisma.shipment.findUnique({
       where: { id: shipmentId },
       select: { sellerId: true, carrierId: true },
     });
-    if (!shipment) return;
+    if (!shipment) return { ok: false };
 
     const allowed =
       (data.user.role === 'SELLER' && shipment.sellerId === data.sellerId) ||
       (isCarrierRole(data.user.role) && shipment.carrierId === data.carrierId);
+    if (!allowed) return { ok: false };
 
-    if (allowed) {
-      client.join(shipmentRoom(shipmentId));
-    }
+    await client.join(shipmentRoom(shipmentId));
+    return { ok: true };
   }
 
   @SubscribeMessage('subscribe:queue')
-  handleSubscribeQueue(client: Socket): void {
+  async handleSubscribeQueue(client: Socket): Promise<{ ok: boolean }> {
     const data = client.data as SocketData;
-    if (!data?.carrierId) return;
-    client.join(carrierRoom(data.carrierId));
+    if (!data.carrierId) return { ok: false };
+    await client.join(carrierRoom(data.carrierId));
+    return { ok: true };
   }
 
   @SubscribeMessage('subscribe:monitoring')
-  handleSubscribeMonitoring(client: Socket): void {
+  async handleSubscribeMonitoring(client: Socket): Promise<{ ok: boolean }> {
     const data = client.data as SocketData;
-    if (data.user.role !== 'ADMIN') return;
-    client.join(ADMIN_MONITORING_ROOM);
+    if (data.user.role !== 'ADMIN') return { ok: false };
+    await client.join(ADMIN_MONITORING_ROOM);
+    return { ok: true };
   }
 }

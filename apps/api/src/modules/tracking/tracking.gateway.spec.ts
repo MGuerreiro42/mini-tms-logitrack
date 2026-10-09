@@ -151,15 +151,20 @@ describe('TrackingGateway', () => {
       socket.handshake.auth.token = 'good-token';
 
       await authenticate(socket);
-      gateway.handleSubscribeQueue(socket as never);
+      const queueAck = await gateway.handleSubscribeQueue(socket as never);
       shipmentFindUnique.mockResolvedValue({
         sellerId: 'seller-1',
         carrierId: 'carrier-1',
       });
-      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+      const shipmentAck = await gateway.handleSubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
 
       expect((socket.data as { carrierId?: string }).carrierId).toBeUndefined();
       expect(socket.join).not.toHaveBeenCalled();
+      expect(queueAck).toEqual({ ok: false });
+      expect(shipmentAck).toEqual({ ok: false });
     });
   });
 
@@ -172,9 +177,13 @@ describe('TrackingGateway', () => {
         carrierId: 'carrier-1',
       });
 
-      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+      const ack = await gateway.handleSubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
 
       expect(socket.join).toHaveBeenCalledWith('shipment:shipment-1');
+      expect(ack).toEqual({ ok: true });
     });
 
     it("rejects when a seller subscribes to another seller's shipment", async () => {
@@ -185,9 +194,13 @@ describe('TrackingGateway', () => {
         carrierId: 'carrier-1',
       });
 
-      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+      const ack = await gateway.handleSubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
 
       expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
     });
 
     it('joins the room when a carrier user subscribes to a shipment in their own carrier', async () => {
@@ -201,9 +214,13 @@ describe('TrackingGateway', () => {
         carrierId: 'carrier-1',
       });
 
-      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+      const ack = await gateway.handleSubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
 
       expect(socket.join).toHaveBeenCalledWith('shipment:shipment-1');
+      expect(ack).toEqual({ ok: true });
     });
 
     it("rejects when a carrier user subscribes to another carrier's shipment", async () => {
@@ -217,9 +234,13 @@ describe('TrackingGateway', () => {
         carrierId: 'someone-elses-carrier',
       });
 
-      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+      const ack = await gateway.handleSubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
 
       expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
     });
 
     it('no-ops when the shipment does not exist', async () => {
@@ -227,55 +248,73 @@ describe('TrackingGateway', () => {
       socket.data = { user: { role: 'SELLER' }, sellerId: 'seller-1' };
       shipmentFindUnique.mockResolvedValue(null);
 
-      await gateway.handleSubscribeShipment(socket as never, 'nonexistent');
+      const ack = await gateway.handleSubscribeShipment(
+        socket as never,
+        'nonexistent',
+      );
 
       expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
     });
   });
 
+  it('acks not ok without querying for a non-string shipment id', async () => {
+    const socket = makeSocket();
+    socket.data = { user: { role: 'SELLER' }, sellerId: 'seller-1' };
+
+    const ack = await gateway.handleSubscribeShipment(socket as never, {});
+
+    expect(shipmentFindUnique).not.toHaveBeenCalled();
+    expect(ack).toEqual({ ok: false });
+  });
+
   describe('handleSubscribeQueue', () => {
-    it("joins the caller's own carrier room", () => {
+    it("joins the caller's own carrier room", async () => {
       const socket = makeSocket();
       socket.data = {
         user: { role: 'CARRIER_OPERATOR' },
         carrierId: 'carrier-1',
       };
 
-      gateway.handleSubscribeQueue(socket as never);
+      const ack = await gateway.handleSubscribeQueue(socket as never);
 
       expect(socket.join).toHaveBeenCalledWith('carrier:carrier-1');
+      expect(ack).toEqual({ ok: true });
     });
 
-    it('no-ops for a socket with no resolved carrierId (e.g. a seller)', () => {
+    it('no-ops for a socket with no resolved carrierId (e.g. a seller)', async () => {
       const socket = makeSocket();
       socket.data = { user: { role: 'SELLER' } };
 
-      gateway.handleSubscribeQueue(socket as never);
+      const ack = await gateway.handleSubscribeQueue(socket as never);
 
       expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
     });
   });
 
   describe('handleSubscribeMonitoring', () => {
-    it('joins the shared admin room for an ADMIN socket', () => {
+    it('joins the shared admin room for an ADMIN socket', async () => {
       const socket = makeSocket();
       socket.data = { user: { role: 'ADMIN' } };
 
-      gateway.handleSubscribeMonitoring(socket as never);
+      const ack = await gateway.handleSubscribeMonitoring(socket as never);
 
       expect(socket.join).toHaveBeenCalledWith('admin:monitoring');
+      expect(ack).toEqual({ ok: true });
     });
 
-    it('no-ops for a non-admin socket', () => {
+    it('no-ops for a non-admin socket', async () => {
       const socket = makeSocket();
       socket.data = {
         user: { role: 'CARRIER_MANAGER' },
         carrierId: 'carrier-1',
       };
 
-      gateway.handleSubscribeMonitoring(socket as never);
+      const ack = await gateway.handleSubscribeMonitoring(socket as never);
 
       expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
     });
   });
 });
