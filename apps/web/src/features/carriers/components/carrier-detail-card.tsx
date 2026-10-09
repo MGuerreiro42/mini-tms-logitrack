@@ -37,7 +37,7 @@ export function CarrierDetailCard({ id }: { id: string }) {
             <ApproveRejectActions
               status={carrier.status}
               onApprove={() => approve.mutate()}
-              onReject={() => reject.mutate()}
+              onReject={() => reject.mutateAsync()}
               isApproving={approve.isPending}
               isRejecting={reject.isPending}
             />

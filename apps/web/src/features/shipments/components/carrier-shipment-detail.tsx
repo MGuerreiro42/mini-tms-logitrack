@@ -117,7 +117,9 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
                 <AdvanceStatusButton
                   key={next}
                   status={next}
-                  onAdvance={() => updateStatus.mutate({ id, status: next })}
+                  onAdvance={() =>
+                    updateStatus.mutateAsync({ id, status: next })
+                  }
                   isPending={updateStatus.isPending}
                 />
               ))}
@@ -167,7 +169,7 @@ function AdvanceStatusButton({
   isPending,
 }: {
   status: ShipmentStatus;
-  onAdvance: () => void;
+  onAdvance: () => Promise<unknown>;
   isPending: boolean;
 }) {
   const label = SHIPMENT_STATUS[status].label;
@@ -198,7 +200,6 @@ function AdvanceStatusButton({
       confirmLabel={label}
       variant="destructive"
       onConfirm={onAdvance}
-      isConfirming={isPending}
     />
   );
 }

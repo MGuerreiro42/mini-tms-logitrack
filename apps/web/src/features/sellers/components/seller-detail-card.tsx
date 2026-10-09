@@ -37,7 +37,7 @@ export function SellerDetailCard({ id }: { id: string }) {
             <ApproveRejectActions
               status={seller.status}
               onApprove={() => approve.mutate()}
-              onReject={() => reject.mutate()}
+              onReject={() => reject.mutateAsync()}
               isApproving={approve.isPending}
               isRejecting={reject.isPending}
             />

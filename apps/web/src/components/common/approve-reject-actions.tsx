@@ -7,7 +7,7 @@ import type { ApprovalStatus } from '@/lib/status-colors';
 interface ApproveRejectActionsProps {
   status: ApprovalStatus;
   onApprove: () => void;
-  onReject: () => void;
+  onReject: () => Promise<unknown>;
   isApproving?: boolean;
   isRejecting?: boolean;
 }
@@ -39,7 +39,6 @@ export function ApproveRejectActions({
         confirmLabel="Reject"
         variant="destructive"
         onConfirm={onReject}
-        isConfirming={isRejecting}
       />
     </div>
   );
