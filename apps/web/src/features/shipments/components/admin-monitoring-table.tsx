@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  type FilterOption,
+  FilterSelect,
+} from '@/components/common/filter-select';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
@@ -8,15 +12,6 @@ import {
   StatusFilterTabs,
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useCarriersList } from '@/features/carriers/hooks/use-carriers-list';
-import { useSellersList } from '@/features/sellers/hooks/use-sellers-list';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
@@ -28,7 +23,15 @@ import { shipmentColumns } from './shipment-columns';
 // Monitoring exposes every status; the carrier queue only the ones operators act on.
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
 
-export function AdminMonitoringTable() {
+interface AdminMonitoringTableProps {
+  carrierOptions: FilterOption[];
+  sellerOptions: FilterOption[];
+}
+
+export function AdminMonitoringTable({
+  carrierOptions,
+  sellerOptions,
+}: AdminMonitoringTableProps) {
   const { filters, setFilter, setPage, params } = useFilteredPagination({
     status: 'ALL' as StatusFilter<ShipmentStatus>,
     carrierId: 'ALL',
@@ -36,8 +39,6 @@ export function AdminMonitoringTable() {
   });
 
   const query = useAdminShipments(params);
-  const { data: carriers } = useCarriersList({ page: 1, limit: 100 });
-  const { data: sellers } = useSellersList({ page: 1, limit: 100 });
   useShipmentTracking({ subscribeToMonitoring: true });
 
   return (
@@ -51,38 +52,20 @@ export function AdminMonitoringTable() {
       />
 
       <div className="flex gap-3">
-        <Select
+        <FilterSelect
+          placeholder="Carrier"
+          allLabel="All carriers"
+          options={carrierOptions}
           value={filters.carrierId}
-          onValueChange={(value) => setFilter('carrierId', value)}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Carrier" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All carriers</SelectItem>
-            {carriers?.data.map((carrier) => (
-              <SelectItem key={carrier.id} value={carrier.id}>
-                {carrier.companyName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+          onChange={(value) => setFilter('carrierId', value)}
+        />
+        <FilterSelect
+          placeholder="Seller"
+          allLabel="All sellers"
+          options={sellerOptions}
           value={filters.sellerId}
-          onValueChange={(value) => setFilter('sellerId', value)}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Seller" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All sellers</SelectItem>
-            {sellers?.data.map((seller) => (
-              <SelectItem key={seller.id} value={seller.id}>
-                {seller.companyName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) => setFilter('sellerId', value)}
+        />
       </div>
 
       <QueryState query={query} errorMessage="Couldn't load shipments.">
