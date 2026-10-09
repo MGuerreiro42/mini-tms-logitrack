@@ -3,10 +3,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { FormError } from '@/components/common/form-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError } from '@/services/api-client';
 import { useCarrierSignupMutation } from '../hooks/use-carrier-signup';
 
 const schema = z.object({
@@ -62,13 +62,7 @@ export function CarrierSignupForm() {
           <p className="text-sm text-destructive">{errors.password.message}</p>
         )}
       </div>
-      {signup.isError && (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {signup.error instanceof ApiError
-            ? signup.error.message
-            : 'Something went wrong.'}
-        </p>
-      )}
+      <FormError error={signup.error} />
       <Button type="submit" className="w-full" disabled={signup.isPending}>
         {signup.isPending ? 'Creating account…' : 'Create account'}
       </Button>

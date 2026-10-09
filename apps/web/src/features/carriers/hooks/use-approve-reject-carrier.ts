@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { ApiError } from '@/services/api-client';
+import { toastApiError } from '@/lib/toast-api-error';
 import { approveCarrier, rejectCarrier } from '../api';
 
 export function useApproveCarrier(id: string) {
@@ -20,11 +20,7 @@ export function useApproveCarrier(id: string) {
         queryKey: ['carriers', 'status-counts'],
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }
 
@@ -42,10 +38,6 @@ export function useRejectCarrier(id: string) {
         queryKey: ['carriers', 'status-counts'],
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+    onError: toastApiError,
   });
 }
