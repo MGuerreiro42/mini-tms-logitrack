@@ -9,13 +9,13 @@ import {
   type Seller,
   ShipmentStatus,
 } from '../generated/prisma/client';
+import { MS_PER_HOUR } from '../src/shared/stats/stats';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
+const DAY_MS = 24 * MS_PER_HOUR;
 const DEMO_PASSWORD = 'demo12345';
 
 function resolveAdminPassword(): string {
@@ -240,13 +240,13 @@ function planEvents(
   }
 
   // In-flight shipments must not have events in the future: compress to fit.
-  const totalMs = gaps.reduce((a, b) => a + b, 0) * HOUR_MS;
-  const available = now - createdAt - between(0.1, 2) * HOUR_MS;
+  const totalMs = gaps.reduce((a, b) => a + b, 0) * MS_PER_HOUR;
+  const available = now - createdAt - between(0.1, 2) * MS_PER_HOUR;
   const scale = !terminal && totalMs > available ? available / totalMs : 1;
 
   let at = createdAt;
   return path.map((status, index) => {
-    if (index > 0) at += gaps[index - 1] * HOUR_MS * scale;
+    if (index > 0) at += gaps[index - 1] * MS_PER_HOUR * scale;
     return { status, at: new Date(at) };
   });
 }

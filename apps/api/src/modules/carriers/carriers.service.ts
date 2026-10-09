@@ -17,6 +17,12 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import {
+  average,
+  countByStatus,
+  hoursBetween,
+  percentage,
+} from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type {
   CarrierPerformanceResponseDto,
@@ -36,9 +42,6 @@ const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
   [ShipmentStatus.IN_TRANSIT, ShipmentStatus.OUT_FOR_DELIVERY],
   [ShipmentStatus.OUT_FOR_DELIVERY, ShipmentStatus.DELIVERED],
 ];
-
-const percentage = (part: number, total: number) =>
-  total > 0 ? (part / total) * 100 : 0;
 
 const managerInclude = {
   users: {
@@ -149,15 +152,7 @@ export class CarriersService {
       _count: true,
     });
 
-    const counts: CarrierStatusCountsResponseDto = {
-      PENDING: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-    };
-    for (const group of groups) {
-      counts[group.status] = group._count;
-    }
-    return counts;
+    return countByStatus(ApprovalStatus, groups);
   }
 
   async findOne(id: string): Promise<CarrierResponseDto> {
@@ -219,20 +214,7 @@ export class CarriersService {
       }),
     ]);
 
-    const shipmentCountsByStatus = {
-      PENDING: 0,
-      ACCEPTED: 0,
-      COLLECTED: 0,
-      IN_TRANSIT: 0,
-      OUT_FOR_DELIVERY: 0,
-      DELIVERED: 0,
-      FAILED_DELIVERY: 0,
-      CANCELLED: 0,
-      RETURNED: 0,
-    };
-    for (const group of groups) {
-      shipmentCountsByStatus[group.status] = group._count;
-    }
+    const shipmentCountsByStatus = countByStatus(ShipmentStatus, groups);
     const totalShipments = Object.values(shipmentCountsByStatus).reduce(
       (sum, count) => sum + count,
       0,
@@ -243,9 +225,10 @@ export class CarriersService {
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
       if (events[i].shipmentId === events[i - 1].shipmentId) {
-        const gapMs =
-          events[i].createdAt.getTime() - events[i - 1].createdAt.getTime();
-        const gapHours = gapMs / (1000 * 60 * 60);
+        const gapHours = hoursBetween(
+          events[i - 1].createdAt,
+          events[i].createdAt,
+        );
         gapsInHours.push(gapHours);
 
         const stageKey = `${events[i - 1].status}_${events[i].status}`;
@@ -254,11 +237,7 @@ export class CarriersService {
         stageGapsInHours.set(stageKey, stageGaps);
       }
     }
-    const avgHoursBetweenEvents =
-      gapsInHours.length > 0
-        ? gapsInHours.reduce((sum, hours) => sum + hours, 0) /
-          gapsInHours.length
-        : null;
+    const avgHoursBetweenEvents = average(gapsInHours);
 
     const stageDurations: StageDurationResponseDto[] =
       HAPPY_PATH_TRANSITIONS.map(([fromStatus, toStatus]) => {
@@ -267,11 +246,7 @@ export class CarriersService {
         return {
           fromStatus,
           toStatus,
-          avgHours:
-            stageGaps.length > 0
-              ? stageGaps.reduce((sum, hours) => sum + hours, 0) /
-                stageGaps.length
-              : null,
+          avgHours: average(stageGaps),
           sampleCount: stageGaps.length,
         };
       });
