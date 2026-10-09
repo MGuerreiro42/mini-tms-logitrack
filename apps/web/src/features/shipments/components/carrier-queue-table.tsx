@@ -94,7 +94,7 @@ export function CarrierQueueTable() {
                       size="sm"
                       className="relative z-10"
                       onClick={() => claim.mutate(s.id)}
-                      disabled={claim.isPending}
+                      disabled={claim.isPending && claim.variables === s.id}
                     >
                       Claim
                     </Button>

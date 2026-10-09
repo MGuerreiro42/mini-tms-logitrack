@@ -90,6 +90,54 @@ describe('CarrierQueueTable', () => {
     await waitFor(() => expect(claimedId).toBe('shipment-1'));
   });
 
+  it('disables only the Claim button of the row being claimed', async () => {
+    const secondUnowned = {
+      ...unownedShipment,
+      id: 'shipment-3',
+      trackingCode: 'TMS-CCC333',
+      sellerCompanyName: 'Third Store',
+    };
+    server.use(
+      http.get(`${API_URL}/shipments/queue`, () =>
+        HttpResponse.json({
+          data: [unownedShipment, secondUnowned],
+          meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.patch(`${API_URL}/shipments/:id/claim`, () => new Promise(() => {})),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierQueueTable />);
+    await screen.findByText('Third Store');
+
+    const [first, second] = screen.getAllByRole('button', { name: 'Claim' });
+    await user.click(first);
+
+    await waitFor(() => expect(first).toBeDisabled());
+    expect(second).toBeEnabled();
+  });
+
+  it('refetches the queue when a claim loses the race (409)', async () => {
+    server.use(
+      http.patch(`${API_URL}/shipments/:id/claim`, () =>
+        HttpResponse.json(
+          { statusCode: 409, message: 'Shipment already claimed' },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierQueueTable />);
+    await screen.findByText('Example Store');
+    const fetchesBefore = requestedUrls.length;
+
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
+
+    await waitFor(() =>
+      expect(requestedUrls.length).toBeGreaterThan(fetchesBefore),
+    );
+  });
+
   it('switching the status tab refetches with the new filter and resets to page 1', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(<CarrierQueueTable />);
