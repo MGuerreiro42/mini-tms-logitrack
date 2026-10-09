@@ -4,13 +4,25 @@ import { CopyIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
-export function CopyField({ value, label }: { value: string; label: string }) {
+interface CopyFieldProps {
+  value: string;
+  label: string;
+  copiedMessage?: string;
+  failedMessage?: string;
+}
+
+export function CopyField({
+  value,
+  label,
+  copiedMessage = 'Copied',
+  failedMessage = "Couldn't copy",
+}: CopyFieldProps) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success('Link copied');
+      toast.success(copiedMessage);
     } catch {
-      toast.error("Couldn't copy the link");
+      toast.error(failedMessage);
     }
   }
 

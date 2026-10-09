@@ -51,7 +51,12 @@ function ShipmentDetailView({ shipment }: { shipment: Shipment }) {
             <CardTitle className="text-sm">Public tracking link</CardTitle>
           </CardHeader>
           <CardContent>
-            <CopyField value={trackingUrl} label="Copy tracking link" />
+            <CopyField
+              value={trackingUrl}
+              label="Copy tracking link"
+              copiedMessage="Link copied"
+              failedMessage="Couldn't copy the link"
+            />
           </CardContent>
         </Card>
         <ShipmentTimelineCard events={shipment.trackingEvents} />
