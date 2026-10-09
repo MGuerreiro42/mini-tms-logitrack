@@ -2,16 +2,16 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/services/api-client';
 import { approveSeller, rejectSeller } from '../api';
 
 export function useApproveSeller(id: string) {
-  const session = useSession();
+  const { token } = useAuthToken();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => approveSeller(id, session?.token ?? ''),
+    mutationFn: () => approveSeller(id, token),
     onSuccess: () => {
       toast.success('Seller approved');
       queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });
@@ -27,11 +27,11 @@ export function useApproveSeller(id: string) {
 }
 
 export function useRejectSeller(id: string) {
-  const session = useSession();
+  const { token } = useAuthToken();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => rejectSeller(id, session?.token ?? ''),
+    mutationFn: () => rejectSeller(id, token),
     onSuccess: () => {
       toast.success('Seller rejected');
       queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });

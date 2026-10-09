@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getEligibleCarriers } from '../api';
 
 export function useEligibleCarriers(
@@ -9,16 +9,11 @@ export function useEligibleCarriers(
   city: string,
   modalityId: string,
 ) {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
     queryKey: ['shipments', 'eligible-carriers', state, city, modalityId],
-    queryFn: () =>
-      getEligibleCarriers(state, city, modalityId, session?.token ?? ''),
-    enabled:
-      Boolean(session) &&
-      Boolean(state) &&
-      Boolean(city) &&
-      Boolean(modalityId),
+    queryFn: () => getEligibleCarriers(state, city, modalityId, token),
+    enabled: enabled && Boolean(state && city && modalityId),
   });
 }
