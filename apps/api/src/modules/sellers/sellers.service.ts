@@ -12,6 +12,7 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { countByStatus } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
@@ -120,15 +121,7 @@ export class SellersService {
       _count: true,
     });
 
-    const counts: SellerStatusCountsResponseDto = {
-      PENDING: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-    };
-    for (const group of groups) {
-      counts[group.status] = group._count;
-    }
-    return counts;
+    return countByStatus(ApprovalStatus, groups);
   }
 
   async findOne(id: string): Promise<SellerResponseDto> {

@@ -18,6 +18,7 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { countByStatus, hoursBetween } from '../../shared/stats/stats';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
@@ -257,21 +258,7 @@ export class ShipmentsService {
       _count: true,
     });
 
-    const counts: ShipmentStatusCountsResponseDto = {
-      PENDING: 0,
-      ACCEPTED: 0,
-      COLLECTED: 0,
-      IN_TRANSIT: 0,
-      OUT_FOR_DELIVERY: 0,
-      DELIVERED: 0,
-      FAILED_DELIVERY: 0,
-      CANCELLED: 0,
-      RETURNED: 0,
-    };
-    for (const group of groups) {
-      counts[group.status] = group._count;
-    }
-    return counts;
+    return countByStatus(ShipmentStatus, groups);
   }
 
   // Only DELIVERED shipments have an outcome; modalities without slaHours are skipped, not counted as misses.
@@ -311,9 +298,10 @@ export class ShipmentsService {
       };
       entry.deliveredCount += 1;
 
-      const elapsedHours =
-        (deliveredEvent.createdAt.getTime() - shipment.createdAt.getTime()) /
-        (1000 * 60 * 60);
+      const elapsedHours = hoursBetween(
+        shipment.createdAt,
+        deliveredEvent.createdAt,
+      );
       if (elapsedHours <= shipment.modality.slaHours) {
         entry.onTimeCount += 1;
       }
