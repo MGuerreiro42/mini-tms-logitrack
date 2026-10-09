@@ -24,7 +24,6 @@ import {
   ShipmentTimelineCard,
 } from './shipment-detail-parts';
 
-// Computed once so the action-card branches stay mutually exclusive.
 type ActionState =
   | { kind: 'claim' }
   | { kind: 'advance'; statuses: ShipmentStatus[] }
@@ -63,7 +62,6 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
 
-  // Owner or manager only; the API would 403 anyone else.
   const canAdvance =
     session?.role === 'CARRIER_MANAGER' ||
     shipment.ownerEmail === session?.email;

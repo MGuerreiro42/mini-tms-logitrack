@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ModalityOption } from '../types';
 
-// Mirrors CreateShipmentDto's address fields.
 const schema = z.object({
   addressStreet: z.string().min(1, 'Required'),
   addressNumber: z.string().min(1, 'Required'),

@@ -12,7 +12,6 @@ export class ApiError extends Error {
   }
 }
 
-// Token passed in so this works from Server Components and client hooks alike.
 export async function apiClient<T>(
   path: string,
   init?: RequestInit,
@@ -44,7 +43,6 @@ export async function apiClient<T>(
 
 type QueryValue = string | number | undefined;
 
-// Drops empty values; returns '' or a leading-'?' string.
 export function toQueryString(params: Record<string, QueryValue>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

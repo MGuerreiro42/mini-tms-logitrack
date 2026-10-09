@@ -13,7 +13,6 @@ export interface SegmentErrorProps {
   unstable_retry: () => void;
 }
 
-// Rendered inside the role layout, so the sidebar stays usable when one page fails.
 export function SegmentError({ unstable_retry }: SegmentErrorProps) {
   return (
     <Alert variant="destructive">

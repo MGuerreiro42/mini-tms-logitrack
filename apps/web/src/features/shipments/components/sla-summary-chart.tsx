@@ -16,10 +16,8 @@ import {
 } from '@/components/ui/chart';
 import type { SlaSummaryItem } from '../types';
 
-// Recharts doesn't export this type from its root.
 type RenderableText = string | number | boolean | null | undefined;
 
-// Single series, so one hue: the x-axis already names each modality.
 const chartConfig = {
   onTimeRate: {
     label: 'On-time rate',

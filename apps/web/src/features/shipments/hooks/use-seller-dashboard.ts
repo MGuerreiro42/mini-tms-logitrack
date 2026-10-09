@@ -22,7 +22,6 @@ function toCounts(byStatus: ShipmentStatusCounts) {
     pending: byStatus.PENDING,
     inTransit: byStatus.IN_TRANSIT,
     delivered: byStatus.DELIVERED,
-    // Statuses without a tile of their own, so the tiles always add up to Total.
     other: total - byStatus.PENDING - byStatus.IN_TRANSIT - byStatus.DELIVERED,
     total,
   };

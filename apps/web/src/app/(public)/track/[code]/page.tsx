@@ -11,7 +11,6 @@ interface TrackingPageProps {
   params: Promise<{ code: string }>;
 }
 
-// Deduped per request between generateMetadata and the page.
 const findTracking = cache(async (code: string) => {
   try {
     return await getPublicTracking(code);

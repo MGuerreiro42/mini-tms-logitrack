@@ -9,7 +9,6 @@ type QueryFilters<F> = {
   [K in keyof F]: Exclude<F[K], typeof ALL> | undefined;
 };
 
-// Filter state where 'ALL' means "no filter"; changing a filter resets to page 1.
 export function useFilteredPagination<F extends Record<string, string>>(
   initialFilters: F,
 ) {

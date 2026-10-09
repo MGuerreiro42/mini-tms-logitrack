@@ -9,7 +9,6 @@ import {
 } from './shipment-address-form';
 import { ShipmentConfirmReview } from './shipment-confirm-review';
 
-// Local step state, not routes: nothing persists before the final POST.
 type WizardState =
   | { step: 1 }
   | {
@@ -32,7 +31,6 @@ export function CreateShipmentWizard({
   modalities: ModalityOption[];
 }) {
   const [state, setState] = useState<WizardState>({ step: 1 });
-  // Kept outside the step state so Back to step 1 keeps the typed address.
   const [savedAddress, setSavedAddress] = useState<
     AddressFormValues | undefined
   >();

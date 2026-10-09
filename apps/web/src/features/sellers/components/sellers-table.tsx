@@ -8,7 +8,6 @@ import { useSellersList } from '../hooks/use-sellers-list';
 import type { Seller } from '../types';
 
 export function SellersTable() {
-  // Pending first: reviewing applications is the admin's recurring task.
   const { filters, setFilter, setPage, params } = useFilteredPagination({
     status: 'PENDING' as StatusFilter<ApprovalStatus>,
   });

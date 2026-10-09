@@ -14,7 +14,6 @@ export type ShipmentStatus =
 export type ApprovalStatusCounts = Record<ApprovalStatus, number>;
 export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
 
-// The public endpoint sends only status and date; authenticated reads add id and note.
 export interface TimelineEvent {
   status: ShipmentStatus;
   createdAt: string;

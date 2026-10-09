@@ -46,20 +46,17 @@ describe('CreateShipmentWizard', () => {
       />,
     );
 
-    // Step 1: address + modality
     await fillAddressFields(user);
     await user.click(await screen.findByRole('button', { name: 'Standard' }));
     await user.click(
       screen.getByRole('button', { name: /see eligible carriers/i }),
     );
 
-    // Step 2: eligible carriers
     await user.click(
       await screen.findByRole('button', { name: /Fast Freight/ }),
     );
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    // Step 3: confirm
     expect(await screen.findByText('Review and confirm')).toBeInTheDocument();
     expect(screen.getByText('Av. Paulista, 1000')).toBeInTheDocument();
     expect(screen.getByText('Fast Freight')).toBeInTheDocument();

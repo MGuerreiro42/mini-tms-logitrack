@@ -9,7 +9,6 @@ export function useSellerSignupMutation() {
 
   return useMutation({
     mutationFn: signupSeller,
-    // Signup returns no token; /status shows the pending message without a session.
     onSuccess: () => router.push('/status'),
   });
 }

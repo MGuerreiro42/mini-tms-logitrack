@@ -2,7 +2,6 @@ import type { GlobalRole } from '@/types/auth';
 
 export const SESSION_COOKIE = 'tms_session';
 
-// Matches the API's JWT expiry.
 const MAX_AGE_SECONDS = 60 * 60 * 24;
 
 export interface Session {
@@ -24,8 +23,6 @@ export function parseSessionCookie(raw: string | undefined): Session | null {
     return null;
   }
 }
-
-// Client-only below; server code uses next/headers + parseSessionCookie().
 
 export function setSession(session: Session): void {
   const value = encodeURIComponent(JSON.stringify(session));

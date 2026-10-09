@@ -141,7 +141,6 @@ describe('useShipmentTracking', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
     invalidateSpy.mockClear();
 
-    // Reconnect with no message in between: the missed update must still be fetched.
     socket.trigger('connect');
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
@@ -160,7 +159,6 @@ describe('useShipmentTracking', () => {
     socket.disconnect.mockClear();
     socket.emit.mockClear();
 
-    // A fresh object with the same token must not reconnect.
     vi.mocked(useSession).mockReturnValue({ ...session });
     rerender();
 

@@ -40,7 +40,6 @@ interface CompanyApprovalTableProps<T extends CompanyRow> {
   extraColumns?: Column<T>[];
 }
 
-// Admin list of seller or carrier applications.
 export function CompanyApprovalTable<T extends CompanyRow>({
   query,
   status,

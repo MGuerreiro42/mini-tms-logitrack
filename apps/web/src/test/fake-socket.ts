@@ -2,7 +2,6 @@ import { vi } from 'vitest';
 
 type Listener = (...args: unknown[]) => void;
 
-// Minimal socket.io Socket fake with manual event and ack triggers.
 export function makeFakeSocket() {
   const listeners: Record<string, Listener[]> = {};
   const socket = {
@@ -21,7 +20,6 @@ export function makeFakeSocket() {
     trigger(event: string, ...args: unknown[]) {
       for (const cb of listeners[event] ?? []) cb(...args);
     },
-    // Answers every pending emit ack the way `socket.timeout().emit()` would.
     ackAll(ack: unknown, error: unknown = null) {
       for (const call of socket.emit.mock.calls) {
         const cb = call.at(-1);

@@ -38,7 +38,6 @@ function DetailsCard({
   );
 }
 
-// The signed-in seller's or carrier's own company page.
 export function CompanyProfile({
   company,
   rows,
@@ -70,7 +69,6 @@ interface Mutation {
   isPending: boolean;
 }
 
-// The admin's review page for a seller or carrier application.
 export function CompanyReview({
   company,
   rows,

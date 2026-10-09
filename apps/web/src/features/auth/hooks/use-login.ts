@@ -6,7 +6,6 @@ import { setSession } from '@/lib/session';
 import { login } from '../api';
 import type { GlobalRole, LoginInput } from '../types';
 
-// Each role layout decides whether to render or redirect to /status.
 function roleHomePath(role: GlobalRole): string {
   switch (role) {
     case 'ADMIN':
