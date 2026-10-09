@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -41,6 +40,7 @@ import {
   CANCELLABLE_STATUSES,
   isValidTransition,
 } from './shipment-status.util';
+import { generateTrackingCode } from './tracking-code';
 
 const withCarrierAndModality = {
   carrier: { select: { companyName: true } },
@@ -197,7 +197,7 @@ export class ShipmentsService {
 
     const shipment = await this.prisma.shipment.create({
       data: {
-        trackingCode: this.generateTrackingCode(),
+        trackingCode: generateTrackingCode(),
         sellerId: seller.id,
         carrierId: dto.carrierId,
         modalityId: dto.modalityId,
@@ -654,10 +654,6 @@ export class ShipmentsService {
       trackingCode: shipment.trackingCode,
     };
     this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, event);
-  }
-
-  private generateTrackingCode(): string {
-    return `TMS-${randomBytes(6).toString('hex').toUpperCase()}`;
   }
 
   private toResponseDto(shipment: ShipmentWithRelations): ShipmentResponseDto {

@@ -5,7 +5,8 @@ import {
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { trackingRoom } from './tracking-rooms';
+import { TRACKING_CODE_PATTERN } from '../shipments/tracking-code';
+import { TRACKING_ROOM_PREFIX, trackingRoom } from './tracking-rooms';
 
 // Unauthenticated on purpose: the tracking code is the credential, as on GET /public/tracking/:code.
 @WebSocketGateway({ namespace: '/public' })
@@ -20,7 +21,10 @@ export class PublicTrackingGateway {
     client: Socket,
     trackingCode: unknown,
   ): Promise<{ ok: boolean }> {
-    if (typeof trackingCode !== 'string' || trackingCode.length === 0) {
+    if (
+      typeof trackingCode !== 'string' ||
+      !TRACKING_CODE_PATTERN.test(trackingCode)
+    ) {
       return { ok: false };
     }
 
@@ -32,7 +36,14 @@ export class PublicTrackingGateway {
       return { ok: false };
     }
 
-    await client.join(trackingRoom(trackingCode));
+    const room = trackingRoom(trackingCode);
+    // One tracking room per socket, so a client can't fan out over many codes.
+    for (const joined of [...client.rooms]) {
+      if (joined.startsWith(TRACKING_ROOM_PREFIX) && joined !== room) {
+        await client.leave(joined);
+      }
+    }
+    await client.join(room);
     return { ok: true };
   }
 }
