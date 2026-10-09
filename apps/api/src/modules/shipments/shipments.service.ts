@@ -28,6 +28,7 @@ import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
+import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
@@ -298,6 +299,65 @@ export class ShipmentsService {
       counts[group.status] = group._count;
     }
     return counts;
+  }
+
+  // SLA clock starts at order creation; only delivered shipments have an outcome.
+  async slaSummaryForSeller(
+    userId: string,
+  ): Promise<SlaSummaryItemResponseDto[]> {
+    const seller = await this.prisma.seller.findUnique({ where: { userId } });
+    if (!seller) {
+      throw new NotFoundException('Seller not found');
+    }
+
+    const shipments = await this.prisma.shipment.findMany({
+      where: { sellerId: seller.id, status: ShipmentStatus.DELIVERED },
+      select: {
+        createdAt: true,
+        modality: { select: { code: true, name: true, slaHours: true } },
+        trackingEvents: {
+          where: { status: ShipmentStatus.DELIVERED },
+          select: { createdAt: true },
+          take: 1,
+        },
+      },
+    });
+
+    const byModality = new Map<
+      string,
+      { modalityName: string; deliveredCount: number; onTimeCount: number }
+    >();
+
+    for (const shipment of shipments) {
+      if (shipment.modality.slaHours == null) continue;
+
+      const deliveredEvent = shipment.trackingEvents[0];
+      if (!deliveredEvent) continue;
+
+      const entry = byModality.get(shipment.modality.code) ?? {
+        modalityName: shipment.modality.name,
+        deliveredCount: 0,
+        onTimeCount: 0,
+      };
+      entry.deliveredCount += 1;
+
+      const elapsedHours =
+        (deliveredEvent.createdAt.getTime() - shipment.createdAt.getTime()) /
+        (1000 * 60 * 60);
+      if (elapsedHours <= shipment.modality.slaHours) {
+        entry.onTimeCount += 1;
+      }
+
+      byModality.set(shipment.modality.code, entry);
+    }
+
+    return Array.from(byModality.entries()).map(([modalityCode, entry]) => ({
+      modalityCode,
+      modalityName: entry.modalityName,
+      deliveredCount: entry.deliveredCount,
+      onTimeCount: entry.onTimeCount,
+      onTimeRate: (entry.onTimeCount / entry.deliveredCount) * 100,
+    }));
   }
 
   async findOneForSeller(

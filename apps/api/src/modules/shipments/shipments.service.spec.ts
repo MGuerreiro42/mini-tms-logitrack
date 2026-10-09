@@ -347,6 +347,71 @@ describe('ShipmentsService', () => {
     });
   });
 
+  describe('slaSummaryForSeller', () => {
+    it('groups DELIVERED shipments by modality and computes on-time rate from createdAt to the DELIVERED event', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany.mockResolvedValue([
+        {
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
+          trackingEvents: [{ createdAt: new Date('2026-01-01T12:00:00Z') }], // 12h — on time
+        },
+        {
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
+          trackingEvents: [{ createdAt: new Date('2026-01-02T06:00:00Z') }], // 30h — late
+        },
+      ]);
+
+      const result = await shipmentsService.slaSummaryForSeller('user-1');
+
+      expect(shipmentFindMany).toHaveBeenCalledWith({
+        where: { sellerId: 'seller-1', status: 'DELIVERED' },
+        select: {
+          createdAt: true,
+          modality: { select: { code: true, name: true, slaHours: true } },
+          trackingEvents: {
+            where: { status: 'DELIVERED' },
+            select: { createdAt: true },
+            take: 1,
+          },
+        },
+      });
+      expect(result).toEqual([
+        {
+          modalityCode: 'EXPRESS',
+          modalityName: 'Express',
+          deliveredCount: 2,
+          onTimeCount: 1,
+          onTimeRate: 50,
+        },
+      ]);
+    });
+
+    it('omits modalities with no slaHours configured', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany.mockResolvedValue([
+        {
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          modality: { code: 'STANDARD', name: 'Standard', slaHours: null },
+          trackingEvents: [{ createdAt: new Date('2026-01-01T12:00:00Z') }],
+        },
+      ]);
+
+      const result = await shipmentsService.slaSummaryForSeller('user-1');
+
+      expect(result).toEqual([]);
+    });
+
+    it('throws NotFoundException when the seller is not found', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(
+        shipmentsService.slaSummaryForSeller('user-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('findAllForCarrier', () => {
     it('scopes the list to the carrier resolved from userId', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);

@@ -18,11 +18,23 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
-import type { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
+import type {
+  CarrierPerformanceResponseDto,
+  StageDurationResponseDto,
+} from './dto/carrier-performance-response.dto';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
 import type { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
+import type { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
+
+const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
+  [ShipmentStatus.PENDING, ShipmentStatus.ACCEPTED],
+  [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED],
+  [ShipmentStatus.COLLECTED, ShipmentStatus.IN_TRANSIT],
+  [ShipmentStatus.IN_TRANSIT, ShipmentStatus.OUT_FOR_DELIVERY],
+  [ShipmentStatus.OUT_FOR_DELIVERY, ShipmentStatus.DELIVERED],
+];
 
 const managerInclude = {
   users: {
@@ -213,7 +225,7 @@ export class CarriersService {
       }),
       this.prisma.trackingEvent.findMany({
         where: { shipment: { carrierId } },
-        select: { shipmentId: true, createdAt: true },
+        select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       }),
     ]);
@@ -239,13 +251,19 @@ export class CarriersService {
 
     // `events` is already ordered by (shipmentId, createdAt) — consecutive
     // rows for the same shipmentId are consecutive events in time, so a
-    // single pass catches every gap without grouping into a Map first.
     const gapsInHours: number[] = [];
+    const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
       if (events[i].shipmentId === events[i - 1].shipmentId) {
         const gapMs =
           events[i].createdAt.getTime() - events[i - 1].createdAt.getTime();
-        gapsInHours.push(gapMs / (1000 * 60 * 60));
+        const gapHours = gapMs / (1000 * 60 * 60);
+        gapsInHours.push(gapHours);
+
+        const stageKey = `${events[i - 1].status}_${events[i].status}`;
+        const stageGaps = stageGapsInHours.get(stageKey) ?? [];
+        stageGaps.push(gapHours);
+        stageGapsInHours.set(stageKey, stageGaps);
       }
     }
     const avgHoursBetweenEvents =
@@ -253,6 +271,22 @@ export class CarriersService {
         ? gapsInHours.reduce((sum, hours) => sum + hours, 0) /
           gapsInHours.length
         : null;
+
+    const stageDurations: StageDurationResponseDto[] =
+      HAPPY_PATH_TRANSITIONS.map(([fromStatus, toStatus]) => {
+        const stageGaps =
+          stageGapsInHours.get(`${fromStatus}_${toStatus}`) ?? [];
+        return {
+          fromStatus,
+          toStatus,
+          avgHours:
+            stageGaps.length > 0
+              ? stageGaps.reduce((sum, hours) => sum + hours, 0) /
+                stageGaps.length
+              : null,
+          sampleCount: stageGaps.length,
+        };
+      });
 
     const failedDeliveryRate =
       totalShipments > 0
@@ -272,7 +306,62 @@ export class CarriersService {
       avgHoursBetweenEvents,
       failedDeliveryRate,
       returnedRate,
+      stageDurations,
     };
+  }
+
+  async operatorRanking(
+    userId: string,
+  ): Promise<OperatorRankingItemResponseDto[]> {
+    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+
+    const [totalGroups, deliveredGroups] = await Promise.all([
+      this.prisma.shipment.groupBy({
+        by: ['ownerId'],
+        where: { carrierId, ownerId: { not: null } },
+        _count: true,
+      }),
+      this.prisma.shipment.groupBy({
+        by: ['ownerId'],
+        where: {
+          carrierId,
+          ownerId: { not: null },
+          status: ShipmentStatus.DELIVERED,
+        },
+        _count: true,
+      }),
+    ]);
+
+    if (totalGroups.length === 0) {
+      return [];
+    }
+
+    const deliveredByOwnerId = new Map(
+      deliveredGroups.map((group) => [group.ownerId, group._count]),
+    );
+
+    const carrierUsers = await this.prisma.carrierUser.findMany({
+      where: {
+        id: { in: totalGroups.map((group) => group.ownerId as string) },
+      },
+      include: { user: { select: { email: true } } },
+    });
+    const carrierUserById = new Map(
+      carrierUsers.map((carrierUser) => [carrierUser.id, carrierUser]),
+    );
+
+    return totalGroups
+      .map((group) => {
+        const ownerId = group.ownerId as string;
+        const carrierUser = carrierUserById.get(ownerId);
+        return {
+          carrierUserId: ownerId,
+          email: carrierUser?.user.email ?? 'unknown',
+          totalOwned: group._count,
+          delivered: deliveredByOwnerId.get(ownerId) ?? 0,
+        };
+      })
+      .sort((a, b) => b.totalOwned - a.totalOwned);
   }
 
   async getCoverageAreas(userId: string): Promise<CoverageAreaResponseDto[]> {

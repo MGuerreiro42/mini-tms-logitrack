@@ -13,6 +13,14 @@ export type ShipmentStatus =
 
 export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
 
+export interface SlaSummaryItem {
+  modalityCode: string;
+  modalityName: string;
+  deliveredCount: number;
+  onTimeCount: number;
+  onTimeRate: number;
+}
+
 export interface TrackingEvent {
   id: string;
   status: ShipmentStatus;

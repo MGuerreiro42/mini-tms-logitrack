@@ -10,6 +10,7 @@ import type {
   ListShipmentsQuery,
   Shipment,
   ShipmentStatusCounts,
+  SlaSummaryItem,
   UpdateShipmentStatusInput,
 } from '../types';
 
@@ -63,6 +64,14 @@ export function getShipmentStatusCounts(
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
     '/shipments/status-counts',
+    undefined,
+    token,
+  );
+}
+
+export function getSlaSummary(token: string): Promise<SlaSummaryItem[]> {
+  return apiClient<SlaSummaryItem[]>(
+    '/shipments/sla-summary',
     undefined,
     token,
   );
