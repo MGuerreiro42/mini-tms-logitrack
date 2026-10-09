@@ -8,7 +8,9 @@ import { useApiMutation } from './use-api-mutation';
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-function setup(mutationFn: (input: void, token: string) => Promise<unknown>) {
+function setup(
+  mutationFn: (input: unknown, token: string) => Promise<unknown>,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   });
@@ -39,7 +41,7 @@ describe('useApiMutation', () => {
     const mutationFn = vi.fn().mockResolvedValue(undefined);
     const { result, invalidate } = setup(mutationFn);
 
-    await act(() => result.current.mutateAsync());
+    await act(() => result.current.mutateAsync(undefined));
 
     expect(mutationFn).toHaveBeenCalledWith(undefined, 't');
     expect(toast.success).toHaveBeenCalledWith('Saved');
@@ -51,7 +53,7 @@ describe('useApiMutation', () => {
       Promise.reject(new ApiError(409, 'Conflict')),
     );
 
-    await act(() => result.current.mutateAsync().catch(() => {}));
+    await act(() => result.current.mutateAsync(undefined).catch(() => {}));
 
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['things'] });
     expect(toast.error).toHaveBeenCalledWith('Already changed.');
@@ -62,7 +64,7 @@ describe('useApiMutation', () => {
       Promise.reject(new ApiError(400, 'Invalid input')),
     );
 
-    await act(() => result.current.mutateAsync().catch(() => {}));
+    await act(() => result.current.mutateAsync(undefined).catch(() => {}));
 
     expect(invalidate).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('Invalid input');
