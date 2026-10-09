@@ -11,7 +11,8 @@ import { useAppOrigin } from '@/hooks/use-app-origin';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { Shipment } from '../types';
+import { isCancellableBySeller, type Shipment } from '../types';
+import { CancelShipmentAction } from './cancel-shipment-action';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
   const query = useShipment(id);
@@ -61,6 +62,9 @@ function ShipmentDetailView({ shipment }: { shipment: Shipment }) {
         </CardContent>
       </Card>
       <div className="space-y-4">
+        {isCancellableBySeller(shipment.status) && (
+          <CancelShipmentAction shipmentId={shipment.id} />
+        )}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Public tracking link</CardTitle>
