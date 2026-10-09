@@ -9,11 +9,11 @@ import {
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
+import { shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -51,31 +51,16 @@ export function ShipmentsTable() {
             getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
             emptyMessage="No shipments yet — create your first one."
             columns={[
-              {
-                header: 'Tracking code',
-                cell: (s) => (
-                  <span className="font-mono text-xs">{s.trackingCode}</span>
-                ),
-              },
-              {
-                header: 'Status',
-                cell: (s) => <ShipmentStatusPill status={s.status} />,
-              },
-              {
-                header: 'Destination',
-                cell: (s) => `${s.addressCity}/${s.addressState}`,
-              },
+              shipmentColumns.trackingCode,
+              shipmentColumns.status,
+              shipmentColumns.destination,
               {
                 header: 'Carrier',
                 cell: (s) => s.carrierName,
                 className: 'text-muted-foreground',
               },
               { header: 'Modality', cell: (s) => s.modalityName },
-              {
-                header: 'Created',
-                className: 'text-right text-muted-foreground',
-                cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-              },
+              shipmentColumns.created,
             ]}
           />
         )}
