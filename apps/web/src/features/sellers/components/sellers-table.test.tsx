@@ -1,15 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { useRouter } from 'next/navigation';
 import { setSession } from '@/lib/session';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import { SellersTable } from './sellers-table';
-
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
-}));
 
 const API_URL = 'http://localhost:3333';
 
@@ -26,9 +21,6 @@ describe('SellersTable', () => {
 
   beforeEach(() => {
     requestedUrls = [];
-    vi.mocked(useRouter).mockReturnValue({
-      push: vi.fn(),
-    } as unknown as ReturnType<typeof useRouter>);
     setSession({
       token: 'signed.jwt.token',
       role: 'ADMIN',

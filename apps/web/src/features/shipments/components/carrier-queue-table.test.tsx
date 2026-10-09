@@ -1,7 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { useRouter } from 'next/navigation';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
@@ -9,7 +8,6 @@ import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import { CarrierQueueTable } from './carrier-queue-table';
 
-vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
 vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
 
 const API_URL = 'http://localhost:3333';
@@ -38,14 +36,9 @@ const ownedShipment = {
 
 describe('CarrierQueueTable', () => {
   let requestedUrls: string[] = [];
-  let push: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     requestedUrls = [];
-    push = vi.fn();
-    vi.mocked(useRouter).mockReturnValue({
-      push,
-    } as unknown as ReturnType<typeof useRouter>);
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     setSession({
       token: 'signed.jwt.token',
@@ -95,7 +88,6 @@ describe('CarrierQueueTable', () => {
     await user.click(screen.getByRole('button', { name: 'Claim' }));
 
     await waitFor(() => expect(claimedId).toBe('shipment-1'));
-    expect(push).not.toHaveBeenCalled();
   });
 
   it('switching the status tab refetches with the new filter and resets to page 1', async () => {

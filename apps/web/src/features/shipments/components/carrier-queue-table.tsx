@@ -96,10 +96,8 @@ export function CarrierQueueTable() {
                     // per claim would actively work against that.
                     <Button
                       size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        claim.mutate(s.id);
-                      }}
+                      className="relative z-10"
+                      onClick={() => claim.mutate(s.id)}
                       disabled={claim.isPending}
                     >
                       Claim
