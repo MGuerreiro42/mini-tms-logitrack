@@ -1,15 +1,15 @@
 import Link from 'next/link';
+import { PublicCard } from '@/components/common/public-card';
 import { SellerSignupForm } from '@/features/sellers/components/seller-signup-form';
 
 export default function SellerSignupPage() {
   return (
-    <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
-      <div className="space-y-1">
-        <h1 className="text-lg font-semibold">Seller signup</h1>
-        <p className="text-sm text-muted-foreground">
-          An administrator reviews new accounts before they go live.
-        </p>
-      </div>
+    <PublicCard
+      badge={false}
+      align="start"
+      title="Seller signup"
+      description="An administrator reviews new accounts before they go live."
+    >
       <SellerSignupForm />
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
@@ -17,6 +17,6 @@ export default function SellerSignupPage() {
           Sign in
         </Link>
       </p>
-    </div>
+    </PublicCard>
   );
 }
