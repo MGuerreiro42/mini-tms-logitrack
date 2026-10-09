@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '@/services/api-client';
-import { QueryState, type QueryStateSource } from './query-state';
+import type { QuerySource } from '@/types/query';
+import { QueryState } from './query-state';
 
-function renderState(query: Partial<QueryStateSource<string>>) {
+function renderState(query: Partial<QuerySource<string>>) {
   const source = { data: undefined, error: null, refetch: vi.fn(), ...query };
   render(
     <QueryState query={source} notFoundMessage="Shipment not found.">

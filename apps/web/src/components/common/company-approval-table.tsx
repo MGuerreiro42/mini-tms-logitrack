@@ -4,10 +4,7 @@ import {
   type Column,
   PaginatedTable,
 } from '@/components/common/paginated-table';
-import {
-  QueryState,
-  type QueryStateSource,
-} from '@/components/common/query-state';
+import { QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
   StatusFilterTabs,
@@ -16,6 +13,7 @@ import {
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
+import type { QuerySource } from '@/types/query';
 import type { ApprovalStatus } from '@/types/status';
 
 interface CompanyRow {
@@ -33,7 +31,7 @@ const STATUS_OPTIONS = statusFilterOptions(
 );
 
 interface CompanyApprovalTableProps<T extends CompanyRow> {
-  query: QueryStateSource<Paginated<T>>;
+  query: QuerySource<Paginated<T>>;
   status: StatusFilter<ApprovalStatus>;
   onStatusChange: (status: StatusFilter<ApprovalStatus>) => void;
   onPageChange: (page: number) => void;
