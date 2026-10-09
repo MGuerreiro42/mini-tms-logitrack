@@ -11,6 +11,7 @@ import {
   Prisma,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
+import { decideApproval } from '../../shared/approval/decide-approval';
 import {
   type PaginatedResult,
   paginate,
@@ -414,17 +415,15 @@ export class CarriersService {
     id: string,
     status: ApprovalStatus,
   ): Promise<CarrierResponseDto> {
-    // Conditional write: of two concurrent decisions only one matches PENDING.
-    const { count } = await this.prisma.carrier.updateMany({
-      where: { id, status: ApprovalStatus.PENDING },
-      data: { status },
-    });
-    const carrier = await this.findCarrierOrThrow(id);
-    if (count === 0) {
-      throw new ConflictException(
-        `Carrier is already ${carrier.status.toLowerCase()}`,
-      );
-    }
+    const carrier = await decideApproval(
+      'Carrier',
+      () =>
+        this.prisma.carrier.updateMany({
+          where: { id, status: ApprovalStatus.PENDING },
+          data: { status },
+        }),
+      () => this.findCarrierOrThrow(id),
+    );
     return this.toResponseDto(carrier);
   }
 

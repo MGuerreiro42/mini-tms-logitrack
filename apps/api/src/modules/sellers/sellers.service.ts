@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApprovalStatus, Prisma } from '../../../generated/prisma/client';
+import { decideApproval } from '../../shared/approval/decide-approval';
 import {
   type PaginatedResult,
   paginate,
@@ -154,18 +155,15 @@ export class SellersService {
     id: string,
     status: ApprovalStatus,
   ): Promise<SellerResponseDto> {
-    // Conditional write: of two concurrent decisions only one matches PENDING.
-    const { count } = await this.prisma.seller.updateMany({
-      where: { id, status: ApprovalStatus.PENDING },
-      data: { status },
-    });
-    const seller = await this.findSellerOrThrow(id);
-    if (count === 0) {
-      throw new ConflictException(
-        `Seller is already ${seller.status.toLowerCase()}`,
-      );
-    }
-
+    const seller = await decideApproval(
+      'Seller',
+      () =>
+        this.prisma.seller.updateMany({
+          where: { id, status: ApprovalStatus.PENDING },
+          data: { status },
+        }),
+      () => this.findSellerOrThrow(id),
+    );
     return this.toResponseDto(seller);
   }
 
