@@ -14,7 +14,6 @@ import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
-import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -27,6 +26,7 @@ import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
+import { TrackingNoteDto } from './dto/tracking-note.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { ShipmentsService } from './shipments.service';
 
@@ -189,7 +189,7 @@ export class ShipmentsController {
   cancel(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: CancelShipmentDto,
+    @Body() dto: TrackingNoteDto,
   ) {
     return this.shipmentsService.cancel(user.id, id, dto);
   }
