@@ -1,29 +1,13 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useAuthToken } from '@/hooks/use-auth-token';
-import { toastApiError } from '@/lib/toast-api-error';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { claimShipment } from '../api';
-import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
+import { shipmentKeys } from '../api/keys';
 
 export function useClaimShipment() {
-  const { token } = useAuthToken();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => claimShipment(id, token),
-    onSuccess: () => {
-      toast.success('Shipment claimed');
-      invalidateShipmentQueries(queryClient);
-    },
-    onError: (error) => {
-      // Someone else claimed it first: refresh so the row shows the new owner.
-      if (error instanceof ApiError && error.statusCode === 409) {
-        invalidateShipmentQueries(queryClient);
-      }
-      toastApiError(error);
-    },
+  return useApiMutation({
+    mutationFn: (id: string, token) => claimShipment(id, token),
+    successMessage: 'Shipment claimed',
+    invalidates: shipmentKeys.all,
   });
 }
