@@ -3,14 +3,10 @@
 import Link from 'next/link';
 import { CenteredPage } from '@/components/common/centered-page';
 import { PublicCard } from '@/components/common/public-card';
+import type { SegmentErrorProps } from '@/components/common/segment-error';
 import { Button } from '@/components/ui/button';
 
-export default function RootError({
-  unstable_retry,
-}: {
-  error: Error & { digest?: string };
-  unstable_retry: () => void;
-}) {
+export default function RootError({ unstable_retry }: SegmentErrorProps) {
   return (
     <CenteredPage>
       <PublicCard
