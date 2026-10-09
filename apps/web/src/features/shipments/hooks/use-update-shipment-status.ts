@@ -2,14 +2,14 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/services/api-client';
 import { updateShipmentStatus } from '../api';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
 import type { ShipmentStatus } from '../types';
 
 export function useUpdateShipmentStatus() {
-  const session = useSession();
+  const { token } = useAuthToken();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -21,7 +21,7 @@ export function useUpdateShipmentStatus() {
       id: string;
       status: ShipmentStatus;
       note?: string;
-    }) => updateShipmentStatus(id, { status, note }, session?.token ?? ''),
+    }) => updateShipmentStatus(id, { status, note }, token),
     onSuccess: () => {
       toast.success('Status updated');
       invalidateShipmentQueries(queryClient);

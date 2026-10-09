@@ -1,15 +1,15 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getSeller } from '../api';
 
 export function useSeller(id: string) {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
     queryKey: ['sellers', 'detail', id],
-    queryFn: () => getSeller(id, session?.token ?? ''),
-    enabled: Boolean(session),
+    queryFn: () => getSeller(id, token),
+    enabled,
   });
 }

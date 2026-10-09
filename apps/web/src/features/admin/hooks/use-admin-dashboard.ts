@@ -3,7 +3,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { getCarrierStatusCounts } from '@/features/carriers/api';
 import { getSellerStatusCounts } from '@/features/sellers/api';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { sumRecord } from '@/lib/sum-record';
 
@@ -15,9 +15,7 @@ export interface AdminDashboardData {
 }
 
 export function useAdminDashboard() {
-  const session = useSession();
-  const token = session?.token ?? '';
-  const enabled = Boolean(session);
+  const { token, enabled } = useAuthToken();
 
   return useQueries({
     queries: [

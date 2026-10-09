@@ -2,18 +2,18 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/services/api-client';
 import { cancelShipment } from '../api';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
 
 export function useCancelShipment() {
-  const session = useSession();
+  const { token } = useAuthToken();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) =>
-      cancelShipment(id, note, session?.token ?? ''),
+      cancelShipment(id, note, token),
     onSuccess: () => {
       toast.success('Shipment cancelled');
       invalidateShipmentQueries(queryClient);

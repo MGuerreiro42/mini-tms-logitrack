@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { sumRecord } from '@/lib/sum-record';
 import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
@@ -26,9 +26,7 @@ function toCounts(byStatus: ShipmentStatusCounts) {
 }
 
 export function useSellerDashboard() {
-  const session = useSession();
-  const token = session?.token ?? '';
-  const enabled = Boolean(session);
+  const { token, enabled } = useAuthToken();
 
   return useQueries({
     queries: [

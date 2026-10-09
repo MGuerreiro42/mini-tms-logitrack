@@ -2,27 +2,26 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/services/api-client';
 import { getMyModalities, setMyModalities } from '../api';
 
 export function useMyModalities() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
     queryKey: ['sellers', 'me', 'modalities'],
-    queryFn: () => getMyModalities(session?.token ?? ''),
-    enabled: Boolean(session),
+    queryFn: () => getMyModalities(token),
+    enabled,
   });
 }
 
 export function useSetMyModalities() {
-  const session = useSession();
+  const { token } = useAuthToken();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (modalityIds: string[]) =>
-      setMyModalities(modalityIds, session?.token ?? ''),
+    mutationFn: (modalityIds: string[]) => setMyModalities(modalityIds, token),
     onSuccess: () => {
       toast.success('Modalities saved');
       queryClient.invalidateQueries({
