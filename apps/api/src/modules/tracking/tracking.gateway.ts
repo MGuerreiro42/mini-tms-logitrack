@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { isCarrierRole } from '../auth/carrier-roles';
 import type {
   AuthenticatedUser,
   JwtPayload,
@@ -74,10 +75,7 @@ export class TrackingGateway implements OnGatewayInit {
 
     if (user.role === 'SELLER') {
       data.sellerId = user.seller?.id;
-    } else if (
-      user.role === 'CARRIER_MANAGER' ||
-      user.role === 'CARRIER_OPERATOR'
-    ) {
+    } else if (isCarrierRole(user.role)) {
       data.carrierId = user.carrierUser?.carrierId;
     }
 
@@ -100,9 +98,7 @@ export class TrackingGateway implements OnGatewayInit {
 
     const allowed =
       (data.user.role === 'SELLER' && shipment.sellerId === data.sellerId) ||
-      ((data.user.role === 'CARRIER_MANAGER' ||
-        data.user.role === 'CARRIER_OPERATOR') &&
-        shipment.carrierId === data.carrierId);
+      (isCarrierRole(data.user.role) && shipment.carrierId === data.carrierId);
 
     if (allowed) {
       client.join(`shipment:${shipmentId}`);
