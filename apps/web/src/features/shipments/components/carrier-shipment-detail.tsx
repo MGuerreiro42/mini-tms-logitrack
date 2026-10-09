@@ -18,6 +18,7 @@ import {
   ALLOWED_NEXT_STATUSES,
   type CarrierShipment,
   isClaimable,
+  ownerLabel,
   type ShipmentStatus,
 } from '../types';
 
@@ -93,7 +94,7 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
             value={`${shipment.addressCity}/${shipment.addressState}`}
           />
           <DetailRow label="Zip code" value={shipment.addressZipCode} mono />
-          <DetailRow label="Owner" value={shipment.ownerEmail ?? 'Unclaimed'} />
+          <DetailRow label="Owner" value={ownerLabel(shipment)} />
         </CardContent>
       </Card>
       <div className="space-y-4">

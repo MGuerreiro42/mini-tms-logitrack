@@ -13,6 +13,7 @@ import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import {
   type CarrierShipment,
   isClaimable,
+  ownerLabel,
   type ShipmentStatus,
 } from '../types';
 
@@ -81,7 +82,7 @@ export function CarrierQueueTable() {
               },
               {
                 header: 'Owner',
-                cell: (s) => s.ownerEmail ?? 'Unclaimed',
+                cell: ownerLabel,
                 className: 'text-muted-foreground',
               },
               {
