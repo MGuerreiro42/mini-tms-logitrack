@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useMyModalities } from '@/features/sellers/hooks/use-my-modalities';
+import type { ModalityOption } from '../types';
 
 // Mirrors CreateShipmentDto's address fields.
 const schema = z.object({
@@ -26,15 +25,16 @@ const schema = z.object({
 export type AddressFormValues = z.infer<typeof schema>;
 
 interface ShipmentAddressFormProps {
+  modalities: ModalityOption[];
   defaultValues?: Partial<AddressFormValues>;
   onNext: (values: AddressFormValues, modalityName: string) => void;
 }
 
 export function ShipmentAddressForm({
+  modalities,
   defaultValues,
   onNext,
 }: ShipmentAddressFormProps) {
-  const { data: modalities } = useMyModalities();
   const {
     register,
     handleSubmit,
@@ -48,12 +48,9 @@ export function ShipmentAddressForm({
   });
 
   const selectedModalityId = watch('modalityId');
-  const enabledModalities = (modalities ?? []).filter(
-    (modality) => modality.enabled,
-  );
 
   function submit(values: AddressFormValues) {
-    const modality = enabledModalities.find((m) => m.id === values.modalityId);
+    const modality = modalities.find((m) => m.id === values.modalityId);
     onNext(values, modality?.name ?? '');
   }
 
@@ -128,8 +125,7 @@ export function ShipmentAddressForm({
           </div>
           <div className="space-y-1.5">
             <Label>Modality</Label>
-            {!modalities && <Skeleton className="h-9 w-48" />}
-            {modalities && enabledModalities.length === 0 && (
+            {modalities.length === 0 && (
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 You haven't enabled any modality yet.{' '}
                 <Link
@@ -142,7 +138,7 @@ export function ShipmentAddressForm({
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              {enabledModalities.map((modality) => (
+              {modalities.map((modality) => (
                 <button
                   key={modality.id}
                   type="button"
