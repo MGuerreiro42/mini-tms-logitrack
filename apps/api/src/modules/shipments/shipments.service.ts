@@ -19,7 +19,6 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
-import type { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -31,6 +30,7 @@ import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
+import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import {
   SHIPMENT_STATUS_CHANGED,
@@ -357,7 +357,7 @@ export class ShipmentsService {
   async cancel(
     userId: string,
     shipmentId: string,
-    dto: CancelShipmentDto,
+    dto: TrackingNoteDto,
   ): Promise<ShipmentResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
     const shipment = await this.prisma.shipment.findFirst({
