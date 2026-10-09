@@ -1,27 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ShipmentStatus } from '../../../../generated/prisma/client';
+import { ShipmentAddressDto } from './shipment-address.dto';
 import { TrackingEventDto } from './tracking-event.dto';
 
-export class ShipmentResponseDto {
+export class ShipmentResponseDto extends ShipmentAddressDto {
   @ApiProperty()
   id: string;
 
   @ApiProperty()
   trackingCode: string;
 
-  @ApiProperty({
-    enum: [
-      'PENDING',
-      'ACCEPTED',
-      'COLLECTED',
-      'IN_TRANSIT',
-      'OUT_FOR_DELIVERY',
-      'DELIVERED',
-      'FAILED_DELIVERY',
-      'CANCELLED',
-      'RETURNED',
-    ],
-  })
-  status: string;
+  @ApiProperty({ enum: ShipmentStatus })
+  status: ShipmentStatus;
 
   @ApiProperty()
   carrierId: string;
@@ -36,32 +26,9 @@ export class ShipmentResponseDto {
   modalityName: string;
 
   @ApiProperty()
-  addressStreet: string;
-
-  @ApiProperty()
-  addressNumber: string;
-
-  @ApiPropertyOptional({ nullable: true })
-  addressComplement: string | null;
-
-  @ApiProperty()
-  addressNeighborhood: string;
-
-  @ApiProperty()
-  addressCity: string;
-
-  @ApiProperty()
-  addressState: string;
-
-  @ApiProperty()
-  addressZipCode: string;
-
-  @ApiProperty()
   createdAt: Date;
 
-  // Only populated on the single-record read (findOneForSeller) — never on
-  // the paginated list, to avoid pulling a full event history onto every row
-  // of a 20-row page (same over-fetch-avoidance reasoning as DESIGN.md § 18).
+  // Only on the single-record read; the paginated list skips the timeline.
   @ApiPropertyOptional({ type: [TrackingEventDto] })
   trackingEvents?: TrackingEventDto[];
 }

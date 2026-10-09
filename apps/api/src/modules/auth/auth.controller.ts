@@ -1,18 +1,13 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { Auth } from './decorators/auth.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import {
   AuthenticatedUserDto,
   LoginResponseDto,
 } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { AuthenticatedUser } from './strategies/jwt.strategy';
 
 @ApiTags('auth')
@@ -31,11 +26,9 @@ export class AuthController {
     return this.authService.login(dto.email, dto.password);
   }
 
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Returns the currently authenticated user' })
   @ApiResponse({ status: 200, type: AuthenticatedUserDto })
-  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
-  @UseGuards(JwtAuthGuard)
+  @Auth()
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;

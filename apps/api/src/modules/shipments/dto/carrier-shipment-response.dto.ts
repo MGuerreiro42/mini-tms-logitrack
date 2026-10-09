@@ -1,13 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ShipmentStatus } from '../../../../generated/prisma/client';
+import { ShipmentAddressDto } from './shipment-address.dto';
 import { TrackingEventDto } from './tracking-event.dto';
 
-// The carrier-facing counterpart to ShipmentResponseDto — deliberately a
-// separate class, not a shared base extended both ways: this one carries the
-// seller's contact info (needed to fulfil the delivery) and the internal
-// CarrierUser owner, neither of which the seller's own view has any reason
-// to see about itself or should leak back to it.
-export class CarrierShipmentResponseDto {
+// Separate from ShipmentResponseDto: seller contact and owner must not leak to the seller view.
+export class CarrierShipmentResponseDto extends ShipmentAddressDto {
   @ApiProperty()
   id: string;
 
@@ -45,33 +42,9 @@ export class CarrierShipmentResponseDto {
   ownerEmail: string | null;
 
   @ApiProperty()
-  addressStreet: string;
-
-  @ApiProperty()
-  addressNumber: string;
-
-  @ApiPropertyOptional({ nullable: true })
-  addressComplement: string | null;
-
-  @ApiProperty()
-  addressNeighborhood: string;
-
-  @ApiProperty()
-  addressCity: string;
-
-  @ApiProperty()
-  addressState: string;
-
-  @ApiProperty()
-  addressZipCode: string;
-
-  @ApiProperty()
   createdAt: Date;
 }
 
-// Only the single-record read (GET /shipments/queue/:id) includes the full
-// timeline — the paginated queue list deliberately doesn't, same
-// over-fetch-avoidance reasoning as ShipmentResponseDto's optional field.
 export class CarrierShipmentDetailResponseDto extends CarrierShipmentResponseDto {
   @ApiProperty({ type: [TrackingEventDto] })
   trackingEvents: TrackingEventDto[];

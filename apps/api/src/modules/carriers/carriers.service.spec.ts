@@ -17,7 +17,7 @@ describe('CarriersService', () => {
   const carrierUserCreate = vi.fn();
   const carrierFindMany = vi.fn();
   const carrierFindUnique = vi.fn();
-  const carrierUpdate = vi.fn();
+  const carrierUpdateMany = vi.fn();
   const carrierCount = vi.fn();
   const carrierGroupBy = vi.fn();
   const carrierUserFindUnique = vi.fn();
@@ -66,7 +66,7 @@ describe('CarriersService', () => {
     carrierUserCreate.mockReset();
     carrierFindMany.mockReset();
     carrierFindUnique.mockReset();
-    carrierUpdate.mockReset();
+    carrierUpdateMany.mockReset();
     carrierCount.mockReset();
     carrierGroupBy.mockReset();
     carrierUserFindUnique.mockReset();
@@ -94,7 +94,7 @@ describe('CarriersService', () => {
             carrier: {
               findMany: carrierFindMany,
               findUnique: carrierFindUnique,
-              update: carrierUpdate,
+              updateMany: carrierUpdateMany,
               count: carrierCount,
               groupBy: carrierGroupBy,
             },
@@ -167,9 +167,7 @@ describe('CarriersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
-  // Same real Prisma 7 driver-adapter error shape already documented/fixed
-  // for sellers (DESIGN.md § 16) — replicated here so the fix isn't
-  // re-discovered per module.
+  // Same Prisma 7 driver-adapter error shape as in the sellers spec.
   const uniqueConstraintError = (field: string) =>
     new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',
@@ -290,37 +288,40 @@ describe('CarriersService', () => {
   });
 
   describe('approve / reject', () => {
-    it('approves a pending carrier', async () => {
-      carrierFindUnique.mockResolvedValue(carrierWithManager);
-      carrierUpdate.mockResolvedValue({
+    it('approves a pending carrier with a write conditional on PENDING', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 1 });
+      carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'APPROVED',
       });
 
       const result = await carriersService.approve('carrier-1');
 
-      expect(carrierUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'carrier-1' },
-          data: { status: 'APPROVED' },
-        }),
-      );
+      expect(carrierUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'carrier-1', status: 'PENDING' },
+        data: { status: 'APPROVED' },
+      });
       expect(result.status).toBe('APPROVED');
     });
 
     it('rejects a pending carrier', async () => {
-      carrierFindUnique.mockResolvedValue(carrierWithManager);
-      carrierUpdate.mockResolvedValue({
+      carrierUpdateMany.mockResolvedValue({ count: 1 });
+      carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'REJECTED',
       });
 
       const result = await carriersService.reject('carrier-1');
 
+      expect(carrierUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'carrier-1', status: 'PENDING' },
+        data: { status: 'REJECTED' },
+      });
       expect(result.status).toBe('REJECTED');
     });
 
-    it('throws ConflictException when the carrier is not pending', async () => {
+    it('throws ConflictException when the carrier is no longer pending (incl. a concurrent decision)', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 0 });
       carrierFindUnique.mockResolvedValue({
         ...carrierWithManager,
         status: 'APPROVED',
@@ -329,10 +330,10 @@ describe('CarriersService', () => {
       await expect(carriersService.approve('carrier-1')).rejects.toThrow(
         ConflictException,
       );
-      expect(carrierUpdate).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when the carrier does not exist', async () => {
+      carrierUpdateMany.mockResolvedValue({ count: 0 });
       carrierFindUnique.mockResolvedValue(null);
 
       await expect(carriersService.reject('missing')).rejects.toThrow(
@@ -462,7 +463,7 @@ describe('CarriersService', () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
       shipmentGroupBy.mockResolvedValue([
         { status: 'DELIVERED', _count: 3 },
-        { status: 'FAILED_DELIVERY', _count: 1 },
+        { status: 'PENDING', _count: 1 },
       ]);
       trackingEventFindMany.mockResolvedValue([
         // shipment-1: PENDING -> ACCEPTED (2h), ACCEPTED -> COLLECTED (4h)
@@ -502,19 +503,19 @@ describe('CarriersService', () => {
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       });
       expect(result.shipmentCountsByStatus).toEqual({
-        PENDING: 0,
+        PENDING: 1,
         ACCEPTED: 0,
         COLLECTED: 0,
         IN_TRANSIT: 0,
         OUT_FOR_DELIVERY: 0,
         DELIVERED: 3,
-        FAILED_DELIVERY: 1,
+        FAILED_DELIVERY: 0,
         CANCELLED: 0,
         RETURNED: 0,
       });
       expect(result.totalShipments).toBe(4);
       expect(result.avgHoursBetweenEvents).toBe(3); // (2 + 4) / 2
-      expect(result.failedDeliveryRate).toBe(25); // 1/4 * 100
+      expect(result.failedDeliveryRate).toBe(0);
       expect(result.returnedRate).toBe(0);
       expect(result.stageDurations).toEqual([
         {
@@ -548,6 +549,33 @@ describe('CarriersService', () => {
           sampleCount: 0,
         },
       ]);
+    });
+
+    it('counts a shipment that failed delivery and was then returned in both rates', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([
+        { status: 'RETURNED', _count: 1 },
+        { status: 'FAILED_DELIVERY', _count: 1 },
+        { status: 'DELIVERED', _count: 2 },
+      ]);
+      const at = (hour: number) =>
+        new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
+      trackingEventFindMany.mockResolvedValue([
+        {
+          shipmentId: 'returned',
+          status: 'OUT_FOR_DELIVERY',
+          createdAt: at(0),
+        },
+        { shipmentId: 'returned', status: 'FAILED_DELIVERY', createdAt: at(1) },
+        { shipmentId: 'returned', status: 'RETURNED', createdAt: at(2) },
+        { shipmentId: 'failed', status: 'OUT_FOR_DELIVERY', createdAt: at(0) },
+        { shipmentId: 'failed', status: 'FAILED_DELIVERY', createdAt: at(1) },
+      ]);
+
+      const result = await carriersService.performance('user-1');
+
+      expect(result.failedDeliveryRate).toBe(50); // 2 of 4 ever failed
+      expect(result.returnedRate).toBe(25);
     });
 
     it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {

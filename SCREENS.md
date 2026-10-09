@@ -150,7 +150,7 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Role:** `CarrierUser` of the assigned carrier
 - **Goal:** the same shipment data screen, but with the queue's action controls (claim, update status) instead of "cancel."
 - **Data:** same as the seller's Shipment Detail, plus the seller's data (name, contact) that the seller doesn't need to see about themselves.
-- **Actions:** claim the shipment (if it has no owner); update `status` — the transition must respect the state machine from §10 (e.g., can't jump straight from `PENDING` to `DELIVERED`; `CANCELLED` only before `COLLECTED`).
+- **Actions:** claim the shipment (if it has no owner); update `status` — the transition must respect the state machine from §10 (e.g., can't jump straight from `PENDING` to `DELIVERED`; carriers can never set `CANCELLED`, only the seller cancels).
 
 ### Operator Management
 
@@ -220,4 +220,3 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - Document upload in seller onboarding — mentioned in the flow, no table/storage defined.
 - SLA-breach notification (uses `DeliveryModality.slaHours`, but the BullMQ worker doesn't exist yet — roadmap §7/§5).
-- Shipment cancellation by the seller — mentioned here as a likely action, but the exact rule (up to which `status`) isn't in DESIGN.md yet — an open product decision.

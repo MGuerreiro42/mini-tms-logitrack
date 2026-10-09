@@ -4,26 +4,41 @@ import {
   SHIPMENT_STATUS_CHANGED,
   type ShipmentStatusChangedEvent,
 } from '../shipments/shipment-events';
+import { PublicTrackingGateway } from './public-tracking.gateway';
 import { TrackingGateway } from './tracking.gateway';
+import {
+  ADMIN_MONITORING_ROOM,
+  carrierRoom,
+  shipmentRoom,
+  trackingRoom,
+} from './tracking-rooms';
 
-// Kept separate from the gateway, not an @OnEvent handler inline on it, so
-// this fan-out logic is unit-testable against a mocked `server` without
-// spinning up a real socket.
+// Kept separate from the gateways so the fan-out is unit-testable against mocked servers.
 @Injectable()
 export class TrackingListener {
-  constructor(private readonly gateway: TrackingGateway) {}
+  constructor(
+    private readonly gateway: TrackingGateway,
+    private readonly publicGateway: PublicTrackingGateway,
+  ) {}
 
   @OnEvent(SHIPMENT_STATUS_CHANGED)
   handleShipmentStatusChanged(event: ShipmentStatusChangedEvent): void {
     this.gateway.server
-      .to(`shipment:${event.shipmentId}`)
+      .to(shipmentRoom(event.shipmentId))
       .emit('shipment:updated', event);
     this.gateway.server
-      .to(`carrier:${event.carrierId}`)
+      .to(carrierRoom(event.carrierId))
       .emit('shipment:updated', event);
-    // Third fan-out target — every status change, platform-wide, reaches the
-    // admin Global Monitoring view live (SCREENS.md), same 'shipment:updated'
-    // "go refetch" message as the other two rooms, not a distinct payload.
-    this.gateway.server.to('admin:monitoring').emit('shipment:updated', event);
+    this.gateway.server
+      .to(ADMIN_MONITORING_ROOM)
+      .emit('shipment:updated', event);
+
+    // Minimal payload: public subscribers must not learn ids, addresses or names.
+    this.publicGateway.server
+      .to(trackingRoom(event.trackingCode))
+      .emit('tracking:updated', {
+        trackingCode: event.trackingCode,
+        status: event.status,
+      });
   }
 }

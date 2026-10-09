@@ -1,12 +1,14 @@
 import { ShipmentStatus } from '../../../generated/prisma/client';
-import { ALLOWED_TRANSITIONS, isValidTransition } from './shipment-status.util';
+import {
+  ALLOWED_TRANSITIONS,
+  CANCELLABLE_STATUSES,
+  isValidTransition,
+} from './shipment-status.util';
 
 const ALL_STATUSES = Object.values(ShipmentStatus);
 
 describe('isValidTransition', () => {
-  // Exhaustive over the full 9x9 matrix, not just the happy path — this is
-  // the kind of real branching logic this project's tests hold to a full
-  // coverage bar (see DESIGN.md's testing philosophy).
+  // Exhaustive over the full status matrix, not just the happy path.
   for (const from of ALL_STATUSES) {
     for (const to of ALL_STATUSES) {
       const expected = ALLOWED_TRANSITIONS[from].includes(to);
@@ -16,11 +18,21 @@ describe('isValidTransition', () => {
     }
   }
 
-  it('never allows transitioning into PENDING or CANCELLED from anywhere', () => {
+  it('never allows transitioning into PENDING from anywhere', () => {
     for (const from of ALL_STATUSES) {
       expect(isValidTransition(from, ShipmentStatus.PENDING)).toBe(false);
-      expect(isValidTransition(from, ShipmentStatus.CANCELLED)).toBe(false);
     }
+  });
+
+  it('only PENDING and ACCEPTED can be cancelled', () => {
+    expect(CANCELLABLE_STATUSES).toEqual([
+      ShipmentStatus.PENDING,
+      ShipmentStatus.ACCEPTED,
+    ]);
+  });
+
+  it('CANCELLED is terminal', () => {
+    expect(ALLOWED_TRANSITIONS[ShipmentStatus.CANCELLED]).toEqual([]);
   });
 
   it('DELIVERED and RETURNED are terminal', () => {

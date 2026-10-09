@@ -16,7 +16,7 @@ describe('SellersService', () => {
   const sellerCreate = vi.fn();
   const sellerFindMany = vi.fn();
   const sellerFindUnique = vi.fn();
-  const sellerUpdate = vi.fn();
+  const sellerUpdateMany = vi.fn();
   const sellerCount = vi.fn();
   const sellerGroupBy = vi.fn();
   const deliveryModalityCount = vi.fn();
@@ -55,7 +55,7 @@ describe('SellersService', () => {
     sellerCreate.mockReset();
     sellerFindMany.mockReset();
     sellerFindUnique.mockReset();
-    sellerUpdate.mockReset();
+    sellerUpdateMany.mockReset();
     sellerCount.mockReset();
     sellerGroupBy.mockReset();
     deliveryModalityCount.mockReset();
@@ -76,7 +76,7 @@ describe('SellersService', () => {
             seller: {
               findMany: sellerFindMany,
               findUnique: sellerFindUnique,
-              update: sellerUpdate,
+              updateMany: sellerUpdateMany,
               count: sellerCount,
               groupBy: sellerGroupBy,
             },
@@ -137,11 +137,7 @@ describe('SellersService', () => {
     expect(result).not.toHaveProperty('passwordHash');
   });
 
-  // Prisma 7's driver adapters report the colliding unique field under
-  // meta.driverAdapterError.cause.constraint.fields, NOT meta.target (the
-  // shape used by older Prisma versions / non-adapter engines) — this is
-  // the real shape observed against Postgres via @prisma/adapter-pg, not a
-  // guess, so the test exercises the actual code path in production.
+  // Real error shape from @prisma/adapter-pg: the field is under driverAdapterError, not meta.target.
   const uniqueConstraintError = (field: string) =>
     new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',
@@ -184,7 +180,7 @@ describe('SellersService', () => {
 
       expect(sellerFindMany).toHaveBeenCalledWith({
         where: undefined,
-        include: { user: true },
+        include: { user: { select: { email: true } } },
         orderBy: { createdAt: 'desc' },
         skip: 0,
         take: 20,
@@ -213,7 +209,7 @@ describe('SellersService', () => {
 
       expect(sellerFindMany).toHaveBeenCalledWith({
         where: { status: 'APPROVED' },
-        include: { user: true },
+        include: { user: { select: { email: true } } },
         orderBy: { createdAt: 'desc' },
         skip: 10,
         take: 10,
@@ -266,53 +262,52 @@ describe('SellersService', () => {
   });
 
   describe('approve / reject', () => {
-    it('approves a pending seller', async () => {
-      sellerFindUnique.mockResolvedValue(sellerWithUser);
-      sellerUpdate.mockResolvedValue({
+    it('approves a pending seller with a write conditional on PENDING', async () => {
+      sellerUpdateMany.mockResolvedValue({ count: 1 });
+      sellerFindUnique.mockResolvedValue({
         ...sellerWithUser,
         status: 'APPROVED',
       });
 
       const result = await sellersService.approve('seller-1');
 
-      expect(sellerUpdate).toHaveBeenCalledWith({
-        where: { id: 'seller-1' },
+      expect(sellerUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'seller-1', status: 'PENDING' },
         data: { status: 'APPROVED' },
-        include: { user: true },
       });
       expect(result.status).toBe('APPROVED');
     });
 
     it('rejects a pending seller', async () => {
-      sellerFindUnique.mockResolvedValue(sellerWithUser);
-      sellerUpdate.mockResolvedValue({
+      sellerUpdateMany.mockResolvedValue({ count: 1 });
+      sellerFindUnique.mockResolvedValue({
         ...sellerWithUser,
         status: 'REJECTED',
       });
 
       const result = await sellersService.reject('seller-1');
 
-      expect(sellerUpdate).toHaveBeenCalledWith({
-        where: { id: 'seller-1' },
+      expect(sellerUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'seller-1', status: 'PENDING' },
         data: { status: 'REJECTED' },
-        include: { user: true },
       });
       expect(result.status).toBe('REJECTED');
     });
 
-    it('throws ConflictException when the seller is not pending', async () => {
+    it('throws ConflictException when the seller is no longer pending (incl. a concurrent decision)', async () => {
+      sellerUpdateMany.mockResolvedValue({ count: 0 });
       sellerFindUnique.mockResolvedValue({
         ...sellerWithUser,
         status: 'APPROVED',
       });
 
-      await expect(sellersService.approve('seller-1')).rejects.toThrow(
+      await expect(sellersService.reject('seller-1')).rejects.toThrow(
         ConflictException,
       );
-      expect(sellerUpdate).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when the seller does not exist', async () => {
+      sellerUpdateMany.mockResolvedValue({ count: 0 });
       sellerFindUnique.mockResolvedValue(null);
 
       await expect(sellersService.reject('missing')).rejects.toThrow(
@@ -329,7 +324,7 @@ describe('SellersService', () => {
 
       expect(sellerFindUnique).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
-        include: { user: true },
+        include: { user: { select: { email: true } } },
       });
       expect(result.id).toBe('seller-1');
     });

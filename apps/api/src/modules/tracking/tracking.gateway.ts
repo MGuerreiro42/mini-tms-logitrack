@@ -7,32 +7,27 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import { ApprovalStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { isCarrierRole } from '../auth/carrier-roles';
 import type {
   AuthenticatedUser,
   JwtPayload,
 } from '../auth/strategies/jwt.strategy';
+import {
+  ADMIN_MONITORING_ROOM,
+  carrierRoom,
+  shipmentRoom,
+} from './tracking-rooms';
 
 interface SocketData {
   user: AuthenticatedUser;
-  // Resolved once at connection time so subscribe handlers don't re-query on
-  // every message — a seller's own sellerId, or a carrier user's carrierId.
+  // Resolved once at connection so subscribe handlers don't re-query.
   sellerId?: string;
   carrierId?: string;
 }
 
-// Auth runs as Socket.IO connection *middleware* (server.use), not in
-// handleConnection. This isn't a style choice: handleConnection is async but
-// Socket.IO already emits 'connect' client-side as soon as the handshake
-// itself completes, without waiting for handleConnection's promise to
-// settle — a client that subscribes immediately after 'connect' can (and, in
-// manual testing, reliably did) race ahead of handleConnection's two DB
-// round-trips, arriving with `client.data` still empty. Middleware
-// registered via `server.use()` is awaited by Socket.IO *before* 'connect'
-// fires, which is exactly why the library exposes it — same principle as
-// this codebase's HTTP guards running before a handler, just via a different
-// mechanism because @nestjs/websockets' CanActivate guards don't intercept
-// the connection lifecycle at all (only @SubscribeMessage handlers do).
+// Auth as server.use() middleware: awaited before 'connect', unlike handleConnection.
 @WebSocketGateway()
 export class TrackingGateway implements OnGatewayInit {
   private readonly logger = new Logger(TrackingGateway.name);
@@ -58,11 +53,7 @@ export class TrackingGateway implements OnGatewayInit {
     });
   }
 
-  // Mirrors JwtStrategy.validate: reload the user from the database rather
-  // than trusting the token's claims alone, so a deleted user can't stay
-  // "authenticated" just because their token hasn't expired. One query, not
-  // two — User has a direct seller/carrierUser relation, so the role-specific
-  // follow-up lookup is included here instead of a second round-trip.
+  // Reload the user like JwtStrategy, so a deleted user's unexpired token stops working.
   private async authenticate(socket: Socket): Promise<void> {
     const token = socket.handshake.auth?.token as string | undefined;
     if (!token) {
@@ -72,7 +63,15 @@ export class TrackingGateway implements OnGatewayInit {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      include: { seller: true, carrierUser: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        seller: { select: { id: true } },
+        carrierUser: {
+          select: { carrierId: true, carrier: { select: { status: true } } },
+        },
+      },
     });
     if (!user) {
       throw new Error('User no longer exists');
@@ -85,64 +84,54 @@ export class TrackingGateway implements OnGatewayInit {
     if (user.role === 'SELLER') {
       data.sellerId = user.seller?.id;
     } else if (
-      user.role === 'CARRIER_MANAGER' ||
-      user.role === 'CARRIER_OPERATOR'
+      isCarrierRole(user.role) &&
+      user.carrierUser?.carrier.status === ApprovalStatus.APPROVED
     ) {
-      data.carrierId = user.carrierUser?.carrierId;
+      // Unapproved carriers get no carrierId, so every carrier room stays closed to them.
+      data.carrierId = user.carrierUser.carrierId;
     }
 
     socket.data = data;
   }
 
-  // A seller may only subscribe to their own shipment's room; a carrier user
-  // only to a shipment in their own carrier — same ownership-scoping
-  // discipline as every REST endpoint in this codebase (DESIGN.md § 16's
-  // "Ownership-Based Authorization" principle applied to WebSocket rooms).
+  // Same ownership scoping as the REST endpoints.
+  // Each handler acks { ok } (true only once the room is joined); clients without a callback still work.
   @SubscribeMessage('subscribe:shipment')
   async handleSubscribeShipment(
     client: Socket,
-    shipmentId: string,
-  ): Promise<void> {
-    // No `data.user` presence check here (unlike `data.carrierId` below,
-    // which is a real optional field): the connection middleware above
-    // rejects the handshake outright on auth failure, so `data.user` is
-    // always populated by the time any @SubscribeMessage handler can run.
+    shipmentId: unknown,
+  ): Promise<{ ok: boolean }> {
+    if (typeof shipmentId !== 'string') return { ok: false };
     const data = client.data as SocketData;
 
     const shipment = await this.prisma.shipment.findUnique({
       where: { id: shipmentId },
       select: { sellerId: true, carrierId: true },
     });
-    if (!shipment) return;
+    if (!shipment) return { ok: false };
 
     const allowed =
       (data.user.role === 'SELLER' && shipment.sellerId === data.sellerId) ||
-      ((data.user.role === 'CARRIER_MANAGER' ||
-        data.user.role === 'CARRIER_OPERATOR') &&
-        shipment.carrierId === data.carrierId);
+      (isCarrierRole(data.user.role) && shipment.carrierId === data.carrierId);
+    if (!allowed) return { ok: false };
 
-    if (allowed) {
-      client.join(`shipment:${shipmentId}`);
-    }
+    await client.join(shipmentRoom(shipmentId));
+    return { ok: true };
   }
 
-  // No payload needed — the queue is always the caller's own carrier,
-  // resolved once at connection time, not something a client can pick.
   @SubscribeMessage('subscribe:queue')
-  handleSubscribeQueue(client: Socket): void {
+  async handleSubscribeQueue(client: Socket): Promise<{ ok: boolean }> {
     const data = client.data as SocketData;
-    if (!data?.carrierId) return;
-    client.join(`carrier:${data.carrierId}`);
+    if (!data.carrierId) return { ok: false };
+    await client.join(carrierRoom(data.carrierId));
+    return { ok: true };
   }
 
-  // Single shared room, gated by role rather than any resolved id (unlike
-  // `carrier:{carrierId}` above) — same ownership-scoping discipline as
-  // every other room, just scoped to "is this caller an admin at all"
-  // instead of "does this caller own this specific resource".
   @SubscribeMessage('subscribe:monitoring')
-  handleSubscribeMonitoring(client: Socket): void {
+  async handleSubscribeMonitoring(client: Socket): Promise<{ ok: boolean }> {
     const data = client.data as SocketData;
-    if (data.user.role !== 'ADMIN') return;
-    client.join('admin:monitoring');
+    if (data.user.role !== 'ADMIN') return { ok: false };
+    await client.join(ADMIN_MONITORING_ROOM);
+    return { ok: true };
   }
 }
