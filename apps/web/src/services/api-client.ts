@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+import { API_URL } from '@/lib/api-url';
 
 // Nest sends `message` as a string, or an array for validation errors.
 export class ApiError extends Error {
