@@ -35,11 +35,7 @@ export function ApproveRejectActions({
       </Button>
       <ConfirmDialog
         trigger={
-          <Button
-            variant="outline"
-            className="text-destructive"
-            disabled={isApproving || isRejecting}
-          >
+          <Button variant="destructive" disabled={isApproving || isRejecting}>
             Reject
           </Button>
         }

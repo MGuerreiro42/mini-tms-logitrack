@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
@@ -176,6 +176,43 @@ describe('CarrierShipmentDetail', () => {
 
     await screen.findByText('TMS-AAA111');
     expect(screen.getAllByText('Accepted').length).toBeGreaterThan(0);
+  });
+
+  it('asks for confirmation before marking a delivery as failed', async () => {
+    setSession({
+      token: 't',
+      role: 'CARRIER_MANAGER',
+      userId: 'user-3',
+      email: 'manager@example.com',
+    });
+    mockDetail({ ...claimedByOperator, status: 'OUT_FOR_DELIVERY' });
+    let body: unknown;
+    server.use(
+      http.patch(
+        `${API_URL}/shipments/shipment-1/status`,
+        async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json({
+            ...claimedByOperator,
+            status: 'FAILED_DELIVERY',
+          });
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Failed delivery' }),
+    );
+    expect(body).toBeUndefined();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Mark delivery as failed?');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Failed delivery' }),
+    );
+
+    await waitFor(() => expect(body).toEqual({ status: 'FAILED_DELIVERY' }));
   });
 
   it('offers no claim or advance for an unclaimed cancelled shipment', async () => {
