@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { server } from '@/test/msw/server';
-import { ApiError, apiClient } from './api-client';
+import { ApiError, apiClient, toQueryString } from './api-client';
 
 const API_URL = 'http://localhost:3333';
 
@@ -98,5 +98,17 @@ describe('apiClient', () => {
     );
 
     await expect(apiClient('/sellers/me')).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('toQueryString', () => {
+  it('skips empty values and prefixes with ?', () => {
+    expect(toQueryString({ status: undefined, page: 2, city: '' })).toBe(
+      '?page=2',
+    );
+  });
+
+  it('returns an empty string when nothing is set', () => {
+    expect(toQueryString({ status: undefined })).toBe('');
   });
 });

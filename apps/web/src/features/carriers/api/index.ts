@@ -1,5 +1,5 @@
 import type { ModalityToggle } from '@/features/modalities/types';
-import { apiClient } from '@/services/api-client';
+import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
   ApprovalStatusCounts,
@@ -23,13 +23,8 @@ export function listCarriers(
   query: ListCarriersQuery,
   token: string,
 ): Promise<Paginated<Carrier>> {
-  const params = new URLSearchParams();
-  if (query.status) params.set('status', query.status);
-  if (query.page) params.set('page', String(query.page));
-  if (query.limit) params.set('limit', String(query.limit));
-  const qs = params.toString();
   return apiClient<Paginated<Carrier>>(
-    `/carriers${qs ? `?${qs}` : ''}`,
+    `/carriers${toQueryString({ ...query })}`,
     undefined,
     token,
   );

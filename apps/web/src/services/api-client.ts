@@ -41,3 +41,15 @@ export async function apiClient<T>(
 
   return res.json() as Promise<T>;
 }
+
+type QueryValue = string | number | undefined;
+
+// Drops empty values; returns '' or a leading-'?' string.
+export function toQueryString(params: Record<string, QueryValue>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
