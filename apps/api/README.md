@@ -41,11 +41,25 @@ src/
 └── main.ts
 prisma/
 ├── schema.prisma     # 11 models — see DESIGN.md § 10
-├── seed.ts           # creates the Admin — `pnpm exec prisma db seed`
+├── seed.ts           # admin, modality catalog and demo data — `pnpm exec prisma db seed`
 └── migrations/       # versioned in git, applied via `prisma migrate deploy`
 ```
 
 Grouped by domain, not by technical layer — same philosophy as the frontend (`DESIGN.md` § 9). Only `auth/` has real logic so far; the rest are skeletons ready to receive implementation module by module.
+
+## Demo seed
+
+`pnpm exec prisma db seed` is idempotent: it upserts the admin, the modality catalog and the demo accounts (password `demo12345`), then creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
+
+| Account | Role |
+|---|---|
+| `seller@demo.minitms.dev`, `seller2@demo.minitms.dev` | approved sellers |
+| `carrier@demo.minitms.dev` | manager of Transportadora Demo |
+| `operator1@demo.minitms.dev`, `operator2@demo.minitms.dev` | operators |
+
+- Shipment dates are relative to the **first** run (spread over the previous ~30 days) and never move afterwards. To refresh them, delete the `TMS-DE…` shipments and their events, then seed again.
+- Existing rows are never updated: changing `ADMIN_PASSWORD` later does not rotate an already-seeded admin.
+- With `NODE_ENV=production`, the seed refuses to run without `ADMIN_PASSWORD`.
 
 ## Testing login
 
@@ -179,4 +193,4 @@ Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing 
 | `PORT` | `3333` | server port — Next.js defaults to 3000 |
 | `JWT_SECRET` | — | signs the tokens — change it in production, minimum 16 characters |
 | `CORS_ORIGIN` | `http://localhost:3000` | the single origin allowed for CORS |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` | Admin seed credentials |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` (password required in production) | Admin seed credentials |
