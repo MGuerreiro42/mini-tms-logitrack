@@ -11,11 +11,9 @@ export default function NotFound() {
         title="Page not found"
         description="The page you're looking for doesn't exist or was moved."
         actions={
-          <>
-            <Button asChild>
-              <Link href="/">Go home</Link>
-            </Button>
-          </>
+          <Button asChild>
+            <Link href="/">Go home</Link>
+          </Button>
         }
       />
     </CenteredPage>

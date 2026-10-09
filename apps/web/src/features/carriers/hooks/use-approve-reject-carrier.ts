@@ -6,7 +6,7 @@ import { carrierKeys } from '../api/keys';
 
 export function useApproveCarrier(id: string) {
   return useApiMutation({
-    mutationFn: (_: void, token) => approveCarrier(id, token),
+    mutationFn: (_, token) => approveCarrier(id, token),
     successMessage: 'Carrier approved',
     invalidates: carrierKeys.all,
   });
@@ -14,7 +14,7 @@ export function useApproveCarrier(id: string) {
 
 export function useRejectCarrier(id: string) {
   return useApiMutation({
-    mutationFn: (_: void, token) => rejectCarrier(id, token),
+    mutationFn: (_, token) => rejectCarrier(id, token),
     successMessage: 'Carrier rejected',
     invalidates: carrierKeys.all,
   });

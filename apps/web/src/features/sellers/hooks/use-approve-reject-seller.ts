@@ -6,7 +6,7 @@ import { sellerKeys } from '../api/keys';
 
 export function useApproveSeller(id: string) {
   return useApiMutation({
-    mutationFn: (_: void, token) => approveSeller(id, token),
+    mutationFn: (_, token) => approveSeller(id, token),
     successMessage: 'Seller approved',
     invalidates: sellerKeys.all,
   });
@@ -14,7 +14,7 @@ export function useApproveSeller(id: string) {
 
 export function useRejectSeller(id: string) {
   return useApiMutation({
-    mutationFn: (_: void, token) => rejectSeller(id, token),
+    mutationFn: (_, token) => rejectSeller(id, token),
     successMessage: 'Seller rejected',
     invalidates: sellerKeys.all,
   });
