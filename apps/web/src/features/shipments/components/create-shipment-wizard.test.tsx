@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { useRouter } from 'next/navigation';
 import { setSession } from '@/lib/session';
+import { fillAddressFields } from '@/test/fill-address';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import { CreateShipmentWizard } from './create-shipment-wizard';
@@ -12,15 +13,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 const API_URL = 'http://localhost:3333';
-
-async function fillAddressFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Zip code'), '01310-100');
-  await user.type(screen.getByLabelText('State (UF)'), 'SP');
-  await user.type(screen.getByLabelText('City'), 'São Paulo');
-  await user.type(screen.getByLabelText('Street'), 'Av. Paulista');
-  await user.type(screen.getByLabelText('Number'), '1000');
-  await user.type(screen.getByLabelText('Neighborhood'), 'Bela Vista');
-}
 
 describe('CreateShipmentWizard', () => {
   const push = vi.fn();
@@ -37,16 +29,6 @@ describe('CreateShipmentWizard', () => {
       email: 'seller@example.com',
     });
     server.use(
-      http.get(`${API_URL}/sellers/me/modalities`, () =>
-        HttpResponse.json([
-          {
-            id: 'modality-1',
-            code: 'STANDARD',
-            name: 'Standard',
-            enabled: true,
-          },
-        ]),
-      ),
       http.get(`${API_URL}/shipments/eligible-carriers`, () =>
         HttpResponse.json([{ id: 'carrier-1', companyName: 'Fast Freight' }]),
       ),
@@ -58,7 +40,11 @@ describe('CreateShipmentWizard', () => {
 
   it('walks the full address → carrier → confirm flow and creates the shipment', async () => {
     const user = userEvent.setup();
-    renderWithQueryClient(<CreateShipmentWizard />);
+    renderWithQueryClient(
+      <CreateShipmentWizard
+        modalities={[{ id: 'modality-1', name: 'Standard' }]}
+      />,
+    );
 
     // Step 1: address + modality
     await fillAddressFields(user);
@@ -86,7 +72,11 @@ describe('CreateShipmentWizard', () => {
 
   it('back from step 2 returns to step 1 with the address preserved', async () => {
     const user = userEvent.setup();
-    renderWithQueryClient(<CreateShipmentWizard />);
+    renderWithQueryClient(
+      <CreateShipmentWizard
+        modalities={[{ id: 'modality-1', name: 'Standard' }]}
+      />,
+    );
 
     await fillAddressFields(user);
     await user.click(await screen.findByRole('button', { name: 'Standard' }));

@@ -1,6 +1,11 @@
+import { getMyModalities } from '@/features/sellers/api';
 import { CreateShipmentWizard } from '@/features/shipments/components/create-shipment-wizard';
+import { getServerSession } from '@/lib/server-session';
 
-export default function CreateShipmentPage() {
+export default async function CreateShipmentPage() {
+  const token = (await getServerSession())?.token ?? '';
+  const modalities = (await getMyModalities(token)).filter((m) => m.enabled);
+
   return (
     <div className="space-y-4">
       <div>
@@ -9,7 +14,7 @@ export default function CreateShipmentPage() {
           Enter the destination, pick a carrier and confirm.
         </p>
       </div>
-      <CreateShipmentWizard />
+      <CreateShipmentWizard modalities={modalities} />
     </div>
   );
 }

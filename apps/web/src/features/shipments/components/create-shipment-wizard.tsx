@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CreateShipmentInput } from '../types';
+import type { CreateShipmentInput, ModalityOption } from '../types';
 import { EligibleCarriersList } from './eligible-carriers-list';
 import {
   type AddressFormValues,
@@ -26,7 +26,11 @@ type WizardState =
       carrierName: string;
     };
 
-export function CreateShipmentWizard() {
+export function CreateShipmentWizard({
+  modalities,
+}: {
+  modalities: ModalityOption[];
+}) {
   const [state, setState] = useState<WizardState>({ step: 1 });
   // Kept outside the step state so Back to step 1 keeps the typed address.
   const [savedAddress, setSavedAddress] = useState<
@@ -36,6 +40,7 @@ export function CreateShipmentWizard() {
   if (state.step === 1) {
     return (
       <ShipmentAddressForm
+        modalities={modalities}
         defaultValues={savedAddress}
         onNext={(address, modalityName) => {
           setSavedAddress(address);

@@ -82,6 +82,12 @@ export interface CreateShipmentInput {
   carrierId: string;
 }
 
+// A modality the seller has enabled, offered when creating a shipment.
+export interface ModalityOption {
+  id: string;
+  name: string;
+}
+
 export interface EligibleCarrier {
   id: string;
   companyName: string;
