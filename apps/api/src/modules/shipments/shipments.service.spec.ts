@@ -683,7 +683,7 @@ describe('ShipmentsService', () => {
       );
 
       expect(shipmentUpdateMany).toHaveBeenCalledWith({
-        where: { id: 'shipment-1', ownerId: null },
+        where: { id: 'shipment-1', ownerId: null, status: 'PENDING' },
         data: { ownerId: 'carrier-user-operator', status: 'ACCEPTED' },
       });
       expect(trackingEventCreate).toHaveBeenCalledWith(
@@ -708,6 +708,19 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.claim('user-operator', 'other-carriers-shipment'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException for a cancelled (unowned) shipment', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue({
+        ...pendingShipment,
+        status: 'CANCELLED',
+      });
+
+      await expect(
+        shipmentsService.claim('user-operator', 'shipment-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(shipmentUpdateMany).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when the pre-check already sees an owner', async () => {

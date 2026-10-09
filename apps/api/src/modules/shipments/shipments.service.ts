@@ -525,11 +525,20 @@ export class ShipmentsService {
     if (shipment.ownerId) {
       throw new ConflictException('Shipment has already been claimed');
     }
+    if (shipment.status !== ShipmentStatus.PENDING) {
+      throw new ConflictException(
+        `Cannot claim a shipment that is ${shipment.status}`,
+      );
+    }
 
-    // Two operators can both read ownerId: null; the WHERE lets Postgres pick one winner.
+    // Concurrent claims or a seller cancel can race this; the WHERE lets Postgres pick one winner.
     const claimed = await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.shipment.updateMany({
-        where: { id: shipmentId, ownerId: null },
+        where: {
+          id: shipmentId,
+          ownerId: null,
+          status: ShipmentStatus.PENDING,
+        },
         data: { ownerId: carrierUser.id, status: ShipmentStatus.ACCEPTED },
       });
       if (count === 0) {
@@ -542,7 +551,7 @@ export class ShipmentsService {
     });
 
     if (!claimed) {
-      throw new ConflictException('Shipment has already been claimed');
+      throw new ConflictException('Shipment is no longer available to claim');
     }
 
     const updated = await this.prisma.shipment.findUniqueOrThrow({
