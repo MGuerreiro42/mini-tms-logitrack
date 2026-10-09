@@ -4,11 +4,10 @@ Scope: every screen with a real, validated backend contract as of today — sell
 
 Every frame is grounded in the real API: exact DTO field names, not placeholders, for anything already built. For Parts 5–8 (not built yet), the field names are a **proposed contract** — matching this codebase's existing naming conventions exactly, so the backend that gets built to support these screens doesn't have to invent shapes after the fact. Each such frame says explicitly which endpoint is real vs. proposed.
 
-**Now real, no longer deferred** (Part 4 below): operator claim/status-transition, the carrier shared queue, and real-time tracking updates via WebSocket + Redis — all validated end-to-end (`DESIGN.md` §20).
+**Now real, no longer deferred** (Part 4 below): operator claim/status-transition, the carrier shared queue, and real-time tracking updates via WebSocket + Redis — all validated end-to-end (`DESIGN.md` § 15).
 
 **Still out of scope, deliberately** — don't prototype these as if a backend exists:
 - **Multi-step seller onboarding with document upload** — blocked on an unresolved architecture decision (where/how uploaded documents are stored, never modeled in the schema). Needs its own decision, separate from screen design.
-- **Shipment cancellation** — the exact rule (up to which `status`) isn't decided yet (`SCREENS.md`'s own Known Gaps).
 - **SLA-breach notifications / invite emails** — need the BullMQ worker infra, itself deferred until there's a real queueing need beyond what Parts 6–7 require.
 
 ---

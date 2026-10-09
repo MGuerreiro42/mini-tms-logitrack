@@ -202,6 +202,8 @@ The BullMQ workers and external map/email providers in the diagram are roadmap i
 
 ## 7. Roadmap (Advanced Features / Next Steps)
 
+Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17).
+
 Not started yet:
 
 - **Operator invites** — `Invite` token flow, Operator Management screen, `InviteAccept` entry point (§ 3, § 4).
@@ -319,7 +321,7 @@ Shipment ──1:N── TrackingEvent (immutable history, never UPDATE)
 - **`Shipment`** — the core record: seller, chosen carrier, modality, address (as real columns — `addressCity`/`addressState`/etc. — not a JSON blob, since coverage matching needs to filter/index by them), a generated `trackingCode`, and a 9-state `status`.
 - **`TrackingEvent`** — one immutable row per status change, the source of both the live WebSocket feed and the public tracking timeline.
 
-**Shipment status machine:** `PENDING → ACCEPTED → COLLECTED → OUT_FOR_DELIVERY → DELIVERED`, with `FAILED_DELIVERY → RETURNED` as the one failure branch and `CANCELLED` only possible before `COLLECTED`. Forward-only transitions are enforced in code (`shipment-status.util.ts`), not just documented.
+**Shipment status machine:** `PENDING → ACCEPTED → COLLECTED → IN_TRANSIT → OUT_FOR_DELIVERY → DELIVERED`, with `FAILED_DELIVERY → RETURNED` as the one failure branch. `CANCELLED` is reachable only from `PENDING` or `ACCEPTED`, and only by the seller (§ 14); carriers can't set it. Forward-only transitions are enforced in code (`shipment-status.util.ts`), not just documented.
 
 **`GlobalRole` vs. `CarrierRole`:** two separate enums. `GlobalRole` (`ADMIN`/`SELLER`/`CARRIER_MANAGER`/`CARRIER_OPERATOR`) is the identity role on `User`, driving the JWT and the `RolesGuard`. `CarrierRole` (`MANAGER`/`OPERATOR`) is scoped to one `CarrierUser` within one `Carrier` — it exists because a carrier can have several people with different in-company roles, which a single global role couldn't express without also allowing invalid combinations like a `CarrierUser` typed `ADMIN`.
 
@@ -343,6 +345,7 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 
 - **Self-signup + admin approval loop** — same shape as sellers (§ 12): `GET`/`PATCH /carriers/:id/approve|reject`, same `409` state-transition guard, same generic duplicate-conflict message.
 - **Own profile** — `GET /carriers/me` (open to managers and operators alike — viewing the company isn't a manager-only action). Modality and coverage-area config (`/carriers/me/modalities`, `/carriers/me/coverage-areas`) are `CARRIER_MANAGER`-only to mutate, full-replace semantics, same as sellers' modality config.
+- **Approval enforced** — a carrier that isn't `APPROVED` (still pending, or rejected) gets `403` on the queue, claim and status endpoints, and its sockets never join carrier or shipment rooms. Profile and config endpoints stay open so a pending carrier can set up.
 - **Not yet implemented:** operator invites (§ 7).
 
 ## 14. Shipments
@@ -351,17 +354,18 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 - **Creation** — `POST /shipments` re-validates everything the preview implied, server-side, against the exact submitted `carrierId`/`modalityId`/address: nothing enforces a client actually used the preview before submitting. Generates a `trackingCode` (`TMS-` + 12 hex chars).
 - **Matching normalization** — `state` is uppercased at write time (keeps the comparison a plain indexable equality); `city` stays case-insensitive at query time, preserving its display casing.
 - **Reading shipments back** — `GET /shipments` / `GET /shipments/:id`, scoped to the caller's own `sellerId` inside the query itself; someone else's shipment returns `404`, same ownership pattern as § 11.
-- **Not yet implemented:** shipment cancellation flow (open product decision, see `SCREENS.md`'s Known Gaps).
+- **Cancellation** — `PATCH /shipments/:id/cancel` (seller only, optional `note` ≤ 500 chars): allowed while `PENDING` or `ACCEPTED`, otherwise `409`. Same compare-and-set as the claim, so a carrier advancing the shipment at the same moment makes one side get `409`; another seller's shipment is `404`.
 
 ## 15. Carrier Queue & Real-Time Tracking
 
-- **Claim** — `PATCH /shipments/:id/claim`: any manager or operator of the carrier can claim a shipment, only while `ownerId` is still null (`409` if already claimed).
+- **Claim** — `PATCH /shipments/:id/claim`: any manager or operator of the carrier can claim a shipment, only while it is still `PENDING` and unowned (`409` otherwise, including after a seller cancel).
 - **Update status** — `PATCH /shipments/:id/status`: the owning `CarrierUser`, or any manager of that carrier (to unblock operations if the owner is unavailable); a non-owning operator gets `403`. A still-unclaimed (`PENDING`) shipment is rejected outright, pointing callers at `/claim` first — this stops a manager from silently skipping the claim step and corrupting the "claimed implies owned" invariant.
 - **Queue reads** — `GET /shipments/queue` and `/queue/:id`, the carrier-facing views (distinct DTOs from the seller-facing ones, since a carrier's view includes seller contact + owner info the seller's own view has no reason to see about itself).
-- **Real-time push** — every claim/status update emits `shipment.status-changed` internally; `TrackingListener` relays it over Socket.io to three rooms: `shipment:{id}` (seller + carrier viewing that one shipment), `carrier:{carrierId}` (the queue list), and `admin:monitoring` (§ 16). Room-membership checks re-run the same ownership scoping as the REST endpoints — subscribing to someone else's room is silently rejected.
+- **Real-time push** — every create/claim/status update/cancel emits `shipment.status-changed` internally; `TrackingListener` relays it over Socket.io to three rooms: `shipment:{id}` (seller + carrier viewing that one shipment), `carrier:{carrierId}` (the queue list), and `admin:monitoring` (§ 16). Room-membership checks re-run the same ownership scoping as the REST endpoints; every `subscribe:*` acks `{ ok }`, `true` only once the room is joined.
+- **Public namespace** — `/public` needs no token. `subscribe:tracking` takes a `trackingCode` (validated against `TMS-` + 12 hex chars), joins `tracking:{code}` only if it exists (one tracking room per socket) and acks `{ ok }`. Each status change emits `tracking:updated` with just `{ trackingCode, status }`, and the client refetches the public REST view.
 - **Horizontal scaling** — a Redis adapter (`@socket.io/redis-adapter`) sits behind the gateway so `.emit()` calls propagate across every API instance subscribed to the same channel, not just the instance that handled the request.
 - **Public tracking** — anyone with a `trackingCode` can look up a shipment's current status and event timeline with no login, without exposing the seller's full address or internal notes.
-- **Known limitation:** no unique constraint stops two operators from both reading `ownerId: null` before either writes — a real (if narrow) double-claim race exists at this scale, documented rather than silently assumed airtight.
+- **Concurrency** — claim, status update and cancel each write through an `updateMany` conditioned on the state they validated, plus the `TrackingEvent`, in one transaction; `0` rows matched is a `409`. An e2e test fires two concurrent claims and expects exactly one `200`.
 
 ## 16. Dashboards, Carrier Performance, and Global Monitoring
 
@@ -375,7 +379,7 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 
 - **Biome** — single tool for lint + format across both apps (`pnpm lint` locally with `--write`, `pnpm lint:ci` without, for CI).
 - **lefthook** — `pre-commit` runs lint-staged; `commit-msg` validates Conventional Commits via commitlint.
-- **Vitest** — unit (`*.spec.ts`) and e2e (`test/**/*.e2e-spec.ts`) tests in `apps/api`; component/hook tests in `apps/web`.
+- **Vitest** — unit (`*.spec.ts`) and e2e (`test/**/*.e2e-spec.ts`, real Postgres via supertest + socket.io-client: cancel-then-claim, concurrent claims, cross-tenant `404`, carrier `CANCELLED` `403`, `/public` acks) tests in `apps/api`; component/hook tests in `apps/web`.
 - **GitHub Actions** (`.github/workflows/ci.yml`) — three jobs on every push/PR to `main`: `commitlint` (PRs only), `api` (lint:ci → build → unit → e2e against a real Postgres service container), `web` (lint:ci → build, which includes Next's type-check). Branch protection on `main` requires all three green.
 - Zod validates env vars at boot (`DATABASE_URL`, `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `NODE_ENV`) — a missing/invalid one fails fast with a clear message instead of surfacing later as a confusing runtime error.
 - Swagger (`/docs`) documents every implemented module; a module still a skeleton is deliberately left undocumented rather than describing an endpoint that doesn't do anything yet.
