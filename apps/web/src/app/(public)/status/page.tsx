@@ -1,9 +1,8 @@
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
-import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
+import { getServerSession } from '@/lib/server-session';
 import { ApiError } from '@/services/api-client';
 
 const MESSAGES = {
@@ -18,8 +17,7 @@ const MESSAGES = {
 } as const;
 
 export default async function StatusPage() {
-  const cookieStore = await cookies();
-  const session = parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
+  const session = await getServerSession();
 
   // A fresh signup has no token yet, so the status is PENDING by construction.
   if (!session) {

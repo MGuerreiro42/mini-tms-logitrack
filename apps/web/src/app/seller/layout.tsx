@@ -1,10 +1,9 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMySeller } from '@/features/sellers/api';
 import { initialsFor } from '@/lib/initials';
-import { parseSessionCookie, SESSION_COOKIE } from '@/lib/session';
+import { getServerSession } from '@/lib/server-session';
 import { ApiError } from '@/services/api-client';
 
 const SELLER_NAV: NavItem[] = [
@@ -20,8 +19,7 @@ export default async function SellerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const session = parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
+  const session = await getServerSession();
 
   if (!session || session.role !== 'SELLER') {
     redirect('/login');
