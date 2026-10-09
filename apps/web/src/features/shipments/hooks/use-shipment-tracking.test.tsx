@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
+import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { useShipmentTracking } from './use-shipment-tracking';
 
@@ -90,7 +91,7 @@ describe('useShipmentTracking', () => {
     );
   });
 
-  it('invalidates shipment detail, queue detail, queue list, and admin list on shipment:updated', () => {
+  it('invalidates every shipment query on shipment:updated', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     const queryClient = new QueryClient();
@@ -101,22 +102,25 @@ describe('useShipmentTracking', () => {
     });
     socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
 
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ['shipments', 'detail', 'shipment-1'],
-      }),
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
+  });
+
+  it('tracks the connection state in the realtime store', () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+
+    const { unmount } = renderHook(
+      () => useShipmentTracking({ shipmentId: 'shipment-1' }),
+      { wrapper: makeWrapper(new QueryClient()) },
     );
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ['shipments', 'queue', 'detail', 'shipment-1'],
-      }),
-    );
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: ['shipments', 'queue', 'list'] }),
-    );
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: ['shipments', 'admin', 'list'] }),
-    );
+
+    socket.trigger('connect');
+    expect(useRealtimeStore.getState().connected).toBe(true);
+    socket.trigger('disconnect');
+    expect(useRealtimeStore.getState().connected).toBe(false);
+    socket.trigger('connect');
+    unmount();
+    expect(useRealtimeStore.getState().connected).toBe(false);
   });
 
   it('subscribes to the monitoring room when subscribeToMonitoring is set', () => {
@@ -142,25 +146,12 @@ describe('useShipmentTracking', () => {
       wrapper: makeWrapper(queryClient),
     });
 
-    // First connect — the initial catch-up.
     socket.trigger('connect');
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ['shipments', 'detail', 'shipment-1'],
-      }),
-    );
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
     invalidateSpy.mockClear();
 
-    // Simulate a drop-and-reconnect (e.g. a network blip) during which a
-    // shipment:updated message was missed entirely — no message ever fires
-    // here, only a second 'connect'.
     socket.trigger('connect');
-
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ['shipments', 'detail', 'shipment-1'],
-      }),
-    );
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
 
   it('does not reconnect when useSession returns a new object with the same token (regression: useSession re-parses the cookie on every call)', () => {

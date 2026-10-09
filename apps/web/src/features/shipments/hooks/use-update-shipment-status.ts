@@ -22,9 +22,9 @@ export function useUpdateShipmentStatus() {
       status: ShipmentStatus;
       note?: string;
     }) => updateShipmentStatus(id, { status, note }, session?.token ?? ''),
-    onSuccess: (shipment) => {
+    onSuccess: () => {
       toast.success('Status updated');
-      invalidateShipmentQueries(queryClient, shipment.id);
+      invalidateShipmentQueries(queryClient);
     },
     onError: (error) => {
       toast.error(

@@ -225,8 +225,17 @@ export class ShipmentsService {
         addressCity: dto.addressCity,
         addressState: dto.addressState,
         addressZipCode: dto.addressZipCode,
+        trackingEvents: { create: { status: ShipmentStatus.PENDING } },
       },
       include: withCarrierAndModality,
+    });
+
+    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, {
+      shipmentId: shipment.id,
+      carrierId: shipment.carrierId,
+      sellerId: shipment.sellerId,
+      status: ShipmentStatus.PENDING,
+      trackingCode: shipment.trackingCode,
     });
 
     return this.toResponseDto(shipment);
