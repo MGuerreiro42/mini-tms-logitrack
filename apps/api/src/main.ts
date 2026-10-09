@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
 import type { EnvConfig } from './shared/config/env.validation';
 import { RedisIoAdapter } from './shared/websocket/redis-io.adapter';
 
@@ -15,7 +15,7 @@ async function bootstrap() {
     origin: configService.get('CORS_ORIGIN', { infer: true }),
     credentials: true,
   });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  configureApp(app);
 
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
