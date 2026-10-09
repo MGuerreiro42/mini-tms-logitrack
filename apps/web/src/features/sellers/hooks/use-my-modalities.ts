@@ -1,9 +1,8 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { toastApiError } from '@/lib/toast-api-error';
 import { getMyModalities, setMyModalities } from '../api';
 import { sellerKeys } from '../api/keys';
 
@@ -18,17 +17,10 @@ export function useMyModalities() {
 }
 
 export function useSetMyModalities() {
-  const { token } = useAuthToken();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (modalityIds: string[]) => setMyModalities(modalityIds, token),
-    onSuccess: () => {
-      toast.success('Modalities saved');
-      queryClient.invalidateQueries({
-        queryKey: sellerKeys.myModalities(),
-      });
-    },
-    onError: toastApiError,
+  return useApiMutation({
+    mutationFn: (modalityIds: string[], token) =>
+      setMyModalities(modalityIds, token),
+    successMessage: 'Modalities saved',
+    invalidates: sellerKeys.myModalities(),
   });
 }
