@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ShipmentStatus } from '../../../../generated/prisma/client';
 
 // No id or note: public tracking exposes only the timeline.
-export class PublicTrackingEventDto {
+class PublicTrackingEventDto {
   @ApiProperty({ enum: ShipmentStatus })
   status: ShipmentStatus;
 
