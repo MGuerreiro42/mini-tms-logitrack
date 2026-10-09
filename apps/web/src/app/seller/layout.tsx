@@ -21,7 +21,7 @@ export default async function SellerLayout({
 }) {
   const session = await getServerSession();
 
-  if (!session || session.role !== 'SELLER') {
+  if (session?.role !== 'SELLER') {
     redirect('/login');
   }
 
