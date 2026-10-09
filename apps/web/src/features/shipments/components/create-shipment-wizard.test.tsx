@@ -68,7 +68,10 @@ describe('CreateShipmentWizard', () => {
     );
 
     // Step 2: eligible carriers
-    await user.click(await screen.findByText('Fast Freight'));
+    await user.click(
+      await screen.findByRole('button', { name: /Fast Freight/ }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Step 3: confirm
     expect(await screen.findByText('Review and confirm')).toBeInTheDocument();

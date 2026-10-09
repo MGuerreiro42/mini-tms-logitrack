@@ -14,7 +14,12 @@ import { ShipmentConfirmReview } from './shipment-confirm-review';
 // final POST /shipments actually persists it.
 type WizardState =
   | { step: 1 }
-  | { step: 2; address: AddressFormValues; modalityName: string }
+  | {
+      step: 2;
+      address: AddressFormValues;
+      modalityName: string;
+      carrierId?: string;
+    }
   | {
       step: 3;
       address: AddressFormValues;
@@ -51,6 +56,7 @@ export function CreateShipmentWizard() {
         state={state.address.addressState}
         city={state.address.addressCity}
         modalityId={state.address.modalityId}
+        defaultCarrierId={state.carrierId}
         onBack={() => setState({ step: 1 })}
         onNext={(carrierId, carrierName) =>
           setState({ ...state, step: 3, carrierId, carrierName })
@@ -81,6 +87,7 @@ export function CreateShipmentWizard() {
           step: 2,
           address: state.address,
           modalityName: state.modalityName,
+          carrierId: state.carrierId,
         })
       }
     />
