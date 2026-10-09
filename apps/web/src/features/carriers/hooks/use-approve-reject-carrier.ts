@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { toastApiError } from '@/lib/toast-api-error';
 import { approveCarrier, rejectCarrier } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useApproveCarrier(id: string) {
   const { token } = useAuthToken();
@@ -14,10 +15,10 @@ export function useApproveCarrier(id: string) {
     mutationFn: () => approveCarrier(id, token),
     onSuccess: () => {
       toast.success('Carrier approved');
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
+      queryClient.invalidateQueries({ queryKey: carrierKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: [...carrierKeys.all, 'list'] });
       queryClient.invalidateQueries({
-        queryKey: ['carriers', 'status-counts'],
+        queryKey: carrierKeys.statusCounts(),
       });
     },
     onError: toastApiError,
@@ -32,10 +33,10 @@ export function useRejectCarrier(id: string) {
     mutationFn: () => rejectCarrier(id, token),
     onSuccess: () => {
       toast.success('Carrier rejected');
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['carriers', 'list'] });
+      queryClient.invalidateQueries({ queryKey: carrierKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: [...carrierKeys.all, 'list'] });
       queryClient.invalidateQueries({
-        queryKey: ['carriers', 'status-counts'],
+        queryKey: carrierKeys.statusCounts(),
       });
     },
     onError: toastApiError,

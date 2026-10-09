@@ -2,7 +2,9 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { getCarrierStatusCounts } from '@/features/carriers/api';
+import { carrierKeys } from '@/features/carriers/api/keys';
 import { getSellerStatusCounts } from '@/features/sellers/api';
+import { sellerKeys } from '@/features/sellers/api/keys';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { sumRecord } from '@/lib/sum-record';
@@ -20,12 +22,12 @@ export function useAdminDashboard() {
   return useQueries({
     queries: [
       {
-        queryKey: ['sellers', 'status-counts'],
+        queryKey: sellerKeys.statusCounts(),
         queryFn: () => getSellerStatusCounts(token),
         enabled,
       },
       {
-        queryKey: ['carriers', 'status-counts'],
+        queryKey: carrierKeys.statusCounts(),
         queryFn: () => getCarrierStatusCounts(token),
         enabled,
       },

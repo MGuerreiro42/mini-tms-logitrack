@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { getEligibleCarriers } from '../api';
+import { shipmentKeys } from '../api/keys';
 
 export function useEligibleCarriers(
   state: string,
@@ -12,7 +13,7 @@ export function useEligibleCarriers(
   const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['shipments', 'eligible-carriers', state, city, modalityId],
+    queryKey: shipmentKeys.eligibleCarriers(state, city, modalityId),
     queryFn: () => getEligibleCarriers(state, city, modalityId, token),
     enabled: enabled && Boolean(state && city && modalityId),
   });

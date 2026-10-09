@@ -5,6 +5,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { sumRecord } from '@/lib/sum-record';
 import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
+import { shipmentKeys } from '../api/keys';
 import type { Shipment, ShipmentStatusCounts, SlaSummaryItem } from '../types';
 
 export interface SellerDashboardData {
@@ -31,17 +32,17 @@ export function useSellerDashboard() {
   return useQueries({
     queries: [
       {
-        queryKey: ['shipments', 'status-counts'],
+        queryKey: shipmentKeys.statusCounts(),
         queryFn: () => getShipmentStatusCounts(token),
         enabled,
       },
       {
-        queryKey: ['shipments', 'dashboard-recent'],
+        queryKey: shipmentKeys.dashboardRecent(),
         queryFn: () => listShipments({ page: 1, limit: 5 }, token),
         enabled,
       },
       {
-        queryKey: ['shipments', 'sla-summary'],
+        queryKey: shipmentKeys.slaSummary(),
         queryFn: () => getSlaSummary(token),
         enabled,
       },
