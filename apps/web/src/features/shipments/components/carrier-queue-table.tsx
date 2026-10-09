@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
+import {
+  type StatusFilter,
+  StatusFilterTabs,
+  statusFilterOptions,
+} from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
@@ -17,44 +22,30 @@ import {
   type ShipmentStatus,
 } from '../types';
 
-const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Accepted', value: 'ACCEPTED' },
-  { label: 'In transit', value: 'IN_TRANSIT' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-];
+const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
+  'PENDING',
+  'ACCEPTED',
+  'IN_TRANSIT',
+  'CANCELLED',
+]);
 
 export function CarrierQueueTable() {
-  const [status, setStatus] = useState<ShipmentStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
-
-  const query = useShipmentQueue({
-    status: status === 'ALL' ? undefined : status,
-    page,
-    limit: 20,
+  const { filters, setFilter, setPage, params } = useFilteredPagination({
+    status: 'ALL' as StatusFilter<ShipmentStatus>,
   });
+
+  const query = useShipmentQueue(params);
   const claim = useClaimShipment();
   useShipmentTracking({ subscribeToQueue: true });
 
   return (
     <div className="space-y-4">
       <LiveIndicator />
-      <Tabs
-        value={status}
-        onValueChange={(value) => {
-          setStatus(value as ShipmentStatus | 'ALL');
-          setPage(1);
-        }}
-      >
-        <TabsList>
-          {FILTERS.map((filter) => (
-            <TabsTrigger key={filter.value} value={filter.value}>
-              {filter.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <StatusFilterTabs
+        options={STATUS_OPTIONS}
+        value={filters.status}
+        onChange={(value) => setFilter('status', value)}
+      />
       <QueryState query={query} errorMessage="Couldn't load the queue.">
         {(result) => (
           <PaginatedTable<CarrierShipment>

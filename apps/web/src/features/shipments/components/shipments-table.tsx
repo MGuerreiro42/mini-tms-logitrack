@@ -1,51 +1,42 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
+import {
+  type StatusFilter,
+  StatusFilterTabs,
+  statusFilterOptions,
+} from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
 
-const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'In transit', value: 'IN_TRANSIT' },
-  { label: 'Delivered', value: 'DELIVERED' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-];
+const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
+  'PENDING',
+  'IN_TRANSIT',
+  'DELIVERED',
+  'CANCELLED',
+]);
 
 export function ShipmentsTable() {
-  const [status, setStatus] = useState<ShipmentStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
-
-  const query = useShipmentsList({
-    status: status === 'ALL' ? undefined : status,
-    page,
-    limit: 20,
+  const { filters, setFilter, setPage, params } = useFilteredPagination({
+    status: 'ALL' as StatusFilter<ShipmentStatus>,
   });
+
+  const query = useShipmentsList(params);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Tabs
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value as ShipmentStatus | 'ALL');
-            setPage(1);
-          }}
-        >
-          <TabsList>
-            {FILTERS.map((filter) => (
-              <TabsTrigger key={filter.value} value={filter.value}>
-                {filter.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <StatusFilterTabs
+          options={STATUS_OPTIONS}
+          value={filters.status}
+          onChange={(value) => setFilter('status', value)}
+        />
         <Button asChild>
           <Link href="/seller/shipments/new">+ Create shipment</Link>
         </Button>

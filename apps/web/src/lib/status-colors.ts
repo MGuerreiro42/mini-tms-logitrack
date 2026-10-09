@@ -69,3 +69,7 @@ export const SHIPMENT_STATUS: Record<ShipmentStatus, StatusMeta> = {
     className: 'bg-orange-50 text-orange-700 border-orange-200',
   },
 };
+
+export const SHIPMENT_STATUSES = Object.keys(
+  SHIPMENT_STATUS,
+) as ShipmentStatus[];
