@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
+import {
+  type StatusFilter,
+  StatusFilterTabs,
+  statusFilterOptions,
+} from '@/components/common/status-filter-tabs';
 import {
   Select,
   SelectContent,
@@ -12,41 +16,29 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCarriersList } from '@/features/carriers/hooks/use-carriers-list';
 import { useSellersList } from '@/features/sellers/hooks/use-sellers-list';
-import type { ShipmentStatus } from '@/lib/status-colors';
+import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import {
+  SHIPMENT_STATUS,
+  SHIPMENT_STATUSES,
+  type ShipmentStatus,
+} from '@/lib/status-colors';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
 
 // Monitoring exposes every status; the carrier queue only the ones operators act on.
-const STATUS_FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Accepted', value: 'ACCEPTED' },
-  { label: 'Collected', value: 'COLLECTED' },
-  { label: 'In transit', value: 'IN_TRANSIT' },
-  { label: 'Out for delivery', value: 'OUT_FOR_DELIVERY' },
-  { label: 'Delivered', value: 'DELIVERED' },
-  { label: 'Failed delivery', value: 'FAILED_DELIVERY' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-  { label: 'Returned', value: 'RETURNED' },
-];
+const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
 
 export function AdminMonitoringTable() {
-  const [status, setStatus] = useState<ShipmentStatus | 'ALL'>('ALL');
-  const [carrierId, setCarrierId] = useState<string | 'ALL'>('ALL');
-  const [sellerId, setSellerId] = useState<string | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
-
-  const query = useAdminShipments({
-    status: status === 'ALL' ? undefined : status,
-    carrierId: carrierId === 'ALL' ? undefined : carrierId,
-    sellerId: sellerId === 'ALL' ? undefined : sellerId,
-    page,
-    limit: 20,
+  const { filters, setFilter, setPage, params } = useFilteredPagination({
+    status: 'ALL' as StatusFilter<ShipmentStatus>,
+    carrierId: 'ALL',
+    sellerId: 'ALL',
   });
+
+  const query = useAdminShipments(params);
   const { data: carriers } = useCarriersList({ page: 1, limit: 100 });
   const { data: sellers } = useSellersList({ page: 1, limit: 100 });
   useShipmentTracking({ subscribeToMonitoring: true });
@@ -54,29 +46,17 @@ export function AdminMonitoringTable() {
   return (
     <div className="space-y-4">
       <LiveIndicator />
-      <Tabs
-        value={status}
-        onValueChange={(value) => {
-          setStatus(value as ShipmentStatus | 'ALL');
-          setPage(1);
-        }}
-      >
-        <TabsList className="flex-wrap">
-          {STATUS_FILTERS.map((filter) => (
-            <TabsTrigger key={filter.value} value={filter.value}>
-              {filter.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <StatusFilterTabs
+        options={STATUS_OPTIONS}
+        value={filters.status}
+        onChange={(value) => setFilter('status', value)}
+        wrap
+      />
 
       <div className="flex gap-3">
         <Select
-          value={carrierId}
-          onValueChange={(value) => {
-            setCarrierId(value);
-            setPage(1);
-          }}
+          value={filters.carrierId}
+          onValueChange={(value) => setFilter('carrierId', value)}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Carrier" />
@@ -91,11 +71,8 @@ export function AdminMonitoringTable() {
           </SelectContent>
         </Select>
         <Select
-          value={sellerId}
-          onValueChange={(value) => {
-            setSellerId(value);
-            setPage(1);
-          }}
+          value={filters.sellerId}
+          onValueChange={(value) => setFilter('sellerId', value)}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Seller" />
