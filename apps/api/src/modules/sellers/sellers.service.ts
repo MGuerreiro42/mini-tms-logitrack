@@ -13,6 +13,7 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import { countByStatus } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type { CreateSellerDto } from './dto/create-seller.dto';
@@ -67,27 +68,11 @@ export class SellersService {
         createdAt: seller.createdAt,
       };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        // Generic response avoids enumeration; Prisma 7 adapters report the field under driverAdapterError.
-        const meta = error.meta as
-          | {
-              target?: string[];
-              driverAdapterError?: {
-                cause?: { constraint?: { fields?: string[] } };
-              };
-            }
-          | undefined;
-        const target =
-          meta?.target?.join(', ') ??
-          meta?.driverAdapterError?.cause?.constraint?.fields?.join(', ') ??
-          'unknown';
-        this.logger.warn(`Seller signup conflict on unique field: ${target}`);
-        throw new ConflictException('Email or document already registered');
-      }
-      throw error;
+      const target = uniqueViolationTarget(error);
+      if (!target) throw error;
+      // Logged only: a generic response keeps signup from enumerating registered emails/documents.
+      this.logger.warn(`Seller signup conflict on unique field: ${target}`);
+      throw new ConflictException('Email or document already registered');
     }
   }
 
