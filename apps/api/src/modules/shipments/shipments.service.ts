@@ -187,19 +187,13 @@ export class ShipmentsService {
   ): Promise<PaginatedResult<ShipmentResponseDto>> {
     const seller = await this.findSellerOrThrow(userId);
 
-    const where = { sellerId: seller.id, ...(status ? { status } : {}) };
-    const [shipments, total] = await Promise.all([
-      this.prisma.shipment.findMany({
-        where,
-        include: sellerShipmentInclude,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.shipment.count({ where }),
-    ]);
-
-    return paginate(shipments.map(toShipmentResponseDto), total, page, limit);
+    return this.findShipmentPage(
+      { sellerId: seller.id, ...(status ? { status } : {}) },
+      sellerShipmentInclude,
+      toShipmentResponseDto,
+      page,
+      limit,
+    );
   }
 
   async countsByStatusForSeller(
@@ -311,38 +305,15 @@ export class ShipmentsService {
       );
     }
 
-    // Same compare-and-set as claim(): a carrier advancing it concurrently makes this a 409.
-    const cancelled = await this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.shipment.updateMany({
-        where: {
-          id: shipmentId,
-          sellerId: seller.id,
-          status: { in: CANCELLABLE_STATUSES },
-        },
-        data: { status: ShipmentStatus.CANCELLED },
-      });
-      if (count === 0) {
-        return false;
-      }
-      await tx.trackingEvent.create({
-        data: { shipmentId, status: ShipmentStatus.CANCELLED, note: dto.note },
-      });
-      return true;
-    });
-
-    if (!cancelled) {
-      throw new ConflictException(
+    const updated = await this.transitionWithEvent({
+      shipmentId,
+      expected: { sellerId: seller.id, status: { in: CANCELLABLE_STATUSES } },
+      to: ShipmentStatus.CANCELLED,
+      note: dto.note,
+      conflictMessage:
         'Shipment status changed concurrently, reload and try again',
-      );
-    }
-
-    const updated = await this.prisma.shipment.findUniqueOrThrow({
-      where: { id: shipmentId },
       include: sellerShipmentInclude,
     });
-
-    this.emitStatusChanged(updated);
-
     return toShipmentResponseDto(updated);
   }
 
@@ -378,24 +349,13 @@ export class ShipmentsService {
   ): Promise<PaginatedResult<CarrierShipmentResponseDto>> {
     const carrierUser = await this.findCarrierUserOrThrow(userId);
 
-    const where = {
-      carrierId: carrierUser.carrierId,
-      ...(status ? { status } : {}),
-    };
-    const [shipments, total] = await Promise.all([
-      this.prisma.shipment.findMany({
-        where,
-        include: carrierShipmentInclude,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.shipment.count({ where }),
-    ]);
-
-    return paginate(
-      shipments.map(toCarrierShipmentResponseDto),
-      total,
+    return this.findShipmentPage(
+      {
+        carrierId: carrierUser.carrierId,
+        ...(status ? { status } : {}),
+      },
+      carrierShipmentInclude,
+      toCarrierShipmentResponseDto,
       page,
       limit,
     );
@@ -409,25 +369,14 @@ export class ShipmentsService {
     page = 1,
     limit = 20,
   ): Promise<PaginatedResult<AdminShipmentResponseDto>> {
-    const where = {
-      ...(status ? { status } : {}),
-      ...(carrierId ? { carrierId } : {}),
-      ...(sellerId ? { sellerId } : {}),
-    };
-    const [shipments, total] = await Promise.all([
-      this.prisma.shipment.findMany({
-        where,
-        include: adminShipmentInclude,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.shipment.count({ where }),
-    ]);
-
-    return paginate(
-      shipments.map(toAdminShipmentResponseDto),
-      total,
+    return this.findShipmentPage(
+      {
+        ...(status ? { status } : {}),
+        ...(carrierId ? { carrierId } : {}),
+        ...(sellerId ? { sellerId } : {}),
+      },
+      adminShipmentInclude,
+      toAdminShipmentResponseDto,
       page,
       limit,
     );
@@ -470,35 +419,14 @@ export class ShipmentsService {
     }
 
     // Concurrent claims or a seller cancel can race this; the WHERE lets Postgres pick one winner.
-    const claimed = await this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.shipment.updateMany({
-        where: {
-          id: shipmentId,
-          ownerId: null,
-          status: ShipmentStatus.PENDING,
-        },
-        data: { ownerId: carrierUser.id, status: ShipmentStatus.ACCEPTED },
-      });
-      if (count === 0) {
-        return false;
-      }
-      await tx.trackingEvent.create({
-        data: { shipmentId, status: ShipmentStatus.ACCEPTED },
-      });
-      return true;
-    });
-
-    if (!claimed) {
-      throw new ConflictException('Shipment is no longer available to claim');
-    }
-
-    const updated = await this.prisma.shipment.findUniqueOrThrow({
-      where: { id: shipmentId },
+    const updated = await this.transitionWithEvent({
+      shipmentId,
+      expected: { ownerId: null, status: ShipmentStatus.PENDING },
+      to: ShipmentStatus.ACCEPTED,
+      data: { ownerId: carrierUser.id },
+      conflictMessage: 'Shipment is no longer available to claim',
       include: carrierShipmentInclude,
     });
-
-    this.emitStatusChanged(updated);
-
     return toCarrierShipmentResponseDto(updated);
   }
 
@@ -540,34 +468,67 @@ export class ShipmentsService {
     }
 
     // Compare-and-set on the validated status so concurrent advances can't both write.
-    const advanced = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.transitionWithEvent({
+      shipmentId,
+      expected: { status: shipment.status },
+      to: dto.status,
+      note: dto.note,
+      conflictMessage: `Shipment status changed concurrently — expected ${shipment.status}, reload and try again`,
+      include: carrierShipmentInclude,
+    });
+    return toCarrierShipmentResponseDto(updated);
+  }
+
+  // Conditional write + timeline event in one transaction; 0 rows matched means someone else won (409).
+  private async transitionWithEvent<I extends Prisma.ShipmentInclude>(params: {
+    shipmentId: string;
+    expected: Prisma.ShipmentWhereInput;
+    to: ShipmentStatus;
+    data?: Prisma.ShipmentUncheckedUpdateManyInput;
+    note?: string;
+    conflictMessage: string;
+    include: I;
+  }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
+    const { shipmentId, to } = params;
+    await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.shipment.updateMany({
-        where: { id: shipmentId, status: shipment.status },
-        data: { status: dto.status },
+        where: { id: shipmentId, ...params.expected },
+        data: { ...params.data, status: to },
       });
       if (count === 0) {
-        return false;
+        throw new ConflictException(params.conflictMessage);
       }
       await tx.trackingEvent.create({
-        data: { shipmentId, status: dto.status, note: dto.note },
+        data: { shipmentId, status: to, note: params.note },
       });
-      return true;
     });
-
-    if (!advanced) {
-      throw new ConflictException(
-        `Shipment status changed concurrently — expected ${shipment.status}, reload and try again`,
-      );
-    }
 
     const updated = await this.prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
-      include: carrierShipmentInclude,
+      include: params.include,
     });
-
     this.emitStatusChanged(updated);
+    return updated;
+  }
 
-    return toCarrierShipmentResponseDto(updated);
+  private async findShipmentPage<I extends Prisma.ShipmentInclude, R>(
+    where: Prisma.ShipmentWhereInput,
+    include: I,
+    toDto: (shipment: Prisma.ShipmentGetPayload<{ include: I }>) => R,
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<R>> {
+    const [shipments, total] = await Promise.all([
+      this.prisma.shipment.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.shipment.count({ where }),
+    ]);
+    return paginate(shipments.map(toDto), total, page, limit);
   }
 
   private async findSellerOrThrow(userId: string) {
