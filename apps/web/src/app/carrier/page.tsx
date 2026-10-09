@@ -6,8 +6,7 @@ export default function CarrierCompanyPage() {
       <div>
         <h1 className="text-xl font-semibold">My company</h1>
         <p className="text-sm text-muted-foreground">
-          Manager and operator both see this — only the manager can change
-          what's downstream.
+          Your company details and account status.
         </p>
       </div>
       <CarrierProfileCard />

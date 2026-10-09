@@ -7,8 +7,7 @@ export default function CarrierSignupPage() {
       <div className="space-y-1">
         <h1 className="text-lg font-semibold">Carrier company registration</h1>
         <p className="text-sm text-muted-foreground">
-          Creates the manager account and the company with status pending
-          review.
+          An administrator reviews your company before you can start operating.
         </p>
       </div>
       <CarrierSignupForm />

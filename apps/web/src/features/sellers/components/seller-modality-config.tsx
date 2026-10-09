@@ -18,7 +18,7 @@ export function SellerModalityConfig() {
           items={modalities}
           onSave={(modalityIds) => setModalities.mutate(modalityIds)}
           isSaving={setModalities.isPending}
-          note="Independent of what any carrier actually offers — checked only at shipment creation time, not enforced here."
+          note="Carriers are matched against these when you create a shipment."
         />
       )}
     </QueryState>

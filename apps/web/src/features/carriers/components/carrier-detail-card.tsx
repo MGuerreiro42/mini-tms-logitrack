@@ -31,8 +31,7 @@ export function CarrierDetailCard({ id }: { id: string }) {
                 <ApprovalStatusPill status={carrier.status} />
               </h1>
               <p className="text-sm text-muted-foreground">
-                A state transition — approving an already-decided company
-                returns 409.
+                Review the company details before deciding.
               </p>
             </div>
             <ApproveRejectActions

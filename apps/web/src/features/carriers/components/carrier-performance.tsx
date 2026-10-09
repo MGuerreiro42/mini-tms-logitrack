@@ -83,11 +83,6 @@ function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
       {operatorRanking.data && (
         <OperatorRankingChart data={operatorRanking.data} />
       )}
-
-      <p className="text-xs text-muted-foreground">
-        Scoped to this carrier's own shipments only — no visibility into other
-        carriers' numbers.
-      </p>
     </div>
   );
 }

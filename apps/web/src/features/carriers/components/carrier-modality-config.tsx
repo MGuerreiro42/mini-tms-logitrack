@@ -26,9 +26,7 @@ export function CarrierModalityConfig() {
           isSaving={setModalities.isPending}
           readOnly={readOnly}
           note={
-            readOnly
-              ? 'Only the carrier manager can change this.'
-              : 'Full replace on save — the complete desired set is sent every time.'
+            readOnly ? 'Only the carrier manager can change this.' : undefined
           }
         />
       )}

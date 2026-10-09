@@ -41,10 +41,7 @@ export function ShipmentConfirmReview({
           <DetailRow label="Carrier" value={carrierName} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Everything above is re-validated server-side on confirm — if the
-          seller, modality, or carrier eligibility changed since the previous
-          step, this will fail with a clear reason instead of silently
-          succeeding.
+          We'll check the carrier is still available when you confirm.
         </p>
         {createShipment.isError && (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -57,6 +57,9 @@ describe('ShipmentAddressForm', () => {
     expect(
       await screen.findByText(/haven't enabled any modality/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Enable one in Modalities' }),
+    ).toHaveAttribute('href', '/seller/modalities');
   });
 
   it('requires every address field and a chosen modality', async () => {

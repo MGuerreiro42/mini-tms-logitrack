@@ -31,8 +31,7 @@ export function SellerDetailCard({ id }: { id: string }) {
                 <ApprovalStatusPill status={seller.status} />
               </h1>
               <p className="text-sm text-muted-foreground">
-                A state transition — approving an already-decided application
-                returns 409.
+                Review the company details before deciding.
               </p>
             </div>
             <ApproveRejectActions
