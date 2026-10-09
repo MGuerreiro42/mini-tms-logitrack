@@ -69,12 +69,7 @@ export class SellersService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        // Logged server-side only — the client response stays generic on
-        // purpose, so a public signup form can't be used to enumerate which
-        // specific email/document is already registered. Prisma 7's driver
-        // adapters report the colliding field(s) under
-        // meta.driverAdapterError.cause.constraint.fields, not meta.target
-        // (the field used by older Prisma versions / non-adapter engines).
+        // Generic response avoids enumeration; Prisma 7 adapters report the field under driverAdapterError.
         const meta = error.meta as
           | {
               target?: string[];
@@ -100,7 +95,6 @@ export class SellersService {
     limit = 20,
   ): Promise<PaginatedResult<SellerResponseDto>> {
     const where = status ? { status } : undefined;
-    // Independent reads — run in parallel instead of awaiting sequentially.
     const [sellers, total] = await Promise.all([
       this.prisma.seller.findMany({
         where,
@@ -120,9 +114,6 @@ export class SellersService {
     );
   }
 
-  // One query, not the 2 separate `findAll(status, limit:1)` calls the admin
-  // dashboard used before — those each ran a full joined `findMany` server
-  // side just to read `meta.total` off it (see DESIGN.md's dashboard slice).
   async countsByStatus(): Promise<SellerStatusCountsResponseDto> {
     const groups = await this.prisma.seller.groupBy({
       by: ['status'],
@@ -145,9 +136,6 @@ export class SellersService {
     return this.toResponseDto(seller);
   }
 
-  // Ownership-based, not role-based (DESIGN.md § 16) — looked up by the
-  // authenticated User's own id, not an :id param, so there's no way for
-  // one seller to read another's record through this route.
   async findByUserId(userId: string): Promise<SellerResponseDto> {
     const seller = await this.prisma.seller.findUnique({
       where: { userId },
@@ -223,9 +211,6 @@ export class SellersService {
       }
     }
 
-    // Full-replace semantics — the client always sends the complete desired
-    // set (matches a checkbox-list UI), not an incremental enable/disable
-    // call, so there's no risk of server and client state drifting apart.
     await this.prisma.$transaction([
       this.prisma.sellerModality.deleteMany({
         where: { sellerId: seller.id },

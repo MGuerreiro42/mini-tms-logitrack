@@ -15,24 +15,12 @@ import type {
 
 interface SocketData {
   user: AuthenticatedUser;
-  // Resolved once at connection time so subscribe handlers don't re-query on
-  // every message — a seller's own sellerId, or a carrier user's carrierId.
+  // Resolved once at connection so subscribe handlers don't re-query.
   sellerId?: string;
   carrierId?: string;
 }
 
-// Auth runs as Socket.IO connection *middleware* (server.use), not in
-// handleConnection. This isn't a style choice: handleConnection is async but
-// Socket.IO already emits 'connect' client-side as soon as the handshake
-// itself completes, without waiting for handleConnection's promise to
-// settle — a client that subscribes immediately after 'connect' can (and, in
-// manual testing, reliably did) race ahead of handleConnection's two DB
-// round-trips, arriving with `client.data` still empty. Middleware
-// registered via `server.use()` is awaited by Socket.IO *before* 'connect'
-// fires, which is exactly why the library exposes it — same principle as
-// this codebase's HTTP guards running before a handler, just via a different
-// mechanism because @nestjs/websockets' CanActivate guards don't intercept
-// the connection lifecycle at all (only @SubscribeMessage handlers do).
+// Auth as server.use() middleware: awaited before 'connect', unlike handleConnection.
 @WebSocketGateway()
 export class TrackingGateway implements OnGatewayInit {
   private readonly logger = new Logger(TrackingGateway.name);
@@ -58,11 +46,7 @@ export class TrackingGateway implements OnGatewayInit {
     });
   }
 
-  // Mirrors JwtStrategy.validate: reload the user from the database rather
-  // than trusting the token's claims alone, so a deleted user can't stay
-  // "authenticated" just because their token hasn't expired. One query, not
-  // two — User has a direct seller/carrierUser relation, so the role-specific
-  // follow-up lookup is included here instead of a second round-trip.
+  // Reload the user like JwtStrategy, so a deleted user's unexpired token stops working.
   private async authenticate(socket: Socket): Promise<void> {
     const token = socket.handshake.auth?.token as string | undefined;
     if (!token) {
@@ -100,19 +84,12 @@ export class TrackingGateway implements OnGatewayInit {
     socket.data = data;
   }
 
-  // A seller may only subscribe to their own shipment's room; a carrier user
-  // only to a shipment in their own carrier — same ownership-scoping
-  // discipline as every REST endpoint in this codebase (DESIGN.md § 16's
-  // "Ownership-Based Authorization" principle applied to WebSocket rooms).
+  // Same ownership scoping as the REST endpoints.
   @SubscribeMessage('subscribe:shipment')
   async handleSubscribeShipment(
     client: Socket,
     shipmentId: string,
   ): Promise<void> {
-    // No `data.user` presence check here (unlike `data.carrierId` below,
-    // which is a real optional field): the connection middleware above
-    // rejects the handshake outright on auth failure, so `data.user` is
-    // always populated by the time any @SubscribeMessage handler can run.
     const data = client.data as SocketData;
 
     const shipment = await this.prisma.shipment.findUnique({
@@ -132,8 +109,6 @@ export class TrackingGateway implements OnGatewayInit {
     }
   }
 
-  // No payload needed — the queue is always the caller's own carrier,
-  // resolved once at connection time, not something a client can pick.
   @SubscribeMessage('subscribe:queue')
   handleSubscribeQueue(client: Socket): void {
     const data = client.data as SocketData;
@@ -141,10 +116,6 @@ export class TrackingGateway implements OnGatewayInit {
     client.join(`carrier:${data.carrierId}`);
   }
 
-  // Single shared room, gated by role rather than any resolved id (unlike
-  // `carrier:{carrierId}` above) — same ownership-scoping discipline as
-  // every other room, just scoped to "is this caller an admin at all"
-  // instead of "does this caller own this specific resource".
   @SubscribeMessage('subscribe:monitoring')
   handleSubscribeMonitoring(client: Socket): void {
     const data = client.data as SocketData;

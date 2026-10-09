@@ -107,15 +107,6 @@ export class ShipmentsController {
     );
   }
 
-  // Carrier-facing routes below are declared before `:id` — `queue` and
-  // `queue/:id` are two-segment paths so they can't collide with the
-  // single-segment `:id` route regardless of order, but they're grouped and
-  // placed early anyway, matching this codebase's own convention
-  // (carriers.controller.ts already puts `me`/`me/modalities` before
-  // `:id`/`:id/approve`). PATCH routes are the only PATCHs on this
-  // controller today — kept grouped together so a future `PATCH :id/...`
-  // addition knows to stay near this block, not scattered.
-
   @ApiBearerAuth()
   @ApiOperation({
     summary:

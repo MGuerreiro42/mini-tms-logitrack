@@ -3,9 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
 import { ShipmentsService } from './shipments.service';
 
-// No JwtAuthGuard/RolesGuard anywhere on this controller — deliberately, this
-// is the one HTTP route in the app meant to be reachable with no session at
-// all, just a shared trackingCode (SCREENS.md's Public Tracking screen).
+// No auth guards on purpose: the tracking code is the credential.
 @ApiTags('public-tracking')
 @Controller('public/tracking')
 export class PublicTrackingController {

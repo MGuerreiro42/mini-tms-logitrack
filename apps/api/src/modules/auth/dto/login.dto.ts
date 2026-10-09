@@ -5,10 +5,7 @@ import { toLowerTrimmed } from '../../../shared/transforms/normalize';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@minitms.dev' })
-  // Normalized here, not just at signup — email is a case-insensitive
-  // identifier by convention, and the unique constraint/lookup treat it as
-  // an exact string match, so "User@Example.com" and "user@example.com"
-  // would otherwise be two different accounts.
+  // Normalized at login too, or differently cased emails would miss the exact-match lookup.
   @Transform(toLowerTrimmed)
   @IsEmail()
   email: string;
