@@ -8,7 +8,7 @@ describe('ApproveRejectActions', () => {
       <ApproveRejectActions
         status="APPROVED"
         onApprove={vi.fn()}
-        onReject={vi.fn()}
+        onReject={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -22,7 +22,7 @@ describe('ApproveRejectActions', () => {
       <ApproveRejectActions
         status="PENDING"
         onApprove={onApprove}
-        onReject={vi.fn()}
+        onReject={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -32,7 +32,7 @@ describe('ApproveRejectActions', () => {
 
   it('requires confirmation before calling onReject', async () => {
     const user = userEvent.setup();
-    const onReject = vi.fn();
+    const onReject = vi.fn().mockResolvedValue(undefined);
     render(
       <ApproveRejectActions
         status="PENDING"
@@ -54,7 +54,7 @@ describe('ApproveRejectActions', () => {
       <ApproveRejectActions
         status="PENDING"
         onApprove={vi.fn()}
-        onReject={vi.fn()}
+        onReject={vi.fn().mockResolvedValue(undefined)}
         isApproving
       />,
     );

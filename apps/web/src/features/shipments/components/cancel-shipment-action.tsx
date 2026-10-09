@@ -24,9 +24,12 @@ export function CancelShipmentAction({ shipmentId }: { shipmentId: string }) {
       description="The carrier will stop handling it. This can't be undone."
       confirmLabel="Cancel shipment"
       variant="destructive"
-      isConfirming={cancel.isPending}
+      dismissLabel="Keep shipment"
+      onOpenChange={(open) => {
+        if (!open) setNote('');
+      }}
       onConfirm={() =>
-        cancel.mutate({ id: shipmentId, note: note.trim() || undefined })
+        cancel.mutateAsync({ id: shipmentId, note: note.trim() || undefined })
       }
     >
       <div className="space-y-1.5">
