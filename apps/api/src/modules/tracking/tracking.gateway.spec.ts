@@ -116,7 +116,10 @@ describe('TrackingGateway', () => {
         email: 'op@example.com',
         role: 'CARRIER_OPERATOR',
         seller: null,
-        carrierUser: { carrierId: 'carrier-1' },
+        carrierUser: {
+          carrierId: 'carrier-1',
+          carrier: { status: 'APPROVED' },
+        },
       });
       const socket = makeSocket();
       socket.handshake.auth.token = 'good-token';
@@ -126,6 +129,37 @@ describe('TrackingGateway', () => {
       expect((socket.data as { carrierId?: string }).carrierId).toBe(
         'carrier-1',
       );
+    });
+
+    it.each([
+      'PENDING',
+      'REJECTED',
+    ])('leaves carrierId unset for a %s carrier, closing its rooms', async (status) => {
+      verifyAsync.mockResolvedValue({
+        sub: 'user-2',
+        email: 'op@example.com',
+        role: 'CARRIER_MANAGER',
+      });
+      userFindUnique.mockResolvedValue({
+        id: 'user-2',
+        email: 'op@example.com',
+        role: 'CARRIER_MANAGER',
+        seller: null,
+        carrierUser: { carrierId: 'carrier-1', carrier: { status } },
+      });
+      const socket = makeSocket();
+      socket.handshake.auth.token = 'good-token';
+
+      await authenticate(socket);
+      gateway.handleSubscribeQueue(socket as never);
+      shipmentFindUnique.mockResolvedValue({
+        sellerId: 'seller-1',
+        carrierId: 'carrier-1',
+      });
+      await gateway.handleSubscribeShipment(socket as never, 'shipment-1');
+
+      expect((socket.data as { carrierId?: string }).carrierId).toBeUndefined();
+      expect(socket.join).not.toHaveBeenCalled();
     });
   });
 

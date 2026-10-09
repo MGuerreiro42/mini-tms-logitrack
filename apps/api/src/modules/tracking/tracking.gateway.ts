@@ -7,6 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import { ApprovalStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { isCarrierRole } from '../auth/carrier-roles';
 import type {
@@ -67,7 +68,9 @@ export class TrackingGateway implements OnGatewayInit {
         email: true,
         role: true,
         seller: { select: { id: true } },
-        carrierUser: { select: { carrierId: true } },
+        carrierUser: {
+          select: { carrierId: true, carrier: { select: { status: true } } },
+        },
       },
     });
     if (!user) {
@@ -80,8 +83,12 @@ export class TrackingGateway implements OnGatewayInit {
 
     if (user.role === 'SELLER') {
       data.sellerId = user.seller?.id;
-    } else if (isCarrierRole(user.role)) {
-      data.carrierId = user.carrierUser?.carrierId;
+    } else if (
+      isCarrierRole(user.role) &&
+      user.carrierUser?.carrier.status === ApprovalStatus.APPROVED
+    ) {
+      // Unapproved carriers get no carrierId, so every carrier room stays closed to them.
+      data.carrierId = user.carrierUser.carrierId;
     }
 
     socket.data = data;
