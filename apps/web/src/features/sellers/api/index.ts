@@ -1,5 +1,5 @@
 import type { ModalityToggle } from '@/features/modalities/types';
-import { apiClient } from '@/services/api-client';
+import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
   ApprovalStatusCounts,
@@ -19,13 +19,8 @@ export function listSellers(
   query: ListSellersQuery,
   token: string,
 ): Promise<Paginated<Seller>> {
-  const params = new URLSearchParams();
-  if (query.status) params.set('status', query.status);
-  if (query.page) params.set('page', String(query.page));
-  if (query.limit) params.set('limit', String(query.limit));
-  const qs = params.toString();
   return apiClient<Paginated<Seller>>(
-    `/sellers${qs ? `?${qs}` : ''}`,
+    `/sellers${toQueryString({ ...query })}`,
     undefined,
     token,
   );
