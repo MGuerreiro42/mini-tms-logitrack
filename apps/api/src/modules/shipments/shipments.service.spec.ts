@@ -120,7 +120,6 @@ describe('ShipmentsService', () => {
     transaction.mockReset();
     emit.mockReset();
 
-    // Supports both $transaction forms: array and interactive callback.
     const tx = {
       shipment: { updateMany: shipmentUpdateMany },
       trackingEvent: { create: trackingEventCreate },
@@ -734,7 +733,6 @@ describe('ShipmentsService', () => {
     });
 
     it('throws ConflictException when a concurrent claim wins the race (updateMany affects 0 rows)', async () => {
-      // Pre-check sees no owner, but a concurrent claim wins the conditional write.
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(pendingShipment);
       shipmentUpdateMany.mockResolvedValue({ count: 0 });
@@ -840,7 +838,6 @@ describe('ShipmentsService', () => {
     });
 
     it('throws ConflictException when the status changed concurrently (updateMany affects 0 rows)', async () => {
-      // Owner and manager advancing at once must not both write an event.
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
       shipmentUpdateMany.mockResolvedValue({ count: 0 });

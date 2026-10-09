@@ -16,7 +16,6 @@ describe('Public tracking namespace (e2e)', () => {
     const tenants = await createTenants(ctx);
     ({ trackingCode } = await createShipment(ctx, tenants.sellerA, tenants));
 
-    // No auth token: the namespace must accept anonymous clients.
     socket = io(`${ctx.url}/public`, {
       transports: ['websocket'],
       reconnection: false,

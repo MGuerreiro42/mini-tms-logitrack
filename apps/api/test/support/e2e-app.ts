@@ -45,7 +45,6 @@ async function login(ctx: E2eContext, email: string): Promise<string> {
   return res.body.accessToken;
 }
 
-// Two approved sellers and one approved carrier (manager + operator) covering SP.
 export async function createTenants(ctx: E2eContext) {
   const modality = await ctx.prisma.deliveryModality.upsert({
     where: { code: 'STANDARD' },

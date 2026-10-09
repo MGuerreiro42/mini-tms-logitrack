@@ -49,7 +49,6 @@ describe('TrackingGateway', () => {
     });
   });
 
-  // authenticate() is the body server.use() wraps, so it's tested directly.
   describe('authenticate (the middleware body)', () => {
     function authenticate(socket: unknown) {
       return (

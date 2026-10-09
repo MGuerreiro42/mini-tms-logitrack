@@ -5,7 +5,6 @@ import { TrackingGateway } from './tracking.gateway';
 import { TrackingListener } from './tracking.listener';
 
 @Module({
-  // Reuses AuthModule's JwtModule so the gateway verifies tokens with the same secret.
   imports: [AuthModule],
   providers: [TrackingGateway, PublicTrackingGateway, TrackingListener],
 })

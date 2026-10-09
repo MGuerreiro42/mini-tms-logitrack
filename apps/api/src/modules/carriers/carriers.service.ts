@@ -36,7 +36,6 @@ import type { CreateCarrierDto } from './dto/create-carrier.dto';
 import type { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
 
-// Happy path only: the failure branch is a different, smaller-sample story.
 const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
   [ShipmentStatus.PENDING, ShipmentStatus.ACCEPTED],
   [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED],
@@ -184,7 +183,6 @@ export class CarriersService {
     return this.buildModalityToggles(carrierId);
   }
 
-  // Consecutive-event gaps need a window function Prisma lacks, so they're computed in app code.
   async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
@@ -207,7 +205,6 @@ export class CarriersService {
       0,
     );
 
-    // Events are ordered by (shipmentId, createdAt), so one pass yields every gap and its stage.
     const gapsInHours: number[] = [];
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
@@ -263,7 +260,6 @@ export class CarriersService {
     };
   }
 
-  // Two groupBys merged in app code; the result is bounded by headcount, not shipment volume.
   async operatorRanking(
     userId: string,
   ): Promise<OperatorRankingItemResponseDto[]> {
@@ -329,7 +325,6 @@ export class CarriersService {
   ): Promise<CoverageAreaResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    // skipDuplicates absorbs a repeated (state, city) pair in the same request.
     await this.prisma.$transaction([
       this.prisma.carrierCoverageArea.deleteMany({ where: { carrierId } }),
       this.prisma.carrierCoverageArea.createMany({

@@ -7,7 +7,6 @@ import { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import { ListAdminShipmentsQueryDto } from './dto/list-admin-shipments-query.dto';
 import { ShipmentsService } from './shipments.service';
 
-// Own `admin` prefix: the only route not scoped by ownership.
 @ApiTags('admin')
 @Controller('admin')
 export class AdminShipmentsController {

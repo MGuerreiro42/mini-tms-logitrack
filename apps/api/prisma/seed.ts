@@ -27,7 +27,6 @@ function resolveAdminPassword(): string {
   return 'admin12345';
 }
 
-// Deterministic PRNG so every run plans the same demo data.
 function mulberry32(seed: number) {
   let state = seed;
   return () => {
@@ -151,7 +150,6 @@ const ADDRESSES = [
   ['Rua Dom Pedro II', '57', 'Centro', 'Guarulhos', '07011-000'],
 ] as const;
 
-// Relative weight of each happy-path gap within a delivery's total duration.
 const STAGE_WEIGHTS = [0.04, 0.2, 0.08, 0.55, 0.13];
 
 interface ShipmentPlan {
@@ -179,7 +177,6 @@ const TERMINAL: ShipmentStatus[] = [DELIVERED, RETURNED, CANCELLED];
 const pathUpTo = (status: ShipmentStatus) =>
   HAPPY_PATH.slice(0, HAPPY_PATH.indexOf(status) + 1);
 
-// 40 shipments covering every status, 5 of them delivered past the SLA.
 const PLANS: ShipmentPlan[] = [
   ...repeat(15, { status: DELIVERED }),
   ...repeat(5, { status: DELIVERED, late: true }),
@@ -205,7 +202,6 @@ interface PlannedEvent {
   at: Date;
 }
 
-// Gaps in hours for each happy-path stage, summing to `totalHours`.
 function stageGaps(totalHours: number): number[] {
   const jittered = STAGE_WEIGHTS.map((weight) => weight * between(0.6, 1.4));
   const sum = jittered.reduce((a, b) => a + b, 0);
@@ -239,7 +235,6 @@ function planEvents(
     gaps = stageGaps(slaHours * ratio).slice(0, path.length - 1);
   }
 
-  // In-flight shipments must not have events in the future: compress to fit.
   const totalMs = gaps.reduce((a, b) => a + b, 0) * MS_PER_HOUR;
   const available = now - createdAt - between(0.1, 2) * MS_PER_HOUR;
   const scale = !terminal && totalMs > available ? available / totalMs : 1;
@@ -251,7 +246,6 @@ function planEvents(
   });
 }
 
-// Fixed, hex-only codes keep the seed idempotent and match the generated format.
 const demoTrackingCode = (index: number) =>
   `TMS-DE${String(index + 1).padStart(10, '0')}`;
 
@@ -262,7 +256,6 @@ async function seedShipments(
   modalities: DeliveryModality[],
 ) {
   const [manager, operator1, operator2] = carrierUsers;
-  // Uneven split so the operator ranking has a clear order.
   const owners = [
     operator1,
     operator1,
@@ -331,7 +324,6 @@ async function main() {
   const admin = await upsertUser(adminEmail, 'ADMIN', adminHash);
   console.log(`Admin seeded: ${admin.email}`);
 
-  // Reference data: a fixed catalog with no admin CRUD screen.
   const modalities = await seedModalities();
   console.log(`Delivery modalities seeded: ${modalities.map((m) => m.code)}`);
 

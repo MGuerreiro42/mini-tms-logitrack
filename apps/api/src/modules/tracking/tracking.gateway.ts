@@ -22,7 +22,6 @@ import {
 
 interface SocketData {
   user: AuthenticatedUser;
-  // Resolved once at connection so subscribe handlers don't re-query.
   sellerId?: string;
   carrierId?: string;
 }
@@ -87,15 +86,12 @@ export class TrackingGateway implements OnGatewayInit {
       isCarrierRole(user.role) &&
       user.carrierUser?.carrier.status === ApprovalStatus.APPROVED
     ) {
-      // Unapproved carriers get no carrierId, so every carrier room stays closed to them.
       data.carrierId = user.carrierUser.carrierId;
     }
 
     socket.data = data;
   }
 
-  // Same ownership scoping as the REST endpoints.
-  // Each handler acks { ok } (true only once the room is joined); clients without a callback still work.
   @SubscribeMessage('subscribe:shipment')
   async handleSubscribeShipment(
     client: Socket,

@@ -5,7 +5,7 @@ interface UniqueViolationMeta {
   driverAdapterError?: { cause?: { constraint?: { fields?: string[] } } };
 }
 
-// Returns the violated field(s) of a P2002, or null for any other error. Prisma 7 adapters report them under driverAdapterError.
+// Prisma 7 driver adapters report P2002 fields under driverAdapterError, not meta.target.
 export function uniqueViolationTarget(error: unknown): string | null {
   if (
     !(error instanceof Prisma.PrismaClientKnownRequestError) ||

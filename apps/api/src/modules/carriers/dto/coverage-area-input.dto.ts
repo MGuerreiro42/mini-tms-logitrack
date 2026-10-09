@@ -5,7 +5,6 @@ import { toUpperTrimmed } from '../../../shared/transforms/normalize';
 
 export class CoverageAreaInputDto {
   @ApiProperty({ example: 'SP' })
-  // Uppercased so the coverage lookup stays a plain, indexable equality.
   @Transform(toUpperTrimmed)
   @IsString()
   @IsNotEmpty()
