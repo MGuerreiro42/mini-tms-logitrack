@@ -13,6 +13,11 @@ import type {
   AuthenticatedUser,
   JwtPayload,
 } from '../auth/strategies/jwt.strategy';
+import {
+  ADMIN_MONITORING_ROOM,
+  carrierRoom,
+  shipmentRoom,
+} from './tracking-rooms';
 
 interface SocketData {
   user: AuthenticatedUser;
@@ -101,7 +106,7 @@ export class TrackingGateway implements OnGatewayInit {
       (isCarrierRole(data.user.role) && shipment.carrierId === data.carrierId);
 
     if (allowed) {
-      client.join(`shipment:${shipmentId}`);
+      client.join(shipmentRoom(shipmentId));
     }
   }
 
@@ -109,13 +114,13 @@ export class TrackingGateway implements OnGatewayInit {
   handleSubscribeQueue(client: Socket): void {
     const data = client.data as SocketData;
     if (!data?.carrierId) return;
-    client.join(`carrier:${data.carrierId}`);
+    client.join(carrierRoom(data.carrierId));
   }
 
   @SubscribeMessage('subscribe:monitoring')
   handleSubscribeMonitoring(client: Socket): void {
     const data = client.data as SocketData;
     if (data.user.role !== 'ADMIN') return;
-    client.join('admin:monitoring');
+    client.join(ADMIN_MONITORING_ROOM);
   }
 }

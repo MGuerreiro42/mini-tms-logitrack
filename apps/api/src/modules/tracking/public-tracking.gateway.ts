@@ -5,9 +5,7 @@ import {
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-
-export const trackingRoom = (trackingCode: string) =>
-  `tracking:${trackingCode}`;
+import { trackingRoom } from './tracking-rooms';
 
 // Unauthenticated on purpose: the tracking code is the credential, as on GET /public/tracking/:code.
 @WebSocketGateway({ namespace: '/public' })
