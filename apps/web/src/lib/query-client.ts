@@ -29,8 +29,7 @@ function isAuthError(error: unknown): error is ApiError {
   return !isServer && error instanceof ApiError;
 }
 
-// The JWT expires in 1 day server-side — this is the one place that reacts
-// to that, instead of every query/mutation needing its own 401 branch.
+// Single place that reacts to an expired session.
 function handleMutationError(
   error: unknown,
   _variables: unknown,
@@ -43,25 +42,8 @@ function handleMutationError(
   }
 }
 
-// Queries additionally treat 403 as an invalid session, not just 401 —
-// mutations don't get this (see below for why the distinction matters).
-// Every read endpoint in this app enforces ownership via 404, never 403 (a
-// shipment belonging to another seller looks identical to one that doesn't
-// exist — DESIGN.md's own established convention). So a 403 on a *query*
-// can only mean the session's role doesn't match what this page needs —
-// concretely, two browser tabs sharing one cookie jar, where logging in as
-// a different role in tab B silently swaps out tab A's token. That's not a
-// business outcome to toast about, it's proof this session is no longer
-// valid for what's on screen, so it gets the same treatment as an expired
-// token.
-//
-// Mutations don't get the 403-forces-logout treatment: a mutation 403 can
-// legitimately mean "you're a real, correctly-authenticated operator, just
-// not this shipment's owner" (ShipmentsService.updateStatus's ownership
-// check) — an expected outcome of a user action, not a broken session.
-// Forcing a logout there would eject a perfectly valid user just for
-// clicking something they're not allowed to. That case already surfaces
-// via each mutation hook's own onError toast.
+// Reads enforce ownership with 404, so a query 403 means the session no longer fits the page
+// (e.g. another tab logged in as a different role). A mutation 403 is a normal rejection.
 function handleQueryError(error: unknown) {
   if (isAuthError(error) && [401, 403].includes(error.statusCode)) {
     forceReLogin();

@@ -16,11 +16,7 @@ export function AppShell({
   children,
 }: AppShellProps) {
   return (
-    // h-screen, not h-full: h-full needs a definite (not min-height) height
-    // chain all the way up to the viewport to resolve correctly, which
-    // body's min-h-full doesn't provide — h-screen (100vh) is viewport-
-    // relative and decouples this from that ancestor chain entirely, so the
-    // sidebar always fills the real viewport regardless of content height.
+    // h-screen, not h-full: body's min-h-full isn't a definite height to resolve against.
     <div className="flex h-screen w-full">
       <aside className="flex h-full w-56 shrink-0 flex-col border-r bg-card">
         <div className="flex items-center gap-2.5 border-b p-4">

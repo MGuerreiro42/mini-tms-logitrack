@@ -9,8 +9,7 @@ export function useSellerSignupMutation() {
 
   return useMutation({
     mutationFn: signupSeller,
-    // Signup returns no token (no session yet) — status page's no-cookie
-    // mode renders a static "submitted, pending review" message.
+    // Signup returns no token; /status shows the pending message without a session.
     onSuccess: () => router.push('/status'),
   });
 }

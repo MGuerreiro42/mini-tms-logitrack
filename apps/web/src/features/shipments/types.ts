@@ -13,9 +13,7 @@ export type ShipmentStatus =
 
 export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
 
-// A modality with no `slaHours` configured is omitted entirely by the
-// backend, not returned with a misleading 0% — mirrors this codebase's
-// null-over-0 discipline for "no data" states.
+// Modalities without slaHours are omitted by the API, not reported as 0%.
 export interface SlaSummaryItem {
   modalityCode: string;
   modalityName: string;
@@ -47,15 +45,11 @@ export interface Shipment {
   addressState: string;
   addressZipCode: string;
   createdAt: string;
-  // Only populated on the single-record read (GET /shipments/:id), never the
-  // paginated list — mirrors the backend's own over-fetch-avoidance choice.
+  // Only on GET /shipments/:id, never in lists.
   trackingEvents?: TrackingEvent[];
 }
 
-// The carrier-facing counterpart to Shipment — distinct type, not a shared
-// base extended both ways: this one carries the seller's contact info and
-// the claiming owner, neither of which the seller's own view has business
-// seeing about itself (mirrors apps/api's CarrierShipmentResponseDto split).
+// Carrier view: adds seller contact and owner, which the seller's own view doesn't need.
 export interface CarrierShipment {
   id: string;
   trackingCode: string;
@@ -78,10 +72,7 @@ export interface CarrierShipment {
   trackingEvents?: TrackingEvent[];
 }
 
-// The admin-facing counterpart to CarrierShipment — same shape (seller info
-// already included there) plus the carrier's own name, since an admin
-// viewing platform-wide traffic has no "my own carrier" context to already
-// know it from.
+// Admin view: CarrierShipment plus the carrier name.
 export interface AdminShipment extends CarrierShipment {
   carrierCompanyName: string;
 }
@@ -122,13 +113,7 @@ export interface UpdateShipmentStatusInput {
   note?: string;
 }
 
-// UI-only mirror of the backend's allowed-transition map
-// (apps/api/src/modules/shipments/shipment-status.util.ts) — purely to let
-// the operator pick from valid next statuses; the backend re-validates
-// every transition regardless, matching this project's "rules enforced
-// backend-side" philosophy (DESIGN.md § 1). PENDING maps to an empty list
-// here since advancing out of PENDING happens through the separate Claim
-// action, not this generic "advance status" control.
+// UI mirror of the API transition map; the API re-validates. PENDING advances via Claim.
 export const ALLOWED_NEXT_STATUSES: Record<ShipmentStatus, ShipmentStatus[]> = {
   PENDING: [],
   ACCEPTED: ['COLLECTED'],

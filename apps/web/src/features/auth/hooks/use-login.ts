@@ -6,10 +6,7 @@ import { setSession } from '@/lib/session';
 import { login } from '../api';
 import type { GlobalRole, LoginInput } from '../types';
 
-// The role's home route — each layout's own server-side gate (reading
-// GET /sellers/me or /carriers/me) decides from there whether to actually
-// render the dashboard or redirect to /status (PENDING/REJECTED). This hook
-// doesn't need to know approval status, only where to send the browser next.
+// Each role layout decides whether to render or redirect to /status.
 function roleHomePath(role: GlobalRole): string {
   switch (role) {
     case 'ADMIN':

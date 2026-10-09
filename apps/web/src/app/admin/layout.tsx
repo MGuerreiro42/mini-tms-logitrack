@@ -19,9 +19,7 @@ export default async function AdminLayout({
   const cookieStore = await cookies();
   const session = parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
 
-  // Real gate, not just middleware's coarse cookie check — this is the one
-  // that actually matters, since it's a Server Component reading the same
-  // signed session middleware already validated the shape of.
+  // The real gate; middleware only checks the cookie shape.
   if (!session || session.role !== 'ADMIN') {
     redirect('/login');
   }

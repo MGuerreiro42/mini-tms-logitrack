@@ -11,8 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMyModalities } from '@/features/sellers/hooks/use-my-modalities';
 
-// Mirrors CreateShipmentDto's address fields exactly (all required except
-// addressComplement).
+// Mirrors CreateShipmentDto's address fields.
 const schema = z.object({
   addressStreet: z.string().min(1, 'Required'),
   addressNumber: z.string().min(1, 'Required'),
@@ -44,16 +43,11 @@ export function ShipmentAddressForm({
     formState: { errors },
   } = useForm<AddressFormValues>({
     resolver: zodResolver(schema),
-    // modalityId starts unset (never register()'d — it's only set via the
-    // button clicks below), so it defaults to '' rather than undefined:
-    // zod's `.min(1, 'Pick a modality')` message only applies to a string
-    // that's too short, not to a value failing the base type check.
+    // '' rather than undefined so zod reports 'Pick a modality' instead of a type error.
     defaultValues: { modalityId: '', ...defaultValues },
   });
 
   const selectedModalityId = watch('modalityId');
-  // The dropdown is fed only by the seller's own enabled modalities, not the
-  // full catalog (matches SCREENS.md's Create Shipment spec).
   const enabledModalities = (modalities ?? []).filter(
     (modality) => modality.enabled,
   );

@@ -24,8 +24,7 @@ export function CarrierPerformance() {
 function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
   const operatorRanking = useOperatorRanking();
 
-  // New carrier, no shipments yet — misleading 0%/0h figures would read as
-  // real metrics rather than "nothing to measure yet" (FLOW.md Frame 24).
+  // No shipments yet: 0% figures would read as real metrics.
   if (data.totalShipments === 0) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">

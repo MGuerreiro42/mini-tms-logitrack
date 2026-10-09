@@ -1,11 +1,7 @@
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import type { ShipmentStatus } from '@/lib/status-colors';
 
-// Deliberately re-declares the event shape locally instead of importing it
-// from features/shipments/types.ts — components/ never imports from
-// features/ (DESIGN.md § 9's unidirectional-dependency rule), same
-// precedent already set by lib/status-colors.ts redeclaring ShipmentStatus
-// independently rather than reaching into the feature for it.
+// Declared locally: components/ never imports from features/.
 export interface TrackingTimelineEvent {
   id: string;
   status: ShipmentStatus;

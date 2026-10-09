@@ -169,8 +169,7 @@ describe('useShipmentTracking', () => {
     socket.disconnect.mockClear();
     socket.emit.mockClear();
 
-    // A fresh object, same token value — exactly what useSession() returns
-    // on every real render (getSessionFromDocument() re-parses the cookie).
+    // A fresh object with the same token must not reconnect.
     vi.mocked(useSession).mockReturnValue({ ...session });
     rerender();
 
