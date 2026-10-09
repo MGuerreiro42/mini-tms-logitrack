@@ -9,7 +9,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApprovalStatus,
   CarrierRole,
-  Prisma,
   type Shipment,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
@@ -30,9 +29,21 @@ import type { PublicTrackingResponseDto } from './dto/public-tracking-response.d
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
-import type { TrackingEventDto } from './dto/tracking-event.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import {
+  adminShipmentInclude,
+  carrierShipmentDetailInclude,
+  carrierShipmentInclude,
+  pickAddress,
+  sellerShipmentDetailInclude,
+  sellerShipmentInclude,
+  toAdminShipmentResponseDto,
+  toCarrierShipmentDetailResponseDto,
+  toCarrierShipmentResponseDto,
+  toShipmentDetailResponseDto,
+  toShipmentResponseDto,
+} from './shipment.mappers';
 import {
   SHIPMENT_STATUS_CHANGED,
   type ShipmentStatusChangedEvent,
@@ -42,49 +53,6 @@ import {
   isValidTransition,
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
-
-const withCarrierAndModality = {
-  carrier: { select: { companyName: true } },
-  modality: { select: { name: true } },
-} satisfies Prisma.ShipmentInclude;
-
-const withCarrierModalityAndEvents = {
-  ...withCarrierAndModality,
-  trackingEvents: { orderBy: { createdAt: 'asc' } },
-} satisfies Prisma.ShipmentInclude;
-
-type ShipmentWithRelations = Prisma.ShipmentGetPayload<{
-  include: typeof withCarrierAndModality;
-}>;
-
-// Carrier-facing reads also need the seller's contact and the claiming CarrierUser.
-const carrierQueueInclude = {
-  modality: { select: { name: true } },
-  seller: { include: { user: { select: { email: true } } } },
-  owner: { include: { user: { select: { email: true } } } },
-} satisfies Prisma.ShipmentInclude;
-
-const carrierDetailInclude = {
-  ...carrierQueueInclude,
-  trackingEvents: { orderBy: { createdAt: 'asc' } },
-} satisfies Prisma.ShipmentInclude;
-
-type ShipmentForCarrier = Prisma.ShipmentGetPayload<{
-  include: typeof carrierQueueInclude;
-}>;
-
-type ShipmentForCarrierDetail = Prisma.ShipmentGetPayload<{
-  include: typeof carrierDetailInclude;
-}>;
-
-const adminShipmentInclude = {
-  ...carrierQueueInclude,
-  carrier: { select: { companyName: true } },
-} satisfies Prisma.ShipmentInclude;
-
-type ShipmentForAdmin = Prisma.ShipmentGetPayload<{
-  include: typeof adminShipmentInclude;
-}>;
 
 @Injectable()
 export class ShipmentsService {
@@ -202,21 +170,15 @@ export class ShipmentsService {
         sellerId: seller.id,
         carrierId: dto.carrierId,
         modalityId: dto.modalityId,
-        addressStreet: dto.addressStreet,
-        addressNumber: dto.addressNumber,
-        addressComplement: dto.addressComplement,
-        addressNeighborhood: dto.addressNeighborhood,
-        addressCity: dto.addressCity,
-        addressState: dto.addressState,
-        addressZipCode: dto.addressZipCode,
+        ...pickAddress(dto),
         trackingEvents: { create: { status: ShipmentStatus.PENDING } },
       },
-      include: withCarrierAndModality,
+      include: sellerShipmentInclude,
     });
 
     this.emitStatusChanged(shipment);
 
-    return this.toResponseDto(shipment);
+    return toShipmentResponseDto(shipment);
   }
 
   async findAllForSeller(
@@ -231,7 +193,7 @@ export class ShipmentsService {
     const [shipments, total] = await Promise.all([
       this.prisma.shipment.findMany({
         where,
-        include: withCarrierAndModality,
+        include: sellerShipmentInclude,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -239,12 +201,7 @@ export class ShipmentsService {
       this.prisma.shipment.count({ where }),
     ]);
 
-    return paginate(
-      shipments.map((shipment) => this.toResponseDto(shipment)),
-      total,
-      page,
-      limit,
-    );
+    return paginate(shipments.map(toShipmentResponseDto), total, page, limit);
   }
 
   async countsByStatusForSeller(
@@ -327,19 +284,14 @@ export class ShipmentsService {
     // Scoped in the query: another seller's shipment is a 404, indistinguishable from a missing one.
     const shipment = await this.prisma.shipment.findFirst({
       where: { id, sellerId: seller.id },
-      include: withCarrierModalityAndEvents,
+      include: sellerShipmentDetailInclude,
     });
 
     if (!shipment) {
       throw new NotFoundException('Shipment not found');
     }
 
-    return {
-      ...this.toResponseDto(shipment),
-      trackingEvents: shipment.trackingEvents.map((event) =>
-        this.toTrackingEventDto(event),
-      ),
-    };
+    return toShipmentDetailResponseDto(shipment);
   }
 
   async cancel(
@@ -388,12 +340,12 @@ export class ShipmentsService {
 
     const updated = await this.prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
-      include: withCarrierAndModality,
+      include: sellerShipmentInclude,
     });
 
     this.emitStatusChanged(updated);
 
-    return this.toResponseDto(updated);
+    return toShipmentResponseDto(updated);
   }
 
   private async findCarrierUserOrThrow(userId: string) {
@@ -435,7 +387,7 @@ export class ShipmentsService {
     const [shipments, total] = await Promise.all([
       this.prisma.shipment.findMany({
         where,
-        include: carrierQueueInclude,
+        include: carrierShipmentInclude,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -444,7 +396,7 @@ export class ShipmentsService {
     ]);
 
     return paginate(
-      shipments.map((shipment) => this.toCarrierResponseDto(shipment)),
+      shipments.map(toCarrierShipmentResponseDto),
       total,
       page,
       limit,
@@ -476,7 +428,7 @@ export class ShipmentsService {
     ]);
 
     return paginate(
-      shipments.map((shipment) => this.toAdminResponseDto(shipment)),
+      shipments.map(toAdminShipmentResponseDto),
       total,
       page,
       limit,
@@ -491,13 +443,13 @@ export class ShipmentsService {
 
     const shipment = await this.prisma.shipment.findFirst({
       where: { id, carrierId: carrierUser.carrierId },
-      include: carrierDetailInclude,
+      include: carrierShipmentDetailInclude,
     });
     if (!shipment) {
       throw new NotFoundException('Shipment not found');
     }
 
-    return this.toCarrierDetailResponseDto(shipment);
+    return toCarrierShipmentDetailResponseDto(shipment);
   }
 
   async claim(
@@ -544,12 +496,12 @@ export class ShipmentsService {
 
     const updated = await this.prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
-      include: carrierQueueInclude,
+      include: carrierShipmentInclude,
     });
 
     this.emitStatusChanged(updated);
 
-    return this.toCarrierResponseDto(updated);
+    return toCarrierShipmentResponseDto(updated);
   }
 
   async updateStatus(
@@ -612,12 +564,12 @@ export class ShipmentsService {
 
     const updated = await this.prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
-      include: carrierQueueInclude,
+      include: carrierShipmentInclude,
     });
 
     this.emitStatusChanged(updated);
 
-    return this.toCarrierResponseDto(updated);
+    return toCarrierShipmentResponseDto(updated);
   }
 
   private async findSellerOrThrow(userId: string) {
@@ -642,84 +594,5 @@ export class ShipmentsService {
       trackingCode: shipment.trackingCode,
     };
     this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, event);
-  }
-
-  private toResponseDto(shipment: ShipmentWithRelations): ShipmentResponseDto {
-    return {
-      id: shipment.id,
-      trackingCode: shipment.trackingCode,
-      status: shipment.status,
-      carrierId: shipment.carrierId,
-      carrierName: shipment.carrier.companyName,
-      modalityId: shipment.modalityId,
-      modalityName: shipment.modality.name,
-      addressStreet: shipment.addressStreet,
-      addressNumber: shipment.addressNumber,
-      addressComplement: shipment.addressComplement,
-      addressNeighborhood: shipment.addressNeighborhood,
-      addressCity: shipment.addressCity,
-      addressState: shipment.addressState,
-      addressZipCode: shipment.addressZipCode,
-      createdAt: shipment.createdAt,
-    };
-  }
-
-  private toCarrierResponseDto(
-    shipment: ShipmentForCarrier,
-  ): CarrierShipmentResponseDto {
-    return {
-      id: shipment.id,
-      trackingCode: shipment.trackingCode,
-      status: shipment.status,
-      modalityId: shipment.modalityId,
-      modalityName: shipment.modality.name,
-      sellerId: shipment.sellerId,
-      sellerCompanyName: shipment.seller.companyName,
-      sellerEmail: shipment.seller.user.email,
-      ownerId: shipment.ownerId,
-      ownerEmail: shipment.owner?.user.email ?? null,
-      addressStreet: shipment.addressStreet,
-      addressNumber: shipment.addressNumber,
-      addressComplement: shipment.addressComplement,
-      addressNeighborhood: shipment.addressNeighborhood,
-      addressCity: shipment.addressCity,
-      addressState: shipment.addressState,
-      addressZipCode: shipment.addressZipCode,
-      createdAt: shipment.createdAt,
-    };
-  }
-
-  private toCarrierDetailResponseDto(
-    shipment: ShipmentForCarrierDetail,
-  ): CarrierShipmentDetailResponseDto {
-    return {
-      ...this.toCarrierResponseDto(shipment),
-      trackingEvents: shipment.trackingEvents.map((event) =>
-        this.toTrackingEventDto(event),
-      ),
-    };
-  }
-
-  private toAdminResponseDto(
-    shipment: ShipmentForAdmin,
-  ): AdminShipmentResponseDto {
-    return {
-      ...this.toCarrierResponseDto(shipment),
-      carrierCompanyName: shipment.carrier.companyName,
-    };
-  }
-
-  private toTrackingEventDto(event: {
-    id: string;
-    status: ShipmentStatus;
-    note: string | null;
-    createdAt: Date;
-  }): TrackingEventDto {
-    return {
-      id: event.id,
-      status: event.status,
-      note: event.note,
-      createdAt: event.createdAt,
-    };
   }
 }
