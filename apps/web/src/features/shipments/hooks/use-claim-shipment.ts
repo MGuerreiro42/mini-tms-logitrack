@@ -18,6 +18,10 @@ export function useClaimShipment() {
       invalidateShipmentQueries(queryClient);
     },
     onError: (error) => {
+      // Someone else claimed it first: refresh so the row shows the new owner.
+      if (error instanceof ApiError && error.statusCode === 409) {
+        invalidateShipmentQueries(queryClient);
+      }
       toast.error(
         error instanceof ApiError ? error.message : 'Something went wrong.',
       );
