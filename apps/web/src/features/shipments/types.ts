@@ -16,14 +16,7 @@ export interface SlaSummaryItem {
   onTimeRate: number;
 }
 
-export interface Shipment {
-  id: string;
-  trackingCode: string;
-  status: ShipmentStatus;
-  carrierId: string;
-  carrierName: string;
-  modalityId: string;
-  modalityName: string;
+export interface ShipmentAddress {
   addressStreet: string;
   addressNumber: string;
   addressComplement: string | null;
@@ -31,32 +24,31 @@ export interface Shipment {
   addressCity: string;
   addressState: string;
   addressZipCode: string;
-  createdAt: string;
-  // Only on GET /shipments/:id, never in lists.
-  trackingEvents?: TrackingEvent[];
 }
 
-// Carrier view: adds seller contact and owner, which the seller's own view doesn't need.
-export interface CarrierShipment {
+export interface ShipmentBase extends ShipmentAddress {
   id: string;
   trackingCode: string;
   status: ShipmentStatus;
   modalityId: string;
   modalityName: string;
+  createdAt: string;
+  // Only on single-record reads, never in lists.
+  trackingEvents?: TrackingEvent[];
+}
+
+export interface Shipment extends ShipmentBase {
+  carrierId: string;
+  carrierName: string;
+}
+
+// Carrier view: adds seller contact and owner, which the seller's own view doesn't need.
+export interface CarrierShipment extends ShipmentBase {
   sellerId: string;
   sellerCompanyName: string;
   sellerEmail: string;
   ownerId: string | null;
   ownerEmail: string | null;
-  addressStreet: string;
-  addressNumber: string;
-  addressComplement: string | null;
-  addressNeighborhood: string;
-  addressCity: string;
-  addressState: string;
-  addressZipCode: string;
-  createdAt: string;
-  trackingEvents?: TrackingEvent[];
 }
 
 // Admin view: CarrierShipment plus the carrier name.

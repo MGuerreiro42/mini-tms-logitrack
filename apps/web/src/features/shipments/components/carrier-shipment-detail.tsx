@@ -2,12 +2,9 @@
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
-import { LiveIndicator } from '@/components/common/live-indicator';
 import { QueryState } from '@/components/common/query-state';
-import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useSession } from '@/hooks/use-session';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -21,6 +18,11 @@ import {
   ownerLabel,
   type ShipmentStatus,
 } from '../types';
+import {
+  ShipmentAddressRows,
+  ShipmentHeaderCard,
+  ShipmentTimelineCard,
+} from './shipment-detail-parts';
 
 // Computed once so the action-card branches stay mutually exclusive.
 type ActionState =
@@ -69,34 +71,13 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            {shipment.trackingCode}
-            <ShipmentStatusPill status={shipment.status} />
-            <LiveIndicator className="ml-auto" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <DetailRow label="Seller" value={shipment.sellerCompanyName} />
-          <DetailRow label="Seller contact" value={shipment.sellerEmail} />
-          <DetailRow label="Modality" value={shipment.modalityName} />
-          <DetailRow
-            label="Address"
-            value={`${shipment.addressStreet}, ${shipment.addressNumber}`}
-          />
-          <DetailRow
-            label="Neighborhood"
-            value={shipment.addressNeighborhood}
-          />
-          <DetailRow
-            label="City"
-            value={`${shipment.addressCity}/${shipment.addressState}`}
-          />
-          <DetailRow label="Zip code" value={shipment.addressZipCode} mono />
-          <DetailRow label="Owner" value={ownerLabel(shipment)} />
-        </CardContent>
-      </Card>
+      <ShipmentHeaderCard shipment={shipment}>
+        <DetailRow label="Seller" value={shipment.sellerCompanyName} />
+        <DetailRow label="Seller contact" value={shipment.sellerEmail} />
+        <DetailRow label="Modality" value={shipment.modalityName} />
+        <ShipmentAddressRows address={shipment} />
+        <DetailRow label="Owner" value={ownerLabel(shipment)} />
+      </ShipmentHeaderCard>
       <div className="space-y-4">
         <Card>
           <CardHeader>
@@ -136,14 +117,7 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Tracking</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TrackingTimeline events={shipment.trackingEvents ?? []} />
-          </CardContent>
-        </Card>
+        <ShipmentTimelineCard events={shipment.trackingEvents} />
       </div>
     </div>
   );
