@@ -1,15 +1,4 @@
-export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export type ShipmentStatus =
-  | 'PENDING'
-  | 'ACCEPTED'
-  | 'COLLECTED'
-  | 'IN_TRANSIT'
-  | 'OUT_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'FAILED_DELIVERY'
-  | 'CANCELLED'
-  | 'RETURNED';
+import type { ApprovalStatus, ShipmentStatus } from '@/types/status';
 
 interface StatusMeta {
   label: string;

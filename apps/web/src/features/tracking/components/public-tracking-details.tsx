@@ -2,26 +2,11 @@
 
 import Link from 'next/link';
 import { LiveIndicator } from '@/components/common/live-indicator';
-import {
-  TrackingTimeline,
-  type TrackingTimelineEvent,
-} from '@/components/common/tracking-timeline';
+import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
 import type { PublicTracking } from '../types';
-
-// The public endpoint never sends notes or event ids.
-function toTimelineEvents(
-  events: PublicTracking['events'],
-): TrackingTimelineEvent[] {
-  return events.map((event, index) => ({
-    id: `${event.status}-${index}`,
-    status: event.status,
-    note: null,
-    createdAt: event.createdAt,
-  }));
-}
 
 export function PublicTrackingDetails({
   initialData,
@@ -44,7 +29,7 @@ export function PublicTrackingDetails({
             {tracking.addressCity}/{tracking.addressState}
           </span>
         </div>
-        <TrackingTimeline events={toTimelineEvents(tracking.events)} />
+        <TrackingTimeline events={tracking.events} />
       </div>
       <p className="text-center text-sm">
         <Link href="/track" className="text-primary hover:underline">

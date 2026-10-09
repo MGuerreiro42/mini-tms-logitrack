@@ -18,11 +18,8 @@ import {
 import { useCarriersList } from '@/features/carriers/hooks/use-carriers-list';
 import { useSellersList } from '@/features/sellers/hooks/use-sellers-list';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
-import {
-  SHIPMENT_STATUS,
-  SHIPMENT_STATUSES,
-  type ShipmentStatus,
-} from '@/lib/status-colors';
+import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
+import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';

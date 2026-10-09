@@ -2,7 +2,7 @@
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import type { ApprovalStatus } from '@/lib/status-colors';
+import type { ApprovalStatus } from '@/types/status';
 
 interface ApproveRejectActionsProps {
   status: ApprovalStatus;

@@ -3,7 +3,7 @@
 import { CompanyApprovalTable } from '@/components/common/company-approval-table';
 import type { StatusFilter } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
-import type { ApprovalStatus } from '@/lib/status-colors';
+import type { ApprovalStatus } from '@/types/status';
 import { useCarriersList } from '../hooks/use-carriers-list';
 import type { Carrier } from '../types';
 
