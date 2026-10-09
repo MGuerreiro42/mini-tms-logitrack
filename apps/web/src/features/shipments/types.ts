@@ -93,6 +93,9 @@ export interface ListQueueQuery extends PaginationQuery {
   status?: ShipmentStatus;
 }
 
+// Mirrors the API's limit on tracking event notes.
+export const TRACKING_NOTE_MAX_LENGTH = 500;
+
 export interface UpdateShipmentStatusInput {
   status: ShipmentStatus;
   note?: string;
