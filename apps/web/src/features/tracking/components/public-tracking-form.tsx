@@ -10,7 +10,7 @@ import { publicTrackingPath } from '@/lib/public-tracking-path';
 export function PublicTrackingForm() {
   const router = useRouter();
   const [code, setCode] = useState('');
-  const trimmed = code.trim();
+  const trimmed = code.trim().toUpperCase();
 
   return (
     <form

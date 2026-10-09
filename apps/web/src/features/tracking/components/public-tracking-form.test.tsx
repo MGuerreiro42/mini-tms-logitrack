@@ -6,7 +6,7 @@ import { PublicTrackingForm } from './public-tracking-form';
 vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
 
 describe('PublicTrackingForm', () => {
-  it('navigates to the tracking page for the trimmed code', async () => {
+  it('navigates to the tracking page for the normalized code', async () => {
     const push = vi.fn();
     vi.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<
       typeof useRouter
@@ -17,7 +17,7 @@ describe('PublicTrackingForm', () => {
     expect(
       screen.getByRole('button', { name: 'Track shipment' }),
     ).toBeDisabled();
-    await user.type(screen.getByLabelText('Tracking code'), '  TMS-AAA111 ');
+    await user.type(screen.getByLabelText('Tracking code'), '  tms-aaa111 ');
     await user.click(screen.getByRole('button', { name: 'Track shipment' }));
 
     expect(push).toHaveBeenCalledWith('/track/TMS-AAA111');
