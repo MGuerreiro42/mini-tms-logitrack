@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApprovalStatus,
   CarrierRole,
+  type Prisma,
   type Shipment,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
@@ -54,6 +55,22 @@ import {
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
 
+// `state` is uppercased at the DTO boundary; `city` keeps display casing, hence insensitive.
+const eligibleCarrierWhere = (
+  state: string,
+  city: string,
+  modalityId: string,
+): Prisma.CarrierWhereInput => ({
+  status: ApprovalStatus.APPROVED,
+  coverageAreas: {
+    some: {
+      state,
+      OR: [{ city: null }, { city: { equals: city, mode: 'insensitive' } }],
+    },
+  },
+  modalities: { some: { modalityId } },
+});
+
 @Injectable()
 export class ShipmentsService {
   constructor(
@@ -67,20 +84,7 @@ export class ShipmentsService {
     modalityId: string,
   ): Promise<EligibleCarrierResponseDto[]> {
     return this.prisma.carrier.findMany({
-      where: {
-        status: ApprovalStatus.APPROVED,
-        coverageAreas: {
-          some: {
-            // `state` is uppercased at the DTO boundary; `city` keeps display casing, hence insensitive.
-            state,
-            OR: [
-              { city: null },
-              { city: { equals: city, mode: 'insensitive' } },
-            ],
-          },
-        },
-        modalities: { some: { modalityId } },
-      },
+      where: eligibleCarrierWhere(state, city, modalityId),
       select: { id: true, companyName: true },
       orderBy: { companyName: 'asc' },
     });
@@ -138,17 +142,11 @@ export class ShipmentsService {
       this.prisma.carrier.findFirst({
         where: {
           id: dto.carrierId,
-          status: ApprovalStatus.APPROVED,
-          coverageAreas: {
-            some: {
-              state: dto.addressState,
-              OR: [
-                { city: null },
-                { city: { equals: dto.addressCity, mode: 'insensitive' } },
-              ],
-            },
-          },
-          modalities: { some: { modalityId: dto.modalityId } },
+          ...eligibleCarrierWhere(
+            dto.addressState,
+            dto.addressCity,
+            dto.modalityId,
+          ),
         },
       }),
     ]);
