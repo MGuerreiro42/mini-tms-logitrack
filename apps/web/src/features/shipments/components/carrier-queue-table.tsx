@@ -89,11 +89,7 @@ export function CarrierQueueTable() {
                 className: 'text-right',
                 cell: (s) =>
                   isClaimable(s) ? (
-                    // A direct button, no confirm dialog — unlike admin
-                    // approve/reject (infrequent, higher-consequence), claiming
-                    // is meant to be a fast, in-the-flow action for an operator
-                    // working through a shared queue (DESIGN.md § 3); a modal
-                    // per claim would actively work against that.
+                    // No confirm dialog: claiming is meant to be fast.
                     <Button
                       size="sm"
                       className="relative z-10"

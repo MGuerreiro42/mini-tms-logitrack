@@ -21,11 +21,7 @@ import {
   type ShipmentStatus,
 } from '../types';
 
-// The three action-card states (claim / advance / explanatory message) are
-// mutually exclusive by construction here, computed once, rather than each
-// JSX branch re-deriving `ownerId`/`canAdvance`/`nextStatuses.length`
-// independently — a render bug in one branch's condition can't silently
-// make two branches (or zero) match at once.
+// Computed once so the action-card branches stay mutually exclusive.
 type ActionState =
   | { kind: 'claim' }
   | { kind: 'advance'; statuses: ShipmentStatus[] }
@@ -64,10 +60,7 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
 
-  // The owner can always act on their own shipment; a manager can act on any
-  // shipment in the carrier to unblock operations (DESIGN.md § 3) — a
-  // non-owning operator sees the actions but the backend would 403 them, so
-  // hide the control instead of offering an action that's guaranteed to fail.
+  // Owner or manager only; the API would 403 anyone else.
   const canAdvance =
     session?.role === 'CARRIER_MANAGER' ||
     shipment.ownerEmail === session?.email;

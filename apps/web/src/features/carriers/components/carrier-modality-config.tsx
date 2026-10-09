@@ -13,8 +13,7 @@ export function CarrierModalityConfig() {
   const query = useMyCarrierModalities();
   const setModalities = useSetMyCarrierModalities();
 
-  // Read is open to both MANAGER and OPERATOR — mutation is manager-only,
-  // mirroring the existing manager-only rule for Operator Management.
+  // Operators can read, only the manager can change it.
   const readOnly = session?.role !== 'CARRIER_MANAGER';
 
   return (

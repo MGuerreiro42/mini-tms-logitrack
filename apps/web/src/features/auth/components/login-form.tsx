@@ -9,8 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ApiError } from '@/services/api-client';
 import { useLoginMutation } from '../hooks/use-login';
 
-// Mirrors the backend's LoginDto (class-validator: IsEmail, MinLength(8)) —
-// catches the same shape of invalid input client-side before round-tripping.
+// Mirrors the API's LoginDto.
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),

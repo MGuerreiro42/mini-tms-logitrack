@@ -28,9 +28,7 @@ function SellerDashboardView({
   recentShipments,
   slaSummary,
 }: SellerDashboardData) {
-  // Zero shipments ever, not just zero on the current filter — the
-  // create-shipment CTA takes over the whole screen instead of a row of
-  // zero-count tiles nobody asked to see yet (FLOW.md Frame 19).
+  // No shipments at all: the create CTA replaces a row of zero tiles.
   if (counts.total === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">

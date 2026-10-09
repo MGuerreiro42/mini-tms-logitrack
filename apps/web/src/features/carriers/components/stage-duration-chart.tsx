@@ -50,9 +50,7 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold">Time per stage</h2>
-      {/* Per-row ordinal color as a CSS custom property, light + dark — same
-          mechanism as shadcn's ChartStyle, hand-rolled here because these
-          slots are dynamic (one per stage), not static named series. */}
+      {/* Dynamic per-row colors, so ChartStyle-like CSS vars by hand. */}
       <style>
         {`
 :root { ${rows.map((row, i) => `${row.varName}: ${ramp[i].light};`).join(' ')} }

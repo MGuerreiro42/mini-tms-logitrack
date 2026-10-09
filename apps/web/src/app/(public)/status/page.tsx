@@ -21,8 +21,7 @@ export default async function StatusPage() {
   const cookieStore = await cookies();
   const session = parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
 
-  // No session: a fresh signup has no token yet (signup endpoints return no
-  // accessToken) — status is PENDING by construction, nothing to fetch.
+  // A fresh signup has no token yet, so the status is PENDING by construction.
   if (!session) {
     return (
       <StatusCard
@@ -48,8 +47,6 @@ export default async function StatusPage() {
     throw error;
   }
 
-  // Already approved: this page is stale for them, send them where they
-  // actually belong instead of showing a misleading "pending" message.
   if (status === 'APPROVED') {
     redirect(isCarrier ? '/carrier' : '/seller');
   }

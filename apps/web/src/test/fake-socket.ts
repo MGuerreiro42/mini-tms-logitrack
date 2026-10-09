@@ -1,9 +1,6 @@
 import { vi } from 'vitest';
 
-// Minimal fake for socket.io-client's Socket — just enough surface (on/off/
-// emit/connect/disconnect/connected + a manual event trigger) for testing
-// code that orchestrates a socket's lifecycle, without opening a real
-// connection. Shared across every test that mocks '@/services/websocket-client'.
+// Minimal socket.io Socket fake with a manual event trigger.
 export function makeFakeSocket() {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
   return {

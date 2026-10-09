@@ -9,9 +9,7 @@ import {
 } from './shipment-address-form';
 import { ShipmentConfirmReview } from './shipment-confirm-review';
 
-// One client component with internal step state, not 3 routes — nothing in
-// this draft needs to survive a page reload or be deep-linkable before the
-// final POST /shipments actually persists it.
+// Local step state, not routes: nothing persists before the final POST.
 type WizardState =
   | { step: 1 }
   | {
@@ -30,10 +28,7 @@ type WizardState =
 
 export function CreateShipmentWizard() {
   const [state, setState] = useState<WizardState>({ step: 1 });
-  // Step 1's own state ({ step: 1 }) carries no address, so coming back to
-  // it from step 2 needs the last-known values kept somewhere that survives
-  // the step change — otherwise "Back" silently drops everything the seller
-  // already typed.
+  // Kept outside the step state so Back to step 1 keeps the typed address.
   const [savedAddress, setSavedAddress] = useState<
     AddressFormValues | undefined
   >();

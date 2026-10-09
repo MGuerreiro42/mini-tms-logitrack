@@ -16,8 +16,6 @@ interface StatusMeta {
   className: string;
 }
 
-// Tailwind class strings, not new theme colors — 12 narrow, enum-keyed
-// mappings that nothing else in the app reuses (DESIGN.md § 19 discussion).
 export const APPROVAL_STATUS: Record<ApprovalStatus, StatusMeta> = {
   PENDING: {
     label: 'Pending',

@@ -13,9 +13,7 @@ interface ModalityToggleListProps {
   note?: string;
 }
 
-// One "Save" button, not one PUT per toggle — the backend endpoint is a full
-// replace, so batching avoids a round-trip per click and gives an implicit
-// "cancel" (don't hit Save) for free.
+// One Save for the whole set: the endpoint is a full replace.
 export function ModalityToggleList({
   items,
   onSave,

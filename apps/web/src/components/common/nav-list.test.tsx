@@ -13,9 +13,7 @@ const items = [
 ];
 
 describe('NavList', () => {
-  // Regression test for a real bug: a naive per-item `pathname.startsWith`
-  // check marked "Profile" (/seller) active on every nested seller route,
-  // since it's a literal string prefix of all of them.
+  // Regression: /seller is a string prefix of every nested seller route.
   it('marks only the section root active when the pathname is exactly the root', () => {
     vi.mocked(usePathname).mockReturnValue('/seller');
     render(<NavList items={items} />);

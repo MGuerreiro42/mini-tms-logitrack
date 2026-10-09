@@ -2,9 +2,7 @@ import type { GlobalRole } from '@/features/auth/types';
 
 export const SESSION_COOKIE = 'tms_session';
 
-// 1 day, matching the backend JWT's own expiry (apps/api auth.module.ts) —
-// the cookie outliving the token buys nothing, the token itself still gets
-// rejected (401) server-side once it expires.
+// Matches the API's JWT expiry.
 const MAX_AGE_SECONDS = 60 * 60 * 24;
 
 export interface Session {
@@ -14,8 +12,6 @@ export interface Session {
   email: string;
 }
 
-// Pure — safe to call from both server (after reading the raw cookie value
-// via next/headers) and client code, since it touches no browser/Node APIs.
 export function parseSessionCookie(raw: string | undefined): Session | null {
   if (!raw) return null;
   try {
@@ -29,8 +25,7 @@ export function parseSessionCookie(raw: string | undefined): Session | null {
   }
 }
 
-// Client-only from here down — never imported by a Server Component/layout,
-// which read the cookie via next/headers + parseSessionCookie() instead.
+// Client-only below; server code uses next/headers + parseSessionCookie().
 
 export function setSession(session: Session): void {
   const value = encodeURIComponent(JSON.stringify(session));
@@ -41,18 +36,7 @@ export function clearSession(): void {
   document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
 }
 
-// Memoized on the raw cookie string, not just called fresh every time:
-// document.cookie has to be re-read on every call (it's the only way to
-// notice a real change), but JSON.parse-ing it into a new object even when
-// the string is byte-for-byte identical means every consumer of
-// useSession() gets a different object reference on every render — a
-// footgun for any effect/memo that puts the session in a dependency array
-// (this bit useShipmentTracking's WebSocket lifecycle: an unrelated
-// re-render looked like "the session changed" and tore the socket down and
-// reconnected it for no reason). Comparing the raw string first means an
-// unchanged cookie returns the exact same object every time; a real change
-// (login/logout, a different user) still re-parses and returns a new one
-// immediately.
+// Memoized on the raw cookie: useSyncExternalStore needs a stable snapshot while it is unchanged.
 let lastRawCookieValue: string | undefined;
 let lastParsedSession: Session | null = null;
 
