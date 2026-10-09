@@ -21,6 +21,7 @@ const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
   { label: 'Pending', value: 'PENDING' },
   { label: 'Accepted', value: 'ACCEPTED' },
   { label: 'In transit', value: 'IN_TRANSIT' },
+  { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
 export function CarrierQueueTable() {
