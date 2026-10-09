@@ -136,3 +136,7 @@ export function isCancellableBySeller(status: ShipmentStatus): boolean {
 export function isClaimable(shipment: CarrierShipment): boolean {
   return shipment.status === 'PENDING' && !shipment.ownerId;
 }
+
+export function ownerLabel(shipment: CarrierShipment): string {
+  return shipment.ownerEmail ?? (isClaimable(shipment) ? 'Unclaimed' : '—');
+}

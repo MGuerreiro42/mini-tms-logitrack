@@ -230,6 +230,8 @@ describe('CarrierShipmentDetail', () => {
       await screen.findByText('No further action available.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Claim shipment' })).toBeNull();
+    expect(screen.queryByText('Unclaimed')).toBeNull();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 
   it('shows a not-found state instead of loading forever on a 404', async () => {
