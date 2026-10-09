@@ -5,17 +5,12 @@ import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/services/api-client';
-
-export interface QueryStateSource<T> {
-  data: T | undefined;
-  error: unknown;
-  refetch: () => unknown;
-}
+import type { QuerySource } from '@/types/query';
 
 const FORBIDDEN_MESSAGE = "You don't have access to this.";
 
 interface QueryStateProps<T> {
-  query: QueryStateSource<T>;
+  query: QuerySource<T>;
   children: (data: T) => ReactNode;
   errorMessage?: string;
   notFoundMessage?: string;
