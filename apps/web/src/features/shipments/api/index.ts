@@ -129,6 +129,18 @@ export function claimShipment(
   );
 }
 
+export function cancelShipment(
+  id: string,
+  note: string | undefined,
+  token: string,
+): Promise<Shipment> {
+  return apiClient<Shipment>(
+    `/shipments/${id}/cancel`,
+    { method: 'PATCH', body: JSON.stringify({ note }) },
+    token,
+  );
+}
+
 export function updateShipmentStatus(
   id: string,
   input: UpdateShipmentStatusInput,

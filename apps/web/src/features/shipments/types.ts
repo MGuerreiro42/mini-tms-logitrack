@@ -141,6 +141,12 @@ export const ALLOWED_NEXT_STATUSES: Record<ShipmentStatus, ShipmentStatus[]> = {
   CANCELLED: [],
 };
 
+const SELLER_CANCELLABLE: ShipmentStatus[] = ['PENDING', 'ACCEPTED'];
+
+export function isCancellableBySeller(status: ShipmentStatus): boolean {
+  return SELLER_CANCELLABLE.includes(status);
+}
+
 // A cancelled shipment can also be unowned, so ownership alone isn't enough.
 export function isClaimable(shipment: CarrierShipment): boolean {
   return shipment.status === 'PENDING' && !shipment.ownerId;
