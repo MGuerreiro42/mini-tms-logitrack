@@ -33,7 +33,7 @@ export function useApiMutation<TInput = void, TData = unknown>({
     mutationFn: (input: TInput) => mutationFn(input, token),
     onSuccess: () => {
       toast.success(successMessage);
-      refresh();
+      return refresh();
     },
     onError: (error) => {
       const isConflict = error instanceof ApiError && error.statusCode === 409;
