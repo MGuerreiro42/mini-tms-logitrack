@@ -7,7 +7,10 @@ import { makeFakeSocket } from '@/test/fake-socket';
 import { useShipmentTracking } from './use-shipment-tracking';
 
 vi.mock('@/hooks/use-session', () => ({ useSession: vi.fn() }));
-vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 
 const session = {
   token: 't',

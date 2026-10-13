@@ -8,6 +8,7 @@ import { API_URL } from '@/lib/api-url';
 import { getSessionFromDocument } from '@/lib/session';
 
 const sockets = new Map<string, Socket>();
+const consumers = new WeakMap<Socket, number>();
 
 function socketFor(
   url: string,
@@ -35,4 +36,19 @@ export function getSocket(): Socket {
 
 export function getPublicSocket(): Socket {
   return socketFor(new URL('/public', API_URL).toString());
+}
+
+export function retainSocket(socket: Socket): () => void {
+  const held = consumers.get(socket) ?? 0;
+  consumers.set(socket, held + 1);
+  if (held === 0) socket.connect();
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const left = (consumers.get(socket) ?? 1) - 1;
+    consumers.set(socket, left);
+    if (left === 0) socket.disconnect();
+  };
 }

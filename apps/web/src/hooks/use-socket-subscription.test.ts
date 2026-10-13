@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { StrictMode } from 'react';
 import type { Socket } from 'socket.io-client';
 import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
@@ -12,19 +13,25 @@ const rooms: SocketSubscription[] = [
   { event: 'subscribe:queue' },
 ];
 
-function setup(connectionKey: string | undefined) {
-  const socket = makeFakeSocket();
+type FakeSocket = ReturnType<typeof makeFakeSocket>;
+
+function setup(
+  connectionKey: string | undefined,
+  { socket = makeFakeSocket(), strict = false } = {},
+) {
   const onUpdate = vi.fn();
-  const hook = renderHook(() =>
-    useSocketSubscription({
-      getSocket: () => socket as unknown as Socket,
-      connectionKey,
-      subscriptions: rooms,
-      updateEvent: 'shipment:updated',
-      onUpdate,
-    }),
+  const hook = renderHook(
+    () =>
+      useSocketSubscription({
+        getSocket: () => socket as unknown as Socket,
+        connectionKey,
+        subscriptions: rooms,
+        updateEvent: 'shipment:updated',
+        onUpdate,
+      }),
+    { wrapper: strict ? StrictMode : undefined },
   );
-  return { socket, onUpdate, ...hook };
+  return { socket: socket as FakeSocket, onUpdate, ...hook };
 }
 
 async function flush() {
@@ -110,5 +117,43 @@ describe('useSocketSubscription', () => {
     act(() => socket.trigger('disconnect'));
 
     expect(useRealtimeStore.getState().connected).toBe(false);
+  });
+
+  it('survives the StrictMode double mount with one connection and one set of listeners', () => {
+    const { socket, unmount } = setup('token', { strict: true });
+
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
+
+    act(() => socket.trigger('connect'));
+    expect(socket.emit).toHaveBeenCalledTimes(rooms.length);
+
+    unmount();
+    expect(socket.disconnect).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one connection between two concurrent subscribers', () => {
+    const first = setup('token');
+    const { socket } = first;
+    socket.connected = true;
+    act(() => socket.trigger('connect'));
+    socket.emit.mockClear();
+
+    const second = setup('token', { socket });
+
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+    expect(socket.emit).toHaveBeenCalledTimes(rooms.length);
+
+    first.unmount();
+    expect(socket.disconnect).not.toHaveBeenCalled();
+
+    socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
+    expect(first.onUpdate).not.toHaveBeenCalledWith({
+      shipmentId: 'shipment-1',
+    });
+    expect(second.onUpdate).toHaveBeenCalledWith({ shipmentId: 'shipment-1' });
+
+    second.unmount();
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
   });
 });

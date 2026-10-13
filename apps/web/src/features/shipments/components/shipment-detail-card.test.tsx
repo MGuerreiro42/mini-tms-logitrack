@@ -10,7 +10,10 @@ import { renderWithQueryClient } from '@/test/render';
 import type { Shipment } from '../types';
 import { ShipmentDetailCard } from './shipment-detail-card';
 
-vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const API_URL = 'http://localhost:3333';
