@@ -1,16 +1,11 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { hardNavigate } from '@/lib/hard-navigate';
+import { endSession } from '@/lib/end-session';
 import { ROUTES } from '@/lib/routes';
-import { clearSession } from '@/lib/session';
 
 export function useLogout(): () => void {
   const queryClient = useQueryClient();
 
-  return () => {
-    queryClient.clear();
-    clearSession();
-    hardNavigate(ROUTES.login);
-  };
+  return () => endSession(queryClient, ROUTES.login);
 }

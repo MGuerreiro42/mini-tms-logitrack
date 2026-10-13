@@ -1,6 +1,9 @@
+import { hardNavigate } from '@/lib/hard-navigate';
 import { setSession } from '@/lib/session';
 import { ApiError } from '@/services/api-client';
 import { getQueryClient, shouldRetry } from './query-client';
+
+vi.mock('@/lib/hard-navigate', () => ({ hardNavigate: vi.fn() }));
 
 describe('shouldRetry', () => {
   it('never retries 4xx API errors', () => {
@@ -44,26 +47,14 @@ describe('getQueryClient (server)', () => {
 });
 
 describe('global 401 handling', () => {
-  const originalLocation = window.location;
-
   beforeEach(() => {
+    vi.mocked(hardNavigate).mockClear();
     document.cookie = 'tms_session=; path=/; max-age=0';
     setSession({
       token: 'signed.jwt.token',
       role: 'SELLER',
       userId: 'user-1',
       email: 'seller@example.com',
-    });
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, href: '' },
-    });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
     });
   });
 
@@ -79,7 +70,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login?expired=1');
+    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1');
     expect(client.getQueryData(['stale'])).toBeUndefined();
   });
 
@@ -94,7 +85,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).toContain('tms_session=');
-    expect(window.location.href).toBe('');
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 
   it('leaves the session untouched for a non-401/403 query error', async () => {
@@ -108,7 +99,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).toContain('tms_session=');
-    expect(window.location.href).toBe('');
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 
   it('keeps the session on a 403 query error (e.g. a carrier not approved yet)', async () => {
@@ -125,7 +116,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).toContain('tms_session=');
-    expect(window.location.href).toBe('');
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 
   it('clears the session and redirects to the expired-session login on a 401 mutation error (handleMutationError is a separate function from handleQueryError — needs its own coverage)', async () => {
@@ -137,7 +128,7 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login?expired=1');
+    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1');
   });
 
   it('does NOT clear the session on a 403 mutation error (a legitimate ownership rejection, not a broken session)', async () => {
@@ -155,7 +146,7 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).toContain('tms_session=');
-    expect(window.location.href).toBe('');
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 
   it('does NOT redirect on a 401 from a mutation that opts out via meta.skipAuthRedirect', async () => {
@@ -169,6 +160,6 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).toContain('tms_session=');
-    expect(window.location.href).toBe('');
+    expect(hardNavigate).not.toHaveBeenCalled();
   });
 });
