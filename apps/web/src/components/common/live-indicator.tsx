@@ -1,10 +1,26 @@
-'use client';
-
+import type { LiveStatus } from '@/lib/live-status';
 import { cn } from '@/lib/utils';
-import { useRealtimeStore } from '@/store/realtime-store';
 
-export function LiveIndicator({ className }: { className?: string }) {
-  const connected = useRealtimeStore((state) => state.connected);
+const STATES: Record<LiveStatus, { label: string; dot: string }> = {
+  connecting: {
+    label: 'Connecting…',
+    dot: 'animate-pulse bg-muted-foreground',
+  },
+  live: { label: 'Live', dot: 'animate-pulse bg-emerald-500' },
+  offline: {
+    label: 'Offline · updates refresh every few seconds',
+    dot: 'bg-amber-500',
+  },
+};
+
+export function LiveIndicator({
+  status,
+  className,
+}: {
+  status: LiveStatus;
+  className?: string;
+}) {
+  const { label, dot } = STATES[status];
 
   return (
     <span
@@ -14,14 +30,8 @@ export function LiveIndicator({ className }: { className?: string }) {
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'size-2 rounded-full',
-          connected ? 'animate-pulse bg-emerald-500' : 'bg-amber-500',
-        )}
-      />
-      {connected ? 'Live' : 'Reconnecting…'}
+      <span aria-hidden className={cn('size-2 rounded-full', dot)} />
+      {label}
     </span>
   );
 }

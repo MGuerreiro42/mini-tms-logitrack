@@ -6,6 +6,7 @@ import {
   type SocketSubscription,
   useSocketSubscription,
 } from '@/hooks/use-socket-subscription';
+import type { LiveStatus } from '@/lib/live-status';
 import { getSocket } from '@/services/websocket-client';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
 
@@ -28,10 +29,12 @@ function roomsFor({
   return rooms;
 }
 
-export function useShipmentTracking(options: UseShipmentTrackingOptions): void {
+export function useShipmentTracking(
+  options: UseShipmentTrackingOptions,
+): LiveStatus {
   const queryClient = useQueryClient();
 
-  useSocketSubscription({
+  return useSocketSubscription({
     getSocket,
     connectionKey: useSession()?.token,
     subscriptions: roomsFor(options),

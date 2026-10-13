@@ -35,13 +35,13 @@ export function CarrierQueueTable() {
     status: ALL as StatusFilter<ShipmentStatus>,
   });
 
-  const query = useShipmentQueue(params);
+  const liveStatus = useShipmentTracking({ subscribeToQueue: true });
+  const query = useShipmentQueue(params, liveStatus);
   const claim = useClaimShipment();
-  useShipmentTracking({ subscribeToQueue: true });
 
   return (
     <div className="space-y-4">
-      <LiveIndicator />
+      <LiveIndicator status={liveStatus} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
         value={filters.status}

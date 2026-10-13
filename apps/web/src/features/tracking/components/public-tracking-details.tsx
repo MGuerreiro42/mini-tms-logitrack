@@ -13,15 +13,15 @@ export function PublicTrackingDetails({
 }: {
   initialData: PublicTracking;
 }) {
-  const { data: tracking } = usePublicTracking(initialData);
-  usePublicTrackingSubscription(tracking.trackingCode);
+  const liveStatus = usePublicTrackingSubscription(initialData.trackingCode);
+  const { data: tracking } = usePublicTracking(initialData, liveStatus);
 
   return (
     <div className="space-y-4">
       <div className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <ShipmentStatusPill status={tracking.status} />
-          <LiveIndicator />
+          <LiveIndicator status={liveStatus} />
         </div>
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{tracking.modalityName}</span>
