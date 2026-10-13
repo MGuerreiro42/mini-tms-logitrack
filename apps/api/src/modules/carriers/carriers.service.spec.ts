@@ -627,12 +627,11 @@ describe('CarriersService', () => {
   describe('operatorRanking', () => {
     it('ranks CarrierUsers by total shipments owned, with delivered counts and emails', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy
-        .mockResolvedValueOnce([
-          { ownerId: 'carrier-user-1', _count: 5 },
-          { ownerId: 'carrier-user-2', _count: 2 },
-        ])
-        .mockResolvedValueOnce([{ ownerId: 'carrier-user-1', _count: 3 }]);
+      shipmentGroupBy.mockResolvedValue([
+        { ownerId: 'carrier-user-2', status: 'IN_TRANSIT', _count: 2 },
+        { ownerId: 'carrier-user-1', status: 'DELIVERED', _count: 3 },
+        { ownerId: 'carrier-user-1', status: 'ACCEPTED', _count: 2 },
+      ]);
       carrierUserFindMany.mockResolvedValue([
         { id: 'carrier-user-1', user: { email: 'manager@example.com' } },
         { id: 'carrier-user-2', user: { email: 'operator@example.com' } },
@@ -640,17 +639,13 @@ describe('CarriersService', () => {
 
       const result = await carriersService.operatorRanking('user-1');
 
-      expect(shipmentGroupBy).toHaveBeenNthCalledWith(1, {
-        by: ['ownerId'],
-        where: { carrierId: 'carrier-1', ownerId: { not: null } },
-        _count: true,
-      });
-      expect(shipmentGroupBy).toHaveBeenNthCalledWith(2, {
-        by: ['ownerId'],
+      expect(shipmentGroupBy).toHaveBeenCalledTimes(1);
+      expect(shipmentGroupBy).toHaveBeenCalledWith({
+        by: ['ownerId', 'status'],
         where: {
           carrierId: 'carrier-1',
           ownerId: { not: null },
-          status: 'DELIVERED',
+          status: { not: 'CANCELLED' },
         },
         _count: true,
       });
@@ -672,12 +667,24 @@ describe('CarriersService', () => {
 
     it('returns an empty array when no shipment has an owner yet', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      shipmentGroupBy.mockResolvedValue([]);
 
       const result = await carriersService.operatorRanking('user-1');
 
       expect(result).toEqual([]);
       expect(carrierUserFindMany).not.toHaveBeenCalled();
+    });
+
+    it('fails loudly when an owner has no CarrierUser row', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([
+        { ownerId: 'carrier-user-gone', status: 'DELIVERED', _count: 1 },
+      ]);
+      carrierUserFindMany.mockResolvedValue([]);
+
+      await expect(carriersService.operatorRanking('user-1')).rejects.toThrow(
+        'carrier-user-gone',
+      );
     });
 
     it('throws NotFoundException when the user has no CarrierUser link', async () => {
