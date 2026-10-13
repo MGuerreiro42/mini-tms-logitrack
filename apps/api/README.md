@@ -162,7 +162,13 @@ curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <a
 pnpm test        # unit (vitest run)
 pnpm test:watch  # unit, watch mode
 pnpm test:cov    # with coverage (@vitest/coverage-v8)
-pnpm test:e2e    # boots the whole AppModule + a real Postgres, via supertest
+pnpm test:e2e    # boots the whole AppModule against real Postgres + Redis
+```
+
+The e2e suite migrates and then truncates its database, so it refuses to start unless the database name ends with `_e2e`. It reads `E2E_DATABASE_URL`, falling back to `DATABASE_URL`:
+
+```bash
+E2E_DATABASE_URL="postgresql://tms:tms@localhost:5432/tms_e2e?schema=public" pnpm test:e2e
 ```
 
 Vitest, not Jest — its default transform doesn't implement `emitDecoratorMetadata` (used by Nest to resolve DI), so there's an SWC plugin configured in both `vitest.config*.ts` files specifically for that. Details and reasoning in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality).

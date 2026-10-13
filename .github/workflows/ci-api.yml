@@ -28,7 +28,7 @@ jobs:
         env:
           POSTGRES_USER: tms
           POSTGRES_PASSWORD: tms
-          POSTGRES_DB: tms
+          POSTGRES_DB: tms_e2e
         ports:
           - 5432:5432
         options: >-
@@ -37,7 +37,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://tms:tms@localhost:5432/tms?schema=public
+      DATABASE_URL: postgresql://tms:tms@localhost:5432/tms_e2e?schema=public
       JWT_SECRET: ci-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4

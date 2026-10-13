@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     root: './',
     include: ['test/**/*.e2e-spec.ts'],
+    globalSetup: './test/support/global-setup.ts',
     globals: true,
     environment: 'node',
     // Specs share one database; running files serially avoids fixture races.
