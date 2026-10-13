@@ -6,12 +6,30 @@ export const SESSION_CHANNEL = 'tms-session';
 export const SESSION_EXPIRED_PARAM = 'expired';
 export const SESSION_EXPIRED_PATH = `${ROUTES.login}?${SESSION_EXPIRED_PARAM}=1`;
 
-export const ROLE_HOME: Record<GlobalRole, string> = {
-  ADMIN: '/admin',
-  SELLER: '/seller',
-  CARRIER_MANAGER: '/carrier',
-  CARRIER_OPERATOR: '/carrier',
+export type Segment = 'admin' | 'seller' | 'carrier';
+
+export const SEGMENT_ROLES: Record<Segment, readonly GlobalRole[]> = {
+  admin: ['ADMIN'],
+  seller: ['SELLER'],
+  carrier: ['CARRIER_MANAGER', 'CARRIER_OPERATOR'],
 };
+
+export const ROLE_HOME = Object.fromEntries(
+  Object.entries(SEGMENT_ROLES).flatMap(([segment, roles]) =>
+    roles.map((role) => [role, `/${segment}`]),
+  ),
+) as Record<GlobalRole, string>;
+
+export function canEnterSegment(role: GlobalRole, segment: string): boolean {
+  return (
+    Object.hasOwn(SEGMENT_ROLES, segment) &&
+    SEGMENT_ROLES[segment as Segment].includes(role)
+  );
+}
+
+export function isCarrierRole(role: GlobalRole): boolean {
+  return SEGMENT_ROLES.carrier.includes(role);
+}
 
 const MAX_AGE_SECONDS = 60 * 60 * 24;
 

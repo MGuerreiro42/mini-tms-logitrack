@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { ROUTES } from '@/lib/routes';
 import { ApiError } from '@/services/api-client';
-import type { GlobalRole } from '@/types/auth';
 import {
+  canEnterSegment,
   parseSessionCookie,
   SESSION_COOKIE,
   SESSION_EXPIRED_PATH,
+  type Segment,
   type Session,
 } from './session';
 
@@ -17,10 +18,10 @@ export const getServerSession = cache(async (): Promise<Session | null> => {
 });
 
 // Layouts and pages render in parallel, so each one that fetches calls this itself before touching the API.
-export async function requireRole(...roles: GlobalRole[]): Promise<Session> {
+export async function requireSegment(segment: Segment): Promise<Session> {
   const session = await getServerSession();
   if (!session) redirect(ROUTES.login);
-  if (!roles.includes(session.role)) redirect(ROUTES.forbidden);
+  if (!canEnterSegment(session.role, segment)) redirect(ROUTES.forbidden);
   return session;
 }
 

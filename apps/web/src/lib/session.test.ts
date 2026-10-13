@@ -1,8 +1,11 @@
 import {
+  canEnterSegment,
   clearSession,
   getSessionFromDocument,
+  isCarrierRole,
   onSessionChangedElsewhere,
   parseSessionCookie,
+  ROLE_HOME,
   SESSION_CHANNEL,
   type Session,
   setSession,
@@ -36,6 +39,34 @@ describe('parseSessionCookie', () => {
     expect(
       parseSessionCookie(JSON.stringify({ ...session, role: 'ROOT' })),
     ).toBeNull();
+  });
+});
+
+describe('segments', () => {
+  it.each([
+    ['ADMIN', 'admin'],
+    ['SELLER', 'seller'],
+    ['CARRIER_MANAGER', 'carrier'],
+    ['CARRIER_OPERATOR', 'carrier'],
+  ] as const)('sends %s home to its own segment /%s', (role, segment) => {
+    expect(ROLE_HOME[role]).toBe(`/${segment}`);
+    expect(canEnterSegment(role, segment)).toBe(true);
+  });
+
+  it.each([
+    ['SELLER', 'admin'],
+    ['CARRIER_OPERATOR', 'seller'],
+    ['ADMIN', 'carrier'],
+    ['ADMIN', 'login'],
+    ['ADMIN', 'constructor'],
+  ] as const)('keeps %s out of /%s', (role, segment) => {
+    expect(canEnterSegment(role, segment)).toBe(false);
+  });
+
+  it('treats managers and operators as carrier roles', () => {
+    expect(isCarrierRole('CARRIER_MANAGER')).toBe(true);
+    expect(isCarrierRole('CARRIER_OPERATOR')).toBe(true);
+    expect(isCarrierRole('SELLER')).toBe(false);
   });
 });
 
