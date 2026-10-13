@@ -30,14 +30,17 @@ describe('TrackingListener', () => {
     );
   });
 
-  it('fans out shipment:updated to the shipment, carrier and admin rooms', () => {
+  it('broadcasts shipment:updated once over the shipment, carrier and admin rooms', () => {
     listener.handleShipmentStatusChanged(event);
 
-    expect(to).toHaveBeenCalledWith('shipment:shipment-1');
-    expect(to).toHaveBeenCalledWith('carrier:carrier-1');
-    expect(to).toHaveBeenCalledWith('admin:monitoring');
+    expect(to).toHaveBeenCalledTimes(1);
+    expect(to).toHaveBeenCalledWith([
+      'shipment:shipment-1',
+      'carrier:carrier-1',
+      'admin:monitoring',
+    ]);
+    expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith('shipment:updated', event);
-    expect(emit).toHaveBeenCalledTimes(3);
   });
 
   it('emits only trackingCode and status to the public tracking room', () => {

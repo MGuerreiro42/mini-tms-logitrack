@@ -22,14 +22,13 @@ export class TrackingListener {
 
   @OnEvent(SHIPMENT_STATUS_CHANGED)
   handleShipmentStatusChanged(event: ShipmentStatusChangedEvent): void {
+    // One broadcast over the union of rooms: a socket in several of them gets the event once.
     this.gateway.server
-      .to(shipmentRoom(event.shipmentId))
-      .emit('shipment:updated', event);
-    this.gateway.server
-      .to(carrierRoom(event.carrierId))
-      .emit('shipment:updated', event);
-    this.gateway.server
-      .to(ADMIN_MONITORING_ROOM)
+      .to([
+        shipmentRoom(event.shipmentId),
+        carrierRoom(event.carrierId),
+        ADMIN_MONITORING_ROOM,
+      ])
       .emit('shipment:updated', event);
 
     // Minimal payload: public subscribers must not learn ids, addresses or names.
