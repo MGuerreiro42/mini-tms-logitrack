@@ -7,7 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import { ApprovalStatus } from '../../../generated/prisma/client';
+import { ApprovalStatus, GlobalRole } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { isCarrierRole } from '../auth/carrier-roles';
 import type {
@@ -80,7 +80,7 @@ export class TrackingGateway implements OnGatewayInit {
       user: { id: user.id, email: user.email, role: user.role },
     };
 
-    if (user.role === 'SELLER') {
+    if (user.role === GlobalRole.SELLER) {
       data.sellerId = user.seller?.id;
     } else if (
       isCarrierRole(user.role) &&
@@ -107,7 +107,8 @@ export class TrackingGateway implements OnGatewayInit {
     if (!shipment) return { ok: false };
 
     const allowed =
-      (data.user.role === 'SELLER' && shipment.sellerId === data.sellerId) ||
+      (data.user.role === GlobalRole.SELLER &&
+        shipment.sellerId === data.sellerId) ||
       (isCarrierRole(data.user.role) && shipment.carrierId === data.carrierId);
     if (!allowed) return { ok: false };
 
@@ -126,7 +127,7 @@ export class TrackingGateway implements OnGatewayInit {
   @SubscribeMessage('subscribe:monitoring')
   async handleSubscribeMonitoring(client: Socket): Promise<{ ok: boolean }> {
     const data = client.data as SocketData;
-    if (data.user.role !== 'ADMIN') return { ok: false };
+    if (data.user.role !== GlobalRole.ADMIN) return { ok: false };
     await client.join(ADMIN_MONITORING_ROOM);
     return { ok: true };
   }
