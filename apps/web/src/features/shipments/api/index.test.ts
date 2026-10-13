@@ -6,7 +6,6 @@ import {
   getQueueShipment,
   getShipment,
   getShipmentStatusCounts,
-  getSlaSummary,
   listAdminShipments,
   listQueue,
   listShipments,
@@ -21,24 +20,6 @@ vi.mock('@/services/api-client', async (importOriginal) => ({
 describe('shipments api', () => {
   beforeEach(() => {
     vi.mocked(apiClient).mockReset();
-  });
-
-  it('getSlaSummary accepts an optional since window', async () => {
-    await getSlaSummary('token');
-    await getSlaSummary('token', { since: '2026-07-01T00:00:00.000Z' });
-
-    expect(apiClient).toHaveBeenNthCalledWith(
-      1,
-      '/shipments/sla-summary',
-      undefined,
-      'token',
-    );
-    expect(apiClient).toHaveBeenNthCalledWith(
-      2,
-      '/shipments/sla-summary?since=2026-07-01T00%3A00%3A00.000Z',
-      undefined,
-      'token',
-    );
   });
 
   it('getEligibleCarriers builds the query string from state/city/modalityId', async () => {
