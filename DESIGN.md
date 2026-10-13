@@ -17,7 +17,7 @@ Portfolio project — not a commercializable product. It demonstrates real domai
 | **Admin** | Platform owner | Created via seed, never through a public screen |
 | **Seller** | Merchant who needs to ship products | Public self-signup → onboarding → approval |
 | **Carrier (manager)** | Responsible for the carrier company | Company registration → admin approval |
-| **Carrier (operator)** | Executes day-to-day deliveries | Invited via token, sent by the carrier's manager (not yet built — see § 17) |
+| **Carrier (operator)** | Executes day-to-day deliveries | Invited via token, sent by the carrier's manager (not yet built — see § 7) |
 
 Carriers are companies with multiple logins (a manager plus any number of operators), not a single account per carrier — that's what makes the multi-tenancy real instead of just a `role` column.
 
@@ -177,7 +177,7 @@ flowchart TB
     Gateway -.->|"6. real-time push"| Browser
 ```
 
-The BullMQ workers and external map/email providers in the diagram are roadmap items (§ 17) — not implemented yet. Everything else in the diagram is live.
+The BullMQ workers and external map/email providers in the diagram are roadmap items (§ 7) — not implemented yet. Everything else in the diagram is live.
 
 ### Real-time flow (the project's technical core)
 
@@ -255,6 +255,8 @@ pnpm start:dev     # prestart:dev runs `prisma migrate deploy` on its own — ht
 
 Changing `schema.prisma` and generating a new migration is always a manual, deliberate step: `pnpm exec prisma migrate dev --name <name>`.
 
+`pnpm exec prisma db seed` always upserts the admin and the modality catalog (in production it refuses to run without `ADMIN_PASSWORD`). Demo sellers, carriers and shipments are seeded only with `SEED_DEMO=true`, because their password is public.
+
 ### Frontend (`apps/web`)
 
 ```bash
@@ -331,6 +333,7 @@ Shipment ──1:N── TrackingEvent (immutable history, never UPDATE)
 - `JwtStrategy` validates the token on every protected request and reloads the `User` from the database, so a deleted user doesn't stay "authenticated" just because the token hasn't expired.
 - `JwtAuthGuard` requires a valid token; `RolesGuard` + `@Roles(...)` requires a specific role. `@CurrentUser()` extracts the authenticated user in handlers without repeating `request.user`.
 - **Ownership-based checks**, layered on top of RBAC: a seller can only see their own record, a carrier user only their own company. There's no generic guard for this (every entity has a different owner FK), so each module's service scopes its own queries — e.g. `GET /shipments/:id` is fetched with `sellerId` inside the `WHERE` itself, and a shipment belonging to someone else returns `404`, not `403` (a `403` would confirm the id refers to a real record owned by someone else — an account-enumeration leak the ownership pattern deliberately avoids everywhere it's used).
+- **Rate limits** — `@nestjs/throttler` with Redis storage, so counters are shared across instances. Per client IP: `POST /auth/login` 10/min, public signups 5/min, `GET /public/tracking/:code` 60/min; `429` beyond that. `trust proxy` is on so the IP is the forwarded one, not the platform proxy's.
 
 ## 12. Sellers
 
@@ -345,7 +348,7 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 
 - **Self-signup + admin approval loop** — same shape as sellers (§ 12): `GET`/`PATCH /carriers/:id/approve|reject`, same `409` state-transition guard, same generic duplicate-conflict message.
 - **Own profile** — `GET /carriers/me` (open to managers and operators alike — viewing the company isn't a manager-only action). Modality and coverage-area config (`/carriers/me/modalities`, `/carriers/me/coverage-areas`) are `CARRIER_MANAGER`-only to mutate, full-replace semantics, same as sellers' modality config.
-- **Approval enforced** — a carrier that isn't `APPROVED` (still pending, or rejected) gets `403` on the queue, claim and status endpoints, and its sockets never join carrier or shipment rooms. Profile and config endpoints stay open so a pending carrier can set up.
+- **Approval enforced** — a carrier that isn't `APPROVED` (still pending, or rejected) gets `403` on the queue, claim and status endpoints, and its sockets never join carrier or shipment rooms. Profile and config endpoints stay open so a pending carrier can set up. A carrier approved while its users are connected joins rooms only after they reconnect (socket identity, § 15).
 - **Not yet implemented:** operator invites (§ 7).
 
 ## 14. Shipments
@@ -354,24 +357,30 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 - **Creation** — `POST /shipments` re-validates everything the preview implied, server-side, against the exact submitted `carrierId`/`modalityId`/address: nothing enforces a client actually used the preview before submitting. Generates a `trackingCode` (`TMS-` + 12 hex chars).
 - **Matching normalization** — `state` is uppercased at write time (keeps the comparison a plain indexable equality); `city` stays case-insensitive at query time, preserving its display casing.
 - **Reading shipments back** — `GET /shipments` / `GET /shipments/:id`, scoped to the caller's own `sellerId` inside the query itself; someone else's shipment returns `404`, same ownership pattern as § 11.
-- **Cancellation** — `PATCH /shipments/:id/cancel` (seller only, optional `note` ≤ 500 chars): allowed while `PENDING` or `ACCEPTED`, otherwise `409`. Same compare-and-set as the claim, so a carrier advancing the shipment at the same moment makes one side get `409`; another seller's shipment is `404`.
+- **Cancellation** — `PATCH /shipments/:id/cancel` (seller only, optional `note` ≤ 500 chars): allowed while `PENDING` or `ACCEPTED`, otherwise `409`. Same compare-and-set as the claim, so a carrier advancing the shipment at the same moment makes one side get `409`; another seller's shipment is `404`. Cancelling an `ACCEPTED` shipment keeps its `ownerId` as history, but cancelled shipments don't count as owned in the operator ranking (§ 16).
 
 ## 15. Carrier Queue & Real-Time Tracking
 
 - **Claim** — `PATCH /shipments/:id/claim`: any manager or operator of the carrier can claim a shipment, only while it is still `PENDING` and unowned (`409` otherwise, including after a seller cancel).
 - **Update status** — `PATCH /shipments/:id/status`: the owning `CarrierUser`, or any manager of that carrier (to unblock operations if the owner is unavailable); a non-owning operator gets `403`. A still-unclaimed (`PENDING`) shipment is rejected outright, pointing callers at `/claim` first — this stops a manager from silently skipping the claim step and corrupting the "claimed implies owned" invariant.
 - **Queue reads** — `GET /shipments/queue` and `/queue/:id`, the carrier-facing views (distinct DTOs from the seller-facing ones, since a carrier's view includes seller contact + owner info the seller's own view has no reason to see about itself).
-- **Real-time push** — every create/claim/status update/cancel emits `shipment.updated` internally; `TrackingListener` relays it over Socket.io to three rooms: `shipment:{id}` (seller + carrier viewing that one shipment), `carrier:{carrierId}` (the queue list), and `admin:monitoring` (§ 16). Room-membership checks re-run the same ownership scoping as the REST endpoints; every `subscribe:*` acks `{ ok }`, `true` only once the room is joined.
-- **Public namespace** — `/public` needs no token. `subscribe:tracking` takes a `trackingCode` (validated against `TMS-` + 12 hex chars), joins `tracking:{code}` only if it exists (one tracking room per socket) and acks `{ ok }`. Each status change emits `tracking:updated` with just `{ trackingCode, status }`, and the client refetches the public REST view.
+- **Real-time push** — every create/claim/status update/cancel emits `shipment.updated` internally; `TrackingListener` relays it over Socket.io in a single broadcast to the union of three rooms, so a socket in more than one gets it once: `shipment:{id}` (seller + carrier viewing that one shipment), `carrier:{carrierId}` (the queue list), and `admin:monitoring` (§ 16). The payload carries the status that request wrote, read inside its own transaction. Room-membership checks re-run the same ownership scoping as the REST endpoints; every `subscribe:*` acks `{ ok }`, `true` only once the room is joined.
+- **Public namespace** — `/public` needs no token. `subscribe:tracking` takes a `trackingCode` (validated against `TMS-` + 12 hex chars), joins `tracking:{code}` only if it exists (one tracking room per socket) and acks `{ ok }`. Each status change emits `tracking:updated` with just `{ trackingCode, status }`, and the client refetches the public REST view. Limits: 10 subscribes per 10 s per socket, then the server disconnects it; 16 KB per message (server-wide, clients only ever send ids and a JWT); the REST lookup is rate limited (§ 11).
+- **Transport** — WebSocket only, enforced server-side. Long-polling would need sticky sessions as soon as there is a second instance.
+- **Socket identity** — role, `sellerId` and approved `carrierId` are resolved once, in the connect middleware, and frozen for the life of the socket. A role or approval change, or a deleted user, takes effect on the next connect.
+- **No outbox** — a deliberate trade-off: the event is emitted in-process after the transaction commits. A crash between commit and emit loses that push, never the data, and clients refetch over REST on every (re)connect. An outbox table with a relay is the upgrade path if pushes ever need a delivery guarantee.
 - **Horizontal scaling** — a Redis adapter (`@socket.io/redis-adapter`) sits behind the gateway so `.emit()` calls propagate across every API instance subscribed to the same channel, not just the instance that handled the request.
 - **Public tracking** — anyone with a `trackingCode` can look up a shipment's current status and event timeline with no login, without exposing the seller's full address or internal notes.
-- **Concurrency** — claim, status update and cancel each write through an `updateMany` conditioned on the state they validated, plus the `TrackingEvent`, in one transaction; `0` rows matched is a `409`. An e2e test fires two concurrent claims and expects exactly one `200`.
+- **Concurrency** — claim, status update and cancel each write through an `updateMany` conditioned on the state they validated, plus the `TrackingEvent`, in one transaction; `0` rows matched is a `409`. An e2e test fires two concurrent claims and expects exactly one `200`; another races a cancel against a claim and checks the timeline stays coherent (the cancel always lands, since `ACCEPTED` is still cancellable; the claim is `200` or `409` depending on who wrote first).
 
 ## 16. Dashboards, Carrier Performance, and Global Monitoring
 
 - **Seller Dashboard** — `Pending`/`In transit`/`Delivered`/`Total` stat tiles (plus an `other` bucket covering every status without its own tile, so the tiles always add up to the total) and the 5 most recent shipments. A seller with zero shipments gets a "create your first shipment" empty state instead of all-zero tiles.
 - **Admin Dashboard** — seller/carrier totals plus a pending-approval count for each, linking straight into that approval queue.
-- **Carrier Performance** — `GET /carriers/me/performance`: shipment counts by status, `failedDeliveryRate`/`returnedRate`, and `avgHoursBetweenEvents` (average time between consecutive tracking events, computed in application code). `null` (not `0`) when there isn't enough data yet, so the UI can distinguish "no data" from "instantly fast."
+- **Carrier Performance** — `GET /carriers/me/performance`: shipment counts by status, `failedDeliveryRate`/`returnedRate`, `avgHoursBetweenEvents` (average time between consecutive tracking events) and `stageDurations` (average hours per happy-path stage, with its `sampleCount`), computed in application code. `null` (not `0`) when there isn't enough data yet, so the UI can distinguish "no data" from "instantly fast."
+- **Operator ranking** — `GET /carriers/me/operator-ranking`: shipments owned and delivered per `CarrierUser`, from one `groupBy`; cancelled shipments are excluded.
+- **Seller SLA summary** — `GET /shipments/sla-summary`: on-time rate per modality. The clock runs from shipment creation to its first `DELIVERED` event, compared with the modality's `slaHours`. Only `DELIVERED` shipments count: in-flight, failed and cancelled ones are left out, so the rate is optimistic by construction. Modalities without `slaHours` are omitted.
+- **Time window** — these three endpoints only consider shipments created inside a window: `?since=<ISO date>`, last 90 days by default, at most 365 days back (`400` otherwise). That bounds the in-memory aggregation; SQL window functions (`LAG()`) or a cached rollup are the next step if volume outgrows it.
 - **Admin Global Monitoring** — `GET /admin/shipments`, filterable by `status`/`carrierId`/`sellerId`, the one list endpoint with no ownership scoping (gated purely by the `ADMIN` role) — every one of the system's shipments, across every seller and carrier, in one table with all 9 statuses individually selectable.
 - **Known gap:** a live status-change push refetches the queue/detail/monitoring table, but dashboard stat tiles and Carrier Performance only pick up new numbers on next mount or manual refresh — the count endpoints aren't yet part of the WebSocket invalidation set.
 
@@ -379,7 +388,8 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 
 - **Biome** — single tool for lint + format across both apps (`pnpm lint` locally with `--write`, `pnpm lint:ci` without, for CI).
 - **lefthook** — `pre-commit` runs lint-staged; `commit-msg` validates Conventional Commits via commitlint.
-- **Vitest** — unit (`*.spec.ts`) and e2e (`test/**/*.e2e-spec.ts`, real Postgres via supertest + socket.io-client: cancel-then-claim, concurrent claims, cross-tenant `404`, carrier `CANCELLED` `403`, `/public` acks) tests in `apps/api`; component/hook tests in `apps/web`.
-- **GitHub Actions** (`.github/workflows/ci.yml`) — three jobs on every push/PR to `main`: `commitlint` (PRs only), `api` (lint:ci → build → unit → e2e against a real Postgres service container), `web` (lint:ci → build, which includes Next's type-check). Branch protection on `main` requires all three green.
-- Zod validates env vars at boot (`DATABASE_URL`, `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `NODE_ENV`) — a missing/invalid one fails fast with a clear message instead of surfacing later as a confusing runtime error.
+- **Vitest** — unit (`*.spec.ts`) and e2e (`test/**/*.e2e-spec.ts`, real Postgres and Redis with the production socket adapter, via supertest + socket.io-client: concurrent claims, cancel racing claim, cross-tenant `404`, unapproved carrier, live `tracking:updated`, socket auth, rate limits, health) tests in `apps/api`. The e2e suite refuses to run unless the database name ends with `_e2e`, migrates it first and truncates it at the end; component/hook tests in `apps/web`.
+- **GitHub Actions** — one workflow per concern (`ci-api.yml`, `ci-web.yml`, `commitlint.yml`), path-filtered per app, on pushes to `main` and on pull requests, stacked ones included: `commitlint` (PRs only), `api` (lint:ci → build → unit → e2e against Postgres and Redis service containers), `web` (lint:ci → build, which includes Next's type-check). Branch protection on `main` requires all three green.
+- Zod validates env vars at boot (`DATABASE_URL`, `REDIS_URL`, `PORT`, `JWT_SECRET`, `CORS_ORIGIN`, `NODE_ENV`) — a missing/invalid one fails fast with a clear message instead of surfacing later as a confusing runtime error.
+- **Health** — `GET /health` (`@nestjs/terminus`): `200` when Postgres and Redis both answer, `503` otherwise. Public and not rate limited.
 - Swagger (`/docs`) documents every implemented module; a module still a skeleton is deliberately left undocumented rather than describing an endpoint that doesn't do anything yet.
