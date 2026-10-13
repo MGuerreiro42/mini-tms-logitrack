@@ -7,6 +7,10 @@ describe('shouldRetry', () => {
     expect(shouldRetry(0, new ApiError(404, 'Not found'))).toBe(false);
   });
 
+  it('does not hammer a rate-limited endpoint', () => {
+    expect(shouldRetry(0, new ApiError(429, 'Too many requests'))).toBe(false);
+  });
+
   it('retries server and network errors up to 3 times', () => {
     expect(shouldRetry(0, new ApiError(503, 'Unavailable'))).toBe(true);
     expect(shouldRetry(2, new TypeError('Failed to fetch'))).toBe(true);
@@ -77,6 +81,20 @@ describe('global 401 handling', () => {
     expect(document.cookie).not.toContain('tms_session=signed');
     expect(window.location.href).toBe('/login?expired=1');
     expect(client.getQueryData(['stale'])).toBeUndefined();
+  });
+
+  it('keeps the session when a request is rate limited', async () => {
+    const client = getQueryClient();
+
+    await client
+      .fetchQuery({
+        queryKey: ['test-429'],
+        queryFn: () => Promise.reject(new ApiError(429, 'Too many requests')),
+      })
+      .catch(() => {});
+
+    expect(document.cookie).toContain('tms_session=');
+    expect(window.location.href).toBe('');
   });
 
   it('leaves the session untouched for a non-401/403 query error', async () => {

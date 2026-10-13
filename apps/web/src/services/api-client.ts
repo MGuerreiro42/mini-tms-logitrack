@@ -12,6 +12,14 @@ export class ApiError extends Error {
   }
 }
 
+const RATE_LIMITED_MESSAGE = 'Too many requests. Wait a moment and try again.';
+
+function errorMessage(res: Response, body: { message?: unknown } | null) {
+  if (res.status === 429) return RATE_LIMITED_MESSAGE;
+  if (Array.isArray(body?.message)) return body.message.join(', ');
+  return typeof body?.message === 'string' ? body.message : res.statusText;
+}
+
 export function isClientError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.statusCode < 500;
 }
@@ -32,10 +40,7 @@ export async function apiClient<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    const message = Array.isArray(body?.message)
-      ? body.message.join(', ')
-      : (body?.message ?? res.statusText);
-    throw new ApiError(res.status, message, body?.error);
+    throw new ApiError(res.status, errorMessage(res, body), body?.error);
   }
 
   if (res.status === 204) {

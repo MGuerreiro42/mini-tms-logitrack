@@ -89,6 +89,24 @@ describe('apiClient', () => {
     });
   });
 
+  it('replaces the throttler message on a 429 with one a person can act on', async () => {
+    server.use(
+      http.post(`${API_URL}/auth/login`, () =>
+        HttpResponse.json(
+          { statusCode: 429, message: 'ThrottlerException: Too Many Requests' },
+          { status: 429 },
+        ),
+      ),
+    );
+
+    await expect(
+      apiClient('/auth/login', { method: 'POST' }),
+    ).rejects.toMatchObject({
+      statusCode: 429,
+      message: 'Too many requests. Wait a moment and try again.',
+    });
+  });
+
   it('falls back to statusText when the error body has no message', async () => {
     server.use(
       http.get(
