@@ -27,7 +27,6 @@ type MetricBarChartProps<T> = {
   categoryKey: keyof T & string;
   valueKey: keyof T & string;
   valueLabel: string;
-  /** `horizontal`: ranked bars growing right; `vertical`: columns. */
   orientation: 'horizontal' | 'vertical';
   colors: BarColors;
   formatLabel?: (row: T) => string;
