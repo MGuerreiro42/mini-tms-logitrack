@@ -29,6 +29,12 @@ describe('parseSessionCookie', () => {
   it('returns null when token or role is missing', () => {
     expect(parseSessionCookie(JSON.stringify({ userId: 'user-1' }))).toBeNull();
   });
+
+  it('returns null for a role the app does not know', () => {
+    expect(
+      parseSessionCookie(JSON.stringify({ ...session, role: 'ROOT' })),
+    ).toBeNull();
+  });
 });
 
 describe('setSession / getSessionFromDocument / clearSession', () => {

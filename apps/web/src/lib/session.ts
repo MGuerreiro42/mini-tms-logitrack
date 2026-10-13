@@ -2,6 +2,13 @@ import type { GlobalRole } from '@/types/auth';
 
 export const SESSION_COOKIE = 'tms_session';
 
+export const ROLE_HOME: Record<GlobalRole, string> = {
+  ADMIN: '/admin',
+  SELLER: '/seller',
+  CARRIER_MANAGER: '/carrier',
+  CARRIER_OPERATOR: '/carrier',
+};
+
 const MAX_AGE_SECONDS = 60 * 60 * 24;
 
 export interface Session {
@@ -15,10 +22,10 @@ export function parseSessionCookie(raw: string | undefined): Session | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.token === 'string' && typeof parsed?.role === 'string') {
-      return parsed as Session;
-    }
-    return null;
+    const isSession =
+      typeof parsed?.token === 'string' &&
+      Object.hasOwn(ROLE_HOME, parsed.role);
+    return isSession ? (parsed as Session) : null;
   } catch {
     return null;
   }
