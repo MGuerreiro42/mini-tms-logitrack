@@ -12,6 +12,10 @@ export class ApiError extends Error {
   }
 }
 
+export function isClientError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.statusCode < 500;
+}
+
 export async function apiClient<T>(
   path: string,
   init?: RequestInit,

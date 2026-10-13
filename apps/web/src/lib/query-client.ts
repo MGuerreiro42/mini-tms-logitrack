@@ -6,7 +6,7 @@ import {
   QueryClient,
 } from '@tanstack/react-query';
 import { clearSession } from '@/lib/session';
-import { ApiError } from '@/services/api-client';
+import { ApiError, isClientError } from '@/services/api-client';
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -48,7 +48,7 @@ function handleMutationError(
 const MAX_RETRIES = 3;
 
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && error.statusCode < 500) return false;
+  if (isClientError(error)) return false;
   return failureCount < MAX_RETRIES;
 }
 
