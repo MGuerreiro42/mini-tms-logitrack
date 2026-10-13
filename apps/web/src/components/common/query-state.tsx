@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { ApiError } from '@/services/api-client';
 import type { QuerySource } from '@/types/query';
 
@@ -31,10 +32,10 @@ export function QueryState<T>({
 
   const status =
     query.error instanceof ApiError ? query.error.statusCode : undefined;
-  if (status === 404 || status === 403) {
+  if (status === HTTP_STATUS.NOT_FOUND || status === HTTP_STATUS.FORBIDDEN) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-        {status === 404 ? notFoundMessage : FORBIDDEN_MESSAGE}
+        {status === HTTP_STATUS.NOT_FOUND ? notFoundMessage : FORBIDDEN_MESSAGE}
       </div>
     );
   }
