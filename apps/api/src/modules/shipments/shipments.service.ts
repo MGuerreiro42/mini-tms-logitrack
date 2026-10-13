@@ -484,7 +484,7 @@ export class ShipmentsService {
     include: I;
   }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
     const { shipmentId, to } = params;
-    await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.shipment.updateMany({
         where: { id: shipmentId, ...params.expected },
         data: { ...params.data, status: to },
@@ -495,13 +495,13 @@ export class ShipmentsService {
       await tx.trackingEvent.create({
         data: { shipmentId, status: to, note: params.note },
       });
+      return tx.shipment.findUniqueOrThrow({
+        where: { id: shipmentId },
+        include: params.include,
+      });
     });
 
-    const updated = await this.prisma.shipment.findUniqueOrThrow({
-      where: { id: shipmentId },
-      include: params.include,
-    });
-    this.emitStatusChanged(updated);
+    this.emitStatusChanged({ ...updated, status: to });
     return updated;
   }
 
