@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
@@ -56,6 +57,10 @@ function mockDetail(shipment: CarrierShipment) {
 describe('CarrierShipmentDetail', () => {
   beforeEach(() => {
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('shows a Claim button and no advance controls for an unclaimed shipment', async () => {
@@ -235,6 +240,58 @@ describe('CarrierShipmentDetail', () => {
     expect(screen.queryByRole('button', { name: 'Claim shipment' })).toBeNull();
     expect(screen.queryByText('Unclaimed')).toBeNull();
     expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  describe('when the seller cancels while the page is open', () => {
+    async function cancelLive(viewerEmail: string) {
+      const info = vi.spyOn(toast, 'info');
+      const socket = makeFakeSocket();
+      vi.mocked(getSocket).mockReturnValue(socket as never);
+      setSession({
+        token: 't',
+        role: 'CARRIER_OPERATOR',
+        userId: 'user-1',
+        email: viewerEmail,
+      });
+      mockDetail(claimedByOperator);
+      renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+      await screen.findByText('TMS-AAA111');
+
+      mockDetail({ ...claimedByOperator, status: 'CANCELLED' });
+      socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
+      await screen.findByText('No further action available.');
+      return info;
+    }
+
+    it('tells the operator who owns the shipment', async () => {
+      const info = await cancelLive('operator@example.com');
+
+      expect(info).toHaveBeenCalledExactlyOnceWith(
+        'The seller cancelled this shipment.',
+      );
+    });
+
+    it('stays quiet for an operator who does not own it', async () => {
+      const info = await cancelLive('other-operator@example.com');
+
+      expect(info).not.toHaveBeenCalled();
+    });
+  });
+
+  it('does not announce a shipment that was already cancelled when opened', async () => {
+    const info = vi.spyOn(toast, 'info');
+    setSession({
+      token: 't',
+      role: 'CARRIER_OPERATOR',
+      userId: 'user-1',
+      email: 'operator@example.com',
+    });
+    mockDetail({ ...claimedByOperator, status: 'CANCELLED' });
+
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+    await screen.findByText('No further action available.');
+
+    expect(info).not.toHaveBeenCalled();
   });
 
   it('shows a not-found state instead of loading forever on a 404', async () => {
