@@ -5,6 +5,8 @@ import type { EnvConfig } from '../config/env.validation';
 
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
+const MAX_RETRIES_PER_COMMAND = 2;
+
 @Global()
 @Module({
   providers: [
@@ -14,7 +16,7 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
       useFactory: (configService: ConfigService<EnvConfig, true>) =>
         // Fail fast when Redis is down: the default queues each command behind 20 reconnect attempts.
         new Redis(configService.get('REDIS_URL', { infer: true }), {
-          maxRetriesPerRequest: 2,
+          maxRetriesPerRequest: MAX_RETRIES_PER_COMMAND,
         }),
     },
   ],
