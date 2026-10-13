@@ -141,6 +141,7 @@ export function ShipmentAddressForm({
                 <button
                   key={modality.id}
                   type="button"
+                  aria-pressed={selectedModalityId === modality.id}
                   onClick={() => setValue('modalityId', modality.id)}
                   className={`rounded-md border px-3 py-2 text-left text-sm ${
                     selectedModalityId === modality.id
