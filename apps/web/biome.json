@@ -34,8 +34,237 @@
       "includes": ["src/components/ui/**"],
       "linter": {
         "rules": {
-          "security": { "noDangerouslySetInnerHtml": "off" },
-          "suspicious": { "noArrayIndexKey": "off" }
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/components/**",
+        "src/hooks/**",
+        "src/lib/**",
+        "src/services/**",
+        "src/types/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/features/**"],
+                    "message": "Shared code cannot depend on features or routes."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/admin/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/admin/**",
+                      "!@/features/carriers/**",
+                      "!@/features/sellers/**"
+                    ],
+                    "message": "features/admin may import carriers or sellers; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/auth/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/auth/**"
+                    ],
+                    "message": "features/auth may import no other feature; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/carriers/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/carriers/**",
+                      "!@/features/companies/**",
+                      "!@/features/modalities/**"
+                    ],
+                    "message": "features/carriers may import companies or modalities; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/companies/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/companies/**"
+                    ],
+                    "message": "features/companies may import no other feature; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/modalities/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/modalities/**"
+                    ],
+                    "message": "features/modalities may import no other feature; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/sellers/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/sellers/**",
+                      "!@/features/companies/**",
+                      "!@/features/modalities/**"
+                    ],
+                    "message": "features/sellers may import companies or modalities; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/shipments/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/shipments/**",
+                      "!@/features/tracking/**"
+                    ],
+                    "message": "features/shipments may import tracking; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/tracking/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/tracking/**"
+                    ],
+                    "message": "features/tracking may import no other feature; compose anything else in app/."
+                  }
+                ]
+              }
+            }
+          }
         }
       }
     }
