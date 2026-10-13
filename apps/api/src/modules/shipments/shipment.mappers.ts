@@ -57,7 +57,7 @@ export const pickAddress = (source: AddressSource): ShipmentAddressDto => ({
   addressZipCode: source.addressZipCode,
 });
 
-export const toTrackingEventDto = (
+const toTrackingEventDto = (
   event: Pick<TrackingEvent, 'id' | 'status' | 'note' | 'createdAt'>,
 ): TrackingEventDto => ({
   id: event.id,
