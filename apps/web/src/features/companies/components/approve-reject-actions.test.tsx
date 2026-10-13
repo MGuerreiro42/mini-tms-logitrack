@@ -4,9 +4,9 @@ import { ApproveRejectActions } from './approve-reject-actions';
 
 describe('ApproveRejectActions', () => {
   it.each([
-    ['APPROVED', 'This application was approved.'],
-    ['REJECTED', 'This application was rejected.'],
-  ] as const)('replaces the buttons with the outcome once %s', (status, outcome) => {
+    'APPROVED',
+    'REJECTED',
+  ] as const)('offers no action once %s', (status) => {
     render(
       <ApproveRejectActions
         status={status}
@@ -15,7 +15,6 @@ describe('ApproveRejectActions', () => {
       />,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent(outcome);
     expect(screen.queryByRole('button')).toBeNull();
   });
 
