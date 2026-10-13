@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { apiErrorMessage } from '@/lib/toast-api-error';
 
 interface ConfirmDialogProps {
   trigger: React.ReactNode;
@@ -22,6 +23,8 @@ interface ConfirmDialogProps {
   onConfirm: () => Promise<unknown>;
   onOpenChange?: (open: boolean) => void;
   variant?: 'default' | 'destructive';
+  available?: boolean;
+  unavailableMessage?: string;
   children?: React.ReactNode;
 }
 
@@ -34,13 +37,17 @@ export function ConfirmDialog({
   onConfirm,
   onOpenChange,
   variant = 'default',
+  available = true,
+  unavailableMessage = 'This action is no longer available.',
   children,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   function applyOpen(next: boolean) {
     setOpen(next);
+    setFailure(null);
     onOpenChange?.(next);
   }
 
@@ -48,16 +55,24 @@ export function ConfirmDialog({
     if (!isConfirming) applyOpen(next);
   }
 
-  // A failure keeps the dialog and its inputs for a retry; reporting the error is the caller's job.
   async function confirm() {
     setIsConfirming(true);
-    const succeeded = await onConfirm().then(
-      () => true,
-      () => false,
-    );
-    setIsConfirming(false);
-    if (succeeded) applyOpen(false);
+    setFailure(null);
+    try {
+      await onConfirm();
+      applyOpen(false);
+    } catch (error) {
+      setFailure(apiErrorMessage(error));
+    } finally {
+      setIsConfirming(false);
+    }
   }
+
+  // An open dialog outlives its action, so the user is told why instead of watching it vanish.
+  if (!available && !open) return null;
+
+  const isWithdrawn = !available && !isConfirming;
+  const message = failure ?? (isWithdrawn ? unavailableMessage : null);
 
   return (
     <Dialog open={open} onOpenChange={requestOpen}>
@@ -67,20 +82,27 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {children}
+        {!isWithdrawn && children}
+        {message && (
+          <p role="alert" className="text-sm text-destructive">
+            {message}
+          </p>
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline" disabled={isConfirming}>
-              {dismissLabel}
+              {isWithdrawn ? 'Close' : dismissLabel}
             </Button>
           </DialogClose>
-          <Button
-            variant={variant === 'destructive' ? 'destructive' : 'default'}
-            onClick={confirm}
-            disabled={isConfirming}
-          >
-            {isConfirming ? 'Working…' : confirmLabel}
-          </Button>
+          {!isWithdrawn && (
+            <Button
+              variant={variant === 'destructive' ? 'destructive' : 'default'}
+              onClick={confirm}
+              disabled={isConfirming}
+            >
+              {isConfirming ? 'Working…' : confirmLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

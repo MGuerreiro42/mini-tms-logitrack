@@ -1,10 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '@/services/api-client';
 import { ConfirmDialog } from './confirm-dialog';
 
-function renderDialog(onConfirm: () => Promise<unknown>) {
-  const onOpenChange = vi.fn();
-  render(
+function dialog(
+  onConfirm: () => Promise<unknown>,
+  onOpenChange: (open: boolean) => void,
+  available = true,
+) {
+  return (
     <ConfirmDialog
       trigger={<button type="button">Open</button>}
       title="Reject this application?"
@@ -13,11 +17,19 @@ function renderDialog(onConfirm: () => Promise<unknown>) {
       dismissLabel="Keep"
       onConfirm={onConfirm}
       onOpenChange={onOpenChange}
+      available={available}
+      unavailableMessage="Already reviewed."
     >
       <input aria-label="Reason" />
-    </ConfirmDialog>,
+    </ConfirmDialog>
   );
-  return { onOpenChange };
+}
+
+function renderDialog(onConfirm: () => Promise<unknown>) {
+  const onOpenChange = vi.fn();
+  const view = render(dialog(onConfirm, onOpenChange));
+  const withdraw = () => view.rerender(dialog(onConfirm, onOpenChange, false));
+  return { onOpenChange, withdraw };
 }
 
 function deferred() {
@@ -84,6 +96,63 @@ describe('ConfirmDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'Reject' }));
     expect(onConfirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the API message of a failed confirmation and clears it on reopening', async () => {
+    const user = userEvent.setup();
+    renderDialog(
+      vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Already rejected',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('explains itself instead of vanishing when the action is withdrawn while open', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    const { withdraw } = renderDialog(onConfirm);
+
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    withdraw();
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Already reviewed.');
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+    expect(screen.queryByLabelText('Reason')).toBeNull();
+
+    await user.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open' })).toBeNull();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('keeps the API message when a conflict also withdraws the action', async () => {
+    const user = userEvent.setup();
+    const { withdraw } = renderDialog(
+      vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    await screen.findByRole('alert');
+    withdraw();
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Already rejected');
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+  });
+
+  it('renders nothing for an action that is not available', () => {
+    const { withdraw } = renderDialog(vi.fn());
+    withdraw();
+
+    expect(screen.queryByRole('button', { name: 'Open' })).toBeNull();
   });
 
   it('ignores Escape and the close button while confirming', async () => {
