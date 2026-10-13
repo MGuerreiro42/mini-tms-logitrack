@@ -1,5 +1,6 @@
-import { io, type Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import {
+  connectSocket,
   createShipment,
   createTenants,
   type E2eContext,
@@ -15,19 +16,17 @@ describe('Public tracking namespace (e2e)', () => {
     ctx = await startApp();
     const tenants = await createTenants(ctx);
     ({ trackingCode } = await createShipment(ctx, tenants.sellerA, tenants));
+  });
 
-    socket = io(`${ctx.url}/public`, {
-      transports: ['websocket'],
-      reconnection: false,
-    });
-    await new Promise<void>((resolve, reject) => {
-      socket.once('connect', resolve);
-      socket.once('connect_error', reject);
-    });
+  beforeEach(async () => {
+    socket = await connectSocket(ctx, '/public');
+  });
+
+  afterEach(() => {
+    socket.disconnect();
   });
 
   afterAll(async () => {
-    socket?.disconnect();
     await ctx.app.close();
   });
 
@@ -44,5 +43,18 @@ describe('Public tracking namespace (e2e)', () => {
     await expect(
       socket.emitWithAck('subscribe:tracking', 'not-a-code'),
     ).resolves.toEqual({ ok: false });
+  });
+
+  it('disconnects a socket that subscribes more than 10 times in 10 seconds', async () => {
+    const disconnected = new Promise<string>((resolve) => {
+      socket.once('disconnect', resolve);
+    });
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await socket.emitWithAck('subscribe:tracking', trackingCode);
+    }
+    socket.emit('subscribe:tracking', trackingCode);
+
+    await expect(disconnected).resolves.toBe('io server disconnect');
   });
 });
