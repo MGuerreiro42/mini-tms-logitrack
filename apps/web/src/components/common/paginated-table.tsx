@@ -13,6 +13,7 @@ import {
 import type { PaginationMeta } from '@/types/pagination';
 
 export interface Column<T> {
+  id?: string;
   header: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
@@ -44,7 +45,7 @@ export function PaginatedTable<T>({
           <TableHeader>
             <TableRow>
               {columns.map((col) => (
-                <TableHead key={col.header} className={col.className}>
+                <TableHead key={columnKey(col)} className={col.className}>
                   {col.header}
                 </TableHead>
               ))}
@@ -67,7 +68,7 @@ export function PaginatedTable<T>({
                 className={getRowHref ? 'relative' : undefined}
               >
                 {columns.map((col, index) => (
-                  <TableCell key={col.header} className={col.className}>
+                  <TableCell key={columnKey(col)} className={col.className}>
                     {getRowHref && index === 0 ? (
                       <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
                     ) : (
@@ -107,6 +108,10 @@ export function PaginatedTable<T>({
       )}
     </div>
   );
+}
+
+function columnKey<T>(column: Column<T>): string {
+  return column.id ?? column.header;
 }
 
 // Stretched link: other interactive cells need `relative z-10` to stay clickable.

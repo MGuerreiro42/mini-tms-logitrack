@@ -67,6 +67,7 @@ export function CarrierQueueTable() {
                 className: 'text-muted-foreground',
               },
               {
+                id: 'actions',
                 header: '',
                 className: 'text-right',
                 cell: (s) =>

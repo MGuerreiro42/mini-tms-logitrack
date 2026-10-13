@@ -93,6 +93,28 @@ describe('PaginatedTable', () => {
     );
   });
 
+  it('keys header-less columns by id without a duplicate-key warning', () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    render(
+      <PaginatedTable<Row>
+        columns={[
+          ...columns,
+          { id: 'edit', header: '', cell: () => 'Edit' },
+          { id: 'remove', header: '', cell: () => 'Remove' },
+        ]}
+        data={[{ id: 'row-1', name: 'Row 1' }]}
+        getRowKey={(row) => row.id}
+      />,
+    );
+
+    expect(screen.getByText('Edit')).toBeInTheDocument();
+    expect(screen.getByText('Remove')).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('renders no link when getRowHref is not provided', () => {
     render(
       <PaginatedTable<Row>
