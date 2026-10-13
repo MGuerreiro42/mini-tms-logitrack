@@ -380,18 +380,19 @@ describe('ShipmentsService', () => {
 
   describe('slaSummaryForSeller', () => {
     it('groups DELIVERED shipments by modality and computes on-time rate from createdAt to the DELIVERED event', async () => {
+      const slaHours = 24;
+      const createdAt = new Date('2026-01-01T00:00:00Z');
+      const deliveredAfter = (hours: number) => ({
+        createdAt,
+        modality: { code: 'EXPRESS', name: 'Express', slaHours },
+        trackingEvents: [
+          { createdAt: new Date(createdAt.getTime() + hours * 3_600_000) },
+        ],
+      });
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany.mockResolvedValue([
-        {
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
-          trackingEvents: [{ createdAt: new Date('2026-01-01T12:00:00Z') }], // 12h — on time
-        },
-        {
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
-          trackingEvents: [{ createdAt: new Date('2026-01-02T06:00:00Z') }], // 30h — late
-        },
+        deliveredAfter(slaHours - 12),
+        deliveredAfter(slaHours + 6),
       ]);
 
       const since = new Date('2025-12-01T00:00:00Z');
@@ -785,10 +786,11 @@ describe('ShipmentsService', () => {
 
   describe('updateStatus', () => {
     const dto: UpdateShipmentStatusDto = { status: 'COLLECTED' };
+    const acceptedAndOwnedByOperator = carrierShipment;
 
     it('allows the owning operator to advance a valid transition', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED, owned by operator
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
       mockTransition({
         ...carrierShipment,
         status: 'COLLECTED',
@@ -810,7 +812,7 @@ describe('ShipmentsService', () => {
 
     it('allows the manager to advance a shipment they do not own', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierManager);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // owned by the operator, not the manager
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
       mockTransition({
         ...carrierShipment,
         status: 'COLLECTED',
@@ -824,7 +826,7 @@ describe('ShipmentsService', () => {
     it('throws ForbiddenException for a non-owning operator', async () => {
       const otherOperator = { ...carrierOperator, id: 'someone-else' };
       carrierUserFindUnique.mockResolvedValue(otherOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // owned by 'carrier-user-operator'
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
 
       await expect(
         shipmentsService.updateStatus('user-other', 'shipment-1', dto),
@@ -834,7 +836,7 @@ describe('ShipmentsService', () => {
 
     it('throws BadRequestException for an invalid transition', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
       const skipAheadDto: UpdateShipmentStatusDto = { status: 'DELIVERED' };
 
       await expect(
@@ -849,7 +851,7 @@ describe('ShipmentsService', () => {
 
     it('throws ForbiddenException when a carrier tries to set CANCELLED, even a manager', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierManager);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
 
       await expect(
         shipmentsService.updateStatus('user-manager', 'shipment-1', {
@@ -876,7 +878,7 @@ describe('ShipmentsService', () => {
 
     it('throws ConflictException when the status changed concurrently (the conditional update matches 0 rows)', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
       shipmentUpdateManyAndReturn.mockResolvedValue([]);
 
       await expect(
