@@ -6,8 +6,9 @@ import {
   QueryClient,
 } from '@tanstack/react-query';
 import { endSession } from '@/lib/end-session';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { SESSION_EXPIRED_PATH } from '@/lib/session';
-import { ApiError, isClientError } from '@/services/api-client';
+import { hasStatus, isClientError } from '@/services/api-client';
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -25,7 +26,7 @@ function forceReLogin() {
 }
 
 function isExpiredSession(error: unknown): boolean {
-  return !isServer && error instanceof ApiError && error.statusCode === 401;
+  return !isServer && hasStatus(error, HTTP_STATUS.UNAUTHORIZED);
 }
 
 // Only a 401 ends the session; a 403 is an authorization answer the screen shows itself.

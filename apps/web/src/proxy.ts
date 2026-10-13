@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { ROUTES } from '@/lib/routes';
 import {
   canEnterSegment,
@@ -38,7 +39,7 @@ export function proxy(request: NextRequest) {
 
   if (!canEnterSegment(session.role, segment)) {
     return NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
-      status: 403,
+      status: HTTP_STATUS.FORBIDDEN,
     });
   }
 

@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { ROUTES } from '@/lib/routes';
-import { ApiError } from '@/services/api-client';
+import { hasStatus } from '@/services/api-client';
 import {
   canEnterSegment,
   parseSessionCookie,
@@ -29,10 +30,10 @@ export async function withAuthRedirects<T>(request: Promise<T>): Promise<T> {
   try {
     return await request;
   } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 401) {
+    if (hasStatus(error, HTTP_STATUS.UNAUTHORIZED)) {
       redirect(SESSION_EXPIRED_PATH);
     }
-    if (error instanceof ApiError && error.statusCode === 403) {
+    if (hasStatus(error, HTTP_STATUS.FORBIDDEN)) {
       redirect(ROUTES.forbidden);
     }
     throw error;

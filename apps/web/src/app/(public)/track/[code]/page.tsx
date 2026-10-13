@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { getPublicTracking } from '@/features/tracking/api';
 import { PublicTrackingDetails } from '@/features/tracking/components/public-tracking-details';
 import { trackingTitle } from '@/features/tracking/lib/tracking-title';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { visitorAddressHeaders } from '@/lib/visitor-address';
@@ -16,7 +17,10 @@ interface TrackingPageProps {
   params: Promise<{ code: string }>;
 }
 
-const EXPECTED_FAILURES = [404, 429];
+const EXPECTED_FAILURES: number[] = [
+  HTTP_STATUS.NOT_FOUND,
+  HTTP_STATUS.TOO_MANY_REQUESTS,
+];
 
 const findTracking = cache(async (code: string) => {
   try {
@@ -42,7 +46,7 @@ export async function generateMetadata({
   if (tracking instanceof ApiError) {
     return {
       title:
-        tracking.statusCode === 404
+        tracking.statusCode === HTTP_STATUS.NOT_FOUND
           ? 'Shipment not found · Mini TMS'
           : 'Too many requests · Mini TMS',
     };
@@ -64,7 +68,7 @@ export default async function TrackingPage({ params }: TrackingPageProps) {
 
   const tracking = await findTracking(canonicalCode);
   if (tracking instanceof ApiError) {
-    if (tracking.statusCode === 404) notFound();
+    if (tracking.statusCode === HTTP_STATUS.NOT_FOUND) notFound();
     return <RateLimited code={canonicalCode} />;
   }
 
