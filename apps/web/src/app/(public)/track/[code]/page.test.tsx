@@ -92,6 +92,9 @@ describe('TrackingPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Too many requests' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/you've looked up shipments too often/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Try again' })).toHaveAttribute(
       'href',
       '/track/TMS-BUSY00',
