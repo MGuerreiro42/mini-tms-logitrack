@@ -1,20 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { ROUTES } from '@/lib/routes';
 import {
+  canEnterSegment,
   parseSessionCookie,
   ROLE_HOME,
   SESSION_COOKIE,
   SESSION_EXPIRED_PARAM,
   type Session,
 } from '@/lib/session';
-import type { GlobalRole } from '@/types/auth';
-
-// UX-only gate: the API re-checks the signed JWT on every request.
-const ROLES_BY_SEGMENT: Record<string, GlobalRole[]> = {
-  admin: ['ADMIN'],
-  seller: ['SELLER'],
-  carrier: ['CARRIER_MANAGER', 'CARRIER_OPERATOR'],
-};
 
 function login(request: NextRequest, session: Session | null) {
   // A server render can't clear the cookie of the session it just found expired, so the redirect asks for it here.
@@ -28,6 +21,7 @@ function login(request: NextRequest, session: Session | null) {
     : NextResponse.next();
 }
 
+// UX-only gate: the API re-checks the signed JWT on every request.
 export function proxy(request: NextRequest) {
   const session = parseSessionCookie(
     request.cookies.get(SESSION_COOKIE)?.value,
@@ -42,7 +36,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(ROUTES.login, request.url));
   }
 
-  if (!ROLES_BY_SEGMENT[segment]?.includes(session.role)) {
+  if (!canEnterSegment(session.role, segment)) {
     return NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
       status: 403,
     });
