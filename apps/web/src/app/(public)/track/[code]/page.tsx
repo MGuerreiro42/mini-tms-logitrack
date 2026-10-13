@@ -87,7 +87,7 @@ function RateLimited({ code }: { code: string }) {
     <PublicCard
       badge={false}
       title="Too many requests"
-      description="This shipment was looked up too often in the last minute. Try again shortly."
+      description="You've looked up shipments too often in the last minute. Try again shortly."
       actions={
         <Button asChild>
           <Link href={publicTrackingPath(code)} prefetch={false}>
