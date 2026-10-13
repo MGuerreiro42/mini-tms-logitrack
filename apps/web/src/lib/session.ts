@@ -1,6 +1,8 @@
 import type { GlobalRole } from '@/types/auth';
 
 export const SESSION_COOKIE = 'tms_session';
+export const SESSION_EXPIRED_PARAM = 'expired';
+export const SESSION_EXPIRED_PATH = `/login?${SESSION_EXPIRED_PARAM}=1`;
 
 export const ROLE_HOME: Record<GlobalRole, string> = {
   ADMIN: '/admin',

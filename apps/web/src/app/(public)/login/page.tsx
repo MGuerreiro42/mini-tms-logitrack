@@ -1,12 +1,23 @@
 import Link from 'next/link';
 import { PublicCard } from '@/components/common/public-card';
 import { LoginForm } from '@/features/auth/components/login-form';
+import { SESSION_EXPIRED_PARAM } from '@/lib/session';
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const expired = SESSION_EXPIRED_PARAM in (await searchParams);
+
   return (
     <PublicCard
       title="Sign in to Mini TMS"
-      description="Sign in with your company account."
+      description={
+        expired
+          ? 'Your session expired. Sign in again to continue.'
+          : 'Sign in with your company account.'
+      }
     >
       <LoginForm />
       <div className="space-y-1 text-center text-sm text-muted-foreground">

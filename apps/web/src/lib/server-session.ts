@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { ApiError } from '@/services/api-client';
 import type { GlobalRole } from '@/types/auth';
-import { parseSessionCookie, SESSION_COOKIE, type Session } from './session';
+import {
+  parseSessionCookie,
+  SESSION_COOKIE,
+  SESSION_EXPIRED_PATH,
+  type Session,
+} from './session';
 
 export const getServerSession = cache(async (): Promise<Session | null> => {
   const cookieStore = await cookies();
@@ -23,7 +28,7 @@ export async function withAuthRedirects<T>(request: Promise<T>): Promise<T> {
     return await request;
   } catch (error) {
     if (error instanceof ApiError && error.statusCode === 401) {
-      redirect('/login');
+      redirect(SESSION_EXPIRED_PATH);
     }
     if (error instanceof ApiError && error.statusCode === 403) {
       redirect('/forbidden');
