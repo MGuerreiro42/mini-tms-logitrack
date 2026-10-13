@@ -1,7 +1,9 @@
 import {
   clearSession,
   getSessionFromDocument,
+  onSessionChangedElsewhere,
   parseSessionCookie,
+  SESSION_CHANNEL,
   type Session,
   setSession,
 } from './session';
@@ -84,5 +86,49 @@ describe('setSession / getSessionFromDocument / clearSession', () => {
 
     expect(second).not.toBe(first);
     expect(second?.token).toBe('a-different-token');
+  });
+});
+
+describe('cross-tab session changes', () => {
+  const session: Session = {
+    token: 'signed.jwt.token',
+    role: 'SELLER',
+    userId: 'user-1',
+    email: 'seller@example.com',
+  };
+  let otherTab: BroadcastChannel;
+
+  beforeEach(() => {
+    otherTab = new BroadcastChannel(SESSION_CHANNEL);
+  });
+
+  afterEach(() => {
+    otherTab.close();
+  });
+
+  it.each([
+    ['login', () => setSession(session)],
+    ['logout', () => clearSession()],
+  ])('announces a %s to other tabs but not to its own', async (_, change) => {
+    const ownListener = vi.fn();
+    const stop = onSessionChangedElsewhere(ownListener);
+    const heardElsewhere = vi.fn();
+    otherTab.addEventListener('message', heardElsewhere);
+
+    change();
+
+    await vi.waitFor(() => expect(heardElsewhere).toHaveBeenCalledTimes(1));
+    expect(ownListener).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('hears a change made in another tab', async () => {
+    const listener = vi.fn();
+    const stop = onSessionChangedElsewhere(listener);
+
+    otherTab.postMessage(null);
+
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+    stop();
   });
 });
