@@ -8,7 +8,10 @@ import { renderWithQueryClient } from '@/test/render';
 import type { PublicTracking } from '../types';
 import { PublicTrackingDetails } from './public-tracking-details';
 
-vi.mock('@/services/websocket-client', () => ({ getPublicSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getPublicSocket: vi.fn(),
+}));
 
 const API_URL = 'http://localhost:3333';
 

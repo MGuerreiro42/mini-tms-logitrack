@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent } from 'react';
 import type { Socket } from 'socket.io-client';
+import { retainSocket } from '@/services/websocket-client';
 import { useRealtimeStore } from '@/store/realtime-store';
 
 const ACK_TIMEOUT_MS = 5000;
@@ -71,7 +72,8 @@ export function useSocketSubscription<P>({
     socket.on(updateEvent, handleUpdate);
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-    socket.connect();
+    const release = retainSocket(socket);
+    // A socket another subscriber already holds open fires no connect event for this one.
     if (socket.connected) handleConnect();
 
     return () => {
@@ -79,7 +81,7 @@ export function useSocketSubscription<P>({
       socket.off(updateEvent, handleUpdate);
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.disconnect();
+      release();
       setConnected(false);
     };
   }, [connectionKey, subscriptionsKey, updateEvent, setConnected]);

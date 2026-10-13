@@ -9,7 +9,10 @@ import { renderWithQueryClient } from '@/test/render';
 import type { CarrierShipment } from '../types';
 import { CarrierShipmentDetail } from './carrier-shipment-detail';
 
-vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 
 const API_URL = 'http://localhost:3333';
 
