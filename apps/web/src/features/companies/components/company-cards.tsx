@@ -1,10 +1,10 @@
 'use client';
 
-import { ApproveRejectActions } from '@/components/common/approve-reject-actions';
 import { DetailRow } from '@/components/common/detail-row';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import type { ApprovalStatus } from '@/types/status';
+import { ApproveRejectActions } from './approve-reject-actions';
 
 export interface CompanyDetail {
   label: string;

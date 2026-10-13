@@ -1,4 +1,4 @@
-import type { CompanyDetail } from '@/components/common/company-cards';
+import type { CompanyDetail } from '@/features/companies/components/company-cards';
 import type { Carrier } from '../types';
 
 export function carrierDetails(
