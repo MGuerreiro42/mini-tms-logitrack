@@ -12,7 +12,7 @@ export default defineConfig({
   ],
   test: {
     root: './',
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     globals: true,
     environment: 'node',
     coverage: {
