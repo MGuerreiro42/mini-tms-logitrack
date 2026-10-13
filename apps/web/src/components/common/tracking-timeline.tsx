@@ -1,4 +1,5 @@
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { formatDateTime } from '@/lib/format-date';
 import type { TimelineEvent } from '@/types/status';
 
 export function TrackingTimeline({ events }: { events: TimelineEvent[] }) {
@@ -22,9 +23,12 @@ export function TrackingTimeline({ events }: { events: TimelineEvent[] }) {
             {event.note && (
               <p className="text-muted-foreground">{event.note}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {new Date(event.createdAt).toLocaleString()}
-            </p>
+            <time
+              dateTime={event.createdAt}
+              className="block text-xs text-muted-foreground"
+            >
+              {formatDateTime(event.createdAt)}
+            </time>
           </div>
         </li>
       ))}

@@ -30,4 +30,22 @@ describe('TrackingTimeline', () => {
     expect(screen.getByText('Collected')).toBeInTheDocument();
     expect(screen.getByText('Picked up from the seller')).toBeInTheDocument();
   });
+
+  it('renders each timestamp as a machine-readable time element', () => {
+    render(
+      <TrackingTimeline
+        events={[
+          {
+            status: 'ACCEPTED',
+            note: null,
+            createdAt: '2026-01-01T12:00:00.000Z',
+          },
+        ]}
+      />,
+    );
+
+    const time = screen.getByText('Jan 1, 2026, 09:00 GMT-3');
+    expect(time.tagName).toBe('TIME');
+    expect(time).toHaveAttribute('datetime', '2026-01-01T12:00:00.000Z');
+  });
 });
