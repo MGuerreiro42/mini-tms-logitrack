@@ -1,5 +1,6 @@
 import type { Column } from '@/components/common/paginated-table';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { formatDate } from '@/lib/format-date';
 import type { Shipment } from '../types';
 
 type ShipmentRow = Pick<
@@ -23,6 +24,6 @@ export const shipmentColumns = {
   created: {
     header: 'Created',
     className: 'text-right text-muted-foreground',
-    cell: (s) => new Date(s.createdAt).toLocaleDateString(),
+    cell: (s) => formatDate(s.createdAt),
   },
 } satisfies Record<string, Column<ShipmentRow>>;

@@ -11,6 +11,7 @@ import {
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
+import { formatDate } from '@/lib/format-date';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
 import type { QuerySource } from '@/types/query';
@@ -66,7 +67,7 @@ export function CompanyApprovalTable<T extends CompanyRow>({
     {
       header: 'Created',
       className: 'text-right text-muted-foreground',
-      cell: (c) => new Date(c.createdAt).toLocaleDateString(),
+      cell: (c) => formatDate(c.createdAt),
     },
   ];
 
