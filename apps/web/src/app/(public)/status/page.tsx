@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation';
 import { PublicCard } from '@/components/common/public-card';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
-import { getServerSession } from '@/lib/server-session';
-import { ApiError } from '@/services/api-client';
+import { getServerSession, withAuthRedirects } from '@/lib/server-session';
 
 const MESSAGES = {
   PENDING: {
@@ -32,25 +31,15 @@ export default async function StatusPage() {
   const isCarrier =
     session.role === 'CARRIER_MANAGER' || session.role === 'CARRIER_OPERATOR';
 
-  let status: string;
-  try {
-    const record = isCarrier
-      ? await getMyCarrier(session.token)
-      : await getMySeller(session.token);
-    status = record.status;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      redirect('/login');
-    }
-    throw error;
-  }
+  const { status } = await withAuthRedirects(
+    isCarrier ? getMyCarrier(session.token) : getMySeller(session.token),
+  );
 
   if (status === 'APPROVED') {
     redirect(isCarrier ? '/carrier' : '/seller');
   }
 
-  const message =
-    MESSAGES[status as 'PENDING' | 'REJECTED'] ?? MESSAGES.PENDING;
+  const message = status === 'REJECTED' ? MESSAGES.REJECTED : MESSAGES.PENDING;
   return <StatusCard title={message.title} body={message.body} />;
 }
 

@@ -3,8 +3,7 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMyCarrier } from '@/features/carriers/api';
 import { initialsFor } from '@/lib/initials';
-import { getServerSession } from '@/lib/server-session';
-import { ApiError } from '@/services/api-client';
+import { requireRole, withAuthRedirects } from '@/lib/server-session';
 
 const CARRIER_NAV: NavItem[] = [
   { name: 'Company', href: '/carrier' },
@@ -18,24 +17,8 @@ export default async function CarrierLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
-
-  if (
-    !session ||
-    (session.role !== 'CARRIER_MANAGER' && session.role !== 'CARRIER_OPERATOR')
-  ) {
-    redirect('/login');
-  }
-
-  let carrier: Awaited<ReturnType<typeof getMyCarrier>>;
-  try {
-    carrier = await getMyCarrier(session.token);
-  } catch (error) {
-    if (error instanceof ApiError) {
-      redirect('/login');
-    }
-    throw error;
-  }
+  const session = await requireRole('CARRIER_MANAGER', 'CARRIER_OPERATOR');
+  const carrier = await withAuthRedirects(getMyCarrier(session.token));
 
   if (carrier.status !== 'APPROVED') {
     redirect('/status');
