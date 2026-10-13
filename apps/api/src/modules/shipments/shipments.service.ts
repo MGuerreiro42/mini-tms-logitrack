@@ -49,10 +49,7 @@ import {
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
 } from './shipment.mappers';
-import {
-  SHIPMENT_STATUS_CHANGED,
-  type ShipmentStatusChangedEvent,
-} from './shipment-events';
+import { SHIPMENT_UPDATED, type ShipmentUpdatedEvent } from './shipment-events';
 import {
   CANCELLABLE_STATUSES,
   isValidTransition,
@@ -176,7 +173,7 @@ export class ShipmentsService {
       include: sellerShipmentInclude,
     });
 
-    this.emitStatusChanged(shipment);
+    this.emitUpdated(shipment);
 
     return toShipmentResponseDto(shipment);
   }
@@ -515,7 +512,7 @@ export class ShipmentsService {
       });
     });
 
-    this.emitStatusChanged({ ...updated, status: to });
+    this.emitUpdated({ ...updated, status: to });
     return updated;
   }
 
@@ -547,19 +544,19 @@ export class ShipmentsService {
     return seller;
   }
 
-  private emitStatusChanged(
+  private emitUpdated(
     shipment: Pick<
       Shipment,
       'id' | 'carrierId' | 'sellerId' | 'status' | 'trackingCode'
     >,
   ): void {
-    const event: ShipmentStatusChangedEvent = {
+    const event: ShipmentUpdatedEvent = {
       shipmentId: shipment.id,
       carrierId: shipment.carrierId,
       sellerId: shipment.sellerId,
       status: shipment.status,
       trackingCode: shipment.trackingCode,
     };
-    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, event);
+    this.eventEmitter.emit(SHIPMENT_UPDATED, event);
   }
 }

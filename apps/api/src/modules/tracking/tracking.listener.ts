@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
-  SHIPMENT_STATUS_CHANGED,
-  type ShipmentStatusChangedEvent,
+  SHIPMENT_UPDATED,
+  type ShipmentUpdatedEvent,
 } from '../shipments/shipment-events';
 import { PublicTrackingGateway } from './public-tracking.gateway';
 import { TrackingGateway } from './tracking.gateway';
@@ -20,8 +20,8 @@ export class TrackingListener {
     private readonly publicGateway: PublicTrackingGateway,
   ) {}
 
-  @OnEvent(SHIPMENT_STATUS_CHANGED)
-  handleShipmentStatusChanged(event: ShipmentStatusChangedEvent): void {
+  @OnEvent(SHIPMENT_UPDATED)
+  handleShipmentUpdated(event: ShipmentUpdatedEvent): void {
     // One broadcast over the union of rooms: a socket in several of them gets the event once.
     this.gateway.server
       .to([

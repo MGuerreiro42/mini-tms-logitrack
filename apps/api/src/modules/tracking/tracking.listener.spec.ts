@@ -1,4 +1,4 @@
-import type { ShipmentStatusChangedEvent } from '../shipments/shipment-events';
+import type { ShipmentUpdatedEvent } from '../shipments/shipment-events';
 import type { PublicTrackingGateway } from './public-tracking.gateway';
 import type { TrackingGateway } from './tracking.gateway';
 import { TrackingListener } from './tracking.listener';
@@ -9,7 +9,7 @@ describe('TrackingListener', () => {
   const publicEmit = vi.fn();
   const publicTo = vi.fn(() => ({ emit: publicEmit }));
 
-  const event: ShipmentStatusChangedEvent = {
+  const event: ShipmentUpdatedEvent = {
     shipmentId: 'shipment-1',
     carrierId: 'carrier-1',
     sellerId: 'seller-1',
@@ -31,7 +31,7 @@ describe('TrackingListener', () => {
   });
 
   it('broadcasts shipment:updated once over the shipment, carrier and admin rooms', () => {
-    listener.handleShipmentStatusChanged(event);
+    listener.handleShipmentUpdated(event);
 
     expect(to).toHaveBeenCalledTimes(1);
     expect(to).toHaveBeenCalledWith([
@@ -44,7 +44,7 @@ describe('TrackingListener', () => {
   });
 
   it('emits only trackingCode and status to the public tracking room', () => {
-    listener.handleShipmentStatusChanged(event);
+    listener.handleShipmentUpdated(event);
 
     expect(publicTo).toHaveBeenCalledWith('tracking:TMS-ABC123');
     expect(publicEmit).toHaveBeenCalledWith('tracking:updated', {
