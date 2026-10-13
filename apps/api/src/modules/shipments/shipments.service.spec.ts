@@ -26,6 +26,7 @@ describe('ShipmentsService', () => {
   const shipmentGroupBy = vi.fn();
   const shipmentUpdateMany = vi.fn();
   const shipmentFindUniqueOrThrow = vi.fn();
+  const committedShipmentFindUniqueOrThrow = vi.fn();
   const trackingEventCreate = vi.fn();
   const transaction = vi.fn();
   const emit = vi.fn();
@@ -116,12 +117,16 @@ describe('ShipmentsService', () => {
     shipmentGroupBy.mockReset();
     shipmentUpdateMany.mockReset();
     shipmentFindUniqueOrThrow.mockReset();
+    committedShipmentFindUniqueOrThrow.mockReset();
     trackingEventCreate.mockReset();
     transaction.mockReset();
     emit.mockReset();
 
     const tx = {
-      shipment: { updateMany: shipmentUpdateMany },
+      shipment: {
+        updateMany: shipmentUpdateMany,
+        findUniqueOrThrow: shipmentFindUniqueOrThrow,
+      },
       trackingEvent: { create: trackingEventCreate },
     };
     transaction.mockImplementation(
@@ -143,7 +148,7 @@ describe('ShipmentsService', () => {
               create: shipmentCreate,
               findMany: shipmentFindMany,
               findFirst: shipmentFindFirst,
-              findUniqueOrThrow: shipmentFindUniqueOrThrow,
+              findUniqueOrThrow: committedShipmentFindUniqueOrThrow,
               count: shipmentCount,
               groupBy: shipmentGroupBy,
               updateMany: shipmentUpdateMany,
@@ -698,6 +703,30 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(result.id).toBe('shipment-1');
+    });
+
+    it('returns and emits the status this request wrote when a later transition lands right after commit', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(pendingShipment);
+      shipmentUpdateMany.mockResolvedValue({ count: 1 });
+      shipmentFindUniqueOrThrow.mockResolvedValue(carrierShipment);
+      committedShipmentFindUniqueOrThrow.mockResolvedValue({
+        ...carrierShipment,
+        status: 'COLLECTED',
+      });
+
+      const result = await shipmentsService.claim(
+        'user-operator',
+        'shipment-1',
+      );
+
+      expect(committedShipmentFindUniqueOrThrow).not.toHaveBeenCalled();
+      expect(result.status).toBe('ACCEPTED');
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_STATUS_CHANGED,
+        expect.objectContaining({ status: 'ACCEPTED' }),
+      );
     });
 
     it('throws NotFoundException for a shipment belonging to another carrier', async () => {
