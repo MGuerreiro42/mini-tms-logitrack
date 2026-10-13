@@ -39,24 +39,28 @@ export function ConfirmDialog({
   const [open, setOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  function changeOpen(next: boolean) {
+  function applyOpen(next: boolean) {
     setOpen(next);
     onOpenChange?.(next);
   }
 
+  function requestOpen(next: boolean) {
+    if (!isConfirming) applyOpen(next);
+  }
+
+  // A failure keeps the dialog and its inputs for a retry; reporting the error is the caller's job.
   async function confirm() {
     setIsConfirming(true);
-    try {
-      await onConfirm();
-    } catch {
-    } finally {
-      setIsConfirming(false);
-      changeOpen(false);
-    }
+    const succeeded = await onConfirm().then(
+      () => true,
+      () => false,
+    );
+    setIsConfirming(false);
+    if (succeeded) applyOpen(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
+    <Dialog open={open} onOpenChange={requestOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>

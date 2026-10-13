@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { ConfirmDialog } from './confirm-dialog';
 
 function renderDialog(onConfirm: () => Promise<unknown>) {
+  const onOpenChange = vi.fn();
   render(
     <ConfirmDialog
       trigger={<button type="button">Open</button>}
@@ -11,8 +12,23 @@ function renderDialog(onConfirm: () => Promise<unknown>) {
       confirmLabel="Reject"
       dismissLabel="Keep"
       onConfirm={onConfirm}
-    />,
+      onOpenChange={onOpenChange}
+    >
+      <input aria-label="Reason" />
+    </ConfirmDialog>,
   );
+  return { onOpenChange };
+}
+
+function deferred() {
+  let settle: { resolve: () => void; reject: (error: Error) => void } = {
+    resolve: () => {},
+    reject: () => {},
+  };
+  const promise = new Promise<void>((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+  return { promise, ...settle };
 }
 
 describe('ConfirmDialog', () => {
@@ -40,13 +56,8 @@ describe('ConfirmDialog', () => {
 
   it('shows a working state while confirming, then closes', async () => {
     const user = userEvent.setup();
-    let resolve: () => void = () => {};
-    renderDialog(
-      () =>
-        new Promise<void>((r) => {
-          resolve = r;
-        }),
-    );
+    const { promise, resolve } = deferred();
+    const { onOpenChange } = renderDialog(() => promise);
 
     await user.click(screen.getByRole('button', { name: 'Open' }));
     await user.click(screen.getByRole('button', { name: 'Reject' }));
@@ -54,17 +65,41 @@ describe('ConfirmDialog', () => {
 
     resolve();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
-  it('closes and resets when the confirmation fails', async () => {
+  it('stays open with the typed input when the confirmation fails', async () => {
     const user = userEvent.setup();
-    renderDialog(vi.fn().mockRejectedValue(new Error('409')));
+    const onConfirm = vi.fn().mockRejectedValue(new Error('409'));
+    const { onOpenChange } = renderDialog(onConfirm);
+
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.type(screen.getByLabelText('Reason'), 'Wrong address');
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+
+    expect(await screen.findByRole('button', { name: 'Reject' })).toBeEnabled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('Reason')).toHaveValue('Wrong address');
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores Escape and the close button while confirming', async () => {
+    const user = userEvent.setup();
+    const { promise, resolve } = deferred();
+    const { onOpenChange } = renderDialog(() => promise);
 
     await user.click(screen.getByRole('button', { name: 'Open' }));
     await user.click(screen.getByRole('button', { name: 'Reject' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
 
-    await user.click(screen.getByRole('button', { name: 'Open' }));
-    expect(screen.getByRole('button', { name: 'Reject' })).toBeEnabled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    resolve();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });
