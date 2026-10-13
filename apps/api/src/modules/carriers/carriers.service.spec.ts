@@ -489,15 +489,17 @@ describe('CarriersService', () => {
         },
       ]);
 
-      const result = await carriersService.performance('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await carriersService.performance('user-1', since);
 
+      const where = { carrierId: 'carrier-1', createdAt: { gte: since } };
       expect(shipmentGroupBy).toHaveBeenCalledWith({
         by: ['status'],
-        where: { carrierId: 'carrier-1' },
+        where,
         _count: true,
       });
       expect(trackingEventFindMany).toHaveBeenCalledWith({
-        where: { shipment: { carrierId: 'carrier-1' } },
+        where: { shipment: where },
         select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       });
@@ -637,7 +639,8 @@ describe('CarriersService', () => {
         { id: 'carrier-user-2', user: { email: 'operator@example.com' } },
       ]);
 
-      const result = await carriersService.operatorRanking('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await carriersService.operatorRanking('user-1', since);
 
       expect(shipmentGroupBy).toHaveBeenCalledTimes(1);
       expect(shipmentGroupBy).toHaveBeenCalledWith({
@@ -646,6 +649,7 @@ describe('CarriersService', () => {
           carrierId: 'carrier-1',
           ownerId: { not: null },
           status: { not: 'CANCELLED' },
+          createdAt: { gte: since },
         },
         _count: true,
       });

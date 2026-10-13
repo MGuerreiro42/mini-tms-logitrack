@@ -22,6 +22,7 @@ import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import {
   average,
   countByStatus,
+  createdSince,
   hoursBetween,
   percentage,
 } from '../../shared/stats/stats';
@@ -183,17 +184,21 @@ export class CarriersService {
     return this.buildModalityToggles(carrierId);
   }
 
-  async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
+  async performance(
+    userId: string,
+    since?: Date,
+  ): Promise<CarrierPerformanceResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    const where = { carrierId, ...createdSince(since) };
 
     const [groups, events] = await Promise.all([
       this.prisma.shipment.groupBy({
         by: ['status'],
-        where: { carrierId },
+        where,
         _count: true,
       }),
       this.prisma.trackingEvent.findMany({
-        where: { shipment: { carrierId } },
+        where: { shipment: where },
         select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       }),
@@ -262,6 +267,7 @@ export class CarriersService {
 
   async operatorRanking(
     userId: string,
+    since?: Date,
   ): Promise<OperatorRankingItemResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
@@ -271,6 +277,7 @@ export class CarriersService {
         carrierId,
         ownerId: { not: null },
         status: { not: ShipmentStatus.CANCELLED },
+        ...createdSince(since),
       },
       _count: true,
     });

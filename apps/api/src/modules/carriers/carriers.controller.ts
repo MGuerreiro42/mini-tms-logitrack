@@ -11,6 +11,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
+import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -115,26 +116,32 @@ export class CarriersController {
 
   @ApiOperation({
     summary:
-      "Aggregated metrics scoped to the authenticated carrier's own shipments — read-only for both manager and operator",
+      "Aggregated metrics over the authenticated carrier's own shipments created in the window — read-only for both manager and operator",
   })
   @ApiResponse({ status: 200, type: CarrierPerformanceResponseDto })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @Auth(...CARRIER_ROLES)
   @Get('me/performance')
-  performance(@CurrentUser() user: AuthenticatedUser) {
-    return this.carriersService.performance(user.id);
+  performance(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    return this.carriersService.performance(user.id, query.since);
   }
 
   @ApiOperation({
     summary:
-      "Shipments owned per CarrierUser, ranked — read-only for both manager and operator. Today's carriers only ever have one CarrierUser (the manager), since operator invites aren't built yet",
+      "Non-cancelled shipments owned per CarrierUser in the window, ranked — read-only for both manager and operator. Today's carriers only ever have one CarrierUser (the manager), since operator invites aren't built yet",
   })
   @ApiResponse({ status: 200, type: [OperatorRankingItemResponseDto] })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @Auth(...CARRIER_ROLES)
   @Get('me/operator-ranking')
-  operatorRanking(@CurrentUser() user: AuthenticatedUser) {
-    return this.carriersService.operatorRanking(user.id);
+  operatorRanking(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    return this.carriersService.operatorRanking(user.id, query.since);
   }
 
   @ApiOperation({
