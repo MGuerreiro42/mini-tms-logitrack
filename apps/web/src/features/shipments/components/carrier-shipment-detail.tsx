@@ -77,6 +77,8 @@ function CarrierShipmentView({
   const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
   useCancelledNotice(shipment.status, isOwner);
   const actionState = getActionState(shipment, canAdvance);
+  const nextStatuses =
+    actionState.kind === 'advance' ? actionState.statuses : [];
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
@@ -102,17 +104,30 @@ function CarrierShipmentView({
                 {claim.isPending ? 'Claiming…' : 'Claim shipment'}
               </Button>
             )}
-            {actionState.kind === 'advance' &&
-              actionState.statuses.map((next) => (
-                <AdvanceStatusButton
+            {nextStatuses
+              .filter((next) => !isSetback(next))
+              .map((next) => (
+                <Button
                   key={next}
-                  status={next}
-                  onAdvance={() =>
-                    updateStatus.mutateAsync({ id, status: next })
-                  }
-                  isPending={updateStatus.isPending}
-                />
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => updateStatus.mutate({ id, status: next })}
+                  disabled={updateStatus.isPending}
+                >
+                  Advance to {SHIPMENT_STATUS[next].label}
+                </Button>
               ))}
+            {SETBACK_STATUSES.map((setback) => (
+              <SetbackAction
+                key={setback}
+                status={setback}
+                available={nextStatuses.includes(setback)}
+                onConfirm={() =>
+                  updateStatus.mutateAsync({ id, status: setback })
+                }
+                isPending={updateStatus.isPending}
+              />
+            ))}
             {actionState.kind === 'terminal' && (
               <p className="text-xs text-muted-foreground">
                 No further action available.
@@ -144,9 +159,7 @@ function useCancelledNotice(status: ShipmentStatus, isOwner: boolean): void {
   }, [status, isOwner]);
 }
 
-const SETBACK_CONFIRMATION: Partial<
-  Record<ShipmentStatus, { title: string; description: string }>
-> = {
+const SETBACKS = {
   FAILED_DELIVERY: {
     title: 'Mark delivery as failed?',
     description:
@@ -156,32 +169,30 @@ const SETBACK_CONFIRMATION: Partial<
     title: 'Return this shipment to the seller?',
     description: "This closes the shipment as returned and can't be undone.",
   },
-};
+} satisfies Partial<
+  Record<ShipmentStatus, { title: string; description: string }>
+>;
 
-function AdvanceStatusButton({
+type Setback = keyof typeof SETBACKS;
+
+const SETBACK_STATUSES = Object.keys(SETBACKS) as Setback[];
+
+function isSetback(status: ShipmentStatus): status is Setback {
+  return status in SETBACKS;
+}
+
+function SetbackAction({
   status,
-  onAdvance,
+  available,
+  onConfirm,
   isPending,
 }: {
-  status: ShipmentStatus;
-  onAdvance: () => Promise<unknown>;
+  status: Setback;
+  available: boolean;
+  onConfirm: () => Promise<unknown>;
   isPending: boolean;
 }) {
   const label = SHIPMENT_STATUS[status].label;
-  const confirmation = SETBACK_CONFIRMATION[status];
-
-  if (!confirmation) {
-    return (
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={onAdvance}
-        disabled={isPending}
-      >
-        Advance to {label}
-      </Button>
-    );
-  }
 
   return (
     <ConfirmDialog
@@ -190,11 +201,13 @@ function AdvanceStatusButton({
           {label}
         </Button>
       }
-      title={confirmation.title}
-      description={confirmation.description}
+      title={SETBACKS[status].title}
+      description={SETBACKS[status].description}
       confirmLabel={label}
       variant="destructive"
-      onConfirm={onAdvance}
+      onConfirm={onConfirm}
+      available={available}
+      unavailableMessage="This shipment has moved on, so this step no longer applies."
     />
   );
 }

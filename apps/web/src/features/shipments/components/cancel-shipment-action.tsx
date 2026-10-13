@@ -8,7 +8,15 @@ import { Label } from '@/components/ui/label';
 import { useCancelShipment } from '../hooks/use-cancel-shipment';
 import { TRACKING_NOTE_MAX_LENGTH } from '../types';
 
-export function CancelShipmentAction({ shipmentId }: { shipmentId: string }) {
+interface CancelShipmentActionProps {
+  shipmentId: string;
+  available: boolean;
+}
+
+export function CancelShipmentAction({
+  shipmentId,
+  available,
+}: CancelShipmentActionProps) {
   const [note, setNote] = useState('');
   const cancel = useCancelShipment();
 
@@ -24,6 +32,8 @@ export function CancelShipmentAction({ shipmentId }: { shipmentId: string }) {
       confirmLabel="Cancel shipment"
       variant="destructive"
       dismissLabel="Keep shipment"
+      available={available}
+      unavailableMessage="This shipment can no longer be cancelled."
       onOpenChange={(open) => {
         if (!open) setNote('');
       }}

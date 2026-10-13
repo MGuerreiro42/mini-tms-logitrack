@@ -19,14 +19,18 @@ export function ApproveRejectActions({
   isApproving,
   isRejecting,
 }: ApproveRejectActionsProps) {
-  if (status !== 'PENDING') return null;
+  const isPending = status === 'PENDING';
 
   return (
     <div className="flex gap-2">
-      <Button onClick={onApprove} disabled={isApproving || isRejecting}>
-        {isApproving ? 'Approving…' : 'Approve'}
-      </Button>
+      {isPending && (
+        <Button onClick={onApprove} disabled={isApproving || isRejecting}>
+          {isApproving ? 'Approving…' : 'Approve'}
+        </Button>
+      )}
       <ConfirmDialog
+        available={isPending}
+        unavailableMessage="This application was already reviewed."
         trigger={
           <Button variant="destructive" disabled={isApproving || isRejecting}>
             Reject

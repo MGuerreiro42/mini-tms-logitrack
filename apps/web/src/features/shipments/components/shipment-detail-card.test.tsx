@@ -1,3 +1,4 @@
+import { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
@@ -166,31 +167,70 @@ describe('ShipmentDetailCard', () => {
     expect(body).toEqual({ note: 'Customer gave up' });
   });
 
-  it('explains a 409 when the shipment can no longer be cancelled', async () => {
+  function collectElsewhere() {
     server.use(
-      http.patch(`${API_URL}/shipments/shipment-1/cancel`, () =>
-        HttpResponse.json(
-          { statusCode: 409, message: 'Conflict' },
-          { status: 409 },
-        ),
+      http.get(`${API_URL}/shipments/shipment-1`, () =>
+        HttpResponse.json({ ...pendingShipment, status: 'COLLECTED' }),
       ),
+    );
+  }
+
+  async function openCancelDialog(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      await screen.findByRole('button', { name: 'Cancel shipment' }),
+    );
+    return within(screen.getByRole('dialog'));
+  }
+
+  it('keeps the dialog open with the API message on a 409, then lets it be dismissed', async () => {
+    server.use(
+      http.patch(`${API_URL}/shipments/shipment-1/cancel`, () => {
+        collectElsewhere();
+        return HttpResponse.json(
+          { statusCode: 409, message: 'Shipment status changed concurrently' },
+          { status: 409 },
+        );
+      }),
     );
     const user = userEvent.setup();
     renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Cancel shipment' }),
+    const dialog = await openCancelDialog(user);
+    await user.click(dialog.getByRole('button', { name: 'Cancel shipment' }));
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Shipment status changed concurrently',
     );
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Cancel shipment',
-      }),
+    expect(toast.error).toHaveBeenCalledWith(
+      'This shipment can no longer be cancelled.',
+    );
+    await waitFor(() =>
+      expect(
+        dialog.queryByRole('button', { name: 'Cancel shipment' }),
+      ).toBeNull(),
     );
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'This shipment can no longer be cancelled.',
-      ),
+    await user.click(dialog.getAllByRole('button', { name: 'Close' })[0]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Cancel shipment' }),
+    ).toBeNull();
+  });
+
+  it('tells the seller when a live update withdraws the cancel action while the dialog is open', async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />, queryClient);
+
+    const dialog = await openCancelDialog(user);
+    collectElsewhere();
+    await act(() => queryClient.invalidateQueries());
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'This shipment can no longer be cancelled.',
     );
+    expect(
+      dialog.queryByRole('button', { name: 'Cancel shipment' }),
+    ).toBeNull();
   });
 });

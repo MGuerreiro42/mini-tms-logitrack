@@ -52,9 +52,10 @@ function ShipmentDetailView({
         <ShipmentAddressRows address={shipment} />
       </ShipmentHeaderCard>
       <div className="space-y-4">
-        {isCancellableBySeller(shipment.status) && (
-          <CancelShipmentAction shipmentId={shipment.id} />
-        )}
+        <CancelShipmentAction
+          shipmentId={shipment.id}
+          available={isCancellableBySeller(shipment.status)}
+        />
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Public tracking link</CardTitle>
