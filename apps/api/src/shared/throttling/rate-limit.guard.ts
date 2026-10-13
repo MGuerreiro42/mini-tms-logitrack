@@ -5,7 +5,7 @@ import {
   type ThrottlerRequest,
 } from '@nestjs/throttler';
 
-export const UNKNOWN_CLIENT = 'unknown';
+const UNKNOWN_CLIENT = 'unknown';
 
 const logger = new Logger('RateLimitGuard');
 

@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { ThrottlerModule, type ThrottlerStorage } from '@nestjs/throttler';
 import request from 'supertest';
 import { RateLimit } from './rate-limit.decorator';
-import { RateLimitGuard, UNKNOWN_CLIENT } from './rate-limit.guard';
+import { RateLimitGuard } from './rate-limit.guard';
 import { FALLBACK_RATE_LIMIT, RATE_LIMIT_WINDOW } from './rate-limits';
 
 @Controller()
@@ -79,7 +79,9 @@ describe('RateLimitGuard', () => {
     await expect(guard.getTracker({ ip: '203.0.113.7' })).resolves.toBe(
       '203.0.113.7',
     );
-    await expect(guard.getTracker({})).resolves.toBe(UNKNOWN_CLIENT);
+    const sharedBucket = await guard.getTracker({});
+    expect(sharedBucket).toBeTruthy();
+    await expect(guard.getTracker({ ip: '' })).resolves.toBe(sharedBucket);
   });
 
   it('lets requests through, with a warning, when the storage fails', async () => {
