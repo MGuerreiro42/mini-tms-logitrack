@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -16,6 +15,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import { countByStatus } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
+import { ModalitiesService } from '../modalities/modalities.service';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
 import type { SellerStatusCountsResponseDto } from './dto/status-counts-response.dto';
@@ -35,6 +35,7 @@ export class SellersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
+    private readonly modalitiesService: ModalitiesService,
   ) {}
 
   async signup(dto: CreateSellerDto): Promise<SellerResponseDto> {
@@ -176,16 +177,7 @@ export class SellersService {
   ): Promise<ModalityToggleResponseDto[]> {
     const seller = await this.findSellerByUserIdOrThrow(userId);
 
-    if (modalityIds.length > 0) {
-      const validCount = await this.prisma.deliveryModality.count({
-        where: { id: { in: modalityIds } },
-      });
-      if (validCount !== new Set(modalityIds).size) {
-        throw new BadRequestException(
-          'One or more modalityIds do not exist in the DeliveryModality catalog',
-        );
-      }
-    }
+    await this.modalitiesService.assertAllExist(modalityIds);
 
     await this.prisma.$transaction([
       this.prisma.sellerModality.deleteMany({
@@ -213,21 +205,13 @@ export class SellersService {
   private async buildModalityToggles(
     sellerId: string,
   ): Promise<ModalityToggleResponseDto[]> {
-    const [catalog, enabled] = await Promise.all([
-      this.prisma.deliveryModality.findMany({ orderBy: { code: 'asc' } }),
-      this.prisma.sellerModality.findMany({
-        where: { sellerId },
-        select: { modalityId: true },
-      }),
-    ]);
-
-    const enabledIds = new Set(enabled.map((row) => row.modalityId));
-    return catalog.map((modality) => ({
-      id: modality.id,
-      code: modality.code,
-      name: modality.name,
-      enabled: enabledIds.has(modality.id),
-    }));
+    const enabled = await this.prisma.sellerModality.findMany({
+      where: { sellerId },
+      select: { modalityId: true },
+    });
+    return this.modalitiesService.findToggles(
+      enabled.map((row) => row.modalityId),
+    );
   }
 
   private toResponseDto(seller: SellerWithUser): SellerResponseDto {

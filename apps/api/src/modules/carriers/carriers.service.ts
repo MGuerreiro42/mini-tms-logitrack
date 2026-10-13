@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -27,6 +26,7 @@ import {
   percentage,
 } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
+import { ModalitiesService } from '../modalities/modalities.service';
 import type {
   CarrierPerformanceResponseDto,
   StageDurationResponseDto,
@@ -65,6 +65,7 @@ export class CarriersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
+    private readonly modalitiesService: ModalitiesService,
   ) {}
 
   async signup(dto: CreateCarrierDto): Promise<CarrierResponseDto> {
@@ -163,16 +164,7 @@ export class CarriersService {
   ): Promise<ModalityToggleResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    if (modalityIds.length > 0) {
-      const validCount = await this.prisma.deliveryModality.count({
-        where: { id: { in: modalityIds } },
-      });
-      if (validCount !== new Set(modalityIds).size) {
-        throw new BadRequestException(
-          'One or more modalityIds do not exist in the DeliveryModality catalog',
-        );
-      }
-    }
+    await this.modalitiesService.assertAllExist(modalityIds);
 
     await this.prisma.$transaction([
       this.prisma.carrierModality.deleteMany({ where: { carrierId } }),
@@ -367,21 +359,13 @@ export class CarriersService {
   private async buildModalityToggles(
     carrierId: string,
   ): Promise<ModalityToggleResponseDto[]> {
-    const [catalog, enabled] = await Promise.all([
-      this.prisma.deliveryModality.findMany({ orderBy: { code: 'asc' } }),
-      this.prisma.carrierModality.findMany({
-        where: { carrierId },
-        select: { modalityId: true },
-      }),
-    ]);
-
-    const enabledIds = new Set(enabled.map((row) => row.modalityId));
-    return catalog.map((modality) => ({
-      id: modality.id,
-      code: modality.code,
-      name: modality.name,
-      enabled: enabledIds.has(modality.id),
-    }));
+    const enabled = await this.prisma.carrierModality.findMany({
+      where: { carrierId },
+      select: { modalityId: true },
+    });
+    return this.modalitiesService.findToggles(
+      enabled.map((row) => row.modalityId),
+    );
   }
 
   private async findCarrierIdForUserOrThrow(userId: string): Promise<string> {

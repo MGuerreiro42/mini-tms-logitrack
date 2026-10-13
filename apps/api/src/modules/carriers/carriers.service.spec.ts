@@ -7,6 +7,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { ModalitiesService } from '../modalities/modalities.service';
 import { CarriersService } from './carriers.service';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
 
@@ -87,6 +88,7 @@ describe('CarriersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CarriersService,
+        ModalitiesService,
         {
           provide: PrismaService,
           useValue: {
