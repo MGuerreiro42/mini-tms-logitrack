@@ -7,7 +7,6 @@ on:
       - "apps/web/**"
       - ".github/workflows/ci-web.yml"
   pull_request:
-    branches: [main]
     paths:
       - "apps/web/**"
       - ".github/workflows/ci-web.yml"
