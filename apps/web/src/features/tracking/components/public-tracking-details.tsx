@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
+import { trackingTitle } from '../lib/tracking-title';
 import type { PublicTracking } from '../types';
 import { TrackingTimeline } from './tracking-timeline';
 
@@ -15,6 +17,12 @@ export function PublicTrackingDetails({
 }) {
   const liveStatus = usePublicTrackingSubscription(initialData.trackingCode);
   const { data: tracking } = usePublicTracking(initialData, liveStatus);
+  const title = trackingTitle(tracking);
+
+  // Route metadata is rendered once on the server, so a live status change has to retitle the tab here.
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
 
   return (
     <div className="space-y-4">
