@@ -133,13 +133,40 @@ describe('useSocketSubscription', () => {
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
-  it('resyncs on every (re)connect and forwards update payloads', () => {
+  it('resyncs once the rooms ack, not when the socket connects', async () => {
     const { socket, onUpdate } = setup('token');
 
     act(() => socket.trigger('connect'));
-    expect(onUpdate).toHaveBeenCalledWith(undefined);
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    await act(async () => socket.ackAll({ ok: true }));
+    expect(onUpdate).toHaveBeenCalledExactlyOnceWith(undefined);
+  });
+
+  it('resyncs again after every reconnect', async () => {
+    const { socket, onUpdate } = setup('token');
+    await connectAndAck(socket);
+    act(() => socket.trigger('disconnect'));
+    socket.emit.mockClear();
+
+    await connectAndAck(socket);
+
+    expect(onUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('resyncs even when a room refuses the subscription', async () => {
+    const { socket, onUpdate } = setup('token');
+
+    await connectAndAck(socket, { ok: false });
+
+    expect(onUpdate).toHaveBeenCalledExactlyOnceWith(undefined);
+  });
+
+  it('forwards update payloads', () => {
+    const { socket, onUpdate } = setup('token');
 
     socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
+
     expect(onUpdate).toHaveBeenCalledWith({ shipmentId: 'shipment-1' });
   });
 

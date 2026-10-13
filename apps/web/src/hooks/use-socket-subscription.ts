@@ -56,15 +56,15 @@ export function useSocketSubscription<P>({
       notify(payload);
     }
 
-    // Rooms aren't replayed after a reconnect: re-subscribe, then refetch to catch up.
+    // Rooms aren't replayed after a reconnect; the catch-up refetch waits for the acks so nothing emitted before the join is missed.
     function handleConnect() {
       const current = ++attempt;
       Promise.all(rooms.map((room) => subscribe(socket, room))).then((oks) => {
         // An ack that times out after a newer connection went live must not flip it back.
         if (current !== attempt) return;
         setStatus(oks.every(Boolean) ? 'live' : 'offline');
+        notify();
       });
-      handleUpdate();
     }
 
     function handleOffline() {

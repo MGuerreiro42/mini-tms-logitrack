@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
@@ -130,7 +130,7 @@ describe('useShipmentTracking', () => {
     );
   });
 
-  it('invalidates on every (re)connect, not just on a received message (regression: a message missed during a disconnect must not leave the view stuck on stale data)', () => {
+  it('invalidates after every (re)subscription, not just on a received message', async () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     const queryClient = new QueryClient();
@@ -141,10 +141,13 @@ describe('useShipmentTracking', () => {
     });
 
     socket.trigger('connect');
+    await act(async () => socket.ackAll({ ok: true }));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
     invalidateSpy.mockClear();
+    socket.emit.mockClear();
 
     socket.trigger('connect');
+    await act(async () => socket.ackAll({ ok: true }));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
 
