@@ -1,5 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
 import { ShipmentsService } from './shipments.service';
 import { TrackingCodePipe } from './tracking-code.pipe';
@@ -18,6 +19,7 @@ export class PublicTrackingController {
     status: 404,
     description: 'Malformed code, or no shipment with it',
   })
+  @RateLimit(60)
   @Get(':code')
   findByTrackingCode(@Param('code', TrackingCodePipe) code: string) {
     return this.shipmentsService.findPublicByTrackingCode(code);

@@ -1,8 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import type { GlobalRole } from '../../generated/prisma/client';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
@@ -12,7 +11,7 @@ import { PrismaService } from '../../src/shared/prisma/prisma.service';
 const PASSWORD = 'e2e-password-123';
 
 export interface E2eContext {
-  app: INestApplication<App>;
+  app: NestExpressApplication;
   url: string;
   prisma: PrismaService;
 }
@@ -21,11 +20,14 @@ export async function startApp(): Promise<E2eContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication<INestApplication<App>>();
+  const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
   await app.listen(0);
   return { app, url: await app.getUrl(), prisma: app.get(PrismaService) };
 }
+
+export const randomIp = () =>
+  Array.from({ length: 4 }, () => randomInt(1, 255)).join('.');
 
 const uniqueDocument = () =>
   Array.from({ length: 14 }, () => randomInt(10)).join('');
@@ -40,6 +42,7 @@ async function createUser(ctx: E2eContext, role: GlobalRole) {
 async function login(ctx: E2eContext, email: string): Promise<string> {
   const res = await request(ctx.app.getHttpServer())
     .post('/auth/login')
+    .set('X-Forwarded-For', randomIp())
     .send({ email, password: PASSWORD })
     .expect(201);
   return res.body.accessToken;
