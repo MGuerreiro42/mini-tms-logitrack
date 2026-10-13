@@ -1,5 +1,6 @@
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
+import type { SinceQuery } from '@/types/query';
 import type {
   AdminShipment,
   CarrierShipment,
@@ -63,9 +64,12 @@ export function getShipmentStatusCounts(
   );
 }
 
-export function getSlaSummary(token: string): Promise<SlaSummaryItem[]> {
+export function getSlaSummary(
+  token: string,
+  query: SinceQuery = {},
+): Promise<SlaSummaryItem[]> {
   return apiClient<SlaSummaryItem[]>(
-    '/shipments/sla-summary',
+    `/shipments/sla-summary${toQueryString({ ...query })}`,
     undefined,
     token,
   );

@@ -1,6 +1,7 @@
 import type { ModalityToggle } from '@/features/modalities/types';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
+import type { SinceQuery } from '@/types/query';
 import type {
   ApprovalStatusCounts,
   Carrier,
@@ -95,9 +96,10 @@ export function getMyCoverageAreas(token: string): Promise<CoverageArea[]> {
 
 export function getMyCarrierPerformance(
   token: string,
+  query: SinceQuery = {},
 ): Promise<CarrierPerformance> {
   return apiClient<CarrierPerformance>(
-    '/carriers/me/performance',
+    `/carriers/me/performance${toQueryString({ ...query })}`,
     undefined,
     token,
   );
@@ -105,9 +107,10 @@ export function getMyCarrierPerformance(
 
 export function getMyOperatorRanking(
   token: string,
+  query: SinceQuery = {},
 ): Promise<OperatorRankingItem[]> {
   return apiClient<OperatorRankingItem[]>(
-    '/carriers/me/operator-ranking',
+    `/carriers/me/operator-ranking${toQueryString({ ...query })}`,
     undefined,
     token,
   );
