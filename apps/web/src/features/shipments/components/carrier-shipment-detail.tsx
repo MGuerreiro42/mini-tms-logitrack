@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
 import { QueryState } from '@/components/common/query-state';
@@ -71,9 +73,9 @@ function CarrierShipmentView({
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
 
-  const canAdvance =
-    session?.role === 'CARRIER_MANAGER' ||
-    shipment.ownerEmail === session?.email;
+  const isOwner = shipment.ownerEmail === session?.email;
+  const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
+  useCancelledNotice(shipment.status, isOwner);
   const actionState = getActionState(shipment, canAdvance);
 
   return (
@@ -128,6 +130,18 @@ function CarrierShipmentView({
       </div>
     </div>
   );
+}
+
+function useCancelledNotice(status: ShipmentStatus, isOwner: boolean): void {
+  const previous = useRef({ status, isOwner });
+
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = { status, isOwner };
+    if (status === 'CANCELLED' && before.status !== status && before.isOwner) {
+      toast.info('The seller cancelled this shipment.');
+    }
+  }, [status, isOwner]);
 }
 
 const SETBACK_CONFIRMATION: Partial<
