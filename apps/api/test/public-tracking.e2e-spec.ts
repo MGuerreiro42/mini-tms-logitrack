@@ -45,6 +45,12 @@ describe('Public tracking namespace (e2e)', () => {
     ).resolves.toEqual({ ok: false });
   });
 
+  it('refuses the long-polling transport', async () => {
+    await expect(
+      connectSocket(ctx, '/public', { transports: ['polling'] }),
+    ).rejects.toThrow();
+  });
+
   it('disconnects a socket that subscribes more than 10 times in 10 seconds', async () => {
     const disconnected = new Promise<string>((resolve) => {
       socket.once('disconnect', resolve);
