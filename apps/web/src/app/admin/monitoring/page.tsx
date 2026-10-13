@@ -1,9 +1,8 @@
 import { listCarriers } from '@/features/carriers/api';
 import { listSellers } from '@/features/sellers/api';
 import { AdminMonitoringTable } from '@/features/shipments/components/admin-monitoring-table';
+import { fetchAllPages } from '@/lib/fetch-all-pages';
 import { requireRole, withAuthRedirects } from '@/lib/server-session';
-
-const FILTER_OPTIONS_LIMIT = 100;
 
 function toOptions(rows: { id: string; companyName: string }[]) {
   return rows.map((row) => ({ value: row.id, label: row.companyName }));
@@ -11,9 +10,11 @@ function toOptions(rows: { id: string; companyName: string }[]) {
 
 export default async function AdminMonitoringPage() {
   const { token } = await requireRole('ADMIN');
-  const page = { page: 1, limit: FILTER_OPTIONS_LIMIT };
   const [carriers, sellers] = await withAuthRedirects(
-    Promise.all([listCarriers(page, token), listSellers(page, token)]),
+    Promise.all([
+      fetchAllPages((page) => listCarriers(page, token)),
+      fetchAllPages((page) => listSellers(page, token)),
+    ]),
   );
 
   return (
@@ -24,8 +25,8 @@ export default async function AdminMonitoringPage() {
         one.
       </p>
       <AdminMonitoringTable
-        carrierOptions={toOptions(carriers.data)}
-        sellerOptions={toOptions(sellers.data)}
+        carrierOptions={toOptions(carriers)}
+        sellerOptions={toOptions(sellers)}
       />
     </div>
   );
