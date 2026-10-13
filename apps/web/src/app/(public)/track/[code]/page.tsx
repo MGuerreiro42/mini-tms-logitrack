@@ -1,23 +1,35 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 import { PublicCard } from '@/components/common/public-card';
+import { Button } from '@/components/ui/button';
 import { getPublicTracking } from '@/features/tracking/api';
 import { PublicTrackingDetails } from '@/features/tracking/components/public-tracking-details';
 import { trackingTitle } from '@/features/tracking/lib/tracking-title';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
+import { visitorAddressHeaders } from '@/lib/visitor-address';
 import { ApiError } from '@/services/api-client';
 
 interface TrackingPageProps {
   params: Promise<{ code: string }>;
 }
 
+const EXPECTED_FAILURES = [404, 429];
+
 const findTracking = cache(async (code: string) => {
   try {
-    return await getPublicTracking(code);
+    return await getPublicTracking(code, {
+      headers: await visitorAddressHeaders(),
+    });
   } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 404) return null;
+    if (
+      error instanceof ApiError &&
+      EXPECTED_FAILURES.includes(error.statusCode)
+    ) {
+      return error;
+    }
     throw error;
   }
 });
@@ -27,7 +39,14 @@ export async function generateMetadata({
 }: TrackingPageProps): Promise<Metadata> {
   const { code } = await params;
   const tracking = await findTracking(code.toUpperCase());
-  if (!tracking) return { title: 'Shipment not found · Mini TMS' };
+  if (tracking instanceof ApiError) {
+    return {
+      title:
+        tracking.statusCode === 404
+          ? 'Shipment not found · Mini TMS'
+          : 'Too many requests · Mini TMS',
+    };
+  }
 
   const status = SHIPMENT_STATUS[tracking.status].label;
   return {
@@ -44,7 +63,10 @@ export default async function TrackingPage({ params }: TrackingPageProps) {
   }
 
   const tracking = await findTracking(canonicalCode);
-  if (!tracking) notFound();
+  if (tracking instanceof ApiError) {
+    if (tracking.statusCode === 404) notFound();
+    return <RateLimited code={canonicalCode} />;
+  }
 
   return (
     <PublicCard
@@ -53,5 +75,22 @@ export default async function TrackingPage({ params }: TrackingPageProps) {
     >
       <PublicTrackingDetails initialData={tracking} />
     </PublicCard>
+  );
+}
+
+function RateLimited({ code }: { code: string }) {
+  return (
+    <PublicCard
+      badge={false}
+      title="Too many requests"
+      description="This shipment was looked up too often in the last minute. Try again shortly."
+      actions={
+        <Button asChild>
+          <Link href={publicTrackingPath(code)} prefetch={false}>
+            Try again
+          </Link>
+        </Button>
+      }
+    />
   );
 }
