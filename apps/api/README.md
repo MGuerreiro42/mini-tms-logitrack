@@ -41,7 +41,7 @@ src/
 └── main.ts
 prisma/
 ├── schema.prisma     # 11 models — see DESIGN.md § 10
-├── seed.ts           # admin, modality catalog and demo data — `pnpm exec prisma db seed`
+├── seed.ts           # admin + modality catalog; demo data only with SEED_DEMO=true
 └── migrations/       # versioned in git, applied via `prisma migrate deploy`
 ```
 
@@ -49,7 +49,13 @@ Grouped by domain, not by technical layer — same philosophy as the frontend (`
 
 ## Demo seed
 
-`pnpm exec prisma db seed` is idempotent: it upserts the admin, the modality catalog and the demo accounts (password `demo12345`), then creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
+`pnpm exec prisma db seed` is idempotent and always upserts the admin and the modality catalog. Demo data is opt-in, since the demo password is public:
+
+```bash
+SEED_DEMO=true pnpm exec prisma db seed
+```
+
+That also upserts the demo accounts (password `demo12345`) and creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
 
 | Account | Role |
 |---|---|
@@ -194,3 +200,4 @@ Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing 
 | `JWT_SECRET` | — | signs the tokens — change it in production, minimum 16 characters |
 | `CORS_ORIGIN` | `http://localhost:3000` | the single origin allowed for CORS |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` (password required in production) | Admin seed credentials |
+| `SEED_DEMO` | unset | `true` makes the seed also create the demo accounts and shipments |
