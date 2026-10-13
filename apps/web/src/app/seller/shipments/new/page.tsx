@@ -1,10 +1,12 @@
 import { getMyModalities } from '@/features/sellers/api';
 import { CreateShipmentWizard } from '@/features/shipments/components/create-shipment-wizard';
-import { getServerSession } from '@/lib/server-session';
+import { requireRole, withAuthRedirects } from '@/lib/server-session';
 
 export default async function CreateShipmentPage() {
-  const token = (await getServerSession())?.token ?? '';
-  const modalities = (await getMyModalities(token)).filter((m) => m.enabled);
+  const { token } = await requireRole('SELLER');
+  const modalities = (await withAuthRedirects(getMyModalities(token))).filter(
+    (m) => m.enabled,
+  );
 
   return (
     <div className="space-y-4">

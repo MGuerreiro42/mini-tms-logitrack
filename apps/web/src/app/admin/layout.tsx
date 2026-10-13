@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
-import { getServerSession } from '@/lib/server-session';
+import { requireRole } from '@/lib/server-session';
 
 const ADMIN_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/admin' },
@@ -15,11 +14,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
-
-  if (session?.role !== 'ADMIN') {
-    redirect('/login');
-  }
+  const session = await requireRole('ADMIN');
 
   return (
     <AppShell

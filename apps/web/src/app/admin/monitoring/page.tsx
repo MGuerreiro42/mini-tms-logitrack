@@ -1,7 +1,7 @@
 import { listCarriers } from '@/features/carriers/api';
 import { listSellers } from '@/features/sellers/api';
 import { AdminMonitoringTable } from '@/features/shipments/components/admin-monitoring-table';
-import { getServerSession } from '@/lib/server-session';
+import { requireRole, withAuthRedirects } from '@/lib/server-session';
 
 const FILTER_OPTIONS_LIMIT = 100;
 
@@ -10,12 +10,11 @@ function toOptions(rows: { id: string; companyName: string }[]) {
 }
 
 export default async function AdminMonitoringPage() {
-  const token = (await getServerSession())?.token ?? '';
+  const { token } = await requireRole('ADMIN');
   const page = { page: 1, limit: FILTER_OPTIONS_LIMIT };
-  const [carriers, sellers] = await Promise.all([
-    listCarriers(page, token),
-    listSellers(page, token),
-  ]);
+  const [carriers, sellers] = await withAuthRedirects(
+    Promise.all([listCarriers(page, token), listSellers(page, token)]),
+  );
 
   return (
     <div className="space-y-1">

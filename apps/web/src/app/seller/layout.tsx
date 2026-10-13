@@ -3,8 +3,7 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMySeller } from '@/features/sellers/api';
 import { initialsFor } from '@/lib/initials';
-import { getServerSession } from '@/lib/server-session';
-import { ApiError } from '@/services/api-client';
+import { requireRole, withAuthRedirects } from '@/lib/server-session';
 
 const SELLER_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/seller' },
@@ -19,22 +18,8 @@ export default async function SellerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
-
-  if (session?.role !== 'SELLER') {
-    redirect('/login');
-  }
-
-  let seller: Awaited<ReturnType<typeof getMySeller>>;
-  try {
-    seller = await getMySeller(session.token);
-  } catch (error) {
-    // A stale or tampered cookie gets 401/403; send it to login instead of a 500.
-    if (error instanceof ApiError) {
-      redirect('/login');
-    }
-    throw error;
-  }
+  const session = await requireRole('SELLER');
+  const seller = await withAuthRedirects(getMySeller(session.token));
 
   if (seller.status !== 'APPROVED') {
     redirect('/status');
