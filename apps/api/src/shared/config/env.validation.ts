@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const MAX_TRUSTED_PROXIES = 8;
+
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -10,7 +12,12 @@ const envSchema = z
     JWT_SECRET: z.string().min(16),
     CORS_ORIGIN: z.url().default('http://localhost:3000'),
     REDIS_URL: z.url().default('redis://localhost:6379'),
-    TRUST_PROXY: z.coerce.number().int().min(0).max(8).optional(),
+    TRUST_PROXY: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_TRUSTED_PROXIES)
+      .optional(),
   })
   .refine(
     (env) => env.NODE_ENV !== 'production' || env.TRUST_PROXY !== undefined,

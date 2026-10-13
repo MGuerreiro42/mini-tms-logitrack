@@ -1,4 +1,4 @@
-import { validateEnv } from './env.validation';
+import { MAX_TRUSTED_PROXIES, validateEnv } from './env.validation';
 
 const validConfig = {
   NODE_ENV: 'development',
@@ -50,7 +50,7 @@ describe('validateEnv', () => {
     '-1',
     '1.5',
     'true',
-    '9',
+    String(MAX_TRUSTED_PROXIES + 1),
   ])('throws when TRUST_PROXY is %s', (value) => {
     expect(() => validateEnv({ ...validConfig, TRUST_PROXY: value })).toThrow(
       /TRUST_PROXY/,
