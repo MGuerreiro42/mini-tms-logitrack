@@ -34,7 +34,7 @@ Instalação na raiz (`pnpm install`) só ativa lefthook/commitlint — não bui
 - **Lint/format:** Biome (não ESLint/Prettier) em ambos os apps — `pnpm lint` já aplica `--write`.
 - **Commits:** Conventional Commits, validado por commitlint no hook `commit-msg` (lefthook). `pre-commit` roda `lint-staged` (Biome nos arquivos staged de cada app). Não use `--no-verify` para contornar.
 - **Migrations Prisma** (`apps/api/prisma`): nunca edite uma migration já aplicada/commitada — gere uma nova com `prisma migrate dev`. `generated/` e `dist/` são build output, nunca editar à mão.
-- **CI** (GitHub Actions, `.github/workflows/ci.yml`) roda lint + build + testes com Postgres real em todo push/PR para `main` — é a rede de segurança real, o hook local não garante nada para quem clona ou usa `--no-verify`.
+- **CI** (GitHub Actions, `.github/workflows/ci-api.yml` e `ci-web.yml`) roda lint + build + testes (e2e da API com Postgres e Redis reais) em todo push para `main` e em todo PR — é a rede de segurança real, o hook local não garante nada para quem clona ou usa `--no-verify`.
 
 ## Domínio
 
