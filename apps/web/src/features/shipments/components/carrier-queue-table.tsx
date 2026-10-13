@@ -7,6 +7,7 @@ import {
   type StatusFilter,
   StatusFilterTabs,
   statusFilterOptions,
+  statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
@@ -29,11 +30,13 @@ const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'IN_TRANSIT',
   'CANCELLED',
 ]);
+const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 
 export function CarrierQueueTable() {
-  const { filters, setFilter, setPage, params } = useFilteredPagination({
-    status: ALL as StatusFilter<ShipmentStatus>,
-  });
+  const { filters, setFilter, setPage, params } = useFilteredPagination(
+    { status: ALL as StatusFilter<ShipmentStatus> },
+    { status: STATUS_VALUES },
+  );
 
   const liveStatus = useShipmentTracking({ subscribeToQueue: true });
   const query = useShipmentQueue(params, liveStatus);
