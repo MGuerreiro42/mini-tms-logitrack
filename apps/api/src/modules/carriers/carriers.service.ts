@@ -265,51 +265,54 @@ export class CarriersService {
   ): Promise<OperatorRankingItemResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    const [totalGroups, deliveredGroups] = await Promise.all([
-      this.prisma.shipment.groupBy({
-        by: ['ownerId'],
-        where: { carrierId, ownerId: { not: null } },
-        _count: true,
-      }),
-      this.prisma.shipment.groupBy({
-        by: ['ownerId'],
-        where: {
-          carrierId,
-          ownerId: { not: null },
-          status: ShipmentStatus.DELIVERED,
-        },
-        _count: true,
-      }),
-    ]);
+    const groups = await this.prisma.shipment.groupBy({
+      by: ['ownerId', 'status'],
+      where: {
+        carrierId,
+        ownerId: { not: null },
+        status: { not: ShipmentStatus.CANCELLED },
+      },
+      _count: true,
+    });
 
-    if (totalGroups.length === 0) {
+    const statsByOwnerId = new Map<
+      string,
+      { totalOwned: number; delivered: number }
+    >();
+    for (const group of groups) {
+      if (!group.ownerId) continue;
+      const stats = statsByOwnerId.get(group.ownerId) ?? {
+        totalOwned: 0,
+        delivered: 0,
+      };
+      stats.totalOwned += group._count;
+      if (group.status === ShipmentStatus.DELIVERED) {
+        stats.delivered += group._count;
+      }
+      statsByOwnerId.set(group.ownerId, stats);
+    }
+    if (statsByOwnerId.size === 0) {
       return [];
     }
 
-    const deliveredByOwnerId = new Map(
-      deliveredGroups.map((group) => [group.ownerId, group._count]),
-    );
-
     const carrierUsers = await this.prisma.carrierUser.findMany({
-      where: {
-        id: { in: totalGroups.map((group) => group.ownerId as string) },
-      },
-      include: { user: { select: { email: true } } },
+      where: { id: { in: [...statsByOwnerId.keys()] } },
+      select: { id: true, user: { select: { email: true } } },
     });
-    const carrierUserById = new Map(
-      carrierUsers.map((carrierUser) => [carrierUser.id, carrierUser]),
+    const emailById = new Map(
+      carrierUsers.map((carrierUser) => [
+        carrierUser.id,
+        carrierUser.user.email,
+      ]),
     );
 
-    return totalGroups
-      .map((group) => {
-        const ownerId = group.ownerId as string;
-        const carrierUser = carrierUserById.get(ownerId);
-        return {
-          carrierUserId: ownerId,
-          email: carrierUser?.user.email ?? 'unknown',
-          totalOwned: group._count,
-          delivered: deliveredByOwnerId.get(ownerId) ?? 0,
-        };
+    return [...statsByOwnerId]
+      .map(([carrierUserId, stats]) => {
+        const email = emailById.get(carrierUserId);
+        if (!email) {
+          throw new Error(`Shipment owner ${carrierUserId} has no CarrierUser`);
+        }
+        return { carrierUserId, email, ...stats };
       })
       .sort((a, b) => b.totalOwned - a.totalOwned);
   }
