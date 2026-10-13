@@ -1,23 +1,18 @@
 import { QueryClient } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useRouter } from 'next/navigation';
+import { hardNavigate } from '@/lib/hard-navigate';
+import { getSessionFromDocument, setSession } from '@/lib/session';
 import { renderWithQueryClient } from '@/test/render';
 import { UserMenu } from './user-menu';
 
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
-}));
+vi.mock('@/lib/hard-navigate', () => ({ hardNavigate: vi.fn() }));
 
 const props = { name: 'Seller', role: 'Seller', initials: 'SE' };
 
 describe('UserMenu', () => {
-  it('clears the query cache and the session on logout', async () => {
-    const push = vi.fn();
-    vi.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<
-      typeof useRouter
-    >);
-    document.cookie = 'tms_session=abc; path=/';
+  it('clears the query cache and the session, then leaves with a full page load', async () => {
+    setSession({ token: 't', role: 'SELLER', userId: 'u', email: 'e' });
     const queryClient = new QueryClient();
     queryClient.setQueryData(['shipments', 'list'], { data: [] });
     const user = userEvent.setup();
@@ -27,7 +22,7 @@ describe('UserMenu', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Log out' }));
 
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(document.cookie).not.toContain('tms_session=abc');
-    expect(push).toHaveBeenCalledWith('/login');
+    expect(getSessionFromDocument()).toBeNull();
+    expect(hardNavigate).toHaveBeenCalledWith('/login');
   });
 });
