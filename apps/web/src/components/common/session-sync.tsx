@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { hardNavigate } from '@/lib/hard-navigate';
+import { ROUTES } from '@/lib/routes';
 import { onSessionChangedElsewhere } from '@/lib/session';
 
 export function SessionSync() {
@@ -12,7 +13,7 @@ export function SessionSync() {
     () =>
       onSessionChangedElsewhere(() => {
         queryClient.clear();
-        hardNavigate('/');
+        hardNavigate(ROUTES.home);
       }),
     [queryClient],
   );

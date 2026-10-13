@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { CenteredPage } from '@/components/common/centered-page';
 import { PublicCard } from '@/components/common/public-card';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/routes';
 
 export const metadata: Metadata = { title: 'Access denied · Mini TMS' };
 
@@ -15,7 +16,7 @@ export default function ForbiddenPage() {
         description="Your account's role can't open this area. You're still signed in."
         actions={
           <Button asChild>
-            <Link href="/">Go to your home</Link>
+            <Link href={ROUTES.home}>Go to your home</Link>
           </Button>
         }
       />

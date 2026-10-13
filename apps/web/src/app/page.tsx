@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 import { getServerSession } from '@/lib/server-session';
 import { ROLE_HOME } from '@/lib/session';
 
 export default async function Home() {
   const session = await getServerSession();
 
-  redirect(session ? ROLE_HOME[session.role] : '/login');
+  redirect(session ? ROLE_HOME[session.role] : ROUTES.login);
 }
