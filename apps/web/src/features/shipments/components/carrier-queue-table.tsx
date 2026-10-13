@@ -10,6 +10,7 @@ import {
 } from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
@@ -31,7 +32,7 @@ const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
 
 export function CarrierQueueTable() {
   const { filters, setFilter, setPage, params } = useFilteredPagination({
-    status: 'ALL' as StatusFilter<ShipmentStatus>,
+    status: ALL as StatusFilter<ShipmentStatus>,
   });
 
   const query = useShipmentQueue(params);

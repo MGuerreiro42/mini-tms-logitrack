@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ALL } from './status-filter-tabs';
+import { ALL } from '@/lib/filters';
 
 export interface FilterOption {
   value: string;
