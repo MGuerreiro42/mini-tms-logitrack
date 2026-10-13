@@ -211,4 +211,6 @@ Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing 
 | `CORS_ORIGIN` | `http://localhost:3000` | the single origin allowed for CORS |
 | `REDIS_URL` | `redis://localhost:6379` | Socket.io adapter, rate-limit counters, health check |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` (password required in production) | Admin seed credentials |
+| `TRUST_PROXY` | `0` (required in production) | reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted for rate limiting |
+| `E2E_DATABASE_URL` | falls back to `DATABASE_URL` | database for `pnpm test:e2e`, name must end with `_e2e` |
 | `SEED_DEMO` | unset | `true` makes the seed also create the demo accounts and shipments |

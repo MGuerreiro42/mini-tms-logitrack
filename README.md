@@ -53,6 +53,7 @@ Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DES
 
 - Attach a **Postgres** and a **Redis** addon (Railway sets `DATABASE_URL`/`REDIS_URL` on its own).
 - Set `JWT_SECRET` (`openssl rand -hex 32`) and `CORS_ORIGIN` (the Vercel URL) manually.
+- Set `TRUST_PROXY` to the number of reverse proxies between the client and the API (the app refuses to boot in production without it): `1` for Railway's edge alone, `2` once the web server forwards the visitor's address on its SSR calls.
 - Set `ADMIN_PASSWORD` (the seed refuses to run in production without it); add `SEED_DEMO=true` only if the environment should carry the public demo accounts.
 - Migrations and the seed run in Railway's `preDeployCommand`, before the new version starts — no manual step.
 
