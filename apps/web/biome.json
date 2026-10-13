@@ -61,6 +61,10 @@
                   {
                     "group": ["@/app/**", "@/features/**"],
                     "message": "Shared code cannot depend on features or routes."
+                  },
+                  {
+                    "group": ["../features/**", "../app/**", "../../**"],
+                    "message": "Leave a shared folder through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -87,6 +91,18 @@
                       "!@/features/sellers/**"
                     ],
                     "message": "features/admin may import carriers or sellers; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -111,6 +127,18 @@
                       "!@/features/auth/**"
                     ],
                     "message": "features/auth may import no other feature; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -137,6 +165,18 @@
                       "!@/features/modalities/**"
                     ],
                     "message": "features/carriers may import companies or modalities; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -161,6 +201,18 @@
                       "!@/features/companies/**"
                     ],
                     "message": "features/companies may import no other feature; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -185,6 +237,18 @@
                       "!@/features/modalities/**"
                     ],
                     "message": "features/modalities may import no other feature; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -211,6 +275,18 @@
                       "!@/features/modalities/**"
                     ],
                     "message": "features/sellers may import companies or modalities; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -236,6 +312,18 @@
                       "!@/features/tracking/**"
                     ],
                     "message": "features/shipments may import tracking; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
@@ -260,6 +348,18 @@
                       "!@/features/tracking/**"
                     ],
                     "message": "features/tracking may import no other feature; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
                   }
                 ]
               }
