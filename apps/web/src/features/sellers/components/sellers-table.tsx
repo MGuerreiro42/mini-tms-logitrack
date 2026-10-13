@@ -1,7 +1,7 @@
 'use client';
 
-import { CompanyApprovalTable } from '@/components/common/company-approval-table';
 import type { StatusFilter } from '@/components/common/status-filter-tabs';
+import { CompanyApprovalTable } from '@/features/companies/components/company-approval-table';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import type { ApprovalStatus } from '@/types/status';
 import { useSellersList } from '../hooks/use-sellers-list';

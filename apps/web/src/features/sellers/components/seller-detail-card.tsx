@@ -1,7 +1,7 @@
 'use client';
 
-import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
+import { CompanyReview } from '@/features/companies/components/company-cards';
 import { formatDateTime } from '@/lib/format-date';
 import {
   useApproveSeller,
