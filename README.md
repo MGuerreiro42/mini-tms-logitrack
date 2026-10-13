@@ -10,7 +10,7 @@ Portfolio project: it doesn't aim to be a commercializable product, but a techni
 ## Stack
 
 - **Backend:** NestJS, PostgreSQL (Prisma), Redis (pub/sub, cache, BullMQ)
-- **Frontend:** Next.js (App Router), TanStack Query, Zustand, Tailwind
+- **Frontend:** Next.js (App Router), TanStack Query, Tailwind
 - **Real-time:** Socket.io with a Redis adapter (scales across multiple API instances)
 - **Local infra:** Docker Compose (Postgres + Redis)
 

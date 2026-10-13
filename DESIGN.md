@@ -120,7 +120,7 @@ Detailed screen-by-screen specification — role, displayed data (real schema fi
 ```mermaid
 flowchart TB
     subgraph CLIENT["🖥️ Client"]
-        Browser["Browser<br/>React + Next.js (App Router)<br/>shadcn/ui + Tailwind + Zustand"]
+        Browser["Browser<br/>React + Next.js (App Router)<br/>shadcn/ui + Tailwind + TanStack Query"]
     end
 
     subgraph EDGE["🌐 Edge / Deploy"]
@@ -274,25 +274,36 @@ Structure inspired by [bulletproof-react](https://github.com/alan2207/bulletproo
 ```
 apps/web/src/
 ├── app/                      # ONLY routing (App Router) — layouts, pages, route groups
+│   ├── (public)/             # login, signup, status, track (public tracking, no login)
 │   ├── admin/                # dashboard, sellers, carriers, monitoring
-│   ├── seller/                # dashboard, shipments, onboarding
-│   ├── carrier/               # dashboard, queue, performance
-│   ├── invite/accept/        # invite acceptance (public, via token)
-│   ├── track/                # public tracking (no login)
+│   ├── seller/               # dashboard, shipments, modalities, profile
+│   ├── carrier/              # dashboard, queue, performance, settings
+│   ├── forbidden/            # the 403 page
 │   └── providers.tsx         # QueryClientProvider
 ├── features/                 # one domain per folder
 │   ├── auth/ · sellers/ · carriers/ · shipments/ · tracking/
-│   │   ├── components/ · hooks/ · api/ · types.ts
-├── components/                # truly shared UI (ui/ and common/)
-├── hooks/                     # generic hooks, not tied to any domain
-├── lib/                       # domain-agnostic utilities
-├── services/                  # api-client.ts (typed fetch), websocket-client.ts
-└── store/                     # Zustand — only genuinely global UI state
+│   ├── companies/ · modalities/   # shared by sellers and carriers
+│   ├── admin/                     # composes sellers and carriers
+│   │   ├── components/ · hooks/ · api/ · lib/ · types.ts
+├── components/               # truly shared UI (ui/ and common/)
+├── hooks/                    # generic hooks, not tied to any domain
+├── lib/                      # domain-agnostic utilities
+├── services/                 # api-client.ts (typed fetch), websocket-client.ts
+├── types/                    # cross-feature types (auth, pagination, query, status)
+└── proxy.ts                  # route gate by session cookie and role
 ```
 
-**Dependency rule:** `shared (components/, lib/, hooks/) → features/ → app/`. A feature can import from shared, never directly from another feature; `app/` composes pages from `features/`.
+**Dependency rule:** `shared (components/, hooks/, lib/, services/, types/) → features/ → app/`, with no barrel files. Shared code imports neither features nor routes. A feature imports another only along a declared edge: `admin → carriers, sellers`; `carriers → companies, modalities`; `sellers → companies, modalities`; `shipments → tracking`. Everything else is composed in `app/`. Biome's `noRestrictedImports` enforces this per folder, so a new edge is a reviewed config change, not an accident.
 
-**Where state lives:** server data → TanStack Query (shipments list, approval status, carrier data — always via `features/*/api/`); pure client UI state → Zustand or local `useState` (table filters, sidebar, theme). API responses never get copied into Zustand.
+**Where state lives:** server data → TanStack Query (always via `features/*/api/`), never copied elsewhere. Table filters and the current page live in the URL (`useFilteredPagination`), so lists are linkable and survive a reload. The rest is local `useState`; there is no global client store (Zustand was removed with its last consumer).
+
+**Live updates:** each `useSocketSubscription` reports its own status, `connecting | live | offline`, instead of one global flag. Sockets are ref-counted in `websocket-client.ts`: the first consumer opens the connection, the last one closes it. The catch-up refetch runs after the subscription acks, so nothing emitted between connect and join is missed. While a subscription isn't `live`, the query polls as a fallback, and stops on a `4xx` (retrying won't fix those).
+
+**Route protection:** `proxy.ts` (Next's successor to `middleware.ts`) reads the session cookie: no session redirects to `/login`, a wrong role gets the `/forbidden` page with a real `403`. It is a UX gate only; the API re-checks the JWT on every request. Server Components that fetch call `requireRole(...)` first and wrap the call in `withAuthRedirects` (`401` → `/login`, clearing the expired session; `403` → `/forbidden`).
+
+**Dates:** formatted with a fixed locale and the `America/Sao_Paulo` zone (`lib/format-date.ts`), so server and browser render the same string and hydration never mismatches.
+
+**Public tracking:** `/track/[code]` renders on the server and forwards the visitor's address to the API as `X-Forwarded-For` (the rightmost entry of its own incoming header), so the rate limit (§ 11) is per visitor rather than per web server. A `429` renders its own "try again shortly" state, distinct from not found.
 
 **Server vs. Client Components:** everything is a Server Component by default; `'use client'` only where there's real interactivity (forms, WebSocket subscriptions, state hooks), pushed to the leaves of the tree rather than wrapping whole pages.
 

@@ -5,7 +5,7 @@ Multi-tenant TMS (NestJS + Next.js) — portfolio project. Contexto completo de 
 ## Estrutura — dois projetos pnpm independentes
 
 - `apps/api` — NestJS + Prisma (Postgres) + Redis (pub/sub, cache, BullMQ) + Socket.io.
-- `apps/web` — Next.js (App Router) + TanStack Query + Zustand + Tailwind + shadcn.
+- `apps/web` — Next.js (App Router) + TanStack Query + Tailwind + shadcn.
 - A raiz (`package.json` na raiz) **só** existe para tooling (lefthook, commitlint) — nunca adicione dependências de app aqui.
 - Cada app tem seu próprio `tsconfig.json`. Se algo parecer com erro de TS fora de contexto (ex.: `strictPropertyInitialization` falso-positivo), é sinal de que o editor/LSP carregou o projeto errado — não é bug de código.
 
