@@ -1,10 +1,11 @@
 import { applyDecorators, UseGuards } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
-import { minutes, Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { minutes, Throttle } from '@nestjs/throttler';
+import { RateLimitGuard } from './rate-limit.guard';
 
 export function RateLimit(limitPerMinute: number) {
   return applyDecorators(
-    UseGuards(ThrottlerGuard),
+    UseGuards(RateLimitGuard),
     Throttle({ default: { ttl: minutes(1), limit: limitPerMinute } }),
     ApiResponse({
       status: 429,

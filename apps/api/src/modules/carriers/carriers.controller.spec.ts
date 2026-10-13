@@ -1,5 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { RateLimitGuard } from '../../shared/throttling/rate-limit.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { CarriersController } from './carriers.controller';
 import { CarriersService } from './carriers.service';
@@ -59,7 +59,7 @@ describe('CarriersController', () => {
         },
       ],
     })
-      .overrideGuard(ThrottlerGuard)
+      .overrideGuard(RateLimitGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
