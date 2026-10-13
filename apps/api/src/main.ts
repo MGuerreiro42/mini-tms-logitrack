@@ -6,7 +6,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import type { EnvConfig } from './shared/config/env.validation';
-import { RedisIoAdapter } from './shared/websocket/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -16,11 +15,7 @@ async function bootstrap() {
     origin: configService.get('CORS_ORIGIN', { infer: true }),
     credentials: true,
   });
-  configureApp(app);
-
-  const redisIoAdapter = new RedisIoAdapter(app);
-  await redisIoAdapter.connectToRedis();
-  app.useWebSocketAdapter(redisIoAdapter);
+  await configureApp(app);
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Mini TMS API')
