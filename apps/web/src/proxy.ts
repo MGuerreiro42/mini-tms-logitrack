@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { ROUTES } from '@/lib/routes';
 import {
   parseSessionCookie,
   ROLE_HOME,
@@ -38,11 +39,11 @@ export function proxy(request: NextRequest) {
   }
 
   if (!session) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL(ROUTES.login, request.url));
   }
 
   if (!ROLES_BY_SEGMENT[segment]?.includes(session.role)) {
-    return NextResponse.rewrite(new URL('/forbidden', request.url), {
+    return NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
       status: 403,
     });
   }

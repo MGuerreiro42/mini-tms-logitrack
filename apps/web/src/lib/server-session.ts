@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
+import { ROUTES } from '@/lib/routes';
 import { ApiError } from '@/services/api-client';
 import type { GlobalRole } from '@/types/auth';
 import {
@@ -18,8 +19,8 @@ export const getServerSession = cache(async (): Promise<Session | null> => {
 // Layouts and pages render in parallel, so each one that fetches calls this itself before touching the API.
 export async function requireRole(...roles: GlobalRole[]): Promise<Session> {
   const session = await getServerSession();
-  if (!session) redirect('/login');
-  if (!roles.includes(session.role)) redirect('/forbidden');
+  if (!session) redirect(ROUTES.login);
+  if (!roles.includes(session.role)) redirect(ROUTES.forbidden);
   return session;
 }
 
@@ -31,7 +32,7 @@ export async function withAuthRedirects<T>(request: Promise<T>): Promise<T> {
       redirect(SESSION_EXPIRED_PATH);
     }
     if (error instanceof ApiError && error.statusCode === 403) {
-      redirect('/forbidden');
+      redirect(ROUTES.forbidden);
     }
     throw error;
   }

@@ -5,6 +5,7 @@ import { PublicCard } from '@/components/common/public-card';
 import { SignOutButton } from '@/components/common/sign-out-button';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
+import { ROUTES } from '@/lib/routes';
 import { getServerSession, withAuthRedirects } from '@/lib/server-session';
 
 const MESSAGES = {
@@ -27,7 +28,10 @@ export default async function StatusPage() {
         title="Application submitted"
         body="Your application has been submitted and is pending review. You'll be able to sign in once an administrator reviews it."
         action={
-          <Link href="/login" className="text-sm text-primary hover:underline">
+          <Link
+            href={ROUTES.login}
+            className="text-sm text-primary hover:underline"
+          >
             Back to login
           </Link>
         }

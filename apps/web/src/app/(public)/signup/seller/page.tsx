@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PublicCard } from '@/components/common/public-card';
 import { SellerSignupForm } from '@/features/sellers/components/seller-signup-form';
+import { ROUTES } from '@/lib/routes';
 
 export default function SellerSignupPage() {
   return (
@@ -13,7 +14,7 @@ export default function SellerSignupPage() {
       <SellerSignupForm />
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-primary hover:underline">
+        <Link href={ROUTES.login} className="text-primary hover:underline">
           Sign in
         </Link>
       </p>

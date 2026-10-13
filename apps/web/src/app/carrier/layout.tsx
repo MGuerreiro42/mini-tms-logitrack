@@ -3,6 +3,7 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMyCarrier } from '@/features/carriers/api';
 import { initialsFor } from '@/lib/initials';
+import { ROUTES } from '@/lib/routes';
 import { requireRole, withAuthRedirects } from '@/lib/server-session';
 
 const CARRIER_NAV: NavItem[] = [
@@ -21,7 +22,7 @@ export default async function CarrierLayout({
   const carrier = await withAuthRedirects(getMyCarrier(session.token));
 
   if (carrier.status !== 'APPROVED') {
-    redirect('/status');
+    redirect(ROUTES.status);
   }
 
   const roleLabel = session.role === 'CARRIER_MANAGER' ? 'Manager' : 'Operator';

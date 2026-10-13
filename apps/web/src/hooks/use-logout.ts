@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { hardNavigate } from '@/lib/hard-navigate';
+import { ROUTES } from '@/lib/routes';
 import { clearSession } from '@/lib/session';
 
 export function useLogout(): () => void {
@@ -10,6 +11,6 @@ export function useLogout(): () => void {
   return () => {
     queryClient.clear();
     clearSession();
-    hardNavigate('/login');
+    hardNavigate(ROUTES.login);
   };
 }
