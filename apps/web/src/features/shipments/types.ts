@@ -5,7 +5,7 @@ import type {
   TrackingEvent,
 } from '@/types/status';
 
-export type { ShipmentStatus, ShipmentStatusCounts, TrackingEvent };
+export type { ShipmentStatus, ShipmentStatusCounts };
 
 export interface SlaSummaryItem {
   modalityCode: string;
