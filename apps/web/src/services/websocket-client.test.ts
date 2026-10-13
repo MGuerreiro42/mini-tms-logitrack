@@ -81,6 +81,38 @@ describe('retainSocket', () => {
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it('waits for a pending handshake before disconnecting', () => {
+    const socket = makeFakeSocket();
+    socket.active = true;
+
+    retainSocket(socket as never)();
+    expect(socket.disconnect).not.toHaveBeenCalled();
+
+    socket.trigger('connect');
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('disconnects when a pending handshake fails with nobody left', () => {
+    const socket = makeFakeSocket();
+    socket.active = true;
+
+    retainSocket(socket as never)();
+    socket.trigger('connect_error');
+
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands a pending handshake to the consumer that arrives meanwhile', () => {
+    const socket = makeFakeSocket();
+    socket.active = true;
+
+    retainSocket(socket as never)();
+    retainSocket(socket as never);
+    socket.trigger('connect');
+
+    expect(socket.disconnect).not.toHaveBeenCalled();
+  });
+
   it('ignores a repeated release from the same consumer', () => {
     const socket = makeFakeSocket();
     const releaseFirst = retainSocket(socket as never);
