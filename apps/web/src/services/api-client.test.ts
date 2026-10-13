@@ -89,11 +89,14 @@ describe('apiClient', () => {
     });
   });
 
-  it('replaces the throttler message on a 429 with one a person can act on', async () => {
+  it('keeps the API message on a 429', async () => {
     server.use(
       http.post(`${API_URL}/auth/login`, () =>
         HttpResponse.json(
-          { statusCode: 429, message: 'ThrottlerException: Too Many Requests' },
+          {
+            statusCode: 429,
+            message: 'Too many attempts. Try again in a minute.',
+          },
           { status: 429 },
         ),
       ),
@@ -103,6 +106,21 @@ describe('apiClient', () => {
       apiClient('/auth/login', { method: 'POST' }),
     ).rejects.toMatchObject({
       statusCode: 429,
+      message: 'Too many attempts. Try again in a minute.',
+    });
+  });
+
+  it('explains a 429 that arrives without a body', async () => {
+    server.use(
+      http.post(
+        `${API_URL}/auth/login`,
+        () => new HttpResponse(null, { status: 429 }),
+      ),
+    );
+
+    await expect(
+      apiClient('/auth/login', { method: 'POST' }),
+    ).rejects.toMatchObject({
       message: 'Too many requests. Wait a moment and try again.',
     });
   });

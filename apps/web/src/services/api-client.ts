@@ -12,12 +12,12 @@ export class ApiError extends Error {
   }
 }
 
-const RATE_LIMITED_MESSAGE = 'Too many requests. Wait a moment and try again.';
+const RATE_LIMITED_FALLBACK = 'Too many requests. Wait a moment and try again.';
 
 function errorMessage(res: Response, body: { message?: unknown } | null) {
-  if (res.status === 429) return RATE_LIMITED_MESSAGE;
   if (Array.isArray(body?.message)) return body.message.join(', ');
-  return typeof body?.message === 'string' ? body.message : res.statusText;
+  if (typeof body?.message === 'string') return body.message;
+  return res.status === 429 ? RATE_LIMITED_FALLBACK : res.statusText;
 }
 
 export function isClientError(error: unknown): error is ApiError {
