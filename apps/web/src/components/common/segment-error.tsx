@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Alert,
   AlertAction,
@@ -13,11 +14,30 @@ export interface SegmentErrorProps {
   unstable_retry: () => void;
 }
 
-export function SegmentError({ unstable_retry }: SegmentErrorProps) {
+export function useLoggedError(error: SegmentErrorProps['error']): void {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+}
+
+export function ErrorReference({ digest }: { digest?: string }) {
+  if (!digest) return null;
+
+  return (
+    <span className="mt-1 block font-mono text-xs">Reference: {digest}</span>
+  );
+}
+
+export function SegmentError({ error, unstable_retry }: SegmentErrorProps) {
+  useLoggedError(error);
+
   return (
     <Alert variant="destructive">
       <AlertTitle>Something went wrong</AlertTitle>
-      <AlertDescription>This page couldn't be loaded.</AlertDescription>
+      <AlertDescription>
+        This page couldn't be loaded.
+        <ErrorReference digest={error.digest} />
+      </AlertDescription>
       <AlertAction>
         <Button size="sm" variant="outline" onClick={() => unstable_retry()}>
           Try again
