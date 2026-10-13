@@ -13,12 +13,16 @@ import { TrackingModule } from './modules/tracking/tracking.module';
 import { validateEnv } from './shared/config/env.validation';
 import { PasswordModule } from './shared/password/password.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
+import { RedisModule } from './shared/redis/redis.module';
+import { ThrottlingModule } from './shared/throttling/throttling.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     EventEmitterModule.forRoot(),
     PrismaModule,
+    RedisModule,
+    ThrottlingModule,
     PasswordModule,
     SellersModule,
     CarriersModule,

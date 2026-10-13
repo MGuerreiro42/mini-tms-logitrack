@@ -11,6 +11,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
+import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -37,6 +38,7 @@ export class SellersController {
     status: 409,
     description: 'Email or document already registered',
   })
+  @RateLimit(5)
   @Post()
   signup(@Body() dto: CreateSellerDto) {
     return this.sellersService.signup(dto);

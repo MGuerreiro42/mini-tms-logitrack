@@ -12,6 +12,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
+import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -43,6 +44,7 @@ export class CarriersController {
     status: 409,
     description: 'Email or document already registered',
   })
+  @RateLimit(5)
   @Post()
   signup(@Body() dto: CreateCarrierDto) {
     return this.carriersService.signup(dto);
