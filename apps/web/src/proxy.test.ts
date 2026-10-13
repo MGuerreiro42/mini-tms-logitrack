@@ -56,6 +56,15 @@ describe('proxy', () => {
   });
 
   it.each([
+    ['/seller/profile', 'SELLER'],
+    ['/admin', 'SELLER'],
+  ] as const)('keeps %s out of the browser cache', (path, role) => {
+    const response = proxy(request(path, role));
+
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it.each([
     ['/admin', 'SELLER'],
     ['/admin/monitoring', 'CARRIER_MANAGER'],
     ['/seller/shipments/new', 'CARRIER_OPERATOR'],

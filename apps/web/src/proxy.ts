@@ -10,6 +10,12 @@ import {
   type Session,
 } from '@/lib/session';
 
+// Explicit, so Back after logout can't restore a role page even if it stops rendering dynamically.
+function uncached(response: NextResponse): NextResponse {
+  response.headers.set('Cache-Control', 'no-store');
+  return response;
+}
+
 function login(request: NextRequest, session: Session | null) {
   // A server render can't clear the cookie of the session it just found expired, so the redirect asks for it here.
   if (request.nextUrl.searchParams.has(SESSION_EXPIRED_PARAM)) {
@@ -38,12 +44,14 @@ export function proxy(request: NextRequest) {
   }
 
   if (!canEnterSegment(session.role, segment)) {
-    return NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
-      status: HTTP_STATUS.FORBIDDEN,
-    });
+    return uncached(
+      NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
+        status: HTTP_STATUS.FORBIDDEN,
+      }),
+    );
   }
 
-  return NextResponse.next();
+  return uncached(NextResponse.next());
 }
 
 export const config = {
