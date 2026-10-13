@@ -23,6 +23,12 @@ export function statusFilterOptions<S extends string>(
   return allPosition === 'first' ? [all, ...options] : [...options, all];
 }
 
+export function statusFilterValues<S extends string>(
+  options: StatusFilterOption<S>[],
+): StatusFilter<S>[] {
+  return options.map((option) => option.value);
+}
+
 interface StatusFilterTabsProps<S extends string> {
   options: StatusFilterOption<S>[];
   value: StatusFilter<S>;

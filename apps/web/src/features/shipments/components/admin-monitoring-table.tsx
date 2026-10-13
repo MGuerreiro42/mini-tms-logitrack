@@ -3,6 +3,7 @@
 import {
   type FilterOption,
   FilterSelect,
+  filterValues,
 } from '@/components/common/filter-select';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
@@ -11,6 +12,7 @@ import {
   type StatusFilter,
   StatusFilterTabs,
   statusFilterOptions,
+  statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { ALL } from '@/lib/filters';
@@ -22,6 +24,7 @@ import type { AdminShipment } from '../types';
 import { shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
+const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 
 interface AdminMonitoringTableProps {
   carrierOptions: FilterOption[];
@@ -32,11 +35,18 @@ export function AdminMonitoringTable({
   carrierOptions,
   sellerOptions,
 }: AdminMonitoringTableProps) {
-  const { filters, setFilter, setPage, params } = useFilteredPagination({
-    status: ALL as StatusFilter<ShipmentStatus>,
-    carrierId: ALL as string,
-    sellerId: ALL as string,
-  });
+  const { filters, setFilter, setPage, params } = useFilteredPagination(
+    {
+      status: ALL as StatusFilter<ShipmentStatus>,
+      carrierId: ALL as string,
+      sellerId: ALL as string,
+    },
+    {
+      status: STATUS_VALUES,
+      carrierId: filterValues(carrierOptions),
+      sellerId: filterValues(sellerOptions),
+    },
+  );
 
   const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
   const query = useAdminShipments(params, liveStatus);

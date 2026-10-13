@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useEffectEvent } from 'react';
 import { ALL } from '@/lib/filters';
 
 const PAGE_SIZE = 20;
@@ -10,17 +11,24 @@ type QueryFilters<F> = {
   [K in keyof F]: Exclude<F[K], typeof ALL> | undefined;
 };
 
+type AllowedValues<F> = { [K in keyof F]: readonly F[K][] };
+
 export function useFilteredPagination<F extends Record<string, string>>(
   defaultFilters: F,
+  allowedValues: AllowedValues<F>,
 ) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const rejected = Object.keys(defaultFilters).filter((key) => {
+    const value = searchParams.get(key);
+    return value !== null && !allowedValues[key].includes(value as F[string]);
+  });
   const filters = Object.fromEntries(
     Object.entries(defaultFilters).map(([key, fallback]) => [
       key,
-      searchParams.get(key) ?? fallback,
+      rejected.includes(key) ? fallback : (searchParams.get(key) ?? fallback),
     ]),
   ) as F;
   const page = Math.max(
@@ -51,6 +59,18 @@ export function useFilteredPagination<F extends Record<string, string>>(
       else next.set(PAGE_PARAM, String(nextPage));
     });
   }
+
+  const dropRejected = useEffectEvent(() =>
+    update((next) => {
+      for (const key of rejected) next.delete(key);
+      next.delete(PAGE_PARAM);
+    }),
+  );
+  const rejectedKeys = rejected.join();
+
+  useEffect(() => {
+    if (rejectedKeys) dropRejected();
+  }, [rejectedKeys]);
 
   const query = Object.fromEntries(
     Object.entries(filters).map(([key, value]) => [
