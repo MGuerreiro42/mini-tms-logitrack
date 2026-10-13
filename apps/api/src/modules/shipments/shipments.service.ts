@@ -495,24 +495,27 @@ export class ShipmentsService {
     include: I;
   }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
     const { shipmentId, to } = params;
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.shipment.updateMany({
+    const written = await this.prisma.$transaction(async (tx) => {
+      const [shipment] = await tx.shipment.updateManyAndReturn({
         where: { id: shipmentId, ...params.expected },
         data: { ...params.data, status: to },
       });
-      if (count === 0) {
+      if (!shipment) {
         throw new ConflictException(params.conflictMessage);
       }
       await tx.trackingEvent.create({
         data: { shipmentId, status: to, note: params.note },
       });
-      return tx.shipment.findUniqueOrThrow({
-        where: { id: shipmentId },
-        include: params.include,
-      });
+      return shipment;
     });
 
-    this.emitUpdated({ ...updated, status: to });
+    // Relations load after commit: an include inside the transaction runs concurrent queries on its single pg client.
+    const withRelations = await this.prisma.shipment.findUniqueOrThrow({
+      where: { id: shipmentId },
+      include: params.include,
+    });
+    const updated = { ...withRelations, ...written };
+    this.emitUpdated(updated);
     return updated;
   }
 
