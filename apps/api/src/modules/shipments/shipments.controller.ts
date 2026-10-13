@@ -140,7 +140,10 @@ export class ShipmentsController {
     description: 'Not a carrier user, or the carrier is not approved',
   })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @ApiResponse({ status: 409, description: 'Shipment already claimed' })
+  @ApiResponse({
+    status: 409,
+    description: 'Shipment is no longer PENDING and unowned',
+  })
   @Auth(...CARRIER_ROLES)
   @Patch(':id/claim')
   claim(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
