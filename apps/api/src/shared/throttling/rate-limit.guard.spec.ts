@@ -5,6 +5,7 @@ import { ThrottlerModule, type ThrottlerStorage } from '@nestjs/throttler';
 import request from 'supertest';
 import { RateLimit } from './rate-limit.decorator';
 import { RateLimitGuard, UNKNOWN_CLIENT } from './rate-limit.guard';
+import { FALLBACK_RATE_LIMIT, RATE_LIMIT_WINDOW } from './rate-limits';
 
 @Controller()
 class FixtureController {
@@ -22,7 +23,7 @@ describe('RateLimitGuard', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ThrottlerModule.forRoot({
-          throttlers: [{ ttl: 60_000, limit: 60 }],
+          throttlers: [{ ttl: RATE_LIMIT_WINDOW, limit: FALLBACK_RATE_LIMIT }],
           storage,
         }),
       ],

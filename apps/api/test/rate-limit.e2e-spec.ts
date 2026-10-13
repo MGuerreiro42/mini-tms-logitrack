@@ -1,4 +1,8 @@
 import request from 'supertest';
+import {
+  LOGIN_RATE_LIMIT,
+  PUBLIC_TRACKING_RATE_LIMIT,
+} from '../src/shared/throttling/rate-limits';
 import { type E2eContext, randomIp, startApp } from './support/e2e-app';
 
 describe('Rate limiting (e2e)', () => {
@@ -18,10 +22,10 @@ describe('Rate limiting (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('answers 429 after 10 logins per minute from one IP, without affecting another IP', async () => {
+  it('answers 429 once one IP exceeds the login limit, without affecting another IP', async () => {
     const ip = randomIp();
 
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < LOGIN_RATE_LIMIT; attempt++) {
       await login(ip).expect(401);
     }
 
@@ -30,7 +34,7 @@ describe('Rate limiting (e2e)', () => {
     await login(randomIp()).expect(401);
   });
 
-  it('answers 429 after 60 public tracking lookups per minute from one IP', async () => {
+  it('answers 429 once one IP exceeds the public tracking limit', async () => {
     const ip = randomIp();
     const lookup = () =>
       request(ctx.app.getHttpServer())
@@ -38,7 +42,9 @@ describe('Rate limiting (e2e)', () => {
         .set('X-Forwarded-For', ip);
 
     const statuses = await Promise.all(
-      Array.from({ length: 60 }, () => lookup().then((res) => res.status)),
+      Array.from({ length: PUBLIC_TRACKING_RATE_LIMIT }, () =>
+        lookup().then((res) => res.status),
+      ),
     );
     expect(new Set(statuses)).toEqual(new Set([404]));
 
