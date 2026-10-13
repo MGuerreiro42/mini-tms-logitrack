@@ -3,16 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { ApproveRejectActions } from './approve-reject-actions';
 
 describe('ApproveRejectActions', () => {
-  it('renders nothing once the application is no longer pending', () => {
-    const { container } = render(
+  it.each([
+    ['APPROVED', 'This application was approved.'],
+    ['REJECTED', 'This application was rejected.'],
+  ] as const)('replaces the buttons with the outcome once %s', (status, outcome) => {
+    render(
       <ApproveRejectActions
-        status="APPROVED"
+        status={status}
         onApprove={vi.fn()}
         onReject={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole('status')).toHaveTextContent(outcome);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('calls onApprove directly (no confirm step)', async () => {
