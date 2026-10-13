@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { DetailRow } from '@/components/common/detail-row';
 import { LiveIndicator } from '@/components/common/live-indicator';
-import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import type { LiveStatus } from '@/lib/live-status';
 import type { TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';

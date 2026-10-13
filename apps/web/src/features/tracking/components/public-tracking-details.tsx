@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { LiveIndicator } from '@/components/common/live-indicator';
-import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
 import type { PublicTracking } from '../types';
+import { TrackingTimeline } from './tracking-timeline';
 
 export function PublicTrackingDetails({
   initialData,
