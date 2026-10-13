@@ -514,6 +514,7 @@ export class ShipmentsService {
       where: { id: shipmentId },
       include: params.include,
     });
+    // The written row wins: a transition landing between commit and re-read must not replace the status this request reports and emits.
     const updated = { ...withRelations, ...written };
     this.emitUpdated(updated);
     return updated;
