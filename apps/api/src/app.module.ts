@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CarriersModule } from './modules/carriers/carriers.module';
+import { HealthModule } from './modules/health/health.module';
 import { ModalitiesModule } from './modules/modalities/modalities.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SellersModule } from './modules/sellers/sellers.module';
@@ -31,6 +32,7 @@ import { ThrottlingModule } from './shared/throttling/throttling.module';
     NotificationsModule,
     TrackingModule,
     AuthModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
