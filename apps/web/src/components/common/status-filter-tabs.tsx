@@ -1,8 +1,8 @@
 'use client';
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ALL } from '@/lib/filters';
 
-export const ALL = 'ALL';
 export type StatusFilter<S extends string> = S | typeof ALL;
 
 export interface StatusFilterOption<S extends string> {

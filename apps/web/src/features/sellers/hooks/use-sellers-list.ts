@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { listSellers } from '../api';
 import { sellerKeys } from '../api/keys';
@@ -13,5 +13,6 @@ export function useSellersList(query: ListSellersQuery) {
     queryKey: sellerKeys.list(query),
     queryFn: () => listSellers(query, token),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }

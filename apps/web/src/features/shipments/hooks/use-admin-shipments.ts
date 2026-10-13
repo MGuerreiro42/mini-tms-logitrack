@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useFallbackPollInterval } from '@/hooks/use-fallback-poll-interval';
 import { listAdminShipments } from '../api';
@@ -15,6 +15,7 @@ export function useAdminShipments(query: ListAdminShipmentsQuery) {
     queryKey: shipmentKeys.adminList(query),
     queryFn: () => listAdminShipments(query, token),
     enabled,
+    placeholderData: keepPreviousData,
     refetchInterval: fallbackPollInterval,
   });
 }
