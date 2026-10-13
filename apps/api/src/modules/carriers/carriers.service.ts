@@ -249,8 +249,6 @@ export class CarriersService {
       0,
     );
 
-    // `events` is already ordered by (shipmentId, createdAt) — consecutive
-    // rows for the same shipmentId are consecutive events in time, so a
     const gapsInHours: number[] = [];
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
