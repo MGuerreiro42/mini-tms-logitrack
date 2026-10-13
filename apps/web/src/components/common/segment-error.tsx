@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import {
   Alert,
   AlertAction,
@@ -8,16 +7,11 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useLoggedError } from '@/hooks/use-logged-error';
 
 export interface SegmentErrorProps {
   error: Error & { digest?: string };
   unstable_retry: () => void;
-}
-
-export function useLoggedError(error: SegmentErrorProps['error']): void {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
 }
 
 export function ErrorReference({ digest }: { digest?: string }) {

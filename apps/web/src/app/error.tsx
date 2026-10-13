@@ -6,9 +6,9 @@ import { PublicCard } from '@/components/common/public-card';
 import {
   ErrorReference,
   type SegmentErrorProps,
-  useLoggedError,
 } from '@/components/common/segment-error';
 import { Button } from '@/components/ui/button';
+import { useLoggedError } from '@/hooks/use-logged-error';
 import { ROUTES } from '@/lib/routes';
 
 export default function RootError({
