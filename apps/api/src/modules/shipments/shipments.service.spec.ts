@@ -393,16 +393,25 @@ describe('ShipmentsService', () => {
         },
       ]);
 
-      const result = await shipmentsService.slaSummaryForSeller('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await shipmentsService.slaSummaryForSeller(
+        'user-1',
+        since,
+      );
 
       expect(shipmentFindMany).toHaveBeenCalledWith({
-        where: { sellerId: 'seller-1', status: 'DELIVERED' },
+        where: {
+          sellerId: 'seller-1',
+          status: 'DELIVERED',
+          createdAt: { gte: since },
+        },
         select: {
           createdAt: true,
           modality: { select: { code: true, name: true, slaHours: true } },
           trackingEvents: {
             where: { status: 'DELIVERED' },
             select: { createdAt: true },
+            orderBy: { createdAt: 'asc' },
             take: 1,
           },
         },

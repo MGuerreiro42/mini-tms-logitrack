@@ -18,7 +18,11 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { countByStatus, hoursBetween } from '../../shared/stats/stats';
+import {
+  countByStatus,
+  createdSince,
+  hoursBetween,
+} from '../../shared/stats/stats';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
@@ -211,17 +215,23 @@ export class ShipmentsService {
   // Only DELIVERED shipments have an outcome; modalities without slaHours are skipped, not counted as misses.
   async slaSummaryForSeller(
     userId: string,
+    since?: Date,
   ): Promise<SlaSummaryItemResponseDto[]> {
     const seller = await this.findSellerOrThrow(userId);
 
     const shipments = await this.prisma.shipment.findMany({
-      where: { sellerId: seller.id, status: ShipmentStatus.DELIVERED },
+      where: {
+        sellerId: seller.id,
+        status: ShipmentStatus.DELIVERED,
+        ...createdSince(since),
+      },
       select: {
         createdAt: true,
         modality: { select: { code: true, name: true, slaHours: true } },
         trackingEvents: {
           where: { status: ShipmentStatus.DELIVERED },
           select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
           take: 1,
         },
       },

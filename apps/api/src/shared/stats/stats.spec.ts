@@ -1,4 +1,11 @@
-import { average, countByStatus, hoursBetween, percentage } from './stats';
+import {
+  average,
+  countByStatus,
+  createdSince,
+  daysAgo,
+  hoursBetween,
+  percentage,
+} from './stats';
 
 describe('stats', () => {
   it('percentage is 0 for an empty total instead of NaN', () => {
@@ -18,6 +25,23 @@ describe('stats', () => {
         new Date('2026-01-01T01:30:00Z'),
       ),
     ).toBe(1.5);
+  });
+
+  it('daysAgo subtracts whole days from the given instant', () => {
+    expect(daysAgo(2, new Date('2026-01-03T00:00:00Z'))).toEqual(
+      new Date('2026-01-01T00:00:00Z'),
+    );
+  });
+
+  it('createdSince uses the given instant, or the last 90 days by default', () => {
+    const since = new Date('2026-01-01T00:00:00Z');
+    expect(createdSince(since)).toEqual({ createdAt: { gte: since } });
+
+    vi.useFakeTimers({ now: new Date('2026-04-01T00:00:00Z') });
+    expect(createdSince()).toEqual({
+      createdAt: { gte: new Date('2026-01-01T00:00:00Z') },
+    });
+    vi.useRealTimers();
   });
 
   it('countByStatus fills every status with 0 and overlays the groups', () => {
