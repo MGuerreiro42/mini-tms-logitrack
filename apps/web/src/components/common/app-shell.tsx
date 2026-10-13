@@ -1,4 +1,5 @@
 import { type NavItem, NavList } from '@/components/common/nav-list';
+import { SessionSync } from '@/components/common/session-sync';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -44,6 +45,7 @@ export function AppShell({
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
       <Toaster />
+      <SessionSync />
     </div>
   );
 }
