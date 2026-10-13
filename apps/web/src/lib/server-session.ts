@@ -18,7 +18,6 @@ export const getServerSession = cache(async (): Promise<Session | null> => {
   return parseSessionCookie(cookieStore.get(SESSION_COOKIE)?.value);
 });
 
-// Layouts and pages render in parallel, so each one that fetches calls this itself before touching the API.
 export async function requireSegment(segment: Segment): Promise<Session> {
   const session = await getServerSession();
   if (!session) redirect(ROUTES.login);

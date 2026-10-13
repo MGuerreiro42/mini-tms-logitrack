@@ -13,11 +13,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/app/**', // routes/layouts — mostly Server Components, covered by e2e/manual browser testing, not RTL
-        'src/components/ui/**', // shadcn-generated primitives, not hand-written
-      ],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/app/**', 'src/components/ui/**'],
     },
   },
   resolve: {
