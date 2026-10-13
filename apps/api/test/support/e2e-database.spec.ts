@@ -1,4 +1,4 @@
-import { resolveE2eDatabaseUrl } from './support/e2e-database';
+import { resolveE2eDatabaseUrl } from './e2e-database';
 
 const DEV = 'postgresql://tms:tms@localhost:5432/tms?schema=public';
 const E2E = 'postgresql://tms:tms@localhost:5432/tms_e2e?schema=public';
