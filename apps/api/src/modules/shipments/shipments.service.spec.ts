@@ -687,7 +687,12 @@ describe('ShipmentsService', () => {
       );
 
       expect(shipmentUpdateMany).toHaveBeenCalledWith({
-        where: { id: 'shipment-1', ownerId: null, status: 'PENDING' },
+        where: {
+          id: 'shipment-1',
+          carrierId: 'carrier-1',
+          ownerId: null,
+          status: 'PENDING',
+        },
         data: { ownerId: 'carrier-user-operator', status: 'ACCEPTED' },
       });
       expect(trackingEventCreate).toHaveBeenCalledWith(

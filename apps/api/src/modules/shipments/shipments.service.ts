@@ -417,7 +417,11 @@ export class ShipmentsService {
     // Concurrent claims or a seller cancel can race this; the WHERE lets Postgres pick one winner.
     const updated = await this.transitionWithEvent({
       shipmentId,
-      expected: { ownerId: null, status: ShipmentStatus.PENDING },
+      expected: {
+        carrierId: carrierUser.carrierId,
+        ownerId: null,
+        status: ShipmentStatus.PENDING,
+      },
       to: ShipmentStatus.ACCEPTED,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
