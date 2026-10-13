@@ -7,6 +7,7 @@ import {
   getMyCarrierModalities,
   getMyCarrierPerformance,
   getMyCoverageAreas,
+  getMyOperatorRanking,
   listCarriers,
   rejectCarrier,
   setMyCarrierModalities,
@@ -129,6 +130,19 @@ describe('carriers api', () => {
 
     expect(apiClient).toHaveBeenCalledWith(
       '/carriers/me/performance',
+      undefined,
+      'token',
+    );
+  });
+
+  it.each([
+    ['performance', getMyCarrierPerformance],
+    ['operator-ranking', getMyOperatorRanking],
+  ])('%s accepts an optional since window', async (path, request) => {
+    await request('token', { since: '2026-07-01T00:00:00.000Z' });
+
+    expect(apiClient).toHaveBeenCalledWith(
+      `/carriers/me/${path}?since=2026-07-01T00%3A00%3A00.000Z`,
       undefined,
       'token',
     );
