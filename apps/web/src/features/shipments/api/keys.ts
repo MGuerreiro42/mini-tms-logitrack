@@ -18,12 +18,10 @@ export const shipmentKeys = {
   statusCounts: () => [...shipmentKeys.all, 'status-counts'] as const,
   dashboardRecent: () => [...shipmentKeys.all, 'dashboard-recent'] as const,
   slaSummary: () => [...shipmentKeys.all, 'sla-summary'] as const,
-  eligibleCarriers: (state: string, city: string, modalityId: string) =>
-    [
-      ...shipmentKeys.all,
-      'eligible-carriers',
-      state,
-      city,
-      modalityId,
-    ] as const,
 };
+
+export const eligibleCarriersKey = (
+  state: string,
+  city: string,
+  modalityId: string,
+) => ['eligible-carriers', state, city, modalityId] as const;
