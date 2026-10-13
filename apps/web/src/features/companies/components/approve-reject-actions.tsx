@@ -19,15 +19,7 @@ export function ApproveRejectActions({
   isApproving,
   isRejecting,
 }: ApproveRejectActionsProps) {
-  if (status !== 'PENDING') {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        {status === 'APPROVED'
-          ? 'This application was approved.'
-          : 'This application was rejected.'}
-      </p>
-    );
-  }
+  if (status !== 'PENDING') return null;
 
   return (
     <div className="flex gap-2">
