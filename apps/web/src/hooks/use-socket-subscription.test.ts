@@ -1,7 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { StrictMode } from 'react';
 import type { Socket } from 'socket.io-client';
-import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
 import {
   type SocketSubscription,
@@ -12,8 +11,6 @@ const rooms: SocketSubscription[] = [
   { event: 'subscribe:shipment', args: ['shipment-1'] },
   { event: 'subscribe:queue' },
 ];
-
-type FakeSocket = ReturnType<typeof makeFakeSocket>;
 
 function setup(
   connectionKey: string | undefined,
@@ -31,19 +28,23 @@ function setup(
       }),
     { wrapper: strict ? StrictMode : undefined },
   );
-  return { socket: socket as FakeSocket, onUpdate, ...hook };
+  return { socket, onUpdate, ...hook };
 }
 
-async function flush() {
-  await act(async () => {});
+async function connectAndAck(
+  socket: ReturnType<typeof makeFakeSocket>,
+  ack: unknown = { ok: true },
+) {
+  act(() => socket.trigger('connect'));
+  await act(async () => socket.ackAll(ack));
 }
 
 describe('useSocketSubscription', () => {
-  beforeEach(() => useRealtimeStore.getState().setConnected(false));
-
   it('does not connect without a connection key', () => {
-    const { socket } = setup(undefined);
+    const { socket, result } = setup(undefined);
+
     expect(socket.connect).not.toHaveBeenCalled();
+    expect(result.current).toBe('connecting');
   });
 
   it('subscribes to every room with an ack timeout on connect', () => {
@@ -62,39 +63,73 @@ describe('useSocketSubscription', () => {
     );
   });
 
-  it('goes live only once every subscription acks ok', async () => {
-    const { socket } = setup('token');
+  it('is connecting until every subscription acks ok, then live', async () => {
+    const { socket, result } = setup('token');
     act(() => socket.trigger('connect'));
-    expect(useRealtimeStore.getState().connected).toBe(false);
+    expect(result.current).toBe('connecting');
 
-    socket.ackAll({ ok: true });
-    await flush();
+    await act(async () => socket.ackAll({ ok: true }));
 
-    expect(useRealtimeStore.getState().connected).toBe(true);
+    expect(result.current).toBe('live');
   });
 
-  it('stays not live when any ack is false or times out', async () => {
-    const { socket } = setup('token');
+  it('goes offline when any ack is false or times out', async () => {
+    const { socket, result } = setup('token');
     act(() => socket.trigger('connect'));
 
     const [, , shipmentAck] = socket.emit.mock.calls[0];
     const [, queueAck] = socket.emit.mock.calls[1];
-    shipmentAck(null, { ok: true });
-    queueAck(new Error('operation has timed out'));
-    await flush();
+    await act(async () => {
+      shipmentAck(null, { ok: true });
+      queueAck(new Error('operation has timed out'));
+    });
 
-    expect(useRealtimeStore.getState().connected).toBe(false);
+    expect(result.current).toBe('offline');
+  });
+
+  it('goes offline when the connection attempt fails', () => {
+    const { socket, result } = setup('token');
+
+    act(() => socket.trigger('connect_error', new Error('xhr poll error')));
+
+    expect(result.current).toBe('offline');
+  });
+
+  it('goes offline on disconnect and live again after the rooms re-ack', async () => {
+    const { socket, result } = setup('token');
+    await connectAndAck(socket);
+
+    act(() => socket.trigger('disconnect'));
+    expect(result.current).toBe('offline');
+
+    socket.emit.mockClear();
+    await connectAndAck(socket);
+    expect(result.current).toBe('live');
+  });
+
+  it('ignores a stale ack from before a reconnect', async () => {
+    const { socket, result } = setup('token');
+    act(() => socket.trigger('connect'));
+    const staleAcks = socket.emit.mock.calls.map((call) => call.at(-1));
+    act(() => socket.trigger('disconnect'));
+
+    socket.emit.mockClear();
+    await connectAndAck(socket);
+    await act(async () => {
+      for (const ack of staleAcks) ack(new Error('operation has timed out'));
+    });
+
+    expect(result.current).toBe('live');
   });
 
   it('ignores an ack that arrives after unmount', async () => {
-    const { socket, unmount } = setup('token');
+    const { socket, result, unmount } = setup('token');
     act(() => socket.trigger('connect'));
     unmount();
 
-    socket.ackAll({ ok: true });
-    await flush();
+    await act(async () => socket.ackAll({ ok: true }));
 
-    expect(useRealtimeStore.getState().connected).toBe(false);
+    expect(result.current).toBe('connecting');
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
@@ -108,41 +143,37 @@ describe('useSocketSubscription', () => {
     expect(onUpdate).toHaveBeenCalledWith({ shipmentId: 'shipment-1' });
   });
 
-  it('drops the live flag on disconnect', async () => {
-    const { socket } = setup('token');
-    act(() => socket.trigger('connect'));
-    socket.ackAll({ ok: true });
-    await flush();
-
-    act(() => socket.trigger('disconnect'));
-
-    expect(useRealtimeStore.getState().connected).toBe(false);
-  });
-
-  it('survives the StrictMode double mount with one connection and one set of listeners', () => {
-    const { socket, unmount } = setup('token', { strict: true });
+  it('survives the StrictMode double mount with one connection and one set of listeners', async () => {
+    const { socket, result, unmount } = setup('token', { strict: true });
 
     expect(socket.connect).toHaveBeenCalledTimes(2);
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
 
-    act(() => socket.trigger('connect'));
+    await connectAndAck(socket);
     expect(socket.emit).toHaveBeenCalledTimes(rooms.length);
+    expect(result.current).toBe('live');
 
     unmount();
     expect(socket.disconnect).toHaveBeenCalledTimes(2);
   });
 
-  it('shares one connection between two concurrent subscribers', () => {
+  it('shares one connection between two concurrent subscribers, each with its own status', async () => {
     const first = setup('token');
     const { socket } = first;
     socket.connected = true;
-    act(() => socket.trigger('connect'));
+    await connectAndAck(socket);
     socket.emit.mockClear();
 
     const second = setup('token', { socket });
 
     expect(socket.connect).toHaveBeenCalledTimes(1);
     expect(socket.emit).toHaveBeenCalledTimes(rooms.length);
+    expect(first.result.current).toBe('live');
+    expect(second.result.current).toBe('connecting');
+
+    await act(async () => socket.ackAll({ ok: false }));
+    expect(first.result.current).toBe('live');
+    expect(second.result.current).toBe('offline');
 
     first.unmount();
     expect(socket.disconnect).not.toHaveBeenCalled();

@@ -6,6 +6,7 @@ import { QueryState } from '@/components/common/query-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/hooks/use-session';
+import type { LiveStatus } from '@/lib/live-status';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useQueueShipment } from '../hooks/use-queue-shipment';
@@ -42,8 +43,8 @@ function getActionState(
 }
 
 export function CarrierShipmentDetail({ id }: { id: string }) {
-  const query = useQueueShipment(id);
-  useShipmentTracking({ shipmentId: id });
+  const liveStatus = useShipmentTracking({ shipmentId: id });
+  const query = useQueueShipment(id, liveStatus);
 
   return (
     <QueryState
@@ -51,12 +52,20 @@ export function CarrierShipmentDetail({ id }: { id: string }) {
       errorMessage="Couldn't load this shipment."
       notFoundMessage="Shipment not found."
     >
-      {(shipment) => <CarrierShipmentView shipment={shipment} />}
+      {(shipment) => (
+        <CarrierShipmentView shipment={shipment} liveStatus={liveStatus} />
+      )}
     </QueryState>
   );
 }
 
-function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
+function CarrierShipmentView({
+  shipment,
+  liveStatus,
+}: {
+  shipment: CarrierShipment;
+  liveStatus: LiveStatus;
+}) {
   const { id } = shipment;
   const session = useSession();
   const claim = useClaimShipment();
@@ -69,7 +78,7 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-      <ShipmentHeaderCard shipment={shipment}>
+      <ShipmentHeaderCard shipment={shipment} liveStatus={liveStatus}>
         <DetailRow label="Seller" value={shipment.sellerCompanyName} />
         <DetailRow label="Seller contact" value={shipment.sellerEmail} />
         <DetailRow label="Modality" value={shipment.modalityName} />

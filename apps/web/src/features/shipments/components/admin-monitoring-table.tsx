@@ -38,12 +38,12 @@ export function AdminMonitoringTable({
     sellerId: ALL as string,
   });
 
-  const query = useAdminShipments(params);
-  useShipmentTracking({ subscribeToMonitoring: true });
+  const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
+  const query = useAdminShipments(params, liveStatus);
 
   return (
     <div className="space-y-4">
-      <LiveIndicator />
+      <LiveIndicator status={liveStatus} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
         value={filters.status}
