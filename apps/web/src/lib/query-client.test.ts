@@ -63,7 +63,7 @@ describe('global 401 handling', () => {
     });
   });
 
-  it('clears the session and redirects to /login on a 401', async () => {
+  it('clears the session and redirects to the expired-session login on a 401', async () => {
     const client = getQueryClient();
     client.setQueryData(['stale'], 'previous user data');
 
@@ -75,7 +75,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login');
+    expect(window.location.href).toBe('/login?expired=1');
     expect(client.getQueryData(['stale'])).toBeUndefined();
   });
 
@@ -110,7 +110,7 @@ describe('global 401 handling', () => {
     expect(window.location.href).toBe('');
   });
 
-  it('clears the session and redirects to /login on a 401 mutation error (handleMutationError is a separate function from handleQueryError — needs its own coverage)', async () => {
+  it('clears the session and redirects to the expired-session login on a 401 mutation error (handleMutationError is a separate function from handleQueryError — needs its own coverage)', async () => {
     const client = getQueryClient();
     const mutation = client.getMutationCache().build(client, {
       mutationFn: () => Promise.reject(new ApiError(401, 'Token expired')),
@@ -119,7 +119,7 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login');
+    expect(window.location.href).toBe('/login?expired=1');
   });
 
   it('does NOT clear the session on a 403 mutation error (a legitimate ownership rejection, not a broken session)', async () => {

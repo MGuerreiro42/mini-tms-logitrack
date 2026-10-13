@@ -5,7 +5,7 @@ import {
   QueryCache,
   QueryClient,
 } from '@tanstack/react-query';
-import { clearSession } from '@/lib/session';
+import { clearSession, SESSION_EXPIRED_PATH } from '@/lib/session';
 import { ApiError, isClientError } from '@/services/api-client';
 
 declare module '@tanstack/react-query' {
@@ -22,7 +22,7 @@ let browserQueryClient: QueryClient | undefined;
 function forceReLogin() {
   browserQueryClient?.clear();
   clearSession();
-  window.location.href = '/login';
+  window.location.href = SESSION_EXPIRED_PATH;
 }
 
 function isExpiredSession(error: unknown): boolean {
