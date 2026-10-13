@@ -17,7 +17,7 @@ docker compose up -d              # Postgres (5432) + Redis (6379), infra local
 # apps/api — http://localhost:3333
 cd apps/api && pnpm install && pnpm start:dev   # roda `prisma migrate deploy` antes (prestart:dev)
 pnpm test          # vitest unit
-pnpm test:e2e      # vitest e2e (também roda migrate deploy antes)
+pnpm test:e2e      # vitest e2e — exige E2E_DATABASE_URL (ou DATABASE_URL) com banco terminado em _e2e; migra antes e trunca esse banco ao final
 pnpm lint          # biome check --write .
 pnpm lint:ci       # biome check . (sem write — é o que roda no CI)
 
