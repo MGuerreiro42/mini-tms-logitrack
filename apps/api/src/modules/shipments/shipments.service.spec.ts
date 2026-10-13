@@ -9,7 +9,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
+import { SHIPMENT_UPDATED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
 
 describe('ShipmentsService', () => {
@@ -244,7 +244,7 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(emit).toHaveBeenCalledWith(
-        SHIPMENT_STATUS_CHANGED,
+        SHIPMENT_UPDATED,
         expect.objectContaining({
           shipmentId: shipmentWithRelations.id,
           carrierId: shipmentWithRelations.carrierId,
@@ -487,7 +487,7 @@ describe('ShipmentsService', () => {
         },
       });
       expect(emit).toHaveBeenCalledWith(
-        SHIPMENT_STATUS_CHANGED,
+        SHIPMENT_UPDATED,
         expect.objectContaining({
           shipmentId: 'shipment-1',
           carrierId: 'carrier-1',
@@ -710,7 +710,7 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(emit).toHaveBeenCalledWith(
-        'shipment.status-changed',
+        'shipment.updated',
         expect.objectContaining({
           shipmentId: 'shipment-1',
           status: 'ACCEPTED',
@@ -738,7 +738,7 @@ describe('ShipmentsService', () => {
       expect(result.status).toBe('ACCEPTED');
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith(
-        SHIPMENT_STATUS_CHANGED,
+        SHIPMENT_UPDATED,
         expect.objectContaining({ status: 'ACCEPTED' }),
       );
     });
