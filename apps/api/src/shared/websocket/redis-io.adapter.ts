@@ -41,6 +41,8 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: { origin: corsOrigin, credentials: true },
+      // Clients only send ids and a JWT; the 1 MB default is spare room for anonymous /public sockets.
+      maxHttpBufferSize: 16 * 1024,
     });
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);

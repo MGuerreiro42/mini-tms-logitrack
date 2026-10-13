@@ -7,8 +7,10 @@ const CODE = 'TMS-ABC123ABC123';
 function makeSocket(rooms: string[] = ['socket-id']) {
   return {
     rooms: new Set(rooms),
+    data: {},
     join: vi.fn(),
     leave: vi.fn(),
+    disconnect: vi.fn(),
   };
 }
 
@@ -83,5 +85,65 @@ describe('PublicTrackingGateway', () => {
     expect(shipmentFindUnique).not.toHaveBeenCalled();
     expect(socket.join).not.toHaveBeenCalled();
     expect(ack).toEqual({ ok: false });
+  });
+
+  describe('subscribe limit', () => {
+    const subscribe = (socket: ReturnType<typeof makeSocket>, times: number) =>
+      Promise.all(
+        Array.from({ length: times }, () =>
+          gateway.handleSubscribeTracking(socket as never, CODE),
+        ),
+      );
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      shipmentFindUnique.mockResolvedValue({ id: 'shipment-1' });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('disconnects a socket on its 11th subscribe within 10 seconds, without querying', async () => {
+      const socket = makeSocket();
+      await subscribe(socket, 10);
+      expect(socket.disconnect).not.toHaveBeenCalled();
+
+      const [ack] = await subscribe(socket, 1);
+
+      expect(socket.disconnect).toHaveBeenCalledWith(true);
+      expect(shipmentFindUnique).toHaveBeenCalledTimes(10);
+      expect(ack).toEqual({ ok: false });
+    });
+
+    it('counts malformed codes too', async () => {
+      const socket = makeSocket();
+      for (let attempt = 0; attempt < 11; attempt++) {
+        await gateway.handleSubscribeTracking(socket as never, 'nope');
+      }
+
+      expect(socket.disconnect).toHaveBeenCalledWith(true);
+    });
+
+    it('starts a fresh window after 10 seconds', async () => {
+      const socket = makeSocket();
+      await subscribe(socket, 10);
+
+      vi.advanceTimersByTime(10_000);
+      const [ack] = await subscribe(socket, 1);
+
+      expect(socket.disconnect).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: true });
+    });
+
+    it('keeps a separate count per socket', async () => {
+      await subscribe(makeSocket(), 10);
+      const other = makeSocket();
+
+      const [ack] = await subscribe(other, 1);
+
+      expect(other.disconnect).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: true });
+    });
   });
 });

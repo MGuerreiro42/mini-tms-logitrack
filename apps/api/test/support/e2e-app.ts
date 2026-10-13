@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
+import { io, type Socket } from 'socket.io-client';
 import request from 'supertest';
 import type { GlobalRole } from '../../generated/prisma/client';
 import { AppModule } from '../../src/app.module';
@@ -24,6 +25,26 @@ export async function startApp(): Promise<E2eContext> {
   await configureApp(app);
   await app.listen(0);
   return { app, url: await app.getUrl(), prisma: app.get(PrismaService) };
+}
+
+export function connectSocket(
+  ctx: E2eContext,
+  namespace: '/' | '/public',
+  options: { token?: string; transports?: string[] } = {},
+): Promise<Socket> {
+  const socket = io(`${ctx.url}${namespace}`, {
+    transports: options.transports ?? ['websocket'],
+    auth: options.token ? { token: options.token } : undefined,
+    reconnection: false,
+    forceNew: true,
+  });
+  return new Promise((resolve, reject) => {
+    socket.once('connect', () => resolve(socket));
+    socket.once('connect_error', (error) => {
+      socket.close();
+      reject(error);
+    });
+  });
 }
 
 export const randomIp = () =>
