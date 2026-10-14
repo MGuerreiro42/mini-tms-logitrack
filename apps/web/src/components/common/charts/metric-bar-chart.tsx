@@ -17,9 +17,9 @@ import {
 } from '@/components/ui/chart';
 import { cn } from '@/lib/utils';
 import {
-  type BarColors,
+  type BarEmphasis,
+  barFills,
   buildBarChartConfig,
-  rowColorKey,
 } from './bar-chart-config';
 
 type MetricBarChartProps<T> = {
@@ -28,7 +28,7 @@ type MetricBarChartProps<T> = {
   valueKey: keyof T & string;
   valueLabel: string;
   orientation: 'horizontal' | 'vertical';
-  colors: BarColors;
+  emphasis?: BarEmphasis;
   formatLabel?: (row: T) => string;
   formatTooltip: (row: T) => ReactNode;
   valueDomain?: [number, number];
@@ -45,7 +45,7 @@ export function MetricBarChart<T extends object>({
   valueKey,
   valueLabel,
   orientation,
-  colors,
+  emphasis = 'all',
   formatLabel,
   formatTooltip,
   valueDomain,
@@ -57,11 +57,15 @@ export function MetricBarChart<T extends object>({
   // Recharts types dataKey against the row type, which a generic T can't satisfy.
   const categoryDataKey: string = categoryKey;
   const valueDataKey: string = valueKey;
-  const config = buildBarChartConfig(valueKey, valueLabel, colors, data.length);
+  const config = buildBarChartConfig(valueKey, valueLabel);
   const rows = data.map((row) => ({
     ...row,
     [LABEL_KEY]: formatLabel ? formatLabel(row) : row[valueKey],
   }));
+  const fills = barFills(
+    data.map((row) => Number(row[valueKey])),
+    emphasis,
+  );
 
   return (
     <ChartContainer config={config} className={cn('h-56 w-full', className)}>
@@ -112,12 +116,9 @@ export function MetricBarChart<T extends object>({
           radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
           maxBarSize={horizontal ? 24 : 48}
         >
-          {colors === 'ordinal' &&
-            rows.map((_row, index) => (
-              <Cell
-                key={rowColorKey(index)}
-                fill={`var(--color-${rowColorKey(index)})`}
-              />
+          {emphasis !== 'all' &&
+            rows.map((row, index) => (
+              <Cell key={String(row[categoryKey])} fill={fills[index]} />
             ))}
           <LabelList
             dataKey={LABEL_KEY}
