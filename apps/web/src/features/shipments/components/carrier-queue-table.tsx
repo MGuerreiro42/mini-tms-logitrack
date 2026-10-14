@@ -25,7 +25,7 @@ import {
   ownerLabel,
   type ShipmentStatus,
 } from '../types';
-import { shipmentColumns } from './shipment-columns';
+import { lateRowClassName, shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -64,6 +64,7 @@ export function CarrierQueueTable() {
             data={result.data}
             meta={result.meta}
             onPageChange={setPage}
+            getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
             emptyMessage="No shipments in the queue."
@@ -72,6 +73,7 @@ export function CarrierQueueTable() {
               shipmentColumns.status,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
               shipmentColumns.destination,
+              shipmentColumns.sla,
               {
                 header: 'Owner',
                 cell: ownerLabel,

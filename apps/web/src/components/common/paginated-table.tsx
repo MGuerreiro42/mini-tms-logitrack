@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import type { PaginationMeta } from '@/types/pagination';
 
 export interface Column<T> {
@@ -27,6 +28,7 @@ interface PaginatedTableProps<T> {
   meta?: PaginationMeta;
   onPageChange?: (page: number) => void;
   getRowHref?: (row: T) => string;
+  getRowClassName?: (row: T) => string | undefined;
   emptyMessage?: string;
   getRowKey: (row: T) => string;
 }
@@ -39,6 +41,7 @@ export function PaginatedTable<T>({
   getRowHref,
   emptyMessage = 'Nothing here yet.',
   getRowKey,
+  getRowClassName,
 }: PaginatedTableProps<T>) {
   const lastPage = Math.max(1, meta?.totalPages ?? 1);
   const isPastTheEnd = meta !== undefined && meta.page > lastPage;
@@ -75,7 +78,7 @@ export function PaginatedTable<T>({
             {data.map((row) => (
               <TableRow
                 key={getRowKey(row)}
-                className={getRowHref ? 'relative' : undefined}
+                className={cn(getRowHref && 'relative', getRowClassName?.(row))}
               >
                 {columns.map((col, index) => (
                   <TableCell key={columnKey(col)} className={col.className}>

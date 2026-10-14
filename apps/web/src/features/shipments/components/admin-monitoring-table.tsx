@@ -24,7 +24,7 @@ import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
-import { shipmentColumns } from './shipment-columns';
+import { lateRowClassName, shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
 const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
@@ -92,12 +92,14 @@ export function AdminMonitoringTable({
             data={result.data}
             meta={result.meta}
             onPageChange={setPage}
+            getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
             emptyMessage="No shipments match this filter."
             columns={[
               shipmentColumns.trackingCode,
               shipmentColumns.status,
               shipmentColumns.destination,
+              shipmentColumns.sla,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
               { header: 'Carrier', cell: (s) => s.carrierCompanyName },
               shipmentColumns.created,

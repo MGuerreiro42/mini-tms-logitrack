@@ -13,7 +13,7 @@ import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
-import { shipmentColumns } from './shipment-columns';
+import { lateRowClassName, shipmentColumns } from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -48,6 +48,7 @@ export function ShipmentsTable() {
             data={result.data}
             meta={result.meta}
             onPageChange={setPage}
+            getRowClassName={lateRowClassName}
             getRowKey={(shipment) => shipment.id}
             getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
             emptyMessage="No shipments yet — create your first one."
@@ -55,6 +56,7 @@ export function ShipmentsTable() {
               shipmentColumns.trackingCode,
               shipmentColumns.status,
               shipmentColumns.destination,
+              shipmentColumns.sla,
               {
                 header: 'Carrier',
                 cell: (s) => s.carrierName,
