@@ -94,4 +94,21 @@ describe('useFilteredPagination', () => {
     act(() => result.current.setPage(1));
     expect(currentUrl()).toBe('/admin/monitoring?status=PENDING');
   });
+
+  it('reports whether any filter differs from its default', () => {
+    expect(setup('/admin/monitoring').result.current.isFiltered).toBe(false);
+    expect(
+      setup('/admin/monitoring?status=PENDING').result.current.isFiltered,
+    ).toBe(true);
+  });
+
+  it('clears every filter and the page but keeps unrelated params', () => {
+    const { result } = setup(
+      '/admin/monitoring?status=PENDING&sellerId=seller-1&page=2&tab=x',
+    );
+
+    act(() => result.current.clearFilters());
+
+    expect(currentUrl()).toBe('/admin/monitoring?tab=x');
+  });
 });

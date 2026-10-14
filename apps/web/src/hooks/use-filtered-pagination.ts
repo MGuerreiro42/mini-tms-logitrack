@@ -53,6 +53,13 @@ export function useFilteredPagination<F extends Record<string, string>>(
     });
   }
 
+  function clearFilters() {
+    update((next) => {
+      for (const key of Object.keys(defaultFilters)) next.delete(key);
+      next.delete(PAGE_PARAM);
+    });
+  }
+
   function setPage(nextPage: number) {
     update((next) => {
       if (nextPage <= 1) next.delete(PAGE_PARAM);
@@ -81,7 +88,11 @@ export function useFilteredPagination<F extends Record<string, string>>(
 
   return {
     filters,
+    isFiltered: Object.keys(defaultFilters).some(
+      (key) => filters[key] !== defaultFilters[key],
+    ),
     setFilter,
+    clearFilters,
     setPage,
     params: { ...query, page, limit: PAGE_SIZE },
   };
