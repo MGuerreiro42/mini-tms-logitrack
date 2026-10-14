@@ -9,6 +9,7 @@ import { TrackingGateway } from './tracking.gateway';
 import {
   ADMIN_MONITORING_ROOM,
   carrierRoom,
+  sellerRoom,
   shipmentRoom,
   trackingRoom,
 } from './tracking-rooms';
@@ -27,6 +28,7 @@ export class TrackingListener {
       .to([
         shipmentRoom(event.shipmentId),
         carrierRoom(event.carrierId),
+        sellerRoom(event.sellerId),
         ADMIN_MONITORING_ROOM,
       ])
       .emit('shipment:updated', event);
