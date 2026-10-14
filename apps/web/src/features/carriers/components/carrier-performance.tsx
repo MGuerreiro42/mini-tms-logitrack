@@ -1,15 +1,17 @@
 'use client';
 
+import Link from 'next/link';
+import { EmptyState } from '@/components/common/feedback-state';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
-import { ShipmentStatusBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
 import { formatDuration } from '@/lib/format-duration';
-import type { ShipmentStatus } from '@/types/status';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
 import { OperatorRankingChart } from './operator-ranking-chart';
 import { StageDurationChart } from './stage-duration-chart';
+import { StatusDistribution } from './status-distribution';
 
 export function CarrierPerformance() {
   const query = useCarrierPerformance();
@@ -26,20 +28,26 @@ function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
 
   if (data.totalShipments === 0) {
     return (
-      <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-        Not enough data yet — metrics appear once shipments start moving through
-        your queue.
-      </div>
+      <EmptyState
+        title="No performance data yet"
+        description="Metrics appear once shipments start moving through your queue."
+        steps={[
+          {
+            label: 'Claim a shipment from the queue',
+            action: (
+              <Button asChild variant="link" className="h-auto p-0">
+                <Link href="/carrier/queue">Open the queue</Link>
+              </Button>
+            ),
+          },
+        ]}
+      />
     );
   }
 
-  const statusEntries = Object.entries(data.shipmentCountsByStatus).filter(
-    ([, count]) => count > 0,
-  ) as [ShipmentStatus, number][];
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label="Total shipments" value={data.totalShipments} />
         <StatTile
           label="Avg. time between updates"
@@ -59,29 +67,23 @@ function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
         />
       </div>
       {data.avgHoursBetweenEvents === null && (
-        <p className="text-xs text-muted-foreground">
-          Avg. time between updates needs at least one shipment with two
-          tracking events — not enough data for that yet.
+        <p className="text-[13px] text-muted-foreground">
+          Avg. time between updates needs a shipment with at least two tracking
+          events.
         </p>
       )}
-
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold">Distribution by status</h2>
-        <div className="flex flex-wrap gap-2">
-          {statusEntries.map(([status, count]) => (
-            <div key={status} className="flex items-center gap-1.5">
-              <ShipmentStatusBadge status={status} />
-              <span className="text-xs text-muted-foreground">{count}</span>
-            </div>
-          ))}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+        <div className="flex flex-col gap-5">
+          <StatusDistribution
+            counts={data.shipmentCountsByStatus}
+            total={data.totalShipments}
+          />
+          <StageDurationChart data={data.stageDurations} />
         </div>
+        {operatorRanking.data && (
+          <OperatorRankingChart data={operatorRanking.data} />
+        )}
       </div>
-
-      <StageDurationChart data={data.stageDurations} />
-
-      {operatorRanking.data && (
-        <OperatorRankingChart data={operatorRanking.data} />
-      )}
     </div>
   );
 }
