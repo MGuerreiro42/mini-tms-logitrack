@@ -21,8 +21,7 @@ export default function RootError({
       title="Something went wrong"
       description={
         <>
-          This page stopped on an unexpected error. Nothing was changed; try
-          again or head back home.
+          This page stopped on an unexpected error. Try again or head back home.
           <ErrorReference digest={error.digest} />
         </>
       }

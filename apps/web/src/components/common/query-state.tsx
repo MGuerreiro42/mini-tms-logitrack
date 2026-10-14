@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { EmptyState, ErrorState } from '@/components/common/feedback-state';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HTTP_STATUS } from '@/lib/http-status';
 import { cn } from '@/lib/utils';
@@ -47,9 +48,9 @@ export function QueryState<T>({
     <ErrorState
       title={errorMessage}
       description={
-        status === undefined
-          ? "The server couldn't be reached. Nothing was changed."
-          : "The server couldn't finish the request. Nothing was changed."
+        query.error instanceof TypeError
+          ? "The server couldn't be reached. Check your connection."
+          : "The server couldn't finish the request."
       }
       actions={
         <Button variant="strong" onClick={() => query.refetch()}>
@@ -74,15 +75,10 @@ export function QuerySkeleton({
 }: {
   variant?: 'panel' | 'table' | 'lines';
 }) {
+  const Surface = variant === 'lines' ? 'div' : Card;
+
   return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className={cn(
-        variant !== 'lines' &&
-          'overflow-hidden rounded-xl bg-card shadow-panel',
-      )}
-    >
+    <Surface role="status" aria-label="Loading" className="gap-0 py-0">
       {variant === 'table' ? (
         <>
           <div className="flex h-10 items-center gap-10 border-b px-5">
@@ -110,6 +106,6 @@ export function QuerySkeleton({
           <Skeleton className="h-3 w-1/2" />
         </div>
       )}
-    </div>
+    </Surface>
   );
 }

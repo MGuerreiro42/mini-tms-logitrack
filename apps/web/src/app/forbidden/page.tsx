@@ -21,10 +21,10 @@ const AREA_AUDIENCE: Record<Segment, string> = {
 };
 
 const ROLE_ACCOUNT: Record<GlobalRole, string> = {
-  ADMIN: 'an admin account',
-  SELLER: 'a seller account',
-  CARRIER_MANAGER: 'a carrier manager account',
-  CARRIER_OPERATOR: 'a carrier operator account',
+  ADMIN: 'admin',
+  SELLER: 'seller',
+  CARRIER_MANAGER: 'carrier manager',
+  CARRIER_OPERATOR: 'carrier operator',
 };
 
 export default async function ForbiddenPage({
@@ -48,7 +48,7 @@ export default async function ForbiddenPage({
       }
       description={
         session
-          ? `You're signed in as ${session.email}, ${ROLE_ACCOUNT[session.role]}. Nothing was changed and you're still signed in.`
+          ? `You're signed in as ${session.email} (${ROLE_ACCOUNT[session.role]}). Your session is still active.`
           : 'Sign in with an account that can open it.'
       }
       actions={
