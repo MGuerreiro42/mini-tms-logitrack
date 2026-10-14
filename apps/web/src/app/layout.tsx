@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description:
     'Transportation Management System — seller onboarding, carrier management, delivery tracking.',
 };
+
+export const viewport: Viewport = { viewportFit: 'cover' };
 
 export default function RootLayout({
   children,

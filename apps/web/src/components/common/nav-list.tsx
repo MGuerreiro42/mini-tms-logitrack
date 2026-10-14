@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 
 export interface NavItem {
   name: string;
+  shortName?: string;
   href: string;
 }
 
@@ -61,12 +62,15 @@ export function NavList({
             className={tabClassName(item.href === activeHref)}
           >
             <TabMarker active={item.href === activeHref} />
-            {item.name}
+            {item.shortName ?? item.name}
           </Link>
         ))}
         {more.length > 0 && (
           <DropdownMenu>
-            <DropdownMenuTrigger className={tabClassName(moreActive)}>
+            <DropdownMenuTrigger
+              aria-current={moreActive ? true : undefined}
+              className={tabClassName(moreActive)}
+            >
               <TabMarker active={moreActive} />
               More
             </DropdownMenuTrigger>
@@ -114,7 +118,7 @@ export function NavList({
 
 function tabClassName(active: boolean) {
   return cn(
-    'flex min-h-11 flex-col items-center justify-center gap-1 rounded-sm text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+    'flex min-h-11 flex-col items-center justify-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     active ? 'font-semibold text-primary' : 'text-muted-foreground',
   );
 }
