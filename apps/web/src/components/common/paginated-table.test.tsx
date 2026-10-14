@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { setDensity } from '@/hooks/use-density';
+import { setViewportWidth } from '@/test/viewport';
 import { type Column, PaginatedTable } from './paginated-table';
 
 interface Row {
@@ -161,5 +163,69 @@ describe('PaginatedTable', () => {
 
     expect(screen.getByText('Row 1')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /next/i })).toBeNull();
+  });
+
+  it('applies the persisted density to the table', () => {
+    setDensity('compact');
+    const { container } = render(
+      <PaginatedTable<Row>
+        columns={columns}
+        data={[{ id: 'row-1', name: 'Row 1' }]}
+        getRowKey={(row) => row.id}
+      />,
+    );
+
+    expect(container.querySelector('[data-density]')).toHaveAttribute(
+      'data-density',
+      'compact',
+    );
+  });
+
+  describe('below md', () => {
+    const cardColumns: Column<Row>[] = [
+      { header: 'Name', cell: (row) => row.name, card: 'title' },
+      { header: 'State', cell: () => 'Open', card: 'badge' },
+      { header: 'City', cell: () => 'Campinas', card: 'place' },
+      { header: 'Due', cell: () => 'Due in 2 h', card: 'meta' },
+      { header: 'Created', cell: () => 'Oct 1', card: 'meta' },
+      { header: 'Notes', cell: () => 'Hidden on cards' },
+    ];
+
+    beforeEach(() => setViewportWidth(390));
+
+    it('renders rows as linked cards from the column slots', () => {
+      render(
+        <PaginatedTable<Row>
+          columns={cardColumns}
+          data={[{ id: 'row-1', name: 'Row 1' }]}
+          getRowKey={(row) => row.id}
+          getRowHref={(row) => `/seller/shipments/${row.id}`}
+        />,
+      );
+
+      expect(screen.queryByRole('table')).toBeNull();
+      const card = screen.getByRole('listitem');
+      expect(card).toHaveTextContent('Row 1');
+      expect(card).toHaveTextContent('Open');
+      expect(card).toHaveTextContent('Campinas');
+      expect(card).toHaveTextContent('Due in 2 h · Oct 1');
+      expect(card).not.toHaveTextContent('Hidden on cards');
+      expect(screen.getByRole('link', { name: 'Row 1' })).toHaveAttribute(
+        'href',
+        '/seller/shipments/row-1',
+      );
+    });
+
+    it('keeps the table when no column has a card slot', () => {
+      render(
+        <PaginatedTable<Row>
+          columns={columns}
+          data={[{ id: 'row-1', name: 'Row 1' }]}
+          getRowKey={(row) => row.id}
+        />,
+      );
+
+      expect(screen.getByRole('table')).toBeInTheDocument();
+    });
   });
 });

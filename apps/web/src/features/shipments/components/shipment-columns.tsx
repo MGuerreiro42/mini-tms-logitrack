@@ -28,24 +28,31 @@ export function lateRowClassName(row: { sla: SlaState }): string | undefined {
 
 export const slaColumn: Column<{ sla: SlaState }> = {
   header: 'SLA',
+  card: 'meta',
   cell: (s) => <SlaCell state={s.sla} />,
 };
 
 export const shipmentColumns = {
   trackingCode: {
     header: 'Tracking code',
-    cell: (s) => <span className="font-mono text-xs">{s.trackingCode}</span>,
+    card: 'title',
+    cell: (s) => (
+      <span className="font-mono text-[13px]">{s.trackingCode}</span>
+    ),
   },
   status: {
     header: 'Status',
+    card: 'badge',
     cell: (s) => <ShipmentStatusBadge status={s.status} />,
   },
   destination: {
     header: 'Destination',
+    card: 'place',
     cell: (s) => `${s.addressCity}/${s.addressState}`,
   },
   created: {
     header: 'Created',
+    card: 'meta',
     className: 'text-right text-muted-foreground',
     cell: (s) => formatDate(s.createdAt),
   },
