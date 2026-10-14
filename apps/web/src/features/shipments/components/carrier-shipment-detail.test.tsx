@@ -36,6 +36,7 @@ const unclaimedShipment: CarrierShipment = {
   addressState: 'SP',
   addressZipCode: '01310-100',
   createdAt: '2026-01-01T00:00:00.000Z',
+  dueAt: '2026-01-06T00:00:00.000Z',
   trackingEvents: [],
 };
 
