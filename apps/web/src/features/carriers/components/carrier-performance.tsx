@@ -2,7 +2,7 @@
 
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDuration } from '@/lib/format-duration';
 import type { ShipmentStatus } from '@/types/status';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
@@ -70,7 +70,7 @@ function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
         <div className="flex flex-wrap gap-2">
           {statusEntries.map(([status, count]) => (
             <div key={status} className="flex items-center gap-1.5">
-              <ShipmentStatusPill status={status} />
+              <ShipmentStatusBadge status={status} />
               <span className="text-xs text-muted-foreground">{count}</span>
             </div>
           ))}

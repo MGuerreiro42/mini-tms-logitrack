@@ -102,7 +102,7 @@ export function ConfirmDialog({
         <DialogFooter>
           <DialogClose asChild>
             <Button
-              variant={isSettled ? 'strong' : 'outline'}
+              variant={isSettled ? 'strong' : 'secondary'}
               disabled={isConfirming}
             >
               {isSettled ? 'Got it' : dismissLabel}

@@ -1,4 +1,4 @@
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDateTime } from '@/lib/format-date';
 import type { TimelineEvent } from '@/types/status';
 
@@ -18,7 +18,7 @@ export function TrackingTimeline({ events }: { events: TimelineEvent[] }) {
           key={`${event.status}-${event.createdAt}`}
           className="flex items-start gap-3 text-sm"
         >
-          <ShipmentStatusPill status={event.status} />
+          <ShipmentStatusBadge status={event.status} />
           <div className="flex-1 space-y-0.5">
             {event.note && (
               <p className="text-muted-foreground">{event.note}</p>

@@ -6,6 +6,7 @@ import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/routes';
 import {
   type SellerDashboardData,
   useSellerDashboard,
@@ -47,7 +48,7 @@ function SellerDashboardView({
             label: 'Create a shipment for a real address',
             action: (
               <Button asChild size="sm">
-                <Link href="/seller/shipments/new">Create</Link>
+                <Link href={ROUTES.newShipment}>Create shipment</Link>
               </Button>
             ),
           },

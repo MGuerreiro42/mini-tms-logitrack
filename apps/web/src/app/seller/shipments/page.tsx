@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/common/page-header';
 import { Button } from '@/components/ui/button';
 import { ShipmentsTable } from '@/features/shipments/components/shipments-table';
+import { ROUTES } from '@/lib/routes';
 
 export default function SellerShipmentsPage() {
   return (
@@ -11,7 +12,7 @@ export default function SellerShipmentsPage() {
         description="All the shipments you've created."
         action={
           <Button asChild>
-            <Link href="/seller/shipments/new">Create shipment</Link>
+            <Link href={ROUTES.newShipment}>Create shipment</Link>
           </Button>
         }
       />
