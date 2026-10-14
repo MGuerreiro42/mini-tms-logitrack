@@ -116,10 +116,9 @@ export function MetricBarChart<T extends object>({
           radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
           maxBarSize={horizontal ? 24 : 48}
         >
-          {emphasis !== 'all' &&
-            rows.map((row, index) => (
-              <Cell key={String(row[categoryKey])} fill={fills[index]} />
-            ))}
+          {rows.map((row, index) => (
+            <Cell key={String(row[categoryKey])} fill={fills[index]} />
+          ))}
           <LabelList
             dataKey={LABEL_KEY}
             position={horizontal ? 'right' : 'top'}
