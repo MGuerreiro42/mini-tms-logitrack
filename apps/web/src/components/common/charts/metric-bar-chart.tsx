@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Cell,
   LabelList,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -34,6 +35,7 @@ type MetricBarChartProps<T> = {
   valueDomain?: [number, number];
   formatTick?: (value: number) => string;
   categoryWidth?: number;
+  target?: { value: number; label: string };
   className?: string;
 };
 
@@ -51,6 +53,7 @@ export function MetricBarChart<T extends object>({
   valueDomain,
   formatTick,
   categoryWidth = 140,
+  target,
   className,
 }: MetricBarChartProps<T>) {
   const horizontal = orientation === 'horizontal';
@@ -72,7 +75,11 @@ export function MetricBarChart<T extends object>({
       <BarChart
         data={rows}
         layout={horizontal ? 'vertical' : 'horizontal'}
-        margin={horizontal ? { left: 24, right: 32 } : { top: 16 }}
+        margin={
+          horizontal
+            ? { left: 24, right: 32, top: target ? 20 : 0 }
+            : { top: 16, right: target ? 72 : 0 }
+        }
       >
         <CartesianGrid horizontal={!horizontal} vertical={horizontal} />
         {horizontal ? (
@@ -110,6 +117,19 @@ export function MetricBarChart<T extends object>({
             />
           }
         />
+        {target && (
+          <ReferenceLine
+            {...(horizontal ? { x: target.value } : { y: target.value })}
+            stroke="var(--foreground)"
+            strokeWidth={1}
+            ifOverflow="extendDomain"
+            label={{
+              value: target.label,
+              position: horizontal ? 'top' : 'right',
+              className: 'fill-foreground text-xs font-semibold',
+            }}
+          />
+        )}
         <Bar
           dataKey={valueDataKey}
           fill={`var(--color-${valueKey})`}
