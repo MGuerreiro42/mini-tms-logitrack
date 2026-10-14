@@ -1,14 +1,10 @@
+import { PageHeader } from '@/components/common/page-header';
 import { SellerDashboard } from '@/features/shipments/components/seller-dashboard';
 
 export default function SellerDashboardPage() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Overview of your shipments.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Dashboard" description="Overview of your shipments." />
       <SellerDashboard />
     </div>
   );

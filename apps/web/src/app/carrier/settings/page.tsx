@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CarrierCoverageConfig } from '@/features/carriers/components/carrier-coverage-config';
 import { CarrierModalityConfig } from '@/features/carriers/components/carrier-modality-config';
@@ -5,14 +6,10 @@ import { CarrierModalityConfig } from '@/features/carriers/components/carrier-mo
 export default function CarrierSettingsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">
-          Modality &amp; coverage configuration
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Choose which modalities you operate and where you deliver.
-        </p>
-      </div>
+      <PageHeader
+        title="Modality & coverage configuration"
+        description="Choose which modalities you operate and where you deliver."
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Operated modalities</CardTitle>
