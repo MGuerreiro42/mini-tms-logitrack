@@ -43,6 +43,13 @@ export class CarrierShipmentResponseDto extends ShipmentAddressDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description: 'createdAt + modality slaHours; null when no SLA is tracked',
+  })
+  dueAt: Date | null;
 }
 
 export class CarrierShipmentDetailResponseDto extends CarrierShipmentResponseDto {
