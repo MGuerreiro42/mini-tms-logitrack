@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApprovalStatus,
   CarrierRole,
-  type Prisma,
+  Prisma,
   type Shipment,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
@@ -31,6 +31,7 @@ import type {
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
+import type { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
@@ -70,6 +71,17 @@ const eligibleCarrierWhere = (
   },
   modalities: { some: { modalityId } },
 });
+
+const ATTENTION_LIMIT = 5;
+
+// Open and still on the clock: FAILED_DELIVERY is reported on its own, ahead of late ones.
+const LATE_CANDIDATES: ShipmentStatus[] = [
+  ShipmentStatus.PENDING,
+  ShipmentStatus.ACCEPTED,
+  ShipmentStatus.COLLECTED,
+  ShipmentStatus.IN_TRANSIT,
+  ShipmentStatus.OUT_FOR_DELIVERY,
+];
 
 @Injectable()
 export class ShipmentsService {
@@ -270,6 +282,60 @@ export class ShipmentsService {
       onTimeCount: entry.onTimeCount,
       onTimeRate: (entry.onTimeCount / entry.deliveredCount) * 100,
     }));
+  }
+
+  async attentionForSeller(
+    userId: string,
+  ): Promise<ShipmentAttentionResponseDto> {
+    const seller = await this.findSellerOrThrow(userId);
+    const failedWhere = {
+      sellerId: seller.id,
+      status: ShipmentStatus.FAILED_DELIVERY,
+    };
+
+    const [failed, failedCount, late] = await Promise.all([
+      this.prisma.shipment.findMany({
+        where: failedWhere,
+        include: sellerShipmentInclude,
+        orderBy: { updatedAt: 'desc' },
+        take: ATTENTION_LIMIT,
+      }),
+      this.prisma.shipment.count({ where: failedWhere }),
+      this.findLateIds(seller.id),
+    ]);
+
+    const lateIds = late
+      .map((row) => row.id)
+      .slice(0, ATTENTION_LIMIT - failed.length);
+    const lateShipments = lateIds.length
+      ? await this.prisma.shipment.findMany({
+          where: { id: { in: lateIds } },
+          include: sellerShipmentInclude,
+        })
+      : [];
+    const byId = new Map(lateShipments.map((s) => [s.id, s]));
+
+    return {
+      shipments: [
+        ...failed,
+        ...lateIds.flatMap((id) => byId.get(id) ?? []),
+      ].map(toShipmentResponseDto),
+      counts: { failed: failedCount, late: late[0]?.total ?? 0 },
+    };
+  }
+
+  // The due date is createdAt + modality.slaHours, not a column, so the typed client can't filter or sort on it.
+  private findLateIds(sellerId: string) {
+    return this.prisma.$queryRaw<{ id: string; total: number }[]>`
+      SELECT s."id", (COUNT(*) OVER ())::int AS "total"
+      FROM "Shipment" s
+      JOIN "DeliveryModality" m ON m."id" = s."modalityId"
+      WHERE s."sellerId" = ${sellerId}
+        AND s."status"::text IN (${Prisma.join(LATE_CANDIDATES)})
+        AND m."slaHours" IS NOT NULL
+        AND s."createdAt" + m."slaHours" * INTERVAL '1 hour' < NOW()
+      ORDER BY s."createdAt" + m."slaHours" * INTERVAL '1 hour'
+      LIMIT ${ATTENTION_LIMIT}`;
   }
 
   async findOneForSeller(

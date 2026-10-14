@@ -28,6 +28,7 @@ describe('ShipmentsService', () => {
   const shipmentFindUniqueOrThrow = vi.fn();
   const trackingEventCreate = vi.fn();
   const transaction = vi.fn();
+  const queryRaw = vi.fn();
   const emit = vi.fn();
 
   const dto: CreateShipmentDto = {
@@ -123,6 +124,7 @@ describe('ShipmentsService', () => {
     shipmentFindUniqueOrThrow.mockReset();
     trackingEventCreate.mockReset();
     transaction.mockReset();
+    queryRaw.mockReset();
     emit.mockReset();
 
     const tx = {
@@ -156,6 +158,7 @@ describe('ShipmentsService', () => {
             },
             trackingEvent: { create: trackingEventCreate },
             $transaction: transaction,
+            $queryRaw: queryRaw,
           },
         },
         { provide: EventEmitter2, useValue: { emit } },
@@ -309,6 +312,75 @@ describe('ShipmentsService', () => {
       );
       expect(result.meta.total).toBe(1);
       expect(result.data[0].id).toBe('shipment-1');
+    });
+  });
+
+  describe('attentionForSeller', () => {
+    const failed = {
+      ...shipmentWithRelations,
+      id: 'failed-1',
+      status: 'FAILED_DELIVERY',
+    };
+    const late = (id: string) => ({ ...shipmentWithRelations, id });
+
+    it('lists failed deliveries first, then late shipments in overdue order, with full counts', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany
+        .mockResolvedValueOnce([failed])
+        .mockResolvedValueOnce([late('late-2'), late('late-1')]);
+      shipmentCount.mockResolvedValue(1);
+      queryRaw.mockResolvedValue([
+        { id: 'late-1', total: 7 },
+        { id: 'late-2', total: 7 },
+      ]);
+
+      const result = await shipmentsService.attentionForSeller('user-1');
+
+      expect(shipmentFindMany).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: { sellerId: 'seller-1', status: 'FAILED_DELIVERY' },
+          take: 5,
+        }),
+      );
+      expect(shipmentFindMany).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { id: { in: ['late-1', 'late-2'] } },
+        }),
+      );
+      expect(result.shipments.map((s) => s.id)).toEqual([
+        'failed-1',
+        'late-1',
+        'late-2',
+      ]);
+      expect(result.counts).toEqual({ failed: 1, late: 7 });
+    });
+
+    it('caps the list at 5 and skips the late lookup when failures fill it', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany.mockResolvedValueOnce(
+        Array.from({ length: 5 }, (_, i) => ({ ...failed, id: `f-${i}` })),
+      );
+      shipmentCount.mockResolvedValue(8);
+      queryRaw.mockResolvedValue([{ id: 'late-1', total: 1 }]);
+
+      const result = await shipmentsService.attentionForSeller('user-1');
+
+      expect(shipmentFindMany).toHaveBeenCalledTimes(1);
+      expect(result.shipments).toHaveLength(5);
+      expect(result.counts).toEqual({ failed: 8, late: 1 });
+    });
+
+    it('reports zero late shipments when none are overdue', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany.mockResolvedValueOnce([]);
+      shipmentCount.mockResolvedValue(0);
+      queryRaw.mockResolvedValue([]);
+
+      const result = await shipmentsService.attentionForSeller('user-1');
+
+      expect(result).toEqual({ shipments: [], counts: { failed: 0, late: 0 } });
     });
   });
 
