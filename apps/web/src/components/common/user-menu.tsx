@@ -4,6 +4,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLogout } from '@/hooks/use-logout';
@@ -21,16 +23,25 @@ export function UserMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-md border-t p-3 text-left hover:bg-muted/50">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+      <DropdownMenuTrigger className="flex size-11 items-center justify-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground"
+        >
           {initials}
-        </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate text-[13px] font-semibold">{name}</div>
-          <div className="text-[11px] text-muted-foreground">{role}</div>
-        </div>
+        </span>
+        <span className="sr-only">
+          {name}, {role}
+        </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" className="w-48">
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col gap-0.5">
+          <span className="truncate text-sm font-semibold text-foreground">
+            {name}
+          </span>
+          <span>{role}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

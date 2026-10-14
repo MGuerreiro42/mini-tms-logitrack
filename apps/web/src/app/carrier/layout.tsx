@@ -7,10 +7,10 @@ import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 const CARRIER_NAV: NavItem[] = [
-  { name: 'Company', href: '/carrier' },
   { name: 'Shipment queue', href: '/carrier/queue' },
-  { name: 'Modalities & Coverage', href: '/carrier/settings' },
   { name: 'Performance', href: '/carrier/performance' },
+  { name: 'Company', href: '/carrier' },
+  { name: 'Modalities & coverage', href: '/carrier/settings' },
 ];
 
 export default async function CarrierLayout({
@@ -29,7 +29,6 @@ export default async function CarrierLayout({
 
   return (
     <AppShell
-      navGroupLabel="Carrier"
       navItems={CARRIER_NAV}
       user={{
         name: carrier.companyName,

@@ -64,6 +64,8 @@
   --color-status-cancelled-fg: var(--status-cancelled-fg);
   --color-status-cancelled-dot: var(--status-cancelled-dot);
   --shadow-panel: var(--panel-shadow);
+  --shadow-nav: 0 1px 0 var(--nav-line);
+  --shadow-tab-bar: 0 -1px 0 var(--nav-line);
   --radius-xs: 5px;
   --radius-sm: 7px;
   --radius-md: 9px;
@@ -100,6 +102,7 @@
   --radius: 0.625rem;
   --nav: #fbfbf9;
   --overlay: rgb(28 32 30 / 0.42);
+  --nav-line: rgb(28 40 34 / 0.08);
   --live: #3a8a55;
   --live-halo: rgb(58 138 85 / 0.16);
   --notice: #f2e2d5;
@@ -160,6 +163,7 @@
   --chart-2: #2f3a35;
   --nav: #151a17;
   --overlay: rgb(8 10 9 / 0.6);
+  --nav-line: #222823;
   --live: #5cc27f;
   --live-halo: rgb(92 194 127 / 0.18);
   --notice: #36271c;

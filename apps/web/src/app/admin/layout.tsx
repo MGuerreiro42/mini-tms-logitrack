@@ -18,7 +18,6 @@ export default async function AdminLayout({
 
   return (
     <AppShell
-      navGroupLabel="Admin"
       navItems={ADMIN_NAV}
       user={{ name: session.email, role: 'Administrator', initials: 'AD' }}
     >

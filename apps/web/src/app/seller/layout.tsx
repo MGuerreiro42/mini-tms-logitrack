@@ -8,10 +8,10 @@ import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 const SELLER_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/seller' },
-  { name: 'Profile', href: '/seller/profile' },
-  { name: 'Modalities', href: '/seller/modalities' },
-  { name: 'Create shipment', href: '/seller/shipments/new' },
   { name: 'Shipments', href: '/seller/shipments' },
+  { name: 'Create shipment', href: '/seller/shipments/new' },
+  { name: 'Modalities', href: '/seller/modalities' },
+  { name: 'Profile', href: '/seller/profile' },
 ];
 
 export default async function SellerLayout({
@@ -28,7 +28,6 @@ export default async function SellerLayout({
 
   return (
     <AppShell
-      navGroupLabel="Seller"
       navItems={SELLER_NAV}
       user={{
         name: seller.companyName,
