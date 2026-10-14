@@ -5,7 +5,7 @@ export default function SellerModalitiesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Modality configuration"
+        title="Modalities"
         description="Choose the delivery modalities you offer."
       />
       <SellerModalityConfig />

@@ -37,28 +37,35 @@ export function ModalityToggleList({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="divide-y rounded-lg border">
+    <div className="flex flex-col gap-4">
+      <ul>
         {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 px-4 py-3">
-            <div className="flex-1">
-              <div className="text-sm font-semibold">{item.name}</div>
-              <div className="text-xs text-muted-foreground">{item.code}</div>
-            </div>
-            <Switch
-              aria-label={item.name}
-              checked={staged.has(item.id)}
-              onCheckedChange={() => toggle(item.id)}
-              disabled={readOnly}
-            />
-          </div>
+          <li key={item.id} className="border-t border-muted first:border-0">
+            <label
+              htmlFor={`modality-${item.id}`}
+              className="flex min-h-14 cursor-pointer items-center justify-between gap-4 py-3 has-disabled:cursor-default"
+            >
+              <span className="text-[15px] font-semibold">{item.name}</span>
+              <Switch
+                id={`modality-${item.id}`}
+                checked={staged.has(item.id)}
+                onCheckedChange={() => toggle(item.id)}
+                disabled={readOnly}
+              />
+            </label>
+          </li>
         ))}
-      </div>
-      {note && <p className="text-xs text-muted-foreground">{note}</p>}
+      </ul>
+      {note && <p className="text-[13px] text-muted-foreground">{note}</p>}
       {!readOnly && (
-        <Button onClick={() => onSave(Array.from(staged))} disabled={isSaving}>
-          {isSaving ? 'Saving…' : 'Save changes'}
-        </Button>
+        <div className="flex justify-end border-t border-muted pt-4">
+          <Button
+            onClick={() => onSave(Array.from(staged))}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
       )}
     </div>
   );
