@@ -8,6 +8,16 @@ import { EligibleCarriersList } from './eligible-carriers-list';
 
 const API_URL = 'http://localhost:3333';
 
+const address = {
+  addressStreet: 'Av. Paulista',
+  addressNumber: '1000',
+  addressNeighborhood: 'Bela Vista',
+  addressCity: 'São Paulo',
+  addressState: 'SP',
+  addressZipCode: '01310-100',
+};
+const modality = { id: 'modality-1', name: 'Standard', slaHours: 48 };
+
 describe('EligibleCarriersList', () => {
   beforeEach(() => {
     setSession({
@@ -26,9 +36,8 @@ describe('EligibleCarriersList', () => {
     );
     renderWithQueryClient(
       <EligibleCarriersList
-        state="SP"
-        city="Araraquara"
-        modalityId="modality-1"
+        address={{ ...address, addressCity: 'Araraquara' }}
+        modality={modality}
         onBack={vi.fn()}
         onNext={vi.fn()}
       />,
@@ -53,21 +62,27 @@ describe('EligibleCarriersList', () => {
     const onNext = vi.fn();
     renderWithQueryClient(
       <EligibleCarriersList
-        state="SP"
-        city="São Paulo"
-        modalityId="modality-1"
+        address={address}
+        modality={modality}
         onBack={vi.fn()}
         onNext={onNext}
       />,
     );
 
-    expect(await screen.findByText('2 matches')).toBeInTheDocument();
-    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(
+      await screen.findByRole('group', {
+        name: 'Choose a carrier · 2 available',
+      }),
+    ).toBeInTheDocument();
+    const continueButton = screen.getByRole('button', {
+      name: 'Continue to review',
+    });
     expect(continueButton).toBeDisabled();
 
-    const option = screen.getByRole('button', { name: /Fast Freight/ });
+    const option = screen.getByRole('radio', { name: /Fast Freight/ });
     await user.click(option);
-    expect(option).toHaveAttribute('aria-pressed', 'true');
+    expect(option).toBeChecked();
+    expect(screen.getAllByText('Fast Freight')).toHaveLength(2);
     expect(onNext).not.toHaveBeenCalled();
 
     await user.click(continueButton);
@@ -84,9 +99,8 @@ describe('EligibleCarriersList', () => {
     const onBack = vi.fn();
     renderWithQueryClient(
       <EligibleCarriersList
-        state="SP"
-        city="São Paulo"
-        modalityId="modality-1"
+        address={address}
+        modality={modality}
         onBack={onBack}
         onNext={vi.fn()}
       />,

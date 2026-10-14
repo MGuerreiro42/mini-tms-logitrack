@@ -1,73 +1,80 @@
 'use client';
 
 import { useState } from 'react';
+import { EmptyState } from '@/components/common/feedback-state';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useEligibleCarriers } from '../hooks/use-eligible-carriers';
-import type { EligibleCarrier } from '../types';
+import type { EligibleCarrier, ModalityOption } from '../types';
+import {
+  modalityLabel,
+  ShipmentSummary,
+  type SummaryAddress,
+} from './shipment-summary';
 
 interface EligibleCarriersListProps {
-  state: string;
-  city: string;
-  modalityId: string;
+  address: SummaryAddress;
+  modality: ModalityOption;
   defaultCarrierId?: string;
   onBack: () => void;
   onNext: (carrierId: string, carrierName: string) => void;
 }
 
 export function EligibleCarriersList({
-  state,
-  city,
-  modalityId,
+  address,
+  modality,
   defaultCarrierId,
   onBack,
   onNext,
 }: EligibleCarriersListProps) {
-  const query = useEligibleCarriers(state, city, modalityId);
+  const { addressCity: city, addressState: state } = address;
+  const query = useEligibleCarriers(state, city, modality.id);
   const [selectedId, setSelectedId] = useState(defaultCarrierId);
   const selected = query.data?.find((carrier) => carrier.id === selectedId);
 
   return (
-    <Card className="max-w-xl">
-      <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-sm">Eligible carriers</CardTitle>
-        {query.data && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-            {query.data.length} match{query.data.length === 1 ? '' : 'es'}
-          </span>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Approved carriers covering this destination and modality.
-        </p>
-        <QueryState
-          skeleton={<QuerySkeleton variant="lines" />}
-          query={query}
-          errorMessage="Couldn't load eligible carriers."
-        >
-          {(carriers) =>
-            carriers.length === 0 ? (
-              <NoCarrierState city={city} state={state} />
-            ) : (
-              <div className="space-y-2">
-                {carriers.map((carrier) => (
-                  <CarrierOption
-                    key={carrier.id}
-                    carrier={carrier}
-                    selected={carrier.id === selectedId}
-                    onSelect={() => setSelectedId(carrier.id)}
-                  />
-                ))}
-              </div>
-            )
-          }
-        </QueryState>
-        <div className="flex justify-between gap-2">
-          <Button type="button" variant="outline" onClick={onBack}>
-            ← Back
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <QueryState
+        skeleton={<QuerySkeleton />}
+        query={query}
+        errorMessage="Couldn't load eligible carriers."
+      >
+        {(carriers) =>
+          carriers.length === 0 ? (
+            <EmptyState
+              title="No compatible carrier"
+              description={`No approved carrier covers ${city}/${state} for this modality yet. Go back to try another modality, or check again later.`}
+            />
+          ) : (
+            <fieldset className="flex min-w-0 flex-col gap-3.5">
+              <legend className="mb-3.5 text-base font-semibold">
+                Choose a carrier · {carriers.length} available
+              </legend>
+              {carriers.map((carrier) => (
+                <CarrierOption
+                  key={carrier.id}
+                  carrier={carrier}
+                  coverage={`${city}, ${state}`}
+                  modality={modalityLabel(modality)}
+                  selected={carrier.id === selectedId}
+                  onSelect={() => setSelectedId(carrier.id)}
+                />
+              ))}
+            </fieldset>
+          )
+        }
+      </QueryState>
+      <ShipmentSummary
+        title="Summary"
+        address={address}
+        modality={modality}
+        carrierName={selected?.companyName}
+      >
+        <div className="flex justify-between gap-2.5">
+          <Button type="button" variant="secondary" onClick={onBack}>
+            Back
           </Button>
           <Button
             type="button"
@@ -76,50 +83,71 @@ export function EligibleCarriersList({
               selected && onNext(selected.id, selected.companyName)
             }
           >
-            Continue
+            Continue to review
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </ShipmentSummary>
+    </div>
   );
 }
 
 function CarrierOption({
   carrier,
+  coverage,
+  modality,
   selected,
   onSelect,
 }: {
   carrier: EligibleCarrier;
+  coverage: string;
+  modality: string;
   selected: boolean;
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
+    <label
       className={cn(
-        'flex w-full items-center gap-3 rounded-md border px-3 py-3 text-left hover:border-primary hover:bg-primary/5',
-        selected && 'border-primary bg-primary/5 ring-1 ring-primary',
+        'flex cursor-pointer gap-3.5 rounded-xl bg-card px-5.5 py-5 shadow-panel has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
+        selected && 'ring-2 ring-primary',
       )}
     >
-      <div className="flex size-9 items-center justify-center rounded-md bg-muted text-xs font-semibold">
-        {carrier.companyName.slice(0, 2).toUpperCase()}
-      </div>
-      <span className="text-sm font-semibold">{carrier.companyName}</span>
-    </button>
+      <input
+        type="radio"
+        name="carrier"
+        checked={selected}
+        onChange={onSelect}
+        className="mt-1 size-4.5 shrink-0 accent-primary outline-none"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <span className="flex items-center justify-between gap-3">
+          <span className="text-[17px] font-semibold">
+            {carrier.companyName}
+          </span>
+          <Badge
+            variant="plain"
+            className={
+              selected
+                ? 'bg-selected text-primary'
+                : 'bg-muted text-muted-foreground'
+            }
+          >
+            {selected ? 'Selected' : 'Available'}
+          </Badge>
+        </span>
+        <span className="grid gap-3 text-[13px] sm:grid-cols-2">
+          <CarrierFact label="Covers" value={coverage} />
+          <CarrierFact label="Modality" value={modality} />
+        </span>
+      </span>
+    </label>
   );
 }
 
-function NoCarrierState({ city, state }: { city: string; state: string }) {
+function CarrierFact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-8 text-center">
-      <div className="text-2xl">⚠</div>
-      <p className="text-sm font-semibold">No compatible carrier</p>
-      <p className="max-w-xs text-xs text-muted-foreground">
-        No approved carrier covers {city}/{state} for this modality yet. Try
-        another modality or check back later.
-      </p>
-    </div>
+    <span className="flex flex-col gap-0.75">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </span>
   );
 }

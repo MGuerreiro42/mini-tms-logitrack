@@ -45,15 +45,17 @@ describe('ShipmentConfirmReview', () => {
     renderWithQueryClient(
       <ShipmentConfirmReview
         input={input}
-        modalityName="Standard"
+        modality={{ id: 'modality-1', name: 'Standard', slaHours: 48 }}
         carrierName="Fast Freight"
         onBack={vi.fn()}
       />,
     );
 
     expect(screen.getByText('Av. Paulista, 1000')).toBeInTheDocument();
-    expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
-    expect(screen.getByText('Standard')).toBeInTheDocument();
+    expect(screen.getByText(/Bela Vista, São Paulo, SP/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Standard · delivered within 48 h'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Fast Freight')).toBeInTheDocument();
   });
 
@@ -70,7 +72,7 @@ describe('ShipmentConfirmReview', () => {
     renderWithQueryClient(
       <ShipmentConfirmReview
         input={input}
-        modalityName="Standard"
+        modality={{ id: 'modality-1', name: 'Standard', slaHours: 48 }}
         carrierName="Fast Freight"
         onBack={vi.fn()}
       />,
@@ -100,7 +102,7 @@ describe('ShipmentConfirmReview', () => {
     renderWithQueryClient(
       <ShipmentConfirmReview
         input={input}
-        modalityName="Standard"
+        modality={{ id: 'modality-1', name: 'Standard', slaHours: 48 }}
         carrierName="Fast Freight"
         onBack={vi.fn()}
       />,
@@ -122,7 +124,7 @@ describe('ShipmentConfirmReview', () => {
     renderWithQueryClient(
       <ShipmentConfirmReview
         input={input}
-        modalityName="Standard"
+        modality={{ id: 'modality-1', name: 'Standard', slaHours: 48 }}
         carrierName="Fast Freight"
         onBack={onBack}
       />,

@@ -47,19 +47,24 @@ describe('CreateShipmentWizard', () => {
     );
 
     await fillAddressFields(user);
-    await user.click(await screen.findByRole('button', { name: 'Standard' }));
+    await user.click(await screen.findByRole('radio', { name: 'Standard' }));
     await user.click(
       screen.getByRole('button', { name: /see eligible carriers/i }),
     );
 
     await user.click(
-      await screen.findByRole('button', { name: /Fast Freight/ }),
+      await screen.findByRole('radio', { name: /Fast Freight/ }),
     );
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Continue to review' }),
+    );
 
     expect(await screen.findByText('Review and confirm')).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent(
+      'Review',
+    );
     expect(screen.getByText('Av. Paulista, 1000')).toBeInTheDocument();
-    expect(screen.getByText('Fast Freight')).toBeInTheDocument();
+    expect(screen.getAllByText('Fast Freight')).not.toHaveLength(0);
     await user.click(screen.getByRole('button', { name: /confirm shipment/i }));
 
     await waitFor(() =>
@@ -76,12 +81,12 @@ describe('CreateShipmentWizard', () => {
     );
 
     await fillAddressFields(user);
-    await user.click(await screen.findByRole('button', { name: 'Standard' }));
+    await user.click(await screen.findByRole('radio', { name: 'Standard' }));
     await user.click(
       screen.getByRole('button', { name: /see eligible carriers/i }),
     );
 
-    await screen.findByText('Fast Freight');
+    await screen.findByRole('radio', { name: /Fast Freight/ });
     await user.click(screen.getByRole('button', { name: /back/i }));
 
     expect(await screen.findByLabelText('Zip code')).toHaveValue('01310-100');

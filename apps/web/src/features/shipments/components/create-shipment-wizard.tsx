@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { CreateShipmentInput, ModalityOption } from '../types';
+import { StepIndicator } from '@/components/common/step-indicator';
+import type { ModalityOption } from '../types';
 import { EligibleCarriersList } from './eligible-carriers-list';
 import {
   type AddressFormValues,
@@ -10,84 +11,91 @@ import {
 import { ShipmentConfirmReview } from './shipment-confirm-review';
 
 type WizardState =
-  | { step: 1 }
+  | { step: 0 }
   | {
-      step: 2;
+      step: 1;
       address: AddressFormValues;
-      modalityName: string;
+      modality: ModalityOption;
       carrierId?: string;
     }
   | {
-      step: 3;
+      step: 2;
       address: AddressFormValues;
-      modalityName: string;
+      modality: ModalityOption;
       carrierId: string;
       carrierName: string;
     };
+
+function stepsFor(state: WizardState) {
+  return [
+    {
+      label: 'Destination',
+      detail:
+        state.step === 0
+          ? 'Where it goes and how fast'
+          : `${state.address.addressCity}, ${state.address.addressState} · ${state.modality.name}`,
+    },
+    {
+      label: 'Carrier',
+      detail: state.step === 2 ? state.carrierName : 'Pick who delivers',
+    },
+    { label: 'Review', detail: 'Confirm and create' },
+  ];
+}
 
 export function CreateShipmentWizard({
   modalities,
 }: {
   modalities: ModalityOption[];
 }) {
-  const [state, setState] = useState<WizardState>({ step: 1 });
+  const [state, setState] = useState<WizardState>({ step: 0 });
   const [savedAddress, setSavedAddress] = useState<
     AddressFormValues | undefined
   >();
 
-  if (state.step === 1) {
+  function currentStep() {
+    if (state.step === 0) {
+      return (
+        <ShipmentAddressForm
+          modalities={modalities}
+          defaultValues={savedAddress}
+          onNext={(address, modality) => {
+            setSavedAddress(address);
+            setState({ step: 1, address, modality });
+          }}
+        />
+      );
+    }
+
+    if (state.step === 1) {
+      return (
+        <EligibleCarriersList
+          address={state.address}
+          modality={state.modality}
+          defaultCarrierId={state.carrierId}
+          onBack={() => setState({ step: 0 })}
+          onNext={(carrierId, carrierName) =>
+            setState({ ...state, step: 2, carrierId, carrierName })
+          }
+        />
+      );
+    }
+
+    const { address, modality, carrierId, carrierName } = state;
     return (
-      <ShipmentAddressForm
-        modalities={modalities}
-        defaultValues={savedAddress}
-        onNext={(address, modalityName) => {
-          setSavedAddress(address);
-          setState({ step: 2, address, modalityName });
-        }}
+      <ShipmentConfirmReview
+        input={{ ...address, carrierId }}
+        modality={modality}
+        carrierName={carrierName}
+        onBack={() => setState({ step: 1, address, modality, carrierId })}
       />
     );
   }
-
-  if (state.step === 2) {
-    return (
-      <EligibleCarriersList
-        state={state.address.addressState}
-        city={state.address.addressCity}
-        modalityId={state.address.modalityId}
-        defaultCarrierId={state.carrierId}
-        onBack={() => setState({ step: 1 })}
-        onNext={(carrierId, carrierName) =>
-          setState({ ...state, step: 3, carrierId, carrierName })
-        }
-      />
-    );
-  }
-
-  const input: CreateShipmentInput = {
-    addressStreet: state.address.addressStreet,
-    addressNumber: state.address.addressNumber,
-    addressComplement: state.address.addressComplement,
-    addressNeighborhood: state.address.addressNeighborhood,
-    addressCity: state.address.addressCity,
-    addressState: state.address.addressState,
-    addressZipCode: state.address.addressZipCode,
-    modalityId: state.address.modalityId,
-    carrierId: state.carrierId,
-  };
 
   return (
-    <ShipmentConfirmReview
-      input={input}
-      modalityName={state.modalityName}
-      carrierName={state.carrierName}
-      onBack={() =>
-        setState({
-          step: 2,
-          address: state.address,
-          modalityName: state.modalityName,
-          carrierId: state.carrierId,
-        })
-      }
-    />
+    <div className="flex flex-col gap-6">
+      <StepIndicator steps={stepsFor(state)} current={state.step} />
+      {currentStep()}
+    </div>
   );
 }

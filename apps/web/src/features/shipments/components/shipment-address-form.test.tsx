@@ -9,12 +9,10 @@ describe('ShipmentAddressForm', () => {
   it('offers the given modalities', () => {
     render(<ShipmentAddressForm modalities={standard} onNext={vi.fn()} />);
 
-    expect(
-      screen.getByRole('button', { name: 'Standard' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Standard' })).toBeInTheDocument();
   });
 
-  it('exposes the chosen modality as a pressed button', async () => {
+  it('exposes the chosen modality as a checked radio', async () => {
     const user = userEvent.setup();
     render(
       <ShipmentAddressForm
@@ -22,16 +20,13 @@ describe('ShipmentAddressForm', () => {
         onNext={vi.fn()}
       />,
     );
-    const express = screen.getByRole('button', { name: 'Express' });
-    expect(express).toHaveAttribute('aria-pressed', 'false');
+    const express = screen.getByRole('radio', { name: 'Express' });
+    expect(express).not.toBeChecked();
 
     await user.click(express);
 
-    expect(express).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Standard' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(express).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Standard' })).not.toBeChecked();
   });
 
   it('shows a hint when no modality is enabled yet', async () => {
@@ -58,13 +53,13 @@ describe('ShipmentAddressForm', () => {
     expect(screen.getByText('Pick a modality')).toBeInTheDocument();
   });
 
-  it('calls onNext with the form values and the chosen modality name', async () => {
+  it('calls onNext with the form values and the chosen modality', async () => {
     const user = userEvent.setup();
     const onNext = vi.fn();
     render(<ShipmentAddressForm modalities={standard} onNext={onNext} />);
 
     await fillAddressFields(user);
-    await user.click(await screen.findByRole('button', { name: 'Standard' }));
+    await user.click(await screen.findByRole('radio', { name: 'Standard' }));
     await user.click(
       screen.getByRole('button', { name: /see eligible carriers/i }),
     );
@@ -80,7 +75,7 @@ describe('ShipmentAddressForm', () => {
           addressNeighborhood: 'Bela Vista',
           modalityId: 'modality-1',
         }),
-        'Standard',
+        standard[0],
       ),
     );
   });

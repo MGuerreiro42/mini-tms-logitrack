@@ -74,6 +74,7 @@ export interface CreateShipmentInput {
 export interface ModalityOption {
   id: string;
   name: string;
+  slaHours?: number | null;
 }
 
 export interface EligibleCarrier {
