@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { LiveStatus } from '@/lib/live-status';
 import { cn } from '@/lib/utils';
@@ -30,7 +31,7 @@ export function LiveIndicator({
     >
       <span aria-hidden className="relative flex size-2">
         {status === 'live' && (
-          <span className="absolute -inset-1 rounded-full bg-live-halo motion-safe:animate-pulse" />
+          <span className="absolute -inset-1 rounded-full animate-pulse bg-live-halo" />
         )}
         <span className={cn('relative size-2 rounded-full', dot)} />
       </span>
@@ -40,7 +41,14 @@ export function LiveIndicator({
 }
 
 export function OfflineBanner({ status }: { status: LiveStatus }) {
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
   if (status !== 'offline') return null;
+
+  function reconnect() {
+    setIsReconnecting(true);
+    reconnectSockets().finally(() => setIsReconnecting(false));
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg bg-notice px-4 py-3 text-sm text-notice-foreground">
@@ -52,10 +60,11 @@ export function OfflineBanner({ status }: { status: LiveStatus }) {
       <Button
         size="sm"
         variant="outline"
-        className="h-11 text-notice-foreground md:h-8"
-        onClick={reconnectSockets}
+        className="text-notice-foreground pointer-coarse:h-11"
+        onClick={reconnect}
+        disabled={isReconnecting}
       >
-        Reconnect
+        {isReconnecting ? 'Reconnecting…' : 'Reconnect'}
       </Button>
     </div>
   );

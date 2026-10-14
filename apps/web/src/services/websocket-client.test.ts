@@ -1,12 +1,7 @@
 import { io } from 'socket.io-client';
 import { getSessionFromDocument } from '@/lib/session';
 import { makeFakeSocket } from '@/test/fake-socket';
-import {
-  getPublicSocket,
-  getSocket,
-  reconnectSockets,
-  retainSocket,
-} from './websocket-client';
+import { getPublicSocket, getSocket, retainSocket } from './websocket-client';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({})) }));
 vi.mock('@/lib/session', () => ({ getSessionFromDocument: vi.fn() }));
@@ -140,20 +135,39 @@ describe('retainSocket', () => {
 });
 
 describe('reconnectSockets', () => {
-  it('cycles only the sockets someone still holds', () => {
+  async function freshClient() {
+    vi.resetModules();
+    return import('./websocket-client');
+  }
+
+  it('cycles the idle sockets someone holds and settles once they answer', async () => {
+    const { reconnectSockets, retainSocket } = await freshClient();
     const held = makeFakeSocket();
     const released = makeFakeSocket();
+    const handshaking = makeFakeSocket();
+    handshaking.io.engine.readyState = 'opening';
     retainSocket(held as never);
     retainSocket(released as never)();
-    held.connect.mockClear();
-    released.connect.mockClear();
-    released.disconnect.mockClear();
+    retainSocket(handshaking as never);
+    for (const socket of [held, released, handshaking]) {
+      socket.connect.mockClear();
+      socket.disconnect.mockClear();
+    }
 
-    reconnectSockets();
+    let settled = false;
+    const done = reconnectSockets().then(() => {
+      settled = true;
+    });
 
     expect(held.disconnect).toHaveBeenCalledTimes(1);
     expect(held.connect).toHaveBeenCalledTimes(1);
-    expect(released.disconnect).not.toHaveBeenCalled();
     expect(released.connect).not.toHaveBeenCalled();
+    expect(handshaking.disconnect).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    held.trigger('connect_error');
+    await done;
+    expect(settled).toBe(true);
   });
 });

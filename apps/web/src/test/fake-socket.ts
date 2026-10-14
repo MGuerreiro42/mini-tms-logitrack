@@ -7,6 +7,7 @@ export function makeFakeSocket() {
   const socket = {
     connected: false,
     active: false,
+    io: { engine: { readyState: 'closed' } },
     on: vi.fn((event: string, cb: Listener) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(cb);

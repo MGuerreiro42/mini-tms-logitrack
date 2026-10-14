@@ -73,11 +73,25 @@ export function retainSocket(socket: Socket): () => void {
   };
 }
 
-// A full cycle re-runs every subscriber's connect handler, so rooms are rejoined too.
-export function reconnectSockets(): void {
-  for (const [socket, held] of consumers) {
-    if (held === 0) continue;
+function isHandshaking(socket: Socket): boolean {
+  return !socket.connected && socket.io.engine?.readyState === 'opening';
+}
+
+function cycle(socket: Socket): Promise<void> {
+  return new Promise((resolve) => {
+    function handleSettled() {
+      for (const event of SETTLED_EVENTS) socket.off(event, handleSettled);
+      resolve();
+    }
+    for (const event of SETTLED_EVENTS) socket.on(event, handleSettled);
     socket.disconnect();
     socket.connect();
-  }
+  });
+}
+
+export async function reconnectSockets(): Promise<void> {
+  const idle = [...consumers]
+    .filter(([socket, held]) => held > 0 && !isHandshaking(socket))
+    .map(([socket]) => socket);
+  await Promise.all(idle.map(cycle));
 }

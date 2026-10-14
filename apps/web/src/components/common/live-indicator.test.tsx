@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { reconnectSockets } from '@/services/websocket-client';
 import { LiveIndicator, OfflineBanner } from './live-indicator';
 
-vi.mock('@/services/websocket-client', () => ({ reconnectSockets: vi.fn() }));
+vi.mock('@/services/websocket-client', () => ({
+  reconnectSockets: vi.fn(() => new Promise(() => {})),
+}));
 
 describe('LiveIndicator', () => {
   it.each([
@@ -31,7 +33,11 @@ describe('OfflineBanner', () => {
 
     expect(screen.getByText(/live updates paused/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Reconnect' }));
+    await user.click(screen.getByRole('button', { name: 'Reconnecting…' }));
 
     expect(reconnectSockets).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('button', { name: 'Reconnecting…' }),
+    ).toBeDisabled();
   });
 });
