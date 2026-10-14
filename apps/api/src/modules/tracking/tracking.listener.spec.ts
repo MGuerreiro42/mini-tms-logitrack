@@ -30,13 +30,14 @@ describe('TrackingListener', () => {
     );
   });
 
-  it('broadcasts shipment:updated once over the shipment, carrier and admin rooms', () => {
+  it('broadcasts shipment:updated once over the shipment, carrier, seller and admin rooms', () => {
     listener.handleShipmentUpdated(event);
 
     expect(to).toHaveBeenCalledTimes(1);
     expect(to).toHaveBeenCalledWith([
       'shipment:shipment-1',
       'carrier:carrier-1',
+      'seller:seller-1',
       'admin:monitoring',
     ]);
     expect(emit).toHaveBeenCalledTimes(1);

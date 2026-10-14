@@ -58,6 +58,16 @@ export class PublicTrackingGateway {
     return { ok: true };
   }
 
+  @SubscribeMessage('unsubscribe:tracking')
+  async handleUnsubscribeTracking(
+    client: Socket,
+    trackingCode: unknown,
+  ): Promise<{ ok: boolean }> {
+    if (typeof trackingCode !== 'string') return { ok: false };
+    await client.leave(trackingRoom(trackingCode));
+    return { ok: true };
+  }
+
   private exceedsSubscribeLimit(client: Socket): boolean {
     const data = client.data as SocketData;
     const now = Date.now();

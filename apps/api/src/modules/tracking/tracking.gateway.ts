@@ -17,6 +17,7 @@ import type {
 import {
   ADMIN_MONITORING_ROOM,
   carrierRoom,
+  sellerRoom,
   shipmentRoom,
 } from './tracking-rooms';
 
@@ -129,6 +130,46 @@ export class TrackingGateway implements OnGatewayInit {
     const data = client.data as SocketData;
     if (data.user.role !== GlobalRole.ADMIN) return { ok: false };
     await client.join(ADMIN_MONITORING_ROOM);
+    return { ok: true };
+  }
+
+  @SubscribeMessage('subscribe:seller')
+  async handleSubscribeSeller(client: Socket): Promise<{ ok: boolean }> {
+    const data = client.data as SocketData;
+    if (!data.sellerId) return { ok: false };
+    await client.join(sellerRoom(data.sellerId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unsubscribe:shipment')
+  async handleUnsubscribeShipment(
+    client: Socket,
+    shipmentId: unknown,
+  ): Promise<{ ok: boolean }> {
+    if (typeof shipmentId !== 'string') return { ok: false };
+    await client.leave(shipmentRoom(shipmentId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unsubscribe:queue')
+  async handleUnsubscribeQueue(client: Socket): Promise<{ ok: boolean }> {
+    const data = client.data as SocketData;
+    if (!data.carrierId) return { ok: false };
+    await client.leave(carrierRoom(data.carrierId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unsubscribe:monitoring')
+  async handleUnsubscribeMonitoring(client: Socket): Promise<{ ok: boolean }> {
+    await client.leave(ADMIN_MONITORING_ROOM);
+    return { ok: true };
+  }
+
+  @SubscribeMessage('unsubscribe:seller')
+  async handleUnsubscribeSeller(client: Socket): Promise<{ ok: boolean }> {
+    const data = client.data as SocketData;
+    if (!data.sellerId) return { ok: false };
+    await client.leave(sellerRoom(data.sellerId));
     return { ok: true };
   }
 }

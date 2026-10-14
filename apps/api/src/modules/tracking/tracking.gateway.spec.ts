@@ -8,6 +8,7 @@ function makeSocket() {
     handshake: { auth: {} as { token?: string } },
     data: undefined as unknown,
     join: vi.fn(),
+    leave: vi.fn(),
   };
 }
 
@@ -314,6 +315,77 @@ describe('TrackingGateway', () => {
 
       expect(socket.join).not.toHaveBeenCalled();
       expect(ack).toEqual({ ok: false });
+    });
+  });
+
+  describe('handleSubscribeSeller', () => {
+    it("joins the caller's own seller room", async () => {
+      const socket = makeSocket();
+      socket.data = { user: { role: 'SELLER' }, sellerId: 'seller-1' };
+
+      const ack = await gateway.handleSubscribeSeller(socket as never);
+
+      expect(socket.join).toHaveBeenCalledWith('seller:seller-1');
+      expect(ack).toEqual({ ok: true });
+    });
+
+    it('no-ops for a socket with no resolved sellerId', async () => {
+      const socket = makeSocket();
+      socket.data = { user: { role: 'ADMIN' } };
+
+      const ack = await gateway.handleSubscribeSeller(socket as never);
+
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
+    });
+  });
+
+  describe('unsubscribe handlers', () => {
+    it('leaves a shipment room', async () => {
+      const socket = makeSocket();
+      socket.data = { user: { role: 'SELLER' }, sellerId: 'seller-1' };
+
+      const ack = await gateway.handleUnsubscribeShipment(
+        socket as never,
+        'shipment-1',
+      );
+
+      expect(socket.leave).toHaveBeenCalledWith('shipment:shipment-1');
+      expect(ack).toEqual({ ok: true });
+    });
+
+    it('rejects a non-string shipment id', async () => {
+      const socket = makeSocket();
+
+      const ack = await gateway.handleUnsubscribeShipment(socket as never, {});
+
+      expect(socket.leave).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
+    });
+
+    it("leaves the caller's own carrier and seller rooms", async () => {
+      const carrier = makeSocket();
+      carrier.data = {
+        user: { role: 'CARRIER_OPERATOR' },
+        carrierId: 'carrier-1',
+      };
+      const seller = makeSocket();
+      seller.data = { user: { role: 'SELLER' }, sellerId: 'seller-1' };
+
+      await gateway.handleUnsubscribeQueue(carrier as never);
+      await gateway.handleUnsubscribeSeller(seller as never);
+
+      expect(carrier.leave).toHaveBeenCalledWith('carrier:carrier-1');
+      expect(seller.leave).toHaveBeenCalledWith('seller:seller-1');
+    });
+
+    it('leaves the admin room', async () => {
+      const socket = makeSocket();
+      socket.data = { user: { role: 'ADMIN' } };
+
+      await gateway.handleUnsubscribeMonitoring(socket as never);
+
+      expect(socket.leave).toHaveBeenCalledWith('admin:monitoring');
     });
   });
 });
