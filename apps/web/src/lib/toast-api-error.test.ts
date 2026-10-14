@@ -19,6 +19,12 @@ describe('apiErrorMessage', () => {
     ).toBe('Cannot cancel a shipment that is out for delivery');
   });
 
+  it('capitalizes a status that starts a sentence', () => {
+    expect(
+      apiErrorMessage(new ApiError(409, 'Moved on. IN_TRANSIT already')),
+    ).toBe('Moved on. In transit already');
+  });
+
   it('falls back to a generic message for anything else', () => {
     expect(apiErrorMessage(new TypeError('Failed to fetch'))).toBe(
       'Something went wrong. Please try again.',
