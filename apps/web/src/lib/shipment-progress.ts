@@ -9,23 +9,18 @@ export const HAPPY_PATH = [
   'DELIVERED',
 ] as const satisfies readonly ShipmentStatus[];
 
-const NEXT_EXPECTED: Partial<Record<ShipmentStatus, ShipmentStatus>> = {
-  PENDING: 'ACCEPTED',
-  ACCEPTED: 'COLLECTED',
-  COLLECTED: 'IN_TRANSIT',
-  IN_TRANSIT: 'OUT_FOR_DELIVERY',
-  OUT_FOR_DELIVERY: 'DELIVERED',
-  FAILED_DELIVERY: 'RETURNED',
-};
+const STEPS: readonly ShipmentStatus[] = HAPPY_PATH;
 
 export function nextExpectedStatus(
   status: ShipmentStatus,
 ): ShipmentStatus | undefined {
-  return NEXT_EXPECTED[status];
+  if (status === 'FAILED_DELIVERY') return 'RETURNED';
+  const index = STEPS.indexOf(status);
+  return index === -1 ? undefined : STEPS[index + 1];
 }
 
 export function isOnHappyPath(status: ShipmentStatus): boolean {
-  return (HAPPY_PATH as readonly ShipmentStatus[]).includes(status);
+  return STEPS.includes(status);
 }
 
 export function reachedStepIndex(
@@ -35,7 +30,7 @@ export function reachedStepIndex(
   return Math.max(
     0,
     ...[status, ...events.map((event) => event.status)].map((reached) =>
-      (HAPPY_PATH as readonly ShipmentStatus[]).indexOf(reached),
+      STEPS.indexOf(reached),
     ),
   );
 }
