@@ -1,8 +1,11 @@
 'use client';
 
-import { LiveIndicator } from '@/components/common/live-indicator';
+import {
+  LiveIndicator,
+  OfflineBanner,
+} from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
   StatusFilterTabs,
@@ -45,12 +48,17 @@ export function CarrierQueueTable() {
   return (
     <div className="space-y-4">
       <LiveIndicator status={liveStatus} />
+      <OfflineBanner status={liveStatus} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
         value={filters.status}
         onChange={(value) => setFilter('status', value)}
       />
-      <QueryState query={query} errorMessage="Couldn't load the queue.">
+      <QueryState
+        skeleton={<QuerySkeleton variant="table" />}
+        query={query}
+        errorMessage="Couldn't load the queue."
+      >
         {(result) => (
           <PaginatedTable<CarrierShipment>
             data={result.data}

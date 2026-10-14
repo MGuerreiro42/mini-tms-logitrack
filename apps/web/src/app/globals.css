@@ -34,6 +34,7 @@
   --color-overlay: var(--overlay);
   --color-live: var(--live);
   --color-live-halo: var(--live-halo);
+  --color-offline: var(--offline);
   --color-notice: var(--notice);
   --color-notice-foreground: var(--notice-foreground);
   --color-status-pending-bg: var(--status-pending-bg);
@@ -105,6 +106,7 @@
   --nav-line: rgb(28 40 34 / 0.08);
   --live: #3a8a55;
   --live-halo: rgb(58 138 85 / 0.16);
+  --offline: #c06a2e;
   --notice: #f2e2d5;
   --notice-foreground: #6b3610;
   --panel-shadow:
@@ -166,6 +168,7 @@
   --nav-line: #222823;
   --live: #5cc27f;
   --live-halo: rgb(92 194 127 / 0.18);
+  --offline: #d08548;
   --notice: #36271c;
   --notice-foreground: #edb98e;
   --panel-shadow: 0 0 0 1px #222823, 0 12px 28px -16px rgb(0 0 0 / 0.6);

@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { LiveIndicator } from '@/components/common/live-indicator';
+import {
+  LiveIndicator,
+  OfflineBanner,
+} from '@/components/common/live-indicator';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
@@ -26,6 +29,7 @@ export function PublicTrackingDetails({
 
   return (
     <div className="space-y-4">
+      <OfflineBanner status={liveStatus} />
       <div className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <ShipmentStatusPill status={tracking.status} />

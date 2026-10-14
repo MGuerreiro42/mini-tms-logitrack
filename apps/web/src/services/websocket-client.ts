@@ -8,7 +8,7 @@ import { API_URL } from '@/lib/api-url';
 import { getSessionFromDocument } from '@/lib/session';
 
 const sockets = new Map<string, Socket>();
-const consumers = new WeakMap<Socket, number>();
+const consumers = new Map<Socket, number>();
 
 function socketFor(
   url: string,
@@ -71,4 +71,13 @@ export function retainSocket(socket: Socket): () => void {
     consumers.set(socket, left);
     if (left === 0) disconnectOnceSettled(socket);
   };
+}
+
+// A full cycle re-runs every subscriber's connect handler, so rooms are rejoined too.
+export function reconnectSockets(): void {
+  for (const [socket, held] of consumers) {
+    if (held === 0) continue;
+    socket.disconnect();
+    socket.connect();
+  }
 }

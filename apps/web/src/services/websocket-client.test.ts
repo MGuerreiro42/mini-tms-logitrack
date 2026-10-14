@@ -1,7 +1,12 @@
 import { io } from 'socket.io-client';
 import { getSessionFromDocument } from '@/lib/session';
 import { makeFakeSocket } from '@/test/fake-socket';
-import { getPublicSocket, getSocket, retainSocket } from './websocket-client';
+import {
+  getPublicSocket,
+  getSocket,
+  reconnectSockets,
+  retainSocket,
+} from './websocket-client';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({})) }));
 vi.mock('@/lib/session', () => ({ getSessionFromDocument: vi.fn() }));
@@ -131,5 +136,24 @@ describe('retainSocket', () => {
     retainSocket(socket as never);
 
     expect(socket.connect).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('reconnectSockets', () => {
+  it('cycles only the sockets someone still holds', () => {
+    const held = makeFakeSocket();
+    const released = makeFakeSocket();
+    retainSocket(held as never);
+    retainSocket(released as never)();
+    held.connect.mockClear();
+    released.connect.mockClear();
+    released.disconnect.mockClear();
+
+    reconnectSockets();
+
+    expect(held.disconnect).toHaveBeenCalledTimes(1);
+    expect(held.connect).toHaveBeenCalledTimes(1);
+    expect(released.disconnect).not.toHaveBeenCalled();
+    expect(released.connect).not.toHaveBeenCalled();
   });
 });

@@ -83,9 +83,8 @@ describe('PublicTrackingDetails', () => {
 
     act(() => socket.trigger('disconnect'));
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Offline · updates refresh every few seconds',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent('Offline');
+    expect(screen.getByText(/refresh every few seconds/i)).toBeInTheDocument();
   });
 
   it('disconnects on unmount', () => {
