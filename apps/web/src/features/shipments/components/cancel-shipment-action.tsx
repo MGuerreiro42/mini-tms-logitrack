@@ -37,7 +37,11 @@ export function CancelShipmentAction({
       dismissLabel="Keep shipment"
       available={available}
       unavailableTitle="This shipment can't be cancelled anymore"
-      unavailableMessage={`It's ${SHIPMENT_STATUS[status].label.toLowerCase()} now. Cancelling is only possible before pickup.`}
+      unavailableMessage={
+        available
+          ? 'It changed while this page was open. Cancelling is only possible before pickup.'
+          : `It's ${SHIPMENT_STATUS[status].label.toLowerCase()} now. Cancelling is only possible before pickup.`
+      }
       onOpenChange={(open) => {
         if (!open) setNote('');
       }}

@@ -115,19 +115,22 @@ describe('ConfirmDialog', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('settles a conflict into a single acknowledgement', async () => {
+  it('settles a conflict into a single acknowledgement, keeping the input', async () => {
     const user = userEvent.setup();
     renderDialog(
       vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
     );
 
     await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.type(screen.getByLabelText('Reason'), 'Wrong address');
     await user.click(screen.getByRole('button', { name: 'Reject' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Already rejected',
+      'Already reviewed.',
     );
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+    expect(screen.getByLabelText('Reason')).toHaveValue('Wrong address');
+    expect(screen.getByLabelText('Reason')).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -142,7 +145,7 @@ describe('ConfirmDialog', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Already reviewed.');
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
-    expect(screen.queryByLabelText('Reason')).toBeNull();
+    expect(screen.getByLabelText('Reason')).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -150,7 +153,7 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('keeps the API message when a conflict also withdraws the action', async () => {
+  it('explains a conflict with its own message, not the API one', async () => {
     const user = userEvent.setup();
     const { withdraw } = renderDialog(
       vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
@@ -161,7 +164,7 @@ describe('ConfirmDialog', () => {
     await screen.findByRole('alert');
     withdraw();
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Already rejected');
+    expect(screen.getByRole('alert')).toHaveTextContent('Already reviewed.');
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
   });
 

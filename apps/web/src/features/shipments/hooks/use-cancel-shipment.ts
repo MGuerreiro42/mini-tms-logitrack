@@ -10,6 +10,6 @@ export function useCancelShipment() {
       cancelShipment(id, note, token),
     successMessage: 'Shipment cancelled',
     invalidates: shipmentKeys.all,
-    conflictMessage: 'This shipment can no longer be cancelled.',
+    surface: 'inline',
   });
 }

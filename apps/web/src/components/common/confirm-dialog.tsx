@@ -79,7 +79,7 @@ export function ConfirmDialog({
   if (!available && !open) return null;
 
   const isSettled = (!available || isConflict) && !isConfirming;
-  const message = failure ?? (isSettled ? unavailableMessage : null);
+  const message = isSettled ? unavailableMessage : failure;
 
   return (
     <Dialog open={open} onOpenChange={requestOpen}>
@@ -93,7 +93,11 @@ export function ConfirmDialog({
             <DialogDescription>{description}</DialogDescription>
           )}
         </DialogHeader>
-        {!isSettled && children}
+        {children && (
+          <fieldset disabled={isSettled || isConfirming} className="min-w-0">
+            {children}
+          </fieldset>
+        )}
         {!isSettled && message && (
           <p role="alert" className="text-sm text-destructive">
             {message}

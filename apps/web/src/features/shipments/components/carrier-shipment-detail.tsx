@@ -72,6 +72,7 @@ function CarrierShipmentView({
   const session = useSession();
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
+  const setBack = useUpdateShipmentStatus('inline');
 
   const isOwner = shipment.ownerEmail === session?.email;
   const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
@@ -112,7 +113,7 @@ function CarrierShipmentView({
                   variant="outline"
                   className="w-full"
                   onClick={() => updateStatus.mutate({ id, status: next })}
-                  disabled={updateStatus.isPending}
+                  disabled={updateStatus.isPending || setBack.isPending}
                 >
                   Advance to {SHIPMENT_STATUS[next].label}
                 </Button>
@@ -122,10 +123,8 @@ function CarrierShipmentView({
                 key={setback}
                 status={setback}
                 available={nextStatuses.includes(setback)}
-                onConfirm={() =>
-                  updateStatus.mutateAsync({ id, status: setback })
-                }
-                isPending={updateStatus.isPending}
+                onConfirm={() => setBack.mutateAsync({ id, status: setback })}
+                isPending={updateStatus.isPending || setBack.isPending}
               />
             ))}
             {actionState.kind === 'terminal' && (

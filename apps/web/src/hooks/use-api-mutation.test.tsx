@@ -4,12 +4,13 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
 import { ApiError } from '@/services/api-client';
-import { useApiMutation } from './use-api-mutation';
+import { type ErrorSurface, useApiMutation } from './use-api-mutation';
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function setup(
   mutationFn: (input: unknown, token: string) => Promise<unknown>,
+  surface?: ErrorSurface,
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
@@ -24,7 +25,7 @@ function setup(
         mutationFn,
         successMessage: 'Saved',
         invalidates: ['things'],
-        conflictMessage: 'Already changed.',
+        surface,
       }),
     { wrapper },
   );
@@ -65,15 +66,27 @@ describe('useApiMutation', () => {
     await waitFor(() => expect(result.current.isPending).toBe(false));
   });
 
-  it('refreshes and shows the conflict message on a 409', async () => {
+  it('refreshes and toasts the API message on a 409', async () => {
     const { result, invalidate } = setup(() =>
-      Promise.reject(new ApiError(409, 'Conflict')),
+      Promise.reject(new ApiError(409, 'Already changed')),
     );
 
     await act(() => result.current.mutateAsync(undefined).catch(() => {}));
 
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['things'] });
-    expect(toast.error).toHaveBeenCalledWith('Already changed.');
+    expect(toast.error).toHaveBeenCalledWith('Already changed');
+  });
+
+  it('leaves inline errors to the caller but still refreshes on a 409', async () => {
+    const { result, invalidate } = setup(
+      () => Promise.reject(new ApiError(409, 'Already changed')),
+      'inline',
+    );
+
+    await act(() => result.current.mutateAsync(undefined).catch(() => {}));
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['things'] });
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('toasts the API message for other errors without refreshing', async () => {

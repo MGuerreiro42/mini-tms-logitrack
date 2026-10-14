@@ -16,6 +16,7 @@ export function useRejectCarrier(id: string) {
   return useApiMutation({
     mutationFn: (_, token) => rejectCarrier(id, token),
     successMessage: 'Carrier rejected',
+    surface: 'inline',
     invalidates: carrierKeys.all,
   });
 }

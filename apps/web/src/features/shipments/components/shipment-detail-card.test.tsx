@@ -182,7 +182,7 @@ describe('ShipmentDetailCard', () => {
     return within(screen.getByRole('dialog'));
   }
 
-  it('keeps the dialog open with the API message on a 409, then lets it be dismissed', async () => {
+  it('settles the dialog on a 409 with the new status and no toast, then lets it be dismissed', async () => {
     server.use(
       http.patch(`${API_URL}/shipments/shipment-1/cancel`, () => {
         collectElsewhere();
@@ -198,19 +198,17 @@ describe('ShipmentDetailCard', () => {
     const dialog = await openCancelDialog(user);
     await user.click(dialog.getByRole('button', { name: 'Cancel shipment' }));
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent(
-      'Shipment status changed concurrently',
-    );
-    expect(toast.error).toHaveBeenCalledWith(
-      'This shipment can no longer be cancelled.',
-    );
-    await waitFor(() =>
-      expect(
-        dialog.queryByRole('button', { name: 'Cancel shipment' }),
-      ).toBeNull(),
-    );
+    expect(
+      await dialog.findByText(
+        "It's collected now. Cancelling is only possible before pickup.",
+      ),
+    ).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(
+      dialog.queryByRole('button', { name: 'Cancel shipment' }),
+    ).toBeNull();
 
-    await user.click(dialog.getAllByRole('button', { name: 'Close' })[0]);
+    await user.click(dialog.getByRole('button', { name: 'Got it' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Cancel shipment' }),
