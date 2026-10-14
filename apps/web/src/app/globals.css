@@ -16,7 +16,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-destructive-tint: var(--status-failed-delivery-bg);
+  --color-destructive-tint: var(--destructive-tint);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -31,6 +31,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-nav: var(--nav);
+  --color-field: var(--field);
   --color-overlay: var(--overlay);
   --color-live: var(--live);
   --color-live-halo: var(--live-halo);
@@ -92,6 +93,7 @@
   --accent: #eceeea;
   --accent-foreground: #1c201e;
   --destructive: #9b2c24;
+  --destructive-tint: #f2dbd8;
   --border: #e1e4df;
   --input: #d5dad4;
   --ring: #2e6b5e;
@@ -99,6 +101,7 @@
   --chart-2: #c9d6d1;
   --radius: 10px;
   --nav: #fbfbf9;
+  --field: #fbfbf9;
   --overlay: rgb(28 32 30 / 0.42);
   --live: #3a8a55;
   --live-halo: rgb(58 138 85 / 0.16);
@@ -153,12 +156,14 @@
   --accent: #222823;
   --accent-foreground: #e7ece8;
   --destructive: #f0a39a;
+  --destructive-tint: #3a2220;
   --border: #2a312d;
   --input: #343c37;
   --ring: #6fb8a6;
   --chart-1: #6fb8a6;
   --chart-2: #2f3a35;
   --nav: #151a17;
+  --field: #1d231f;
   --overlay: rgb(8 10 9 / 0.6);
   --live: #5cc27f;
   --live-halo: rgb(92 194 127 / 0.18);
@@ -207,4 +212,15 @@
   html {
     @apply font-sans tabular-nums;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* biome-ignore-start lint/complexity/noImportantStyles: has to beat utility classes */
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: has to beat utility classes */
 }
