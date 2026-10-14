@@ -54,6 +54,7 @@ function ShipmentDetailView({
       <div className="space-y-4">
         <CancelShipmentAction
           shipmentId={shipment.id}
+          status={shipment.status}
           available={isCancellableBySeller(shipment.status)}
         />
         <Card>

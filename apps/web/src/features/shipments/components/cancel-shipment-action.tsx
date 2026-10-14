@@ -5,16 +5,19 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useCancelShipment } from '../hooks/use-cancel-shipment';
-import { TRACKING_NOTE_MAX_LENGTH } from '../types';
+import { type ShipmentStatus, TRACKING_NOTE_MAX_LENGTH } from '../types';
 
 interface CancelShipmentActionProps {
   shipmentId: string;
+  status: ShipmentStatus;
   available: boolean;
 }
 
 export function CancelShipmentAction({
   shipmentId,
+  status,
   available,
 }: CancelShipmentActionProps) {
   const [note, setNote] = useState('');
@@ -33,7 +36,8 @@ export function CancelShipmentAction({
       variant="destructive"
       dismissLabel="Keep shipment"
       available={available}
-      unavailableMessage="This shipment can no longer be cancelled."
+      unavailableTitle="This shipment can't be cancelled anymore"
+      unavailableMessage={`It's ${SHIPMENT_STATUS[status].label.toLowerCase()} now. Cancelling is only possible before pickup.`}
       onOpenChange={(open) => {
         if (!open) setNote('');
       }}

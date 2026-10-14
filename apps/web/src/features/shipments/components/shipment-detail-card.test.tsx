@@ -227,7 +227,7 @@ describe('ShipmentDetailCard', () => {
     await act(() => queryClient.invalidateQueries());
 
     expect(await dialog.findByRole('alert')).toHaveTextContent(
-      'This shipment can no longer be cancelled.',
+      "It's collected now. Cancelling is only possible before pickup.",
     );
     expect(
       dialog.queryByRole('button', { name: 'Cancel shipment' }),

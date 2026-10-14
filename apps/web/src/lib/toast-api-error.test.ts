@@ -11,6 +11,14 @@ describe('apiErrorMessage', () => {
     );
   });
 
+  it('names statuses the way the UI does', () => {
+    expect(
+      apiErrorMessage(
+        new ApiError(409, 'Cannot cancel a shipment that is OUT_FOR_DELIVERY'),
+      ),
+    ).toBe('Cannot cancel a shipment that is out for delivery');
+  });
+
   it('falls back to a generic message for anything else', () => {
     expect(apiErrorMessage(new TypeError('Failed to fetch'))).toBe(
       'Something went wrong. Please try again.',
