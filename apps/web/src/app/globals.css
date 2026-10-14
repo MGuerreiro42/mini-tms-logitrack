@@ -16,6 +16,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-tint: var(--status-failed-delivery-bg);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -24,11 +25,13 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-inverse: var(--primary-inverse);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-nav: var(--nav);
+  --color-overlay: var(--overlay);
   --color-live: var(--live);
   --color-live-halo: var(--live-halo);
   --color-notice: var(--notice);
@@ -81,6 +84,7 @@
   --popover-foreground: #1c201e;
   --primary: #2e6b5e;
   --primary-foreground: #ffffff;
+  --primary-inverse: #8fcfbf;
   --secondary: #eceeea;
   --secondary-foreground: #1c201e;
   --muted: #eceeea;
@@ -95,6 +99,7 @@
   --chart-2: #c9d6d1;
   --radius: 0.625rem;
   --nav: #fbfbf9;
+  --overlay: rgb(28 32 30 / 0.42);
   --live: #3a8a55;
   --live-halo: rgb(58 138 85 / 0.16);
   --notice: #f2e2d5;
@@ -140,6 +145,7 @@
   --popover-foreground: #e7ece8;
   --primary: #6fb8a6;
   --primary-foreground: #0e1f1a;
+  --primary-inverse: #2e6b5e;
   --secondary: #222823;
   --secondary-foreground: #e7ece8;
   --muted: #222823;
@@ -153,6 +159,7 @@
   --chart-1: #6fb8a6;
   --chart-2: #2f3a35;
   --nav: #151a17;
+  --overlay: rgb(8 10 9 / 0.6);
   --live: #5cc27f;
   --live-halo: rgb(92 194 127 / 0.18);
   --notice: #36271c;

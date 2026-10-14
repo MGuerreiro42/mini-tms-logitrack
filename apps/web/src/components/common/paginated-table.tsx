@@ -49,7 +49,7 @@ export function PaginatedTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-xl bg-card shadow-panel">
         <Table>
           <TableHeader>
             <TableRow>
