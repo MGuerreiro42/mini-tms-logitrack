@@ -11,7 +11,7 @@ import {
   statusFilterOptions,
   statusFilterValues,
 } from '@/components/common/status-filter-tabs';
-import { ApprovalStatusPill } from '@/components/ui/status-pill';
+import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
@@ -65,7 +65,7 @@ export function CompanyApprovalTable<T extends CompanyRow>({
     ...extraColumns,
     {
       header: 'Status',
-      cell: (c) => <ApprovalStatusPill status={c.status} />,
+      cell: (c) => <ApprovalStatusBadge status={c.status} />,
     },
     {
       header: 'Created',

@@ -3,7 +3,7 @@
 import { DetailRow } from '@/components/common/detail-row';
 import { PageHeader } from '@/components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ApprovalStatusPill } from '@/components/ui/status-pill';
+import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import type { ApprovalStatus } from '@/types/status';
 import { ApproveRejectActions } from './approve-reject-actions';
 
@@ -57,7 +57,7 @@ export function CompanyProfile({
           <CardTitle className="text-sm">Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <ApprovalStatusPill status={company.status} />
+          <ApprovalStatusBadge status={company.status} />
         </CardContent>
       </Card>
     </div>
@@ -93,7 +93,7 @@ export function CompanyReview({
         title={
           <span className="flex flex-wrap items-center gap-3">
             {company.companyName}
-            <ApprovalStatusPill status={company.status} />
+            <ApprovalStatusBadge status={company.status} />
           </span>
         }
         description={

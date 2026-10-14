@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { DetailRow } from '@/components/common/detail-row';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import type { LiveStatus } from '@/lib/live-status';
 import type { TimelineEvent } from '@/types/status';
@@ -22,7 +22,7 @@ export function ShipmentHeaderCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           {shipment.trackingCode}
-          <ShipmentStatusPill status={shipment.status} />
+          <ShipmentStatusBadge status={shipment.status} />
           <LiveIndicator status={liveStatus} className="ml-auto" />
         </CardTitle>
       </CardHeader>

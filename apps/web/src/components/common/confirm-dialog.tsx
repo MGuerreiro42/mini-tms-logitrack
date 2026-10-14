@@ -90,7 +90,7 @@ export function ConfirmDialog({
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" disabled={isConfirming}>
+            <Button variant="secondary" disabled={isConfirming}>
               {isWithdrawn ? 'Close' : dismissLabel}
             </Button>
           </DialogClose>
