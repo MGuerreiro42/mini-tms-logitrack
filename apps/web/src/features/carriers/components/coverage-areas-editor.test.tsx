@@ -37,10 +37,10 @@ describe('CoverageAreasEditor — edit mode', () => {
       <CoverageAreasEditor initialAreas={initialAreas} onSave={vi.fn()} />,
     );
 
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
     expect(
-      screen.getAllByPlaceholderText('City (leave empty for whole state)')[0],
-    ).toHaveValue('São Paulo');
+      screen.getAllByRole('button', { name: /^Remove area/ }),
+    ).toHaveLength(2);
+    expect(screen.getAllByLabelText('City')[0]).toHaveValue('São Paulo');
   });
 
   it('shows the warning when there are no rows left', async () => {
@@ -49,20 +49,24 @@ describe('CoverageAreasEditor — edit mode', () => {
       <CoverageAreasEditor initialAreas={initialAreas} onSave={vi.fn()} />,
     );
 
-    for (const button of screen.getAllByRole('button', { name: 'Remove' })) {
+    for (const button of screen.getAllByRole('button', {
+      name: /^Remove area/,
+    })) {
       await user.click(button);
     }
 
-    expect(screen.getByText(/won't show up in any/i)).toBeInTheDocument();
+    expect(screen.getByText(/won't find your company/i)).toBeInTheDocument();
   });
 
-  it('+ Add area appends a new empty row', async () => {
+  it('Add area appends a new empty row', async () => {
     const user = userEvent.setup();
     render(<CoverageAreasEditor initialAreas={[]} onSave={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: '+ Add area' }));
+    await user.click(screen.getByRole('button', { name: 'Add area' }));
 
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+    expect(
+      screen.getAllByRole('button', { name: /^Remove area/ }),
+    ).toHaveLength(1);
   });
 
   it('submits with an empty city mapped to undefined and a filled one trimmed', async () => {
@@ -70,9 +74,7 @@ describe('CoverageAreasEditor — edit mode', () => {
     const onSave = vi.fn();
     render(<CoverageAreasEditor initialAreas={initialAreas} onSave={onSave} />);
 
-    const cityInputs = screen.getAllByPlaceholderText(
-      'City (leave empty for whole state)',
-    );
+    const cityInputs = screen.getAllByLabelText('City');
     await user.clear(cityInputs[0]);
     await user.type(cityInputs[0], '  Campinas  ');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
@@ -81,6 +83,22 @@ describe('CoverageAreasEditor — edit mode', () => {
       { state: 'SP', city: 'Campinas' },
       { state: 'RJ', city: undefined },
     ]);
+  });
+
+  it('flags a duplicated area below its city field and does not save', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<CoverageAreasEditor initialAreas={initialAreas} onSave={onSave} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add area' }));
+    await user.type(screen.getAllByLabelText('City')[2], 'são paulo');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    const duplicate = screen.getAllByLabelText('City')[2];
+    expect(duplicate).toHaveAccessibleDescription(
+      'This area is already listed.',
+    );
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('shows a working label and disables Save while saving', () => {

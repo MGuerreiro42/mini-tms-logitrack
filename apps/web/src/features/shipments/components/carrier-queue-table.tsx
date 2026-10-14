@@ -4,6 +4,7 @@ import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { PageHeader } from '@/components/common/page-header';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
@@ -56,8 +57,12 @@ export function CarrierQueueTable() {
   const claim = useClaimShipment();
 
   return (
-    <div className="space-y-4">
-      <LiveIndicator status={liveStatus} />
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Shipment queue"
+        description="Shared across your company. Claim an unowned shipment to work on it."
+        action={<LiveIndicator status={liveStatus} />}
+      />
       <OfflineBanner status={liveStatus} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
@@ -97,7 +102,8 @@ export function CarrierQueueTable() {
                   isClaimable(s) ? (
                     <Button
                       size="sm"
-                      className="relative z-10"
+                      className="relative z-10 pointer-coarse:h-11 pointer-coarse:px-4"
+                      aria-label={`Claim ${s.trackingCode}`}
                       onClick={() => claim.mutate(s.id)}
                       disabled={claim.isPending && claim.variables === s.id}
                     >

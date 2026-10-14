@@ -73,7 +73,7 @@ describe('CarrierQueueTable', () => {
     renderWithQueryClient(<CarrierQueueTable />);
     await screen.findByText('Example Store');
 
-    expect(screen.getAllByRole('button', { name: 'Claim' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Claim / })).toHaveLength(1);
   });
 
   it('claiming a shipment calls the claim endpoint and does not navigate the row', async () => {
@@ -88,7 +88,7 @@ describe('CarrierQueueTable', () => {
     renderWithQueryClient(<CarrierQueueTable />);
     await screen.findByText('Example Store');
 
-    await user.click(screen.getByRole('button', { name: 'Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim TMS-AAA111' }));
 
     await waitFor(() => expect(claimedId).toBe('shipment-1'));
   });
@@ -113,7 +113,7 @@ describe('CarrierQueueTable', () => {
     renderWithQueryClient(<CarrierQueueTable />);
     await screen.findByText('Third Store');
 
-    const [first, second] = screen.getAllByRole('button', { name: 'Claim' });
+    const [first, second] = screen.getAllByRole('button', { name: /^Claim / });
     await user.click(first);
 
     await waitFor(() => expect(first).toBeDisabled());
@@ -134,7 +134,7 @@ describe('CarrierQueueTable', () => {
     await screen.findByText('Example Store');
     const fetchesBefore = requestedUrls.length;
 
-    await user.click(screen.getByRole('button', { name: 'Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim TMS-AAA111' }));
 
     await waitFor(() =>
       expect(requestedUrls.length).toBeGreaterThan(fetchesBefore),
