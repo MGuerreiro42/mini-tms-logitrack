@@ -3,6 +3,7 @@ import { HTTP_STATUS } from '@/lib/http-status';
 import { ROUTES } from '@/lib/routes';
 import {
   canEnterSegment,
+  forbiddenPath,
   parseSessionCookie,
   ROLE_HOME,
   SESSION_COOKIE,
@@ -45,7 +46,7 @@ export function proxy(request: NextRequest) {
 
   if (!canEnterSegment(session.role, segment)) {
     return uncached(
-      NextResponse.rewrite(new URL(ROUTES.forbidden, request.url), {
+      NextResponse.rewrite(new URL(forbiddenPath(segment), request.url), {
         status: HTTP_STATUS.FORBIDDEN,
       }),
     );

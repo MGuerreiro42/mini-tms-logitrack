@@ -73,7 +73,9 @@ describe('proxy', () => {
     const response = proxy(request(path, role));
 
     expect(response.status).toBe(403);
-    expect(rewriteTarget(response)).toBe('http://localhost/forbidden');
+    expect(rewriteTarget(response)).toBe(
+      `http://localhost/forbidden?area=${path.split('/')[1]}`,
+    );
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 

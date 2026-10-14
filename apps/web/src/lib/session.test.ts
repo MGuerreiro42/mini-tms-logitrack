@@ -1,6 +1,7 @@
 import {
   canEnterSegment,
   clearSession,
+  forbiddenPath,
   getSessionFromDocument,
   isCarrierRole,
   onSessionChangedElsewhere,
@@ -61,6 +62,11 @@ describe('segments', () => {
     ['ADMIN', 'constructor'],
   ] as const)('keeps %s out of /%s', (role, segment) => {
     expect(canEnterSegment(role, segment)).toBe(false);
+  });
+
+  it('names the area on the 403 path only for a known segment', () => {
+    expect(forbiddenPath('carrier')).toBe('/forbidden?area=carrier');
+    expect(forbiddenPath('constructor')).toBe('/forbidden');
   });
 
   it('treats managers and operators as carrier roles', () => {
