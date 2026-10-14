@@ -25,6 +25,11 @@ export function formatDate(iso: string): string {
   return `${month} ${day}, ${year}`;
 }
 
+export function formatShortDateTime(iso: string): string {
+  const { month, day, hour, minute } = partsOf(iso);
+  return `${month} ${day}, ${hour}:${minute}`;
+}
+
 export function formatDateTime(iso: string): string {
   const { hour, minute, timeZoneName } = partsOf(iso);
   return `${formatDate(iso)}, ${hour}:${minute} ${timeZoneName}`;

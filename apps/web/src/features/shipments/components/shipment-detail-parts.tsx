@@ -4,11 +4,12 @@ import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import type { LiveStatus } from '@/lib/live-status';
-import type { TimelineEvent } from '@/types/status';
+import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';
 
 export function ShipmentHeaderCard({
@@ -31,6 +32,12 @@ export function ShipmentHeaderCard({
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         <OfflineBanner status={liveStatus} />
+        <div className="pt-1 pb-3">
+          <ShipmentStepper
+            status={shipment.status}
+            events={shipment.trackingEvents}
+          />
+        </div>
         {children}
       </CardContent>
     </Card>
@@ -56,8 +63,10 @@ export function ShipmentAddressRows({ address }: { address: ShipmentAddress }) {
 
 export function ShipmentTimelineCard({
   events = [],
+  status,
 }: {
   events?: TimelineEvent[];
+  status: ShipmentStatus;
 }) {
   return (
     <Card>
@@ -65,7 +74,7 @@ export function ShipmentTimelineCard({
         <CardTitle className="text-sm">Tracking</CardTitle>
       </CardHeader>
       <CardContent>
-        <TrackingTimeline events={events} />
+        <TrackingTimeline events={events} status={status} />
       </CardContent>
     </Card>
   );

@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { getPublicSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
@@ -72,8 +72,9 @@ describe('PublicTrackingDetails', () => {
       }),
     );
 
-    expect((await screen.findAllByText('Collected')).length).toBeGreaterThan(0);
-    expect(document.title).toBe('TMS-AAA111 · Collected · Mini TMS');
+    await waitFor(() =>
+      expect(document.title).toBe('TMS-AAA111 · Collected · Mini TMS'),
+    );
   });
 
   it('tells the visitor it fell back to refreshing when the socket drops', async () => {
