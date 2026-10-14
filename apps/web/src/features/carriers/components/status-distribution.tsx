@@ -21,8 +21,6 @@ export function StatusDistribution({
     <ChartSection
       title="Status distribution"
       description={`${total} ${total === 1 ? 'shipment' : 'shipments'}`}
-      isEmpty={entries.length === 0}
-      emptyMessage="No shipments yet."
     >
       <div
         role="img"
