@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DetailRow } from '@/components/common/detail-row';
 import {
@@ -5,12 +6,90 @@ import {
   OfflineBanner,
 } from '@/components/common/live-indicator';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { SlaCell } from '@/components/common/sla-cell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
+import { useNow } from '@/hooks/use-now';
+import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
+import { nextExpectedStatus } from '@/lib/shipment-progress';
+import { slaState } from '@/lib/sla';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';
+
+export function ShipmentTitle({
+  shipment,
+  liveStatus,
+  back,
+  meta,
+  children,
+}: {
+  shipment: ShipmentBase;
+  liveStatus: LiveStatus;
+  back: { href: string; label: string };
+  meta?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <nav aria-label="Breadcrumb">
+        <ol className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
+          <li>
+            <Link
+              href={back.href}
+              className="rounded-xs font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+            >
+              {back.label}
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li aria-current="page" className="font-mono">
+            {shipment.trackingCode}
+          </li>
+        </ol>
+      </nav>
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+        <h1 className="font-mono text-2xl font-medium tracking-tight md:text-3xl">
+          {shipment.trackingCode}
+        </h1>
+        <ShipmentStatusBadge status={shipment.status} />
+        {meta && <span className="text-sm text-muted-foreground">{meta}</span>}
+        <LiveIndicator status={liveStatus} className="ml-auto" />
+      </div>
+      {children && (
+        <p className="text-[15px] text-muted-foreground">{children}</p>
+      )}
+      <OfflineBanner status={liveStatus} />
+    </div>
+  );
+}
+
+const SLA_REFRESH_MS = 60_000;
+
+export function ShipmentDueLine({
+  shipment,
+}: {
+  shipment: Pick<ShipmentBase, 'modalityName' | 'dueAt' | 'status'>;
+}) {
+  const now = useNow(SLA_REFRESH_MS);
+  const { modalityName, dueAt, status } = shipment;
+
+  if (!dueAt) return <>{modalityName} · No SLA</>;
+  if (!nextExpectedStatus(status)) {
+    return (
+      <>
+        {modalityName} · Due {formatShortDateTime(dueAt)}
+      </>
+    );
+  }
+  return (
+    <>
+      {modalityName} · <SlaCell state={slaState({ dueAt, status, now })} /> ·{' '}
+      {formatShortDateTime(dueAt)}
+    </>
+  );
+}
 
 export function ShipmentHeaderCard({
   shipment,
