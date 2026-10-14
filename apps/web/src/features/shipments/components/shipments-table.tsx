@@ -9,11 +9,18 @@ import {
   statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { useNow } from '@/hooks/use-now';
 import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
-import { lateRowClassName, shipmentColumns } from './shipment-columns';
+import {
+  lateRowClassName,
+  shipmentColumns,
+  slaColumn,
+  type WithSla,
+  withSla,
+} from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -23,6 +30,8 @@ const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
 ]);
 const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 
+const SLA_REFRESH_MS = 60_000;
+
 export function ShipmentsTable() {
   const { filters, setFilter, setPage, params } = useFilteredPagination(
     { status: ALL as StatusFilter<ShipmentStatus> },
@@ -30,6 +39,7 @@ export function ShipmentsTable() {
   );
 
   const query = useShipmentsList(params);
+  const now = useNow(SLA_REFRESH_MS);
 
   return (
     <div className="space-y-4">
@@ -44,8 +54,8 @@ export function ShipmentsTable() {
         errorMessage="Couldn't load shipments."
       >
         {(result) => (
-          <PaginatedTable<Shipment>
-            data={result.data}
+          <PaginatedTable<WithSla<Shipment>>
+            data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
@@ -56,7 +66,7 @@ export function ShipmentsTable() {
               shipmentColumns.trackingCode,
               shipmentColumns.status,
               shipmentColumns.destination,
-              shipmentColumns.sla,
+              slaColumn,
               {
                 header: 'Carrier',
                 cell: (s) => s.carrierName,

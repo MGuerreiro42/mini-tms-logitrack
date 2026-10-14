@@ -18,13 +18,20 @@ import {
   statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { useNow } from '@/hooks/use-now';
 import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
-import { lateRowClassName, shipmentColumns } from './shipment-columns';
+import {
+  lateRowClassName,
+  shipmentColumns,
+  slaColumn,
+  type WithSla,
+  withSla,
+} from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
 const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
@@ -33,6 +40,8 @@ interface AdminMonitoringTableProps {
   carrierOptions: FilterOption[];
   sellerOptions: FilterOption[];
 }
+
+const SLA_REFRESH_MS = 60_000;
 
 export function AdminMonitoringTable({
   carrierOptions,
@@ -53,6 +62,7 @@ export function AdminMonitoringTable({
 
   const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
   const query = useAdminShipments(params, liveStatus);
+  const now = useNow(SLA_REFRESH_MS);
 
   return (
     <div className="space-y-4">
@@ -88,8 +98,8 @@ export function AdminMonitoringTable({
         errorMessage="Couldn't load shipments."
       >
         {(result) => (
-          <PaginatedTable<AdminShipment>
-            data={result.data}
+          <PaginatedTable<WithSla<AdminShipment>>
+            data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
@@ -99,7 +109,7 @@ export function AdminMonitoringTable({
               shipmentColumns.trackingCode,
               shipmentColumns.status,
               shipmentColumns.destination,
-              shipmentColumns.sla,
+              slaColumn,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
               { header: 'Carrier', cell: (s) => s.carrierCompanyName },
               shipmentColumns.created,

@@ -39,9 +39,9 @@ export function PaginatedTable<T>({
   meta,
   onPageChange,
   getRowHref,
+  getRowClassName,
   emptyMessage = 'Nothing here yet.',
   getRowKey,
-  getRowClassName,
 }: PaginatedTableProps<T>) {
   const lastPage = Math.max(1, meta?.totalPages ?? 1);
   const isPastTheEnd = meta !== undefined && meta.page > lastPage;

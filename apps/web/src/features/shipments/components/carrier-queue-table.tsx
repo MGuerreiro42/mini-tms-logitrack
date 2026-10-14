@@ -14,6 +14,7 @@ import {
 } from '@/components/common/status-filter-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { useNow } from '@/hooks/use-now';
 import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -25,7 +26,13 @@ import {
   ownerLabel,
   type ShipmentStatus,
 } from '../types';
-import { lateRowClassName, shipmentColumns } from './shipment-columns';
+import {
+  lateRowClassName,
+  shipmentColumns,
+  slaColumn,
+  type WithSla,
+  withSla,
+} from './shipment-columns';
 
 const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
   'PENDING',
@@ -35,6 +42,8 @@ const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
 ]);
 const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 
+const SLA_REFRESH_MS = 60_000;
+
 export function CarrierQueueTable() {
   const { filters, setFilter, setPage, params } = useFilteredPagination(
     { status: ALL as StatusFilter<ShipmentStatus> },
@@ -43,6 +52,7 @@ export function CarrierQueueTable() {
 
   const liveStatus = useShipmentTracking({ subscribeToQueue: true });
   const query = useShipmentQueue(params, liveStatus);
+  const now = useNow(SLA_REFRESH_MS);
   const claim = useClaimShipment();
 
   return (
@@ -60,8 +70,8 @@ export function CarrierQueueTable() {
         errorMessage="Couldn't load the queue."
       >
         {(result) => (
-          <PaginatedTable<CarrierShipment>
-            data={result.data}
+          <PaginatedTable<WithSla<CarrierShipment>>
+            data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
@@ -73,7 +83,7 @@ export function CarrierQueueTable() {
               shipmentColumns.status,
               { header: 'Seller', cell: (s) => s.sellerCompanyName },
               shipmentColumns.destination,
-              shipmentColumns.sla,
+              slaColumn,
               {
                 header: 'Owner',
                 cell: ownerLabel,

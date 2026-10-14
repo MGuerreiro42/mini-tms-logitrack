@@ -7,42 +7,41 @@ export interface SlaState {
   tone: SlaTone;
 }
 
-const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
 const SOON_HOURS = 6;
-const HOURS_SHOWN_UP_TO = 48;
+const HOURS_SHOWN_BELOW = 48;
 const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED'];
 
-function span(hours: number): string {
-  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`;
-  if (hours < HOURS_SHOWN_UP_TO) return `${Math.round(hours)} h`;
-  return `${Math.round(hours / 24)} d`;
+function span(minutes: number, round: (value: number) => number): string {
+  if (minutes < MINUTES_PER_HOUR) return `${Math.max(1, minutes)} min`;
+  const hours = round(minutes / MINUTES_PER_HOUR);
+  if (hours < HOURS_SHOWN_BELOW) return `${hours} h`;
+  return `${round(hours / HOURS_PER_DAY)} d`;
 }
 
 export function slaState({
   dueAt,
   status,
-  deliveredAt,
   now = new Date(),
 }: {
   dueAt: string | null | undefined;
   status: ShipmentStatus;
-  deliveredAt?: string;
   now?: Date;
 }): SlaState {
   if (!dueAt || CLOSED.includes(status)) return { label: '—', tone: 'muted' };
+  if (status === 'DELIVERED') return { label: 'Delivered', tone: 'muted' };
 
-  const due = new Date(dueAt).getTime();
-  if (status === 'DELIVERED') {
-    if (!deliveredAt) return { label: 'Delivered', tone: 'muted' };
-    return new Date(deliveredAt).getTime() <= due
-      ? { label: 'On time', tone: 'muted' }
-      : { label: 'Delivered late', tone: 'late' };
+  const msLeft = new Date(dueAt).getTime() - now.getTime();
+  if (msLeft < 0) {
+    const late = Math.ceil(-msLeft / MINUTE_MS);
+    return { label: `${span(late, Math.ceil)} late`, tone: 'late' };
   }
 
-  const hoursLeft = (due - now.getTime()) / HOUR_MS;
-  if (hoursLeft < 0) return { label: `${span(-hoursLeft)} late`, tone: 'late' };
+  const left = Math.floor(msLeft / MINUTE_MS);
   return {
-    label: `Due in ${span(hoursLeft)}`,
-    tone: hoursLeft < SOON_HOURS ? 'soon' : 'muted',
+    label: `Due in ${span(left, Math.floor)}`,
+    tone: left < SOON_HOURS * MINUTES_PER_HOUR ? 'soon' : 'muted',
   };
 }

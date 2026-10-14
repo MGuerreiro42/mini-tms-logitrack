@@ -1,4 +1,4 @@
-import { type SlaTone, slaState } from '@/lib/sla';
+import type { SlaState, SlaTone } from '@/lib/sla';
 
 const TONE: Record<SlaTone, string> = {
   muted: 'text-muted-foreground',
@@ -6,7 +6,6 @@ const TONE: Record<SlaTone, string> = {
   late: 'font-semibold text-destructive',
 };
 
-export function SlaCell(props: Parameters<typeof slaState>[0]) {
-  const { label, tone } = slaState(props);
-  return <span className={TONE[tone]}>{label}</span>;
+export function SlaCell({ state }: { state: SlaState }) {
+  return <span className={TONE[state.tone]}>{state.label}</span>;
 }
