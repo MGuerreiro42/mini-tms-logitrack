@@ -1,14 +1,5 @@
-import { PageHeader } from '@/components/common/page-header';
-import { CarrierProfileCard } from '@/features/carriers/components/carrier-profile-card';
+import { redirect } from 'next/navigation';
 
-export default function CarrierCompanyPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="My company"
-        description="Your company details and account status."
-      />
-      <CarrierProfileCard />
-    </div>
-  );
+export default function CarrierHomePage() {
+  redirect('/carrier/queue');
 }
