@@ -1,5 +1,5 @@
 import type { Column } from '@/components/common/paginated-table';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import type { Shipment } from '../types';
 
@@ -15,7 +15,7 @@ export const shipmentColumns = {
   },
   status: {
     header: 'Status',
-    cell: (s) => <ShipmentStatusPill status={s.status} />,
+    cell: (s) => <ShipmentStatusBadge status={s.status} />,
   },
   destination: {
     header: 'Destination',

@@ -2,7 +2,7 @@
 
 import { DetailRow } from '@/components/common/detail-row';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ApprovalStatusPill } from '@/components/ui/status-pill';
+import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import type { ApprovalStatus } from '@/types/status';
 import { ApproveRejectActions } from './approve-reject-actions';
 
@@ -56,7 +56,7 @@ export function CompanyProfile({
           <CardTitle className="text-sm">Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <ApprovalStatusPill status={company.status} />
+          <ApprovalStatusBadge status={company.status} />
         </CardContent>
       </Card>
     </div>
@@ -92,7 +92,7 @@ export function CompanyReview({
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold">
             {company.companyName}
-            <ApprovalStatusPill status={company.status} />
+            <ApprovalStatusBadge status={company.status} />
           </h1>
           <p role="status" className="text-sm text-muted-foreground">
             {REVIEW_SUBTITLE[company.status]}
