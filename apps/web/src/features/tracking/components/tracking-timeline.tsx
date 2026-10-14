@@ -1,4 +1,4 @@
-import { formatDateTime } from '@/lib/format-date';
+import { formatDateTime, formatShortDateTime } from '@/lib/format-date';
 import { newestFirst, nextExpectedStatus } from '@/lib/shipment-progress';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
@@ -18,10 +18,10 @@ export function TrackingTimeline({
   status,
 }: {
   events: TimelineEvent[];
-  status?: ShipmentStatus;
+  status: ShipmentStatus;
 }) {
   const ordered = newestFirst(events);
-  const next = status && nextExpectedStatus(status);
+  const next = nextExpectedStatus(status);
 
   if (ordered.length === 0) {
     return (
@@ -80,7 +80,7 @@ function TimelineItem({
         )}
       </div>
       <div className={cn('flex flex-col gap-0.5', !isLast && 'pb-5')}>
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span
             className={cn(
               'text-[15px]',
@@ -93,9 +93,10 @@ function TimelineItem({
           {event ? (
             <time
               dateTime={event.createdAt}
-              className="shrink-0 text-[13px] text-muted-foreground"
+              title={formatDateTime(event.createdAt)}
+              className="text-[13px] text-muted-foreground"
             >
-              {formatDateTime(event.createdAt)}
+              {formatShortDateTime(event.createdAt)}
             </time>
           ) : (
             <span

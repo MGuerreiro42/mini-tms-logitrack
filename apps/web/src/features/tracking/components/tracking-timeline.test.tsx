@@ -3,7 +3,7 @@ import { TrackingTimeline } from './tracking-timeline';
 
 describe('TrackingTimeline', () => {
   it('shows a placeholder message when there are no events', () => {
-    render(<TrackingTimeline events={[]} />);
+    render(<TrackingTimeline events={[]} status="PENDING" />);
 
     expect(screen.getByText('No status updates yet.')).toBeInTheDocument();
   });
@@ -23,6 +23,7 @@ describe('TrackingTimeline', () => {
             createdAt: '2026-01-02T12:00:00.000Z',
           },
         ]}
+        status="COLLECTED"
       />,
     );
 
@@ -41,11 +42,13 @@ describe('TrackingTimeline', () => {
             createdAt: '2026-01-01T12:00:00.000Z',
           },
         ]}
+        status="ACCEPTED"
       />,
     );
 
-    const time = screen.getByText('Jan 1, 2026, 09:00 GMT-3');
+    const time = screen.getByText('Jan 1, 09:00');
     expect(time.tagName).toBe('TIME');
+    expect(time).toHaveAttribute('title', 'Jan 1, 2026, 09:00 GMT-3');
     expect(time).toHaveAttribute('datetime', '2026-01-01T12:00:00.000Z');
   });
 

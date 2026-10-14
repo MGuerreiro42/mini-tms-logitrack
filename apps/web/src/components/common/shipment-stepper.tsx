@@ -10,7 +10,7 @@ import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 
-type StepState = 'done' | 'current' | 'upcoming';
+type StepState = 'done' | 'current' | 'upcoming' | 'unreached';
 
 export function ShipmentStepper({
   status,
@@ -23,14 +23,18 @@ export function ShipmentStepper({
   // A delivered or off-path shipment has nothing in progress, so every reached step reads as done.
   const current =
     isOnHappyPath(status) && status !== 'DELIVERED' ? reached : -1;
+  const ahead: StepState = isOnHappyPath(status) ? 'upcoming' : 'unreached';
   const stateOf = (index: number): StepState =>
-    index === current ? 'current' : index <= reached ? 'done' : 'upcoming';
+    index === current ? 'current' : index <= reached ? 'done' : ahead;
   const reachedAt = (step: ShipmentStatus) =>
     events.find((event) => event.status === step)?.createdAt;
 
   return (
     <div className="@container space-y-3">
-      <ol className="hidden grid-cols-6 @xl:grid">
+      <ol
+        aria-label="Shipment progress"
+        className="hidden grid-cols-6 @xl:grid"
+      >
         {HAPPY_PATH.map((step, index) => {
           const state = stateOf(index);
           const at = reachedAt(step);
@@ -45,9 +49,9 @@ export function ShipmentStepper({
                   aria-hidden
                   className={cn(
                     'flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold',
-                    state === 'upcoming'
-                      ? 'border-border bg-card text-muted-foreground'
-                      : 'border-primary bg-primary text-primary-foreground',
+                    state === 'done' || state === 'current'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-muted bg-muted text-muted-foreground',
                     state === 'current' && 'ring-5 ring-live-halo',
                   )}
                 >
@@ -71,7 +75,8 @@ export function ShipmentStepper({
                 <span
                   className={cn(
                     'text-sm font-semibold',
-                    state === 'upcoming' && 'text-muted-foreground',
+                    (state === 'upcoming' || state === 'unreached') &&
+                      'text-muted-foreground',
                   )}
                 >
                   <span className="sr-only">{STEP_STATE_LABEL[state]}: </span>
@@ -100,7 +105,9 @@ export function ShipmentStepper({
           ))}
         </div>
         <p className="flex justify-between text-[13px] text-muted-foreground">
-          <span>Step {reached + 1} of 6</span>
+          <span>
+            Step {reached + 1} of {HAPPY_PATH.length}
+          </span>
           <span className="font-semibold text-foreground">
             {SHIPMENT_STATUS_LABEL[HAPPY_PATH[reached]]}
           </span>
@@ -120,4 +127,5 @@ const STEP_STATE_LABEL: Record<StepState, string> = {
   done: 'Done',
   current: 'Current',
   upcoming: 'Upcoming',
+  unreached: 'Not reached',
 };

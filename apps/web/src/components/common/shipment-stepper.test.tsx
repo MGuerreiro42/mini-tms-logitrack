@@ -2,7 +2,9 @@ import { render, screen, within } from '@testing-library/react';
 import { ShipmentStepper } from './shipment-stepper';
 
 function desktopSteps() {
-  return within(screen.getAllByRole('list')[0]).getAllByRole('listitem');
+  return within(
+    screen.getByRole('list', { name: 'Shipment progress' }),
+  ).getAllByRole('listitem');
 }
 
 describe('ShipmentStepper', () => {
@@ -40,7 +42,7 @@ describe('ShipmentStepper', () => {
     const steps = desktopSteps();
 
     expect(steps[1]).toHaveTextContent('Done: Accepted');
-    expect(steps[2]).toHaveTextContent('Upcoming: Collected');
+    expect(steps[2]).toHaveTextContent('Not reached: Collected');
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.getByText(/after accepted/)).toBeInTheDocument();
   });
