@@ -9,7 +9,7 @@ import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 const SELLER_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/seller' },
   { name: 'Shipments', href: '/seller/shipments' },
-  { name: 'Create shipment', href: '/seller/shipments/new' },
+  { name: 'Create shipment', shortName: 'Create', href: ROUTES.newShipment },
   { name: 'Modalities', href: '/seller/modalities' },
   { name: 'Profile', href: '/seller/profile' },
 ];
