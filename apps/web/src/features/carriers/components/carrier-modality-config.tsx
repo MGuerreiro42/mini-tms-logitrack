@@ -1,6 +1,6 @@
 'use client';
 
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { ModalityToggleList } from '@/features/modalities/components/modality-toggle-list';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -16,7 +16,11 @@ export function CarrierModalityConfig() {
   const readOnly = session?.role !== 'CARRIER_MANAGER';
 
   return (
-    <QueryState query={query} errorMessage="Couldn't load modalities.">
+    <QueryState
+      skeleton={<QuerySkeleton variant="lines" />}
+      query={query}
+      errorMessage="Couldn't load modalities."
+    >
       {(modalities) => (
         <ModalityToggleList
           items={modalities}

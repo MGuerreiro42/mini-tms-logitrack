@@ -1,6 +1,6 @@
 'use client';
 
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { useSession } from '@/hooks/use-session';
 import {
   useCoverageAreas,
@@ -14,7 +14,11 @@ export function CarrierCoverageConfig() {
   const setAreas = useSetCoverageAreas();
 
   return (
-    <QueryState query={query} errorMessage="Couldn't load coverage areas.">
+    <QueryState
+      skeleton={<QuerySkeleton variant="lines" />}
+      query={query}
+      errorMessage="Couldn't load coverage areas."
+    >
       {(areas) => (
         <CoverageAreasEditor
           initialAreas={areas}

@@ -46,7 +46,7 @@ describe('QueryState', () => {
     const source = renderState({ error: new ApiError(500, 'Server error') });
 
     expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load");
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(source.refetch).toHaveBeenCalled();
   });
 });

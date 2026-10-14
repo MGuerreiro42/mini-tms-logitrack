@@ -1,7 +1,7 @@
 'use client';
 
 import { PaginatedTable } from '@/components/common/paginated-table';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
   StatusFilterTabs,
@@ -38,7 +38,11 @@ export function ShipmentsTable() {
         value={filters.status}
         onChange={(value) => setFilter('status', value)}
       />
-      <QueryState query={query} errorMessage="Couldn't load shipments.">
+      <QueryState
+        skeleton={<QuerySkeleton variant="table" />}
+        query={query}
+        errorMessage="Couldn't load shipments."
+      >
         {(result) => (
           <PaginatedTable<Shipment>
             data={result.data}

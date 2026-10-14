@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,7 @@ export function EligibleCarriersList({
           Approved carriers covering this destination and modality.
         </p>
         <QueryState
+          skeleton={<QuerySkeleton variant="lines" />}
           query={query}
           errorMessage="Couldn't load eligible carriers."
         >

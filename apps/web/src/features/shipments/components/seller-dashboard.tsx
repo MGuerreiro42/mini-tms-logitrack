@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { EmptyState } from '@/components/common/feedback-state';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
@@ -30,14 +31,28 @@ function SellerDashboardView({
 }: SellerDashboardData) {
   if (counts.total === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
-        <p className="text-sm text-muted-foreground">
-          No shipments yet — create your first one to get started.
-        </p>
-        <Button asChild>
-          <Link href="/seller/shipments/new">+ Create shipment</Link>
-        </Button>
-      </div>
+      <EmptyState
+        title="Send your first shipment"
+        description="Two steps, and carriers that cover your customers can pick it up."
+        steps={[
+          {
+            label: 'Enable at least one delivery modality',
+            action: (
+              <Button asChild variant="link">
+                <Link href="/seller/modalities">Modalities</Link>
+              </Button>
+            ),
+          },
+          {
+            label: 'Create a shipment for a real address',
+            action: (
+              <Button asChild size="sm">
+                <Link href="/seller/shipments/new">Create</Link>
+              </Button>
+            ),
+          },
+        ]}
+      />
     );
   }
 

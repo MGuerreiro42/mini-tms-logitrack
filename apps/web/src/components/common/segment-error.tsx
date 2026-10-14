@@ -1,13 +1,10 @@
 'use client';
 
-import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import Link from 'next/link';
+import { ErrorState } from '@/components/common/feedback-state';
 import { Button } from '@/components/ui/button';
 import { useLoggedError } from '@/hooks/use-logged-error';
+import { ROUTES } from '@/lib/routes';
 
 export interface SegmentErrorProps {
   error: Error & { digest?: string };
@@ -26,17 +23,24 @@ export function SegmentError({ error, unstable_retry }: SegmentErrorProps) {
   useLoggedError(error);
 
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Something went wrong</AlertTitle>
-      <AlertDescription>
-        This page couldn't be loaded.
-        <ErrorReference digest={error.digest} />
-      </AlertDescription>
-      <AlertAction>
-        <Button size="sm" variant="outline" onClick={() => unstable_retry()}>
-          Try again
-        </Button>
-      </AlertAction>
-    </Alert>
+    <ErrorState
+      title="Something went wrong"
+      description={
+        <>
+          This page couldn't be loaded. Nothing was changed.
+          <ErrorReference digest={error.digest} />
+        </>
+      }
+      actions={
+        <>
+          <Button variant="strong" onClick={() => unstable_retry()}>
+            Try again
+          </Button>
+          <Button asChild variant="link">
+            <Link href={ROUTES.home}>Go to your dashboard</Link>
+          </Button>
+        </>
+      }
+    />
   );
 }
