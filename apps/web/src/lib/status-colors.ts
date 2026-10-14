@@ -8,54 +8,54 @@ interface StatusMeta {
 export const APPROVAL_STATUS: Record<ApprovalStatus, StatusMeta> = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
+    className: 'bg-status-pending-bg text-status-pending-fg',
   },
   APPROVED: {
     label: 'Approved',
-    className: 'bg-green-50 text-green-700 border-green-200',
+    className: 'bg-status-delivered-bg text-status-delivered-fg',
   },
   REJECTED: {
     label: 'Rejected',
-    className: 'bg-red-50 text-red-700 border-red-200',
+    className: 'bg-status-failed-delivery-bg text-status-failed-delivery-fg',
   },
 };
 
 export const SHIPMENT_STATUS: Record<ShipmentStatus, StatusMeta> = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-amber-50 text-amber-700 border-amber-200',
+    className: 'bg-status-pending-bg text-status-pending-fg',
   },
   ACCEPTED: {
     label: 'Accepted',
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
+    className: 'bg-status-accepted-bg text-status-accepted-fg',
   },
   COLLECTED: {
     label: 'Collected',
-    className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    className: 'bg-status-collected-bg text-status-collected-fg',
   },
   IN_TRANSIT: {
     label: 'In transit',
-    className: 'bg-violet-50 text-violet-700 border-violet-200',
+    className: 'bg-status-in-transit-bg text-status-in-transit-fg',
   },
   OUT_FOR_DELIVERY: {
     label: 'Out for delivery',
-    className: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    className: 'bg-status-out-for-delivery-bg text-status-out-for-delivery-fg',
   },
   DELIVERED: {
     label: 'Delivered',
-    className: 'bg-green-50 text-green-700 border-green-200',
+    className: 'bg-status-delivered-bg text-status-delivered-fg',
   },
   FAILED_DELIVERY: {
     label: 'Failed delivery',
-    className: 'bg-red-50 text-red-700 border-red-200',
+    className: 'bg-status-failed-delivery-bg text-status-failed-delivery-fg',
   },
   CANCELLED: {
     label: 'Cancelled',
-    className: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+    className: 'bg-status-cancelled-bg text-status-cancelled-fg',
   },
   RETURNED: {
     label: 'Returned',
-    className: 'bg-orange-50 text-orange-700 border-orange-200',
+    className: 'bg-status-returned-bg text-status-returned-fg',
   },
 };
 

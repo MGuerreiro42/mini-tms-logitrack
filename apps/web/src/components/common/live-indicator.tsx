@@ -6,10 +6,10 @@ const STATES: Record<LiveStatus, { label: string; dot: string }> = {
     label: 'Connecting…',
     dot: 'animate-pulse bg-muted-foreground',
   },
-  live: { label: 'Live', dot: 'animate-pulse bg-emerald-500' },
+  live: { label: 'Live', dot: 'animate-pulse bg-live' },
   offline: {
     label: 'Offline · updates refresh every few seconds',
-    dot: 'bg-amber-500',
+    dot: 'bg-status-out-for-delivery-dot',
   },
 };
 
