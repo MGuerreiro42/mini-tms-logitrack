@@ -211,13 +211,27 @@ export class ShipmentsService {
     userId: string,
   ): Promise<ShipmentStatusCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
+    return this.countByStatus({ sellerId: seller.id });
+  }
 
+  countsByStatusForAdmin(
+    carrierId?: string,
+    sellerId?: string,
+  ): Promise<ShipmentStatusCountsResponseDto> {
+    return this.countByStatus({
+      ...(carrierId ? { carrierId } : {}),
+      ...(sellerId ? { sellerId } : {}),
+    });
+  }
+
+  private async countByStatus(
+    where: Prisma.ShipmentWhereInput,
+  ): Promise<ShipmentStatusCountsResponseDto> {
     const groups = await this.prisma.shipment.groupBy({
       by: ['status'],
-      where: { sellerId: seller.id },
+      where,
       _count: true,
     });
-
     return countByStatus(ShipmentStatus, groups);
   }
 

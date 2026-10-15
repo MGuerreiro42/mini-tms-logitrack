@@ -450,6 +450,34 @@ describe('ShipmentsService', () => {
     });
   });
 
+  describe('countsByStatusForAdmin', () => {
+    it('counts platform-wide without filters', async () => {
+      shipmentGroupBy.mockResolvedValue([{ status: 'IN_TRANSIT', _count: 3 }]);
+
+      const result = await shipmentsService.countsByStatusForAdmin();
+
+      expect(shipmentGroupBy).toHaveBeenCalledWith({
+        by: ['status'],
+        where: {},
+        _count: true,
+      });
+      expect(result.IN_TRANSIT).toBe(3);
+      expect(result.PENDING).toBe(0);
+    });
+
+    it('scopes the counts to the given carrier and seller', async () => {
+      shipmentGroupBy.mockResolvedValue([]);
+
+      await shipmentsService.countsByStatusForAdmin('carrier-1', 'seller-1');
+
+      expect(shipmentGroupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { carrierId: 'carrier-1', sellerId: 'seller-1' },
+        }),
+      );
+    });
+  });
+
   describe('slaSummaryForSeller', () => {
     it('groups DELIVERED shipments by modality and computes on-time rate from createdAt to the DELIVERED event', async () => {
       const slaHours = 24;
