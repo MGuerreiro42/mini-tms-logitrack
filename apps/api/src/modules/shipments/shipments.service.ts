@@ -18,7 +18,11 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { countByStatus, hoursBetween } from '../../shared/stats/stats';
+import {
+  countByStatus,
+  createdSince,
+  hoursBetween,
+} from '../../shared/stats/stats';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
@@ -45,10 +49,7 @@ import {
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
 } from './shipment.mappers';
-import {
-  SHIPMENT_STATUS_CHANGED,
-  type ShipmentStatusChangedEvent,
-} from './shipment-events';
+import { SHIPMENT_UPDATED, type ShipmentUpdatedEvent } from './shipment-events';
 import {
   CANCELLABLE_STATUSES,
   isValidTransition,
@@ -172,7 +173,7 @@ export class ShipmentsService {
       include: sellerShipmentInclude,
     });
 
-    this.emitStatusChanged(shipment);
+    this.emitUpdated(shipment);
 
     return toShipmentResponseDto(shipment);
   }
@@ -211,17 +212,23 @@ export class ShipmentsService {
   // Only DELIVERED shipments have an outcome; modalities without slaHours are skipped, not counted as misses.
   async slaSummaryForSeller(
     userId: string,
+    since?: Date,
   ): Promise<SlaSummaryItemResponseDto[]> {
     const seller = await this.findSellerOrThrow(userId);
 
     const shipments = await this.prisma.shipment.findMany({
-      where: { sellerId: seller.id, status: ShipmentStatus.DELIVERED },
+      where: {
+        sellerId: seller.id,
+        status: ShipmentStatus.DELIVERED,
+        ...createdSince(since),
+      },
       select: {
         createdAt: true,
         modality: { select: { code: true, name: true, slaHours: true } },
         trackingEvents: {
           where: { status: ShipmentStatus.DELIVERED },
           select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
           take: 1,
         },
       },
@@ -417,7 +424,11 @@ export class ShipmentsService {
     // Concurrent claims or a seller cancel can race this; the WHERE lets Postgres pick one winner.
     const updated = await this.transitionWithEvent({
       shipmentId,
-      expected: { ownerId: null, status: ShipmentStatus.PENDING },
+      expected: {
+        carrierId: carrierUser.carrierId,
+        ownerId: null,
+        status: ShipmentStatus.PENDING,
+      },
       to: ShipmentStatus.ACCEPTED,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
@@ -484,24 +495,28 @@ export class ShipmentsService {
     include: I;
   }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
     const { shipmentId, to } = params;
-    await this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.shipment.updateMany({
+    const written = await this.prisma.$transaction(async (tx) => {
+      const [shipment] = await tx.shipment.updateManyAndReturn({
         where: { id: shipmentId, ...params.expected },
         data: { ...params.data, status: to },
       });
-      if (count === 0) {
+      if (!shipment) {
         throw new ConflictException(params.conflictMessage);
       }
       await tx.trackingEvent.create({
         data: { shipmentId, status: to, note: params.note },
       });
+      return shipment;
     });
 
-    const updated = await this.prisma.shipment.findUniqueOrThrow({
+    // Relations load after commit: an include inside the transaction runs concurrent queries on its single pg client.
+    const withRelations = await this.prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
       include: params.include,
     });
-    this.emitStatusChanged(updated);
+    // The written row wins: a transition landing between commit and re-read must not replace the status this request reports and emits.
+    const updated = { ...withRelations, ...written };
+    this.emitUpdated(updated);
     return updated;
   }
 
@@ -533,19 +548,19 @@ export class ShipmentsService {
     return seller;
   }
 
-  private emitStatusChanged(
+  private emitUpdated(
     shipment: Pick<
       Shipment,
       'id' | 'carrierId' | 'sellerId' | 'status' | 'trackingCode'
     >,
   ): void {
-    const event: ShipmentStatusChangedEvent = {
+    const event: ShipmentUpdatedEvent = {
       shipmentId: shipment.id,
       carrierId: shipment.carrierId,
       sellerId: shipment.sellerId,
       status: shipment.status,
       trackingCode: shipment.trackingCode,
     };
-    this.eventEmitter.emit(SHIPMENT_STATUS_CHANGED, event);
+    this.eventEmitter.emit(SHIPMENT_UPDATED, event);
   }
 }

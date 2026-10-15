@@ -53,6 +53,31 @@ describe('Shipment flow (e2e)', () => {
     expect(events).toBe(1);
   });
 
+  it('keeps the timeline coherent when a cancel races a claim', async () => {
+    const shipment = await createShipment(ctx, tenants.sellerA, tenants);
+
+    const [cancel, claim] = await Promise.all([
+      patch(`/shipments/${shipment.id}/cancel`, tenants.sellerA),
+      patch(`/shipments/${shipment.id}/claim`, tenants.operator),
+    ]);
+
+    expect(cancel.status).toBe(200);
+    expect([200, 409]).toContain(claim.status);
+    const events = await ctx.prisma.trackingEvent.findMany({
+      where: { shipmentId: shipment.id },
+      orderBy: { createdAt: 'asc' },
+      select: { status: true },
+    });
+    expect(events.map((event) => event.status)).toEqual(
+      claim.status === 200
+        ? ['PENDING', 'ACCEPTED', 'CANCELLED']
+        : ['PENDING', 'CANCELLED'],
+    );
+    await expect(
+      ctx.prisma.shipment.findUniqueOrThrow({ where: { id: shipment.id } }),
+    ).resolves.toMatchObject({ status: 'CANCELLED' });
+  });
+
   it("returns 404 for another seller's shipment, read or cancel", async () => {
     const shipment = await createShipment(ctx, tenants.sellerB, tenants);
 

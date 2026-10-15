@@ -10,6 +10,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
+import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -140,7 +141,10 @@ export class ShipmentsController {
     description: 'Not a carrier user, or the carrier is not approved',
   })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @ApiResponse({ status: 409, description: 'Shipment already claimed' })
+  @ApiResponse({
+    status: 409,
+    description: 'Shipment is no longer PENDING and unowned',
+  })
   @Auth(...CARRIER_ROLES)
   @Patch(':id/claim')
   claim(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
@@ -208,14 +212,17 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "SLA adherence per delivery modality, among the authenticated seller's own DELIVERED shipments — modalities with no slaHours configured are omitted",
+      "SLA adherence per delivery modality, among the authenticated seller's own DELIVERED shipments created in the window, clock running from creation — modalities with no slaHours configured are omitted",
   })
   @ApiResponse({ status: 200, type: [SlaSummaryItemResponseDto] })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @Auth(GlobalRole.SELLER)
   @Get('sla-summary')
-  slaSummary(@CurrentUser() user: AuthenticatedUser) {
-    return this.shipmentsService.slaSummaryForSeller(user.id);
+  slaSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    return this.shipmentsService.slaSummaryForSeller(user.id, query.since);
   }
 
   @ApiOperation({

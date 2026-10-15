@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -22,10 +21,12 @@ import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import {
   average,
   countByStatus,
+  createdSince,
   hoursBetween,
   percentage,
 } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
+import { ModalitiesService } from '../modalities/modalities.service';
 import type {
   CarrierPerformanceResponseDto,
   StageDurationResponseDto,
@@ -64,6 +65,7 @@ export class CarriersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
+    private readonly modalitiesService: ModalitiesService,
   ) {}
 
   async signup(dto: CreateCarrierDto): Promise<CarrierResponseDto> {
@@ -162,16 +164,7 @@ export class CarriersService {
   ): Promise<ModalityToggleResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    if (modalityIds.length > 0) {
-      const validCount = await this.prisma.deliveryModality.count({
-        where: { id: { in: modalityIds } },
-      });
-      if (validCount !== new Set(modalityIds).size) {
-        throw new BadRequestException(
-          'One or more modalityIds do not exist in the DeliveryModality catalog',
-        );
-      }
-    }
+    await this.modalitiesService.assertAllExist(modalityIds);
 
     await this.prisma.$transaction([
       this.prisma.carrierModality.deleteMany({ where: { carrierId } }),
@@ -183,17 +176,21 @@ export class CarriersService {
     return this.buildModalityToggles(carrierId);
   }
 
-  async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
+  async performance(
+    userId: string,
+    since?: Date,
+  ): Promise<CarrierPerformanceResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    const where = { carrierId, ...createdSince(since) };
 
     const [groups, events] = await Promise.all([
       this.prisma.shipment.groupBy({
         by: ['status'],
-        where: { carrierId },
+        where,
         _count: true,
       }),
       this.prisma.trackingEvent.findMany({
-        where: { shipment: { carrierId } },
+        where: { shipment: where },
         select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       }),
@@ -262,54 +259,59 @@ export class CarriersService {
 
   async operatorRanking(
     userId: string,
+    since?: Date,
   ): Promise<OperatorRankingItemResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    const [totalGroups, deliveredGroups] = await Promise.all([
-      this.prisma.shipment.groupBy({
-        by: ['ownerId'],
-        where: { carrierId, ownerId: { not: null } },
-        _count: true,
-      }),
-      this.prisma.shipment.groupBy({
-        by: ['ownerId'],
-        where: {
-          carrierId,
-          ownerId: { not: null },
-          status: ShipmentStatus.DELIVERED,
-        },
-        _count: true,
-      }),
-    ]);
+    const groups = await this.prisma.shipment.groupBy({
+      by: ['ownerId', 'status'],
+      where: {
+        carrierId,
+        ownerId: { not: null },
+        status: { not: ShipmentStatus.CANCELLED },
+        ...createdSince(since),
+      },
+      _count: true,
+    });
 
-    if (totalGroups.length === 0) {
+    const statsByOwnerId = new Map<
+      string,
+      { totalOwned: number; delivered: number }
+    >();
+    for (const group of groups) {
+      if (!group.ownerId) continue;
+      const stats = statsByOwnerId.get(group.ownerId) ?? {
+        totalOwned: 0,
+        delivered: 0,
+      };
+      stats.totalOwned += group._count;
+      if (group.status === ShipmentStatus.DELIVERED) {
+        stats.delivered += group._count;
+      }
+      statsByOwnerId.set(group.ownerId, stats);
+    }
+    if (statsByOwnerId.size === 0) {
       return [];
     }
 
-    const deliveredByOwnerId = new Map(
-      deliveredGroups.map((group) => [group.ownerId, group._count]),
-    );
-
     const carrierUsers = await this.prisma.carrierUser.findMany({
-      where: {
-        id: { in: totalGroups.map((group) => group.ownerId as string) },
-      },
-      include: { user: { select: { email: true } } },
+      where: { id: { in: [...statsByOwnerId.keys()] } },
+      select: { id: true, user: { select: { email: true } } },
     });
-    const carrierUserById = new Map(
-      carrierUsers.map((carrierUser) => [carrierUser.id, carrierUser]),
+    const emailById = new Map(
+      carrierUsers.map((carrierUser) => [
+        carrierUser.id,
+        carrierUser.user.email,
+      ]),
     );
 
-    return totalGroups
-      .map((group) => {
-        const ownerId = group.ownerId as string;
-        const carrierUser = carrierUserById.get(ownerId);
-        return {
-          carrierUserId: ownerId,
-          email: carrierUser?.user.email ?? 'unknown',
-          totalOwned: group._count,
-          delivered: deliveredByOwnerId.get(ownerId) ?? 0,
-        };
+    return [...statsByOwnerId]
+      .map(([carrierUserId, stats]) => {
+        const email = emailById.get(carrierUserId);
+        if (!email) {
+          throw new Error(`Shipment owner ${carrierUserId} has no CarrierUser`);
+        }
+        return { carrierUserId, email, ...stats };
       })
       .sort((a, b) => b.totalOwned - a.totalOwned);
   }
@@ -357,21 +359,13 @@ export class CarriersService {
   private async buildModalityToggles(
     carrierId: string,
   ): Promise<ModalityToggleResponseDto[]> {
-    const [catalog, enabled] = await Promise.all([
-      this.prisma.deliveryModality.findMany({ orderBy: { code: 'asc' } }),
-      this.prisma.carrierModality.findMany({
-        where: { carrierId },
-        select: { modalityId: true },
-      }),
-    ]);
-
-    const enabledIds = new Set(enabled.map((row) => row.modalityId));
-    return catalog.map((modality) => ({
-      id: modality.id,
-      code: modality.code,
-      name: modality.name,
-      enabled: enabledIds.has(modality.id),
-    }));
+    const enabled = await this.prisma.carrierModality.findMany({
+      where: { carrierId },
+      select: { modalityId: true },
+    });
+    return this.modalitiesService.findToggles(
+      enabled.map((row) => row.modalityId),
+    );
   }
 
   private async findCarrierIdForUserOrThrow(userId: string): Promise<string> {

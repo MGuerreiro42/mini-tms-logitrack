@@ -6,9 +6,12 @@ import { Redis } from 'ioredis';
 import type { ServerOptions } from 'socket.io';
 import type { EnvConfig } from '../config/env.validation';
 
+const MAX_SOCKET_PAYLOAD_BYTES = 16 * 1024;
+
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor?: ReturnType<typeof createAdapter>;
   private configService?: ConfigService<EnvConfig, true>;
+  private redisClients: Redis[] = [];
 
   constructor(private readonly app: INestApplicationContext) {
     super(app);
@@ -27,6 +30,7 @@ export class RedisIoAdapter extends IoAdapter {
 
     const pubClient = new Redis(redisUrl);
     const subClient = pubClient.duplicate();
+    this.redisClients = [pubClient, subClient];
     this.adapterConstructor = createAdapter(pubClient, subClient);
   }
 
@@ -39,10 +43,20 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: { origin: corsOrigin, credentials: true },
+      // Long-polling needs sticky sessions once there is more than one instance.
+      transports: ['websocket'],
+      // Clients only send ids and a JWT; the 1 MB default is spare room for anonymous /public sockets.
+      maxHttpBufferSize: MAX_SOCKET_PAYLOAD_BYTES,
     });
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
     }
     return server;
+  }
+
+  async dispose(): Promise<void> {
+    for (const client of this.redisClients) {
+      client.disconnect();
+    }
   }
 }

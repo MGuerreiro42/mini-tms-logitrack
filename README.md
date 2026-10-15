@@ -10,7 +10,7 @@ Portfolio project: it doesn't aim to be a commercializable product, but a techni
 ## Stack
 
 - **Backend:** NestJS, PostgreSQL (Prisma), Redis (pub/sub, cache, BullMQ)
-- **Frontend:** Next.js (App Router), TanStack Query, Zustand, Tailwind
+- **Frontend:** Next.js (App Router), TanStack Query, Tailwind
 - **Real-time:** Socket.io with a Redis adapter (scales across multiple API instances)
 - **Local infra:** Docker Compose (Postgres + Redis)
 
@@ -53,7 +53,9 @@ Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DES
 
 - Attach a **Postgres** and a **Redis** addon (Railway sets `DATABASE_URL`/`REDIS_URL` on its own).
 - Set `JWT_SECRET` (`openssl rand -hex 32`) and `CORS_ORIGIN` (the Vercel URL) manually.
-- Migrations apply themselves on boot (`prestart:prod` → `prisma migrate deploy`) — no manual step.
+- Set `TRUST_PROXY` to the number of reverse proxies between the client and the API (the app refuses to boot in production without it): `1` for Railway's edge alone, `2` once the web server forwards the visitor's address on its SSR calls.
+- Set `ADMIN_PASSWORD` (the seed refuses to run in production without it); add `SEED_DEMO=true` only if the environment should carry the public demo accounts.
+- Migrations and the seed run in Railway's `preDeployCommand`, before the new version starts — no manual step.
 
 ## Code quality
 
@@ -63,11 +65,11 @@ Biome (format + lint, a single binary across both apps) + lefthook (`pre-commit`
 pnpm install   # at the root — installs lefthook/lint-staged/commitlint and activates the git hooks
 ```
 
-CI on GitHub Actions (lint + build + tests, with a real Postgres for e2e) runs on every push/PR to `main` — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
+CI on GitHub Actions (lint + build + tests, with a real Postgres and Redis for e2e) runs on pushes to `main` and on every pull request — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
 
 ## Status
 
-Under development, but the core product loop is complete end-to-end and tested (284 unit + 6 Postgres e2e backend tests, plus the frontend suite): data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables); auth + RBAC ([§ 11](./DESIGN.md#11-auth--authorization)); sellers ([§ 12](./DESIGN.md#12-sellers)) and carriers ([§ 13](./DESIGN.md#13-carriers)) self-signup + admin approval + own-modality/coverage config; shipment creation with real coverage+modality matching ([§ 14](./DESIGN.md#14-shipments)); seller cancellation while `PENDING`/`ACCEPTED`; carrier queue (claim/status) and real-time tracking over WebSocket + Redis, including live public tracking on an unauthenticated `/public` namespace ([§ 15](./DESIGN.md#15-carrier-queue--real-time-tracking)); dashboards for all three roles, carrier performance metrics, and admin global monitoring ([§ 16](./DESIGN.md#16-dashboards-carrier-performance-and-global-monitoring)).
+Under development, but the core product loop is complete end-to-end and tested (306 unit + 21 Postgres/Redis e2e backend tests, plus the frontend suite): data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables); auth + RBAC ([§ 11](./DESIGN.md#11-auth--authorization)); sellers ([§ 12](./DESIGN.md#12-sellers)) and carriers ([§ 13](./DESIGN.md#13-carriers)) self-signup + admin approval + own-modality/coverage config; shipment creation with real coverage+modality matching ([§ 14](./DESIGN.md#14-shipments)); seller cancellation while `PENDING`/`ACCEPTED`; carrier queue (claim/status) and real-time tracking over WebSocket + Redis, including live public tracking on an unauthenticated `/public` namespace ([§ 15](./DESIGN.md#15-carrier-queue--real-time-tracking)); dashboards for all three roles, carrier performance metrics, and admin global monitoring ([§ 16](./DESIGN.md#16-dashboards-carrier-performance-and-global-monitoring)).
 
 **Not started yet:** operator invites (`Invite` token flow, Operator Management screen) and the `notifications` module (currently an empty scaffold — will host BullMQ workers for email/SLA alerts). See the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) for these and further-out ideas.
 

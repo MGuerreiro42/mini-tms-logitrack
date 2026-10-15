@@ -1,4 +1,4 @@
-import { validateEnv } from './env.validation';
+import { MAX_TRUSTED_PROXIES, validateEnv } from './env.validation';
 
 const validConfig = {
   NODE_ENV: 'development',
@@ -19,6 +19,7 @@ describe('validateEnv', () => {
       JWT_SECRET: validConfig.JWT_SECRET,
       CORS_ORIGIN: 'http://localhost:3000',
       REDIS_URL: 'redis://localhost:6379',
+      TRUST_PROXY: 0,
     });
   });
 
@@ -37,6 +38,32 @@ describe('validateEnv', () => {
     expect(result.PORT).toBe(3333);
     expect(result.CORS_ORIGIN).toBe('http://localhost:3000');
     expect(result.REDIS_URL).toBe('redis://localhost:6379');
+  });
+
+  it('coerces TRUST_PROXY to a hop count', () => {
+    expect(validateEnv({ ...validConfig, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(
+      2,
+    );
+  });
+
+  it.each([
+    '-1',
+    '1.5',
+    'true',
+    String(MAX_TRUSTED_PROXIES + 1),
+  ])('throws when TRUST_PROXY is %s', (value) => {
+    expect(() => validateEnv({ ...validConfig, TRUST_PROXY: value })).toThrow(
+      /TRUST_PROXY/,
+    );
+  });
+
+  it('requires an explicit TRUST_PROXY in production', () => {
+    const production = { ...validConfig, NODE_ENV: 'production' };
+
+    expect(() => validateEnv(production)).toThrow(/TRUST_PROXY/);
+    expect(validateEnv({ ...production, TRUST_PROXY: '0' }).TRUST_PROXY).toBe(
+      0,
+    );
   });
 
   it('throws when REDIS_URL is not a valid URL', () => {

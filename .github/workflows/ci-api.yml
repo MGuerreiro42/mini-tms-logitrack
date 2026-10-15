@@ -7,7 +7,6 @@ on:
       - "apps/api/**"
       - ".github/workflows/ci-api.yml"
   pull_request:
-    branches: [main]
     paths:
       - "apps/api/**"
       - ".github/workflows/ci-api.yml"
@@ -28,7 +27,7 @@ jobs:
         env:
           POSTGRES_USER: tms
           POSTGRES_PASSWORD: tms
-          POSTGRES_DB: tms
+          POSTGRES_DB: tms_e2e
         ports:
           - 5432:5432
         options: >-
@@ -36,8 +35,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: postgresql://tms:tms@localhost:5432/tms?schema=public
+      DATABASE_URL: postgresql://tms:tms@localhost:5432/tms_e2e?schema=public
+      REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4

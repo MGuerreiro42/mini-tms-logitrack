@@ -2,7 +2,7 @@
 
 Scope: every screen with a real, validated backend contract as of today — seller onboarding, carrier onboarding, admin approval, post-approval self-service setup (modalities/coverage), shipment creation, the real-time carrier queue, and (Part 4 onward) the screens still missing to close out `SCREENS.md`. Written to feed a design tool (Claude Design/Figma/etc.) with a sequential, frame-by-frame storyboard rather than a flat per-screen catalog.
 
-Every frame is grounded in the real API: exact DTO field names, not placeholders, for anything already built. For Parts 5–8 (not built yet), the field names are a **proposed contract** — matching this codebase's existing naming conventions exactly, so the backend that gets built to support these screens doesn't have to invent shapes after the fact. Each such frame says explicitly which endpoint is real vs. proposed.
+Every frame is grounded in the real API: exact DTO field names, not placeholders, for anything already built. Parts 5, 7 and 8 are built; where the shipped endpoint differs from a frame's original proposal, the part's intro says so. Part 6 (operator invites) is the only one not built yet: its field names are a **proposed contract**, matching this codebase's naming conventions so the backend doesn't have to invent shapes after the fact.
 
 **Now real, no longer deferred** (Part 4 below): operator claim/status-transition, the carrier shared queue, and real-time tracking updates via WebSocket + Redis — all validated end-to-end (`DESIGN.md` § 15).
 
@@ -156,7 +156,7 @@ Only reachable once at least one approved seller (with an enabled modality) and 
 
 ## Part 4 — Carrier Queue & Real-Time Tracking (now real)
 
-Every endpoint in this part is built and validated (`DESIGN.md` §20) — claim/status-transition atomicity, ownership rules, and the WebSocket + Redis push are all real. This part supersedes the old "explicitly out of scope" note for these frames in earlier drafts of this file.
+Every endpoint in this part is built and validated (`DESIGN.md` § 15) — claim/status-transition atomicity, ownership rules, and the WebSocket + Redis push are all real. This part supersedes the old "explicitly out of scope" note for these frames in earlier drafts of this file.
 
 ### Frame 16 — Carrier: Shipment Queue
 
@@ -182,9 +182,9 @@ Every endpoint in this part is built and validated (`DESIGN.md` §20) — claim/
 
 ---
 
-## Part 5 — Dashboards (proposed contract, not built yet)
+## Part 5 — Dashboards (built)
 
-Today `/admin` redirects straight to the sellers list and `/seller` shows only the profile card — neither matches `SCREENS.md`'s spec of an actual overview. Both need a small new aggregation endpoint; nothing here needs WebSocket, a plain fetch on load is enough.
+Built (`DESIGN.md` § 16). The single aggregate endpoints proposed below were replaced by per-concern ones: `GET /shipments/status-counts`, `GET /shipments/sla-summary` and the regular shipment list for the seller; `GET /sellers/status-counts` and `GET /carriers/status-counts` for the admin.
 
 ### Frame 19 — Seller: Dashboard
 
@@ -223,7 +223,9 @@ The `Invite` model exists in the schema with zero logic anywhere — this is a f
 
 ---
 
-## Part 7 — Admin Global Monitoring & Carrier Performance (proposed contract, not built yet)
+## Part 7 — Admin Global Monitoring & Carrier Performance (built)
+
+Built as proposed (`DESIGN.md` § 16). The performance response also carries `totalShipments` and `stageDurations`, there is a `GET /carriers/me/operator-ranking`, and both accept an optional `since`.
 
 ### Frame 23 — Admin: Global Monitoring
 
@@ -241,7 +243,9 @@ The `Invite` model exists in the schema with zero logic anywhere — this is a f
 
 ---
 
-## Part 8 — Public Tracking (proposed contract, not built yet)
+## Part 8 — Public Tracking (built)
+
+Built as proposed, plus live updates over the unauthenticated `/public` Socket.io namespace (`DESIGN.md` § 15).
 
 ### Frame 25 — Public Tracking (no login)
 

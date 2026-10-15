@@ -9,7 +9,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { SHIPMENT_STATUS_CHANGED } from './shipment-events';
+import { SHIPMENT_UPDATED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
 
 describe('ShipmentsService', () => {
@@ -24,7 +24,7 @@ describe('ShipmentsService', () => {
   const shipmentFindFirst = vi.fn();
   const shipmentCount = vi.fn();
   const shipmentGroupBy = vi.fn();
-  const shipmentUpdateMany = vi.fn();
+  const shipmentUpdateManyAndReturn = vi.fn();
   const shipmentFindUniqueOrThrow = vi.fn();
   const trackingEventCreate = vi.fn();
   const transaction = vi.fn();
@@ -103,6 +103,11 @@ describe('ShipmentsService', () => {
     trackingEvents: [],
   };
 
+  const mockTransition = (shipment: object) => {
+    shipmentUpdateManyAndReturn.mockResolvedValue([shipment]);
+    shipmentFindUniqueOrThrow.mockResolvedValue(shipment);
+  };
+
   beforeEach(async () => {
     sellerFindUnique.mockReset();
     sellerModalityFindUnique.mockReset();
@@ -114,14 +119,16 @@ describe('ShipmentsService', () => {
     shipmentFindFirst.mockReset();
     shipmentCount.mockReset();
     shipmentGroupBy.mockReset();
-    shipmentUpdateMany.mockReset();
+    shipmentUpdateManyAndReturn.mockReset();
     shipmentFindUniqueOrThrow.mockReset();
     trackingEventCreate.mockReset();
     transaction.mockReset();
     emit.mockReset();
 
     const tx = {
-      shipment: { updateMany: shipmentUpdateMany },
+      shipment: {
+        updateManyAndReturn: shipmentUpdateManyAndReturn,
+      },
       trackingEvent: { create: trackingEventCreate },
     };
     transaction.mockImplementation(
@@ -146,7 +153,6 @@ describe('ShipmentsService', () => {
               findUniqueOrThrow: shipmentFindUniqueOrThrow,
               count: shipmentCount,
               groupBy: shipmentGroupBy,
-              updateMany: shipmentUpdateMany,
             },
             trackingEvent: { create: trackingEventCreate },
             $transaction: transaction,
@@ -239,7 +245,7 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(emit).toHaveBeenCalledWith(
-        SHIPMENT_STATUS_CHANGED,
+        SHIPMENT_UPDATED,
         expect.objectContaining({
           shipmentId: shipmentWithRelations.id,
           carrierId: shipmentWithRelations.carrierId,
@@ -374,30 +380,40 @@ describe('ShipmentsService', () => {
 
   describe('slaSummaryForSeller', () => {
     it('groups DELIVERED shipments by modality and computes on-time rate from createdAt to the DELIVERED event', async () => {
+      const slaHours = 24;
+      const createdAt = new Date('2026-01-01T00:00:00Z');
+      const deliveredAfter = (hours: number) => ({
+        createdAt,
+        modality: { code: 'EXPRESS', name: 'Express', slaHours },
+        trackingEvents: [
+          { createdAt: new Date(createdAt.getTime() + hours * 3_600_000) },
+        ],
+      });
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany.mockResolvedValue([
-        {
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
-          trackingEvents: [{ createdAt: new Date('2026-01-01T12:00:00Z') }], // 12h — on time
-        },
-        {
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
-          trackingEvents: [{ createdAt: new Date('2026-01-02T06:00:00Z') }], // 30h — late
-        },
+        deliveredAfter(slaHours - 12),
+        deliveredAfter(slaHours + 6),
       ]);
 
-      const result = await shipmentsService.slaSummaryForSeller('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await shipmentsService.slaSummaryForSeller(
+        'user-1',
+        since,
+      );
 
       expect(shipmentFindMany).toHaveBeenCalledWith({
-        where: { sellerId: 'seller-1', status: 'DELIVERED' },
+        where: {
+          sellerId: 'seller-1',
+          status: 'DELIVERED',
+          createdAt: { gte: since },
+        },
         select: {
           createdAt: true,
           modality: { select: { code: true, name: true, slaHours: true } },
           trackingEvents: {
             where: { status: 'DELIVERED' },
             select: { createdAt: true },
+            orderBy: { createdAt: 'asc' },
             take: 1,
           },
         },
@@ -441,8 +457,7 @@ describe('ShipmentsService', () => {
     it('cancels a PENDING shipment: conditional write, CANCELLED event with note, emits', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindFirst.mockResolvedValue({ status: 'PENDING' });
-      shipmentUpdateMany.mockResolvedValue({ count: 1 });
-      shipmentFindUniqueOrThrow.mockResolvedValue({
+      mockTransition({
         ...shipmentWithRelations,
         sellerId: 'seller-1',
         status: 'CANCELLED',
@@ -457,7 +472,7 @@ describe('ShipmentsService', () => {
           where: { id: 'shipment-1', sellerId: 'seller-1' },
         }),
       );
-      expect(shipmentUpdateMany).toHaveBeenCalledWith({
+      expect(shipmentUpdateManyAndReturn).toHaveBeenCalledWith({
         where: {
           id: 'shipment-1',
           sellerId: 'seller-1',
@@ -473,7 +488,7 @@ describe('ShipmentsService', () => {
         },
       });
       expect(emit).toHaveBeenCalledWith(
-        SHIPMENT_STATUS_CHANGED,
+        SHIPMENT_UPDATED,
         expect.objectContaining({
           shipmentId: 'shipment-1',
           carrierId: 'carrier-1',
@@ -487,8 +502,7 @@ describe('ShipmentsService', () => {
     it('cancels an ACCEPTED shipment', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindFirst.mockResolvedValue({ status: 'ACCEPTED' });
-      shipmentUpdateMany.mockResolvedValue({ count: 1 });
-      shipmentFindUniqueOrThrow.mockResolvedValue({
+      mockTransition({
         ...shipmentWithRelations,
         status: 'CANCELLED',
       });
@@ -505,7 +519,7 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.cancel('user-1', 'someone-elses-shipment', {}),
       ).rejects.toThrow(NotFoundException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException once the shipment has been collected', async () => {
@@ -515,13 +529,13 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.cancel('user-1', 'shipment-1', {}),
       ).rejects.toThrow(ConflictException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
-    it('throws ConflictException when a carrier advances it concurrently (updateMany affects 0 rows)', async () => {
+    it('throws ConflictException when a carrier advances it concurrently (the conditional update matches 0 rows)', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindFirst.mockResolvedValue({ status: 'ACCEPTED' });
-      shipmentUpdateMany.mockResolvedValue({ count: 0 });
+      shipmentUpdateManyAndReturn.mockResolvedValue([]);
 
       await expect(
         shipmentsService.cancel('user-1', 'shipment-1', {}),
@@ -584,7 +598,7 @@ describe('ShipmentsService', () => {
         await expect(operation()).rejects.toThrow(ForbiddenException);
         expect(shipmentFindMany).not.toHaveBeenCalled();
         expect(shipmentFindFirst).not.toHaveBeenCalled();
-        expect(shipmentUpdateMany).not.toHaveBeenCalled();
+        expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
       });
     }
   });
@@ -673,16 +687,20 @@ describe('ShipmentsService', () => {
     it('claims an unowned shipment: sets ownerId, moves to ACCEPTED, writes a TrackingEvent, emits', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(pendingShipment);
-      shipmentUpdateMany.mockResolvedValue({ count: 1 });
-      shipmentFindUniqueOrThrow.mockResolvedValue(carrierShipment);
+      mockTransition(carrierShipment);
 
       const result = await shipmentsService.claim(
         'user-operator',
         'shipment-1',
       );
 
-      expect(shipmentUpdateMany).toHaveBeenCalledWith({
-        where: { id: 'shipment-1', ownerId: null, status: 'PENDING' },
+      expect(shipmentUpdateManyAndReturn).toHaveBeenCalledWith({
+        where: {
+          id: 'shipment-1',
+          carrierId: 'carrier-1',
+          ownerId: null,
+          status: 'PENDING',
+        },
         data: { ownerId: 'carrier-user-operator', status: 'ACCEPTED' },
       });
       expect(trackingEventCreate).toHaveBeenCalledWith(
@@ -691,13 +709,35 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(emit).toHaveBeenCalledWith(
-        'shipment.status-changed',
+        'shipment.updated',
         expect.objectContaining({
           shipmentId: 'shipment-1',
           status: 'ACCEPTED',
         }),
       );
       expect(result.id).toBe('shipment-1');
+    });
+
+    it('returns and emits the status this request wrote when a later transition lands right after commit', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(pendingShipment);
+      shipmentUpdateManyAndReturn.mockResolvedValue([carrierShipment]);
+      shipmentFindUniqueOrThrow.mockResolvedValue({
+        ...carrierShipment,
+        status: 'COLLECTED',
+      });
+
+      const result = await shipmentsService.claim(
+        'user-operator',
+        'shipment-1',
+      );
+
+      expect(result.status).toBe('ACCEPTED');
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_UPDATED,
+        expect.objectContaining({ status: 'ACCEPTED' }),
+      );
     });
 
     it('throws NotFoundException for a shipment belonging to another carrier', async () => {
@@ -719,7 +759,7 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.claim('user-operator', 'shipment-1'),
       ).rejects.toThrow(ConflictException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when the pre-check already sees an owner', async () => {
@@ -729,13 +769,13 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.claim('user-manager', 'shipment-1'),
       ).rejects.toThrow(ConflictException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
-    it('throws ConflictException when a concurrent claim wins the race (updateMany affects 0 rows)', async () => {
+    it('throws ConflictException when a concurrent claim wins the race (the conditional update matches 0 rows)', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(pendingShipment);
-      shipmentUpdateMany.mockResolvedValue({ count: 0 });
+      shipmentUpdateManyAndReturn.mockResolvedValue([]);
 
       await expect(
         shipmentsService.claim('user-operator', 'shipment-1'),
@@ -746,12 +786,12 @@ describe('ShipmentsService', () => {
 
   describe('updateStatus', () => {
     const dto: UpdateShipmentStatusDto = { status: 'COLLECTED' };
+    const acceptedAndOwnedByOperator = carrierShipment;
 
     it('allows the owning operator to advance a valid transition', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED, owned by operator
-      shipmentUpdateMany.mockResolvedValue({ count: 1 });
-      shipmentFindUniqueOrThrow.mockResolvedValue({
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
+      mockTransition({
         ...carrierShipment,
         status: 'COLLECTED',
       });
@@ -762,7 +802,7 @@ describe('ShipmentsService', () => {
         dto,
       );
 
-      expect(shipmentUpdateMany).toHaveBeenCalledWith({
+      expect(shipmentUpdateManyAndReturn).toHaveBeenCalledWith({
         where: { id: 'shipment-1', status: 'ACCEPTED' },
         data: { status: 'COLLECTED' },
       });
@@ -772,32 +812,31 @@ describe('ShipmentsService', () => {
 
     it('allows the manager to advance a shipment they do not own', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierManager);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // owned by the operator, not the manager
-      shipmentUpdateMany.mockResolvedValue({ count: 1 });
-      shipmentFindUniqueOrThrow.mockResolvedValue({
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
+      mockTransition({
         ...carrierShipment,
         status: 'COLLECTED',
       });
 
       await shipmentsService.updateStatus('user-manager', 'shipment-1', dto);
 
-      expect(shipmentUpdateMany).toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).toHaveBeenCalled();
     });
 
     it('throws ForbiddenException for a non-owning operator', async () => {
       const otherOperator = { ...carrierOperator, id: 'someone-else' };
       carrierUserFindUnique.mockResolvedValue(otherOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // owned by 'carrier-user-operator'
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
 
       await expect(
         shipmentsService.updateStatus('user-other', 'shipment-1', dto),
       ).rejects.toThrow(ForbiddenException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException for an invalid transition', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
       const skipAheadDto: UpdateShipmentStatusDto = { status: 'DELIVERED' };
 
       await expect(
@@ -807,19 +846,19 @@ describe('ShipmentsService', () => {
           skipAheadDto,
         ),
       ).rejects.toThrow(BadRequestException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when a carrier tries to set CANCELLED, even a manager', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierManager);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
 
       await expect(
         shipmentsService.updateStatus('user-manager', 'shipment-1', {
           status: 'CANCELLED',
         }),
       ).rejects.toThrow(ForbiddenException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
     it('rejects updating a PENDING/unowned shipment directly, even for a manager (the bypass regression)', async () => {
@@ -834,13 +873,13 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.updateStatus('user-manager', 'shipment-1', acceptDto),
       ).rejects.toThrow(BadRequestException);
-      expect(shipmentUpdateMany).not.toHaveBeenCalled();
+      expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
     });
 
-    it('throws ConflictException when the status changed concurrently (updateMany affects 0 rows)', async () => {
+    it('throws ConflictException when the status changed concurrently (the conditional update matches 0 rows)', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(carrierShipment); // status ACCEPTED
-      shipmentUpdateMany.mockResolvedValue({ count: 0 });
+      shipmentFindFirst.mockResolvedValue(acceptedAndOwnedByOperator);
+      shipmentUpdateManyAndReturn.mockResolvedValue([]);
 
       await expect(
         shipmentsService.updateStatus('user-operator', 'shipment-1', dto),

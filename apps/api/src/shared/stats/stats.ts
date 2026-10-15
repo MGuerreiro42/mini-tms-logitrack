@@ -1,5 +1,15 @@
 export const MS_PER_HOUR = 60 * 60 * 1000;
 
+export const DEFAULT_STATS_WINDOW_DAYS = 90;
+export const MAX_STATS_WINDOW_DAYS = 365;
+
+export const daysAgo = (days: number, now = new Date()): Date =>
+  new Date(now.getTime() - days * 24 * MS_PER_HOUR);
+
+export const createdSince = (since?: Date): { createdAt: { gte: Date } } => ({
+  createdAt: { gte: since ?? daysAgo(DEFAULT_STATS_WINDOW_DAYS) },
+});
+
 export const hoursBetween = (from: Date, to: Date): number =>
   (to.getTime() - from.getTime()) / MS_PER_HOUR;
 

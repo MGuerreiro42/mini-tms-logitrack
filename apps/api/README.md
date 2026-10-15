@@ -6,8 +6,8 @@ Backend of [Mini TMS](../../README.md), in NestJS. Full architecture-decision re
 
 - NestJS 11
 - PostgreSQL via Prisma 7, with a driver adapter (`@prisma/adapter-pg`)
-- Redis (pub/sub, cache, BullMQ) — integration still pending
-- Socket.io — real-time gateway still pending
+- Redis — Socket.io pub/sub adapter and rate-limit counters
+- Socket.io — authenticated tracking gateway plus an unauthenticated `/public` namespace
 
 ## Running
 
@@ -28,28 +28,38 @@ Changing `schema.prisma` and generating a new migration remains manual, on purpo
 src/
 ├── modules/
 │   ├── auth/            # implemented — Passport + JWT + bcrypt (see DESIGN.md § 11)
-│   ├── sellers/         # signup + admin approval + own-modality config (see DESIGN.md § 16, § 19); onboarding still pending
-│   ├── carriers/        # signup + admin approval + own-modality/coverage config (see DESIGN.md § 17, § 19); invites/ still a skeleton
-│   ├── modalities/      # DeliveryModality catalog read endpoint (seeded, no CRUD — see DESIGN.md § 19)
-│   ├── shipments/       # creation with real coverage+modality matching (see DESIGN.md § 19); carrier-side queue still pending
-│   ├── tracking/        # skeleton — will become the WS Gateway + Redis adapter
+│   ├── sellers/         # signup + admin approval + own-modality config (see DESIGN.md § 12)
+│   ├── carriers/        # signup + admin approval + own-modality/coverage config (see DESIGN.md § 13); invites/ still a skeleton
+│   ├── modalities/      # DeliveryModality catalog read endpoint (seeded, no CRUD)
+│   ├── shipments/       # creation, cancel, carrier queue, analytics (see DESIGN.md § 14–16)
+│   ├── tracking/        # Socket.io gateways + event listener (see DESIGN.md § 15)
+│   ├── health/          # GET /health — Postgres + Redis (terminus)
 │   └── notifications/   # skeleton — will become BullMQ workers
 ├── shared/
 │   ├── prisma/          # PrismaModule + PrismaService — @Global()
-│   └── password/        # PasswordService (bcrypt hash/compare) — @Global()
+│   ├── password/        # PasswordService (bcrypt hash/compare) — @Global()
+│   ├── redis/           # shared ioredis client — @Global()
+│   ├── throttling/      # ThrottlerModule (Redis storage) + @RateLimit()
+│   └── websocket/       # RedisIoAdapter
 ├── app.module.ts
 └── main.ts
 prisma/
 ├── schema.prisma     # 11 models — see DESIGN.md § 10
-├── seed.ts           # admin, modality catalog and demo data — `pnpm exec prisma db seed`
+├── seed.ts           # admin + modality catalog; demo data only with SEED_DEMO=true
 └── migrations/       # versioned in git, applied via `prisma migrate deploy`
 ```
 
-Grouped by domain, not by technical layer — same philosophy as the frontend (`DESIGN.md` § 9). Only `auth/` has real logic so far; the rest are skeletons ready to receive implementation module by module.
+Grouped by domain, not by technical layer — same philosophy as the frontend (`DESIGN.md` § 9). `notifications/` and `carriers/invites/` are the only skeletons left.
 
 ## Demo seed
 
-`pnpm exec prisma db seed` is idempotent: it upserts the admin, the modality catalog and the demo accounts (password `demo12345`), then creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
+`pnpm exec prisma db seed` is idempotent and always upserts the admin and the modality catalog. Demo data is opt-in, since the demo password is public:
+
+```bash
+SEED_DEMO=true pnpm exec prisma db seed
+```
+
+That also upserts the demo accounts (password `demo12345`) and creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
 
 | Account | Role |
 |---|---|
@@ -115,7 +125,7 @@ curl -X PATCH http://localhost:3333/carriers/<id>/reject -H "Authorization: Bear
 
 ## Pagination and filtering
 
-`GET /sellers` and `GET /carriers` share the same shape: `?status=` filters, `?page=`/`?limit=` paginate (default `page=1&limit=20`, `limit` capped at 100). Response is always `{ data: [...], meta: { total, page, limit, totalPages } }`, never a bare array — documented in Swagger via a reusable `ApiPaginatedResponse` decorator (`src/shared/pagination/`). Why offset-based instead of cursor/keyset pagination, and the reasoning behind every index added to support these queries at scale: [`DESIGN.md` § 18](../../DESIGN.md#18-scale--pagination-and-indexing).
+`GET /sellers` and `GET /carriers` share the same shape: `?status=` filters, `?page=`/`?limit=` paginate (default `page=1&limit=20`, `limit` capped at 100). Response is always `{ data: [...], meta: { total, page, limit, totalPages } }`, never a bare array — documented in Swagger via a reusable `ApiPaginatedResponse` decorator (`src/shared/pagination/`). The indexes backing these queries are annotated in `prisma/schema.prisma`.
 
 ## Testing your own modality/coverage config
 
@@ -144,7 +154,7 @@ curl -X POST http://localhost:3333/shipments -H "Authorization: Bearer <sellerAc
 curl http://localhost:3333/shipments -H "Authorization: Bearer <sellerAccessToken>"
 ```
 
-Every constraint from the eligible-carriers preview (seller approved, modality enabled, carrier approved+covers+offers) is re-validated server-side on `POST` — the preview is not trusted. `state` is normalized to uppercase and `email` to lowercase at the DTO boundary (so `"sp"`/`"SP"` and mixed-case emails behave identically); `city` is matched case-insensitively instead, since it has real display casing worth preserving. Full reasoning in [`DESIGN.md` § 19](../../DESIGN.md#19-shipments--the-core-business-logic-slice).
+Every constraint from the eligible-carriers preview (seller approved, modality enabled, carrier approved+covers+offers) is re-validated server-side on `POST` — the preview is not trusted. `state` is normalized to uppercase and `email` to lowercase at the DTO boundary (so `"sp"`/`"SP"` and mixed-case emails behave identically); `city` is matched case-insensitively instead, since it has real display casing worth preserving. Full reasoning in [`DESIGN.md` § 14](../../DESIGN.md#14-shipments).
 
 ```bash
 curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <adminAccessToken>"
@@ -156,10 +166,16 @@ curl "http://localhost:3333/sellers?limit=2&page=1" -H "Authorization: Bearer <a
 pnpm test        # unit (vitest run)
 pnpm test:watch  # unit, watch mode
 pnpm test:cov    # with coverage (@vitest/coverage-v8)
-pnpm test:e2e    # boots the whole AppModule + a real Postgres, via supertest
+pnpm test:e2e    # boots the whole AppModule against real Postgres + Redis
 ```
 
-Vitest, not Jest — its default transform doesn't implement `emitDecoratorMetadata` (used by Nest to resolve DI), so there's an SWC plugin configured in both `vitest.config*.ts` files specifically for that. Details and reasoning in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality).
+The e2e suite migrates and then truncates its database, so it refuses to start unless the database name ends with `_e2e`. It reads `E2E_DATABASE_URL`, falling back to `DATABASE_URL`:
+
+```bash
+E2E_DATABASE_URL="postgresql://tms:tms@localhost:5432/tms_e2e?schema=public" pnpm test:e2e
+```
+
+Vitest, not Jest — its default transform doesn't implement `emitDecoratorMetadata` (used by Nest to resolve DI), so there's an SWC plugin configured in both `vitest.config*.ts` files specifically for that. Details in [`DESIGN.md` § 17](../../DESIGN.md#17-code-quality--ci).
 
 ## Lint & format
 
@@ -168,7 +184,7 @@ pnpm lint     # biome check --write .
 pnpm format   # biome format --write .
 ```
 
-Biome, not ESLint/Prettier — NestJS-specific gotchas (parameter decorators, `useImportType` breaking DI) in [`DESIGN.md` § 12](../../DESIGN.md#12-code-quality). Runs automatically on `pre-commit` (lefthook, configured at the repo root).
+Biome, not ESLint/Prettier — NestJS-specific gotchas (parameter decorators, `useImportType` breaking DI) in [`DESIGN.md` § 17](../../DESIGN.md#17-code-quality--ci). Runs automatically on `pre-commit` (lefthook, configured at the repo root).
 
 ## API documentation
 
@@ -177,7 +193,7 @@ pnpm start:dev
 # open http://localhost:3333/docs
 ```
 
-Swagger/OpenAPI via `@nestjs/swagger`. Only `auth/` is documented — the skeleton modules have no real contract yet, so documenting them wouldn't make sense. Details in [`DESIGN.md` § 15](../../DESIGN.md#15-openapi-swagger-and-node-version).
+Swagger/OpenAPI via `@nestjs/swagger`. Every implemented module is documented; the skeletons are left out on purpose. Details in [`DESIGN.md` § 17](../../DESIGN.md#17-code-quality--ci).
 
 ## Technical note — Prisma 7
 
@@ -185,7 +201,7 @@ The generator uses `moduleFormat = "cjs"` in `schema.prisma` — v7's default ge
 
 ## Environment variables
 
-Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing or invalid value crashes the application with a clear message instead of a confusing error down the line. Details in [`DESIGN.md` § 14](../../DESIGN.md#14-environment-validation-and-cors).
+Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing or invalid value crashes the application with a clear message instead of a confusing error down the line. Details in [`DESIGN.md` § 17](../../DESIGN.md#17-code-quality--ci).
 
 | Var | Default | Description |
 |---|---|---|
@@ -193,4 +209,8 @@ Validated at boot via Zod (`src/shared/config/env.validation.ts`) — a missing 
 | `PORT` | `3333` | server port — Next.js defaults to 3000 |
 | `JWT_SECRET` | — | signs the tokens — change it in production, minimum 16 characters |
 | `CORS_ORIGIN` | `http://localhost:3000` | the single origin allowed for CORS |
+| `REDIS_URL` | `redis://localhost:6379` | Socket.io adapter, rate-limit counters, health check |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin@minitms.dev` / `admin12345` (password required in production) | Admin seed credentials |
+| `TRUST_PROXY` | `0` (required in production) | reverse proxies in front of the API whose `X-Forwarded-For` entry is trusted for rate limiting |
+| `E2E_DATABASE_URL` | falls back to `DATABASE_URL` | database for `pnpm test:e2e`, name must end with `_e2e` |
+| `SEED_DEMO` | unset | `true` makes the seed also create the demo accounts and shipments |

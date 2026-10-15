@@ -327,6 +327,11 @@ async function main() {
   const modalities = await seedModalities();
   console.log(`Delivery modalities seeded: ${modalities.map((m) => m.code)}`);
 
+  if (process.env.SEED_DEMO !== 'true') {
+    console.log('Demo data skipped (set SEED_DEMO=true to seed it)');
+    return;
+  }
+
   const demoHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const sellers = [
     await seedSeller(

@@ -7,6 +7,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { Prisma } from '../../../generated/prisma/client';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { ModalitiesService } from '../modalities/modalities.service';
 import { CarriersService } from './carriers.service';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
 
@@ -87,6 +88,7 @@ describe('CarriersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CarriersService,
+        ModalitiesService,
         {
           provide: PrismaService,
           useValue: {
@@ -458,45 +460,43 @@ describe('CarriersService', () => {
   });
 
   describe('performance', () => {
+    const at = (hour: number) =>
+      new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
+
     it('fills every ShipmentStatus with 0, computes rates, and averages the gap between consecutive events per shipment', async () => {
+      const hoursToAccept = 2;
+      const hoursToCollect = 4;
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
       shipmentGroupBy.mockResolvedValue([
         { status: 'DELIVERED', _count: 3 },
         { status: 'PENDING', _count: 1 },
       ]);
       trackingEventFindMany.mockResolvedValue([
+        { shipmentId: 'collected', status: 'PENDING', createdAt: at(0) },
         {
-          shipmentId: 'shipment-1',
-          status: 'PENDING',
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-        },
-        {
-          shipmentId: 'shipment-1',
+          shipmentId: 'collected',
           status: 'ACCEPTED',
-          createdAt: new Date('2026-01-01T02:00:00Z'),
+          createdAt: at(hoursToAccept),
         },
         {
-          shipmentId: 'shipment-1',
+          shipmentId: 'collected',
           status: 'COLLECTED',
-          createdAt: new Date('2026-01-01T06:00:00Z'),
+          createdAt: at(hoursToAccept + hoursToCollect),
         },
-        // shipment-2: a single event, no gap to measure
-        {
-          shipmentId: 'shipment-2',
-          status: 'PENDING',
-          createdAt: new Date('2026-01-02T00:00:00Z'),
-        },
+        { shipmentId: 'single-event', status: 'PENDING', createdAt: at(0) },
       ]);
 
-      const result = await carriersService.performance('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await carriersService.performance('user-1', since);
 
+      const where = { carrierId: 'carrier-1', createdAt: { gte: since } };
       expect(shipmentGroupBy).toHaveBeenCalledWith({
         by: ['status'],
-        where: { carrierId: 'carrier-1' },
+        where,
         _count: true,
       });
       expect(trackingEventFindMany).toHaveBeenCalledWith({
-        where: { shipment: { carrierId: 'carrier-1' } },
+        where: { shipment: where },
         select: { shipmentId: true, status: true, createdAt: true },
         orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
       });
@@ -512,20 +512,22 @@ describe('CarriersService', () => {
         RETURNED: 0,
       });
       expect(result.totalShipments).toBe(4);
-      expect(result.avgHoursBetweenEvents).toBe(3); // (2 + 4) / 2
+      expect(result.avgHoursBetweenEvents).toBe(
+        (hoursToAccept + hoursToCollect) / 2,
+      );
       expect(result.failedDeliveryRate).toBe(0);
       expect(result.returnedRate).toBe(0);
       expect(result.stageDurations).toEqual([
         {
           fromStatus: 'PENDING',
           toStatus: 'ACCEPTED',
-          avgHours: 2,
+          avgHours: hoursToAccept,
           sampleCount: 1,
         },
         {
           fromStatus: 'ACCEPTED',
           toStatus: 'COLLECTED',
-          avgHours: 4,
+          avgHours: hoursToCollect,
           sampleCount: 1,
         },
         {
@@ -551,13 +553,14 @@ describe('CarriersService', () => {
 
     it('counts a shipment that failed delivery and was then returned in both rates', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      const totalShipments = 4;
+      const everFailed = 2;
+      const returned = 1;
       shipmentGroupBy.mockResolvedValue([
-        { status: 'RETURNED', _count: 1 },
-        { status: 'FAILED_DELIVERY', _count: 1 },
-        { status: 'DELIVERED', _count: 2 },
+        { status: 'RETURNED', _count: returned },
+        { status: 'FAILED_DELIVERY', _count: everFailed - returned },
+        { status: 'DELIVERED', _count: totalShipments - everFailed },
       ]);
-      const at = (hour: number) =>
-        new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
       trackingEventFindMany.mockResolvedValue([
         {
           shipmentId: 'returned',
@@ -572,8 +575,10 @@ describe('CarriersService', () => {
 
       const result = await carriersService.performance('user-1');
 
-      expect(result.failedDeliveryRate).toBe(50); // 2 of 4 ever failed
-      expect(result.returnedRate).toBe(25);
+      expect(result.failedDeliveryRate).toBe(
+        (everFailed / totalShipments) * 100,
+      );
+      expect(result.returnedRate).toBe((returned / totalShipments) * 100);
     });
 
     it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {
@@ -626,30 +631,27 @@ describe('CarriersService', () => {
   describe('operatorRanking', () => {
     it('ranks CarrierUsers by total shipments owned, with delivered counts and emails', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy
-        .mockResolvedValueOnce([
-          { ownerId: 'carrier-user-1', _count: 5 },
-          { ownerId: 'carrier-user-2', _count: 2 },
-        ])
-        .mockResolvedValueOnce([{ ownerId: 'carrier-user-1', _count: 3 }]);
+      shipmentGroupBy.mockResolvedValue([
+        { ownerId: 'carrier-user-2', status: 'IN_TRANSIT', _count: 2 },
+        { ownerId: 'carrier-user-1', status: 'DELIVERED', _count: 3 },
+        { ownerId: 'carrier-user-1', status: 'ACCEPTED', _count: 2 },
+      ]);
       carrierUserFindMany.mockResolvedValue([
         { id: 'carrier-user-1', user: { email: 'manager@example.com' } },
         { id: 'carrier-user-2', user: { email: 'operator@example.com' } },
       ]);
 
-      const result = await carriersService.operatorRanking('user-1');
+      const since = new Date('2025-12-01T00:00:00Z');
+      const result = await carriersService.operatorRanking('user-1', since);
 
-      expect(shipmentGroupBy).toHaveBeenNthCalledWith(1, {
-        by: ['ownerId'],
-        where: { carrierId: 'carrier-1', ownerId: { not: null } },
-        _count: true,
-      });
-      expect(shipmentGroupBy).toHaveBeenNthCalledWith(2, {
-        by: ['ownerId'],
+      expect(shipmentGroupBy).toHaveBeenCalledTimes(1);
+      expect(shipmentGroupBy).toHaveBeenCalledWith({
+        by: ['ownerId', 'status'],
         where: {
           carrierId: 'carrier-1',
           ownerId: { not: null },
-          status: 'DELIVERED',
+          status: { not: 'CANCELLED' },
+          createdAt: { gte: since },
         },
         _count: true,
       });
@@ -671,12 +673,24 @@ describe('CarriersService', () => {
 
     it('returns an empty array when no shipment has an owner yet', async () => {
       carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      shipmentGroupBy.mockResolvedValue([]);
 
       const result = await carriersService.operatorRanking('user-1');
 
       expect(result).toEqual([]);
       expect(carrierUserFindMany).not.toHaveBeenCalled();
+    });
+
+    it('fails loudly when an owner has no CarrierUser row', async () => {
+      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
+      shipmentGroupBy.mockResolvedValue([
+        { ownerId: 'carrier-user-gone', status: 'DELIVERED', _count: 1 },
+      ]);
+      carrierUserFindMany.mockResolvedValue([]);
+
+      await expect(carriersService.operatorRanking('user-1')).rejects.toThrow(
+        'carrier-user-gone',
+      );
     });
 
     it('throws NotFoundException when the user has no CarrierUser link', async () => {

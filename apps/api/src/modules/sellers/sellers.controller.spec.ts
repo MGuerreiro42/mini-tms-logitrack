@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { RateLimitGuard } from '../../shared/throttling/rate-limit.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { SellersController } from './sellers.controller';
 import { SellersService } from './sellers.service';
@@ -51,7 +52,10 @@ describe('SellersController', () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(RateLimitGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get(SellersController);
   });

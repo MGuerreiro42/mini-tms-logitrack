@@ -1,9 +1,9 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
+import { io, type Socket } from 'socket.io-client';
 import request from 'supertest';
-import type { App } from 'supertest/types';
-import type { GlobalRole } from '../../generated/prisma/client';
+import type { ApprovalStatus, GlobalRole } from '../../generated/prisma/client';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
 import { PasswordService } from '../../src/shared/password/password.service';
@@ -12,7 +12,7 @@ import { PrismaService } from '../../src/shared/prisma/prisma.service';
 const PASSWORD = 'e2e-password-123';
 
 export interface E2eContext {
-  app: INestApplication<App>;
+  app: NestExpressApplication;
   url: string;
   prisma: PrismaService;
 }
@@ -21,11 +21,34 @@ export async function startApp(): Promise<E2eContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication<INestApplication<App>>();
-  configureApp(app);
+  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  await configureApp(app);
   await app.listen(0);
   return { app, url: await app.getUrl(), prisma: app.get(PrismaService) };
 }
+
+export function connectSocket(
+  ctx: E2eContext,
+  namespace: '/' | '/public',
+  options: { token?: string; transports?: string[] } = {},
+): Promise<Socket> {
+  const socket = io(`${ctx.url}${namespace}`, {
+    transports: options.transports ?? ['websocket'],
+    auth: options.token ? { token: options.token } : undefined,
+    reconnection: false,
+    forceNew: true,
+  });
+  return new Promise((resolve, reject) => {
+    socket.once('connect', () => resolve(socket));
+    socket.once('connect_error', (error) => {
+      socket.close();
+      reject(error);
+    });
+  });
+}
+
+export const randomIp = () =>
+  Array.from({ length: 4 }, () => randomInt(1, 255)).join('.');
 
 const uniqueDocument = () =>
   Array.from({ length: 14 }, () => randomInt(10)).join('');
@@ -40,28 +63,27 @@ async function createUser(ctx: E2eContext, role: GlobalRole) {
 async function login(ctx: E2eContext, email: string): Promise<string> {
   const res = await request(ctx.app.getHttpServer())
     .post('/auth/login')
+    .set('X-Forwarded-For', randomIp())
     .send({ email, password: PASSWORD })
     .expect(201);
   return res.body.accessToken;
 }
 
-export async function createTenants(ctx: E2eContext) {
-  const modality = await ctx.prisma.deliveryModality.upsert({
-    where: { code: 'STANDARD' },
-    update: {},
-    create: { code: 'STANDARD', name: 'Standard', slaHours: 72 },
-  });
-
+export async function createCarrier(
+  ctx: E2eContext,
+  modalityId: string,
+  status: ApprovalStatus = 'APPROVED',
+) {
   const carrier = await ctx.prisma.carrier.create({
     data: {
       companyName: 'E2E Carrier',
       document: uniqueDocument(),
-      status: 'APPROVED',
+      status,
       coverageAreas: { create: { state: 'SP' } },
-      modalities: { create: { modalityId: modality.id } },
+      modalities: { create: { modalityId } },
     },
   });
-  const carrierToken = async (role: 'MANAGER' | 'OPERATOR') => {
+  const token = async (role: 'MANAGER' | 'OPERATOR') => {
     const user = await createUser(
       ctx,
       role === 'MANAGER' ? 'CARRIER_MANAGER' : 'CARRIER_OPERATOR',
@@ -71,6 +93,16 @@ export async function createTenants(ctx: E2eContext) {
     });
     return login(ctx, user.email);
   };
+  return { id: carrier.id, token };
+}
+
+export async function createTenants(ctx: E2eContext) {
+  const modality = await ctx.prisma.deliveryModality.upsert({
+    where: { code: 'STANDARD' },
+    update: {},
+    create: { code: 'STANDARD', name: 'Standard', slaHours: 72 },
+  });
+  const carrier = await createCarrier(ctx, modality.id);
 
   const sellerToken = async () => {
     const user = await createUser(ctx, 'SELLER');
@@ -91,8 +123,8 @@ export async function createTenants(ctx: E2eContext) {
     modalityId: modality.id,
     sellerA: await sellerToken(),
     sellerB: await sellerToken(),
-    manager: await carrierToken('MANAGER'),
-    operator: await carrierToken('OPERATOR'),
+    manager: await carrier.token('MANAGER'),
+    operator: await carrier.token('OPERATOR'),
   };
 }
 
