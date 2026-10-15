@@ -8,6 +8,7 @@ import {
 } from '@/components/common/live-indicator';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
+import { PinnedAction } from '@/components/common/pinned-action';
 import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
@@ -49,6 +50,7 @@ function ShipmentDetailView({
   const origin = useAppOrigin();
   const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
   const place = `${shipment.addressCity}, ${shipment.addressState}`;
+  const cancellable = isCancellableBySeller(shipment.status);
 
   return (
     <div className="space-y-5">
@@ -71,11 +73,13 @@ function ShipmentDetailView({
           </>
         }
         action={
-          <CancelShipmentAction
-            shipmentId={shipment.id}
-            status={shipment.status}
-            available={isCancellableBySeller(shipment.status)}
-          />
+          <PinnedAction pinned={cancellable}>
+            <CancelShipmentAction
+              shipmentId={shipment.id}
+              status={shipment.status}
+              available={cancellable}
+            />
+          </PinnedAction>
         }
       />
       <OfflineBanner status={liveStatus} />

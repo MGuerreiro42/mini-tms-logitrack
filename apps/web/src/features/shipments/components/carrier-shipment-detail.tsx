@@ -77,16 +77,9 @@ function CarrierShipmentView({
   const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
   useCancelledNotice(shipment.status, isOwner);
   const actionState = getActionState(shipment, canAdvance);
-  const hasPinnedAction =
-    actionState.kind === 'claim' || actionState.kind === 'advance';
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-5',
-        hasPinnedAction && 'max-lg:not-short:pb-20',
-      )}
-    >
+    <div className="flex flex-col gap-5">
       <ShipmentTitle
         shipment={shipment}
         liveStatus={liveStatus}
@@ -347,25 +340,26 @@ function SetbackAction({
 }) {
   const { action, title, description } = SETBACKS[status];
 
-  const dialog = (
-    <ConfirmDialog
-      trigger={
-        <Button
-          variant="destructive"
-          size={pinned ? 'lg' : 'default'}
-          disabled={isPending}
-        >
-          {action}
-        </Button>
-      }
-      title={title}
-      description={description}
-      confirmLabel={action}
-      variant="destructive"
-      onConfirm={onConfirm}
-      available={available}
-      unavailableMessage="This shipment has moved on, so this step no longer applies."
-    />
+  return (
+    <PinnedAction pinned={pinned}>
+      <ConfirmDialog
+        trigger={
+          <Button
+            variant="destructive"
+            size={pinned ? 'lg' : 'default'}
+            disabled={isPending}
+          >
+            {action}
+          </Button>
+        }
+        title={title}
+        description={description}
+        confirmLabel={action}
+        variant="destructive"
+        onConfirm={onConfirm}
+        available={available}
+        unavailableMessage="This shipment has moved on, so this step no longer applies."
+      />
+    </PinnedAction>
   );
-  return pinned ? <PinnedAction>{dialog}</PinnedAction> : dialog;
 }
