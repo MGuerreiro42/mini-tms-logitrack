@@ -28,7 +28,7 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
         valueKey="avgHours"
         valueLabel="Avg. duration"
         orientation="horizontal"
-        colors="ordinal"
+        emphasis="max"
         className="h-64"
         formatLabel={(row) => row.display}
         formatTooltip={(row) =>
