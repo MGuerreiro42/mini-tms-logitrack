@@ -75,12 +75,10 @@ export function QuerySkeleton({
 }: {
   variant?: 'panel' | 'table' | 'lines';
 }) {
-  const Surface = variant === 'lines' ? 'div' : Card;
-
-  return (
-    <Surface role="status" aria-label="Loading" className="gap-0 py-0">
-      {variant === 'table' ? (
-        <>
+  if (variant === 'table') {
+    return (
+      <div role="status" aria-label="Loading">
+        <Card className="gap-0 py-0 max-md:hidden">
           <div className="flex h-10 items-center gap-10 border-b px-5">
             {['w-16', 'w-24', 'w-18', 'w-14'].map((width) => (
               <Skeleton key={width} className={cn('h-2.5', width)} />
@@ -97,15 +95,36 @@ export function QuerySkeleton({
               <Skeleton className={cn('h-3', meta)} />
             </div>
           ))}
-        </>
-      ) : (
-        <div className={cn('space-y-4', variant === 'panel' && 'p-5')}>
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-3/4" />
-          <Skeleton className="h-3 w-2/3" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-      )}
+        </Card>
+        <ul className="flex flex-col gap-2.5 md:hidden">
+          {ROW_WIDTHS.slice(0, 4).map(([code, place, meta]) => (
+            <li
+              key={code + place + meta}
+              className="flex flex-col gap-3 rounded-xl bg-card px-4 py-3.5 shadow-panel"
+            >
+              <div className="flex items-center justify-between">
+                <Skeleton className={cn('h-3', code)} />
+                <Skeleton className="h-5.5 w-21" />
+              </div>
+              <Skeleton className={cn('h-3.5', place)} />
+              <Skeleton className={cn('h-2.5', meta)} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  const Surface = variant === 'lines' ? 'div' : Card;
+
+  return (
+    <Surface role="status" aria-label="Loading" className="gap-0 py-0">
+      <div className={cn('space-y-4', variant === 'panel' && 'p-5')}>
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
     </Surface>
   );
 }

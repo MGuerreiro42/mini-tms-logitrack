@@ -21,12 +21,19 @@ const MOBILE_QUERY = '(max-width: 767px)';
 
 export type CardSlot = 'title' | 'badge' | 'place' | 'meta' | 'action';
 
+const HIDDEN_BELOW = {
+  lg: 'hidden lg:table-cell',
+  xl: 'hidden xl:table-cell',
+  '2xl': 'hidden 2xl:table-cell',
+} as const;
+
 export interface Column<T> {
   id?: string;
   header: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
   card?: CardSlot;
+  hideBelow?: keyof typeof HIDDEN_BELOW;
 }
 
 interface PaginatedTableProps<T> {
@@ -112,7 +119,7 @@ function RowTable<T>({
         <TableHeader>
           <TableRow>
             {columns.map((col) => (
-              <TableHead key={columnKey(col)} className={col.className}>
+              <TableHead key={columnKey(col)} className={cellClassName(col)}>
                 {col.header}
               </TableHead>
             ))}
@@ -135,7 +142,7 @@ function RowTable<T>({
               className={cn(getRowHref && 'relative', getRowClassName?.(row))}
             >
               {columns.map((col, index) => (
-                <TableCell key={columnKey(col)} className={col.className}>
+                <TableCell key={columnKey(col)} className={cellClassName(col)}>
                   {getRowHref && index === 0 ? (
                     <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
                   ) : (
@@ -240,6 +247,13 @@ function RowCards<T>({
 
 function columnKey<T>(column: Column<T>): string {
   return column.id ?? column.header;
+}
+
+function cellClassName<T>(column: Column<T>): string | undefined {
+  return cn(
+    column.hideBelow && HIDDEN_BELOW[column.hideBelow],
+    column.className,
+  );
 }
 
 // Stretched link: other interactive cells need `relative z-10` to stay clickable.

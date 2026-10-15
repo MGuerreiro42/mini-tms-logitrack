@@ -147,7 +147,7 @@ export function AdminMonitoringTable({
               partyColumns.carrier,
               shipmentColumns.destination,
               shipmentColumns.status,
-              partyColumns.owner,
+              { ...partyColumns.owner, hideBelow: '2xl' },
               slaColumn,
               shipmentColumns.created,
             ]}
