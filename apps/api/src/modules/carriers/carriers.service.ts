@@ -11,12 +11,20 @@ import {
   Prisma,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
+import { decideApproval } from '../../shared/approval/decide-approval';
 import {
   type PaginatedResult,
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
+import {
+  average,
+  countByStatus,
+  hoursBetween,
+  percentage,
+} from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import type {
   CarrierPerformanceResponseDto,
@@ -39,7 +47,7 @@ const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
 const managerInclude = {
   users: {
     where: { role: CarrierRole.MANAGER },
-    include: { user: true },
+    include: { user: { select: { email: true } } },
     take: 1,
   },
   _count: { select: { users: true } },
@@ -91,26 +99,11 @@ export class CarriersService {
         createdAt: carrier.createdAt,
       };
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        const meta = error.meta as
-          | {
-              target?: string[];
-              driverAdapterError?: {
-                cause?: { constraint?: { fields?: string[] } };
-              };
-            }
-          | undefined;
-        const target =
-          meta?.target?.join(', ') ??
-          meta?.driverAdapterError?.cause?.constraint?.fields?.join(', ') ??
-          'unknown';
-        this.logger.warn(`Carrier signup conflict on unique field: ${target}`);
-        throw new ConflictException('Email or document already registered');
-      }
-      throw error;
+      const target = uniqueViolationTarget(error);
+      if (!target) throw error;
+      // Logged only: a generic response keeps signup from enumerating registered emails/documents.
+      this.logger.warn(`Carrier signup conflict on unique field: ${target}`);
+      throw new ConflictException('Email or document already registered');
     }
   }
 
@@ -139,23 +132,13 @@ export class CarriersService {
     );
   }
 
-  // Same reasoning as SellersService.countsByStatus — one groupBy query
-  // instead of 2 separate `findAll(status, limit:1)` calls.
   async countsByStatus(): Promise<CarrierStatusCountsResponseDto> {
     const groups = await this.prisma.carrier.groupBy({
       by: ['status'],
       _count: true,
     });
 
-    const counts: CarrierStatusCountsResponseDto = {
-      PENDING: 0,
-      APPROVED: 0,
-      REJECTED: 0,
-    };
-    for (const group of groups) {
-      counts[group.status] = group._count;
-    }
-    return counts;
+    return countByStatus(ApprovalStatus, groups);
   }
 
   async findOne(id: string): Promise<CarrierResponseDto> {
@@ -163,11 +146,6 @@ export class CarriersService {
     return this.toResponseDto(carrier);
   }
 
-  // Ownership-based (DESIGN.md § 16), for both MANAGER and OPERATOR — unlike
-  // Seller, a Carrier isn't reached directly from userId; it goes through
-  // CarrierUser first (the join row identifying which carrier this specific
-  // user belongs to), then reuses findOne so the response shape stays
-  // identical to the admin-facing read path.
   async findByUserId(userId: string): Promise<CarrierResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
     return this.findOne(carrierId);
@@ -205,15 +183,6 @@ export class CarriersService {
     return this.buildModalityToggles(carrierId);
   }
 
-  // FLOW.md Frame 24's proposed contract. `shipmentCountsByStatus` reuses
-  // the same groupBy technique as ShipmentsService.countsByStatusForSeller
-  // and SellersService/CarriersService.countsByStatus, just scoped to this
-  // carrierId instead. avgHoursBetweenEvents can't be a groupBy/aggregate —
-  // it needs the gap between *consecutive* events per shipment, which
-  // Prisma has no window-function equivalent for — so it's computed in
-  // application code over each shipment's own ordered event list, not a
-  // raw SQL window function (no $queryRaw precedent anywhere else in this
-  // codebase, and this keeps the logic unit-testable against mocked rows).
   async performance(userId: string): Promise<CarrierPerformanceResponseDto> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
@@ -230,20 +199,7 @@ export class CarriersService {
       }),
     ]);
 
-    const shipmentCountsByStatus = {
-      PENDING: 0,
-      ACCEPTED: 0,
-      COLLECTED: 0,
-      IN_TRANSIT: 0,
-      OUT_FOR_DELIVERY: 0,
-      DELIVERED: 0,
-      FAILED_DELIVERY: 0,
-      CANCELLED: 0,
-      RETURNED: 0,
-    };
-    for (const group of groups) {
-      shipmentCountsByStatus[group.status] = group._count;
-    }
+    const shipmentCountsByStatus = countByStatus(ShipmentStatus, groups);
     const totalShipments = Object.values(shipmentCountsByStatus).reduce(
       (sum, count) => sum + count,
       0,
@@ -253,9 +209,10 @@ export class CarriersService {
     const stageGapsInHours = new Map<string, number[]>();
     for (let i = 1; i < events.length; i++) {
       if (events[i].shipmentId === events[i - 1].shipmentId) {
-        const gapMs =
-          events[i].createdAt.getTime() - events[i - 1].createdAt.getTime();
-        const gapHours = gapMs / (1000 * 60 * 60);
+        const gapHours = hoursBetween(
+          events[i - 1].createdAt,
+          events[i].createdAt,
+        );
         gapsInHours.push(gapHours);
 
         const stageKey = `${events[i - 1].status}_${events[i].status}`;
@@ -264,11 +221,7 @@ export class CarriersService {
         stageGapsInHours.set(stageKey, stageGaps);
       }
     }
-    const avgHoursBetweenEvents =
-      gapsInHours.length > 0
-        ? gapsInHours.reduce((sum, hours) => sum + hours, 0) /
-          gapsInHours.length
-        : null;
+    const avgHoursBetweenEvents = average(gapsInHours);
 
     const stageDurations: StageDurationResponseDto[] =
       HAPPY_PATH_TRANSITIONS.map(([fromStatus, toStatus]) => {
@@ -277,26 +230,25 @@ export class CarriersService {
         return {
           fromStatus,
           toStatus,
-          avgHours:
-            stageGaps.length > 0
-              ? stageGaps.reduce((sum, hours) => sum + hours, 0) /
-                stageGaps.length
-              : null,
+          avgHours: average(stageGaps),
           sampleCount: stageGaps.length,
         };
       });
 
-    const failedDeliveryRate =
-      totalShipments > 0
-        ? (shipmentCountsByStatus[ShipmentStatus.FAILED_DELIVERY] /
-            totalShipments) *
-          100
-        : 0;
-    const returnedRate =
-      totalShipments > 0
-        ? (shipmentCountsByStatus[ShipmentStatus.RETURNED] / totalShipments) *
-          100
-        : 0;
+    // From history, not current status: a FAILED_DELIVERY that moved on to RETURNED still failed.
+    const everFailedShipmentIds = new Set(
+      events
+        .filter((event) => event.status === ShipmentStatus.FAILED_DELIVERY)
+        .map((event) => event.shipmentId),
+    );
+    const failedDeliveryRate = percentage(
+      everFailedShipmentIds.size,
+      totalShipments,
+    );
+    const returnedRate = percentage(
+      shipmentCountsByStatus[ShipmentStatus.RETURNED],
+      totalShipments,
+    );
 
     return {
       shipmentCountsByStatus,
@@ -373,11 +325,6 @@ export class CarriersService {
   ): Promise<CoverageAreaResponseDto[]> {
     const carrierId = await this.findCarrierIdForUserOrThrow(userId);
 
-    // Full-replace, same pattern as modalities — the client always submits
-    // the complete desired coverage list, not incremental add/remove calls.
-    // `skipDuplicates` guards against the client submitting the same
-    // (state, city) pair twice in one request, which would otherwise violate
-    // @@unique([carrierId, state, city]) on the second insert.
     await this.prisma.$transaction([
       this.prisma.carrierCoverageArea.deleteMany({ where: { carrierId } }),
       this.prisma.carrierCoverageArea.createMany({
@@ -449,18 +396,16 @@ export class CarriersService {
     id: string,
     status: ApprovalStatus,
   ): Promise<CarrierResponseDto> {
-    const carrier = await this.findCarrierOrThrow(id);
-    if (carrier.status !== ApprovalStatus.PENDING) {
-      throw new ConflictException(
-        `Carrier is already ${carrier.status.toLowerCase()}`,
-      );
-    }
-    const updated = await this.prisma.carrier.update({
-      where: { id },
-      data: { status },
-      include: managerInclude,
-    });
-    return this.toResponseDto(updated);
+    const carrier = await decideApproval(
+      'Carrier',
+      () =>
+        this.prisma.carrier.updateMany({
+          where: { id, status: ApprovalStatus.PENDING },
+          data: { status },
+        }),
+      () => this.findCarrierOrThrow(id),
+    );
+    return this.toResponseDto(carrier);
   }
 
   private async findCarrierOrThrow(id: string): Promise<CarrierWithManager> {

@@ -15,6 +15,8 @@ export default defineConfig({
     include: ['test/**/*.e2e-spec.ts'],
     globals: true,
     environment: 'node',
+    // Specs share one database; running files serially avoids fixture races.
+    fileParallelism: false,
   },
   esbuild: false,
   oxc: false,
