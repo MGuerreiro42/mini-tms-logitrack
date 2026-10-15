@@ -1,14 +1,23 @@
 'use client';
 
+import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLogout } from '@/hooks/use-logout';
+
+const THEMES = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
 
 export function UserMenu({
   name,
@@ -20,6 +29,7 @@ export function UserMenu({
   initials: string;
 }) {
   const logout = useLogout();
+  const { theme = 'system', setTheme } = useTheme();
 
   return (
     <DropdownMenu>
@@ -42,7 +52,24 @@ export function UserMenu({
           <span>{role}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Theme
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+          {THEMES.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              className="pointer-coarse:min-h-11"
+            >
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout} className="pointer-coarse:min-h-11">
+          Log out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

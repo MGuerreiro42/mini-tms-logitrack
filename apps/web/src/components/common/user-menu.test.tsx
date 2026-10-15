@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ThemeProvider } from 'next-themes';
 import { hardNavigate } from '@/lib/hard-navigate';
 import { getSessionFromDocument, setSession } from '@/lib/session';
 import { renderWithQueryClient } from '@/test/render';
@@ -24,5 +25,22 @@ describe('UserMenu', () => {
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
     expect(getSessionFromDocument()).toBeNull();
     expect(hardNavigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('switches the theme from the menu', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <UserMenu {...props} />
+      </ThemeProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /seller/i }));
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'System' }),
+    ).toBeChecked();
+    await user.click(screen.getByRole('menuitemradio', { name: 'Dark' }));
+
+    expect(document.documentElement).toHaveClass('dark');
   });
 });
