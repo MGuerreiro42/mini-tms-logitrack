@@ -133,7 +133,7 @@ function ownerMeta(
 const PINNED =
   'lg:ml-auto max-lg:fixed max-lg:inset-x-4 max-lg:bottom-[calc(--spacing(16)+max(--spacing(2),env(safe-area-inset-bottom)))] max-lg:z-30 max-lg:h-12 max-lg:shadow-panel';
 const INVERSE =
-  'lg:bg-primary-inverse lg:text-foreground lg:hover:bg-primary-inverse/85 lg:focus-visible:ring-primary-inverse/60 lg:disabled:bg-background/15 lg:disabled:text-background/70 lg:disabled:opacity-100';
+  'lg:bg-primary-inverse lg:text-primary-inverse-foreground lg:hover:bg-primary-inverse/85 lg:focus-visible:ring-primary-inverse/60 lg:disabled:bg-emphasis-foreground/15 lg:disabled:text-emphasis-foreground/70 lg:disabled:opacity-100';
 
 interface StepCopy {
   title: string;
@@ -217,7 +217,9 @@ function NextStep({
   }
 
   const strong = primary !== undefined || actionState.kind === 'claim';
-  const quiet = strong ? 'text-background/70' : 'text-muted-foreground';
+  const quiet = strong
+    ? 'text-emphasis-foreground/70'
+    : 'text-muted-foreground';
 
   // Stable slot keeps an open dialog mounted.
   return (
@@ -225,7 +227,7 @@ function NextStep({
       aria-label="Next step"
       className={cn(
         'flex flex-col gap-4 rounded-xl px-6 py-5.5 shadow-panel',
-        strong ? 'bg-foreground text-background' : 'bg-card',
+        strong ? 'bg-emphasis text-emphasis-foreground' : 'bg-card',
       )}
     >
       <div className="flex flex-col gap-1">
@@ -273,7 +275,7 @@ function NoteField({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3 text-sm text-background/70">
+      <div className="flex items-baseline justify-between gap-3 text-sm text-emphasis-foreground/70">
         <label htmlFor={id}>Note for the seller, optional</label>
         <span aria-hidden>
           {value.length} / {TRACKING_NOTE_MAX_LENGTH}
@@ -285,7 +287,7 @@ function NoteField({
         value={value}
         maxLength={TRACKING_NOTE_MAX_LENGTH}
         onChange={(event) => onChange(event.target.value)}
-        className="resize-none rounded-md bg-background/10 px-3 py-2.5 text-[15px] text-background outline-none focus-visible:ring-3 focus-visible:ring-primary-inverse/60"
+        className="resize-none rounded-md bg-emphasis-foreground/10 px-3 py-2.5 text-[15px] text-emphasis-foreground outline-none focus-visible:ring-3 focus-visible:ring-primary-inverse/60"
       />
     </div>
   );
