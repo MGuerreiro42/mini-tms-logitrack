@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
-import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
 import { trackingTitle } from '../lib/tracking-title';
@@ -28,7 +28,7 @@ export function PublicTrackingDetails({
     <div className="space-y-4">
       <div className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <ShipmentStatusPill status={tracking.status} />
+          <ShipmentStatusBadge status={tracking.status} />
           <LiveIndicator status={liveStatus} />
         </div>
         <div className="flex items-center justify-between text-sm text-muted-foreground">

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useEffectEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -49,7 +50,7 @@ export function PaginatedTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border">
+      <Card className="gap-0 py-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -89,7 +90,7 @@ export function PaginatedTable<T>({
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Card>
       {meta && onPageChange && meta.totalPages > 1 && !isPastTheEnd && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
