@@ -1,14 +1,12 @@
-import { PageHeader } from '@/components/common/page-header';
 import { AdminDashboard } from '@/features/admin/components/admin-dashboard';
+import { getAdminShipmentStatusCounts } from '@/features/shipments/api';
+import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
-export default function AdminDashboardPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Platform overview, with a shortcut to whatever needs approval."
-      />
-      <AdminDashboard />
-    </div>
+export default async function AdminDashboardPage() {
+  const { token } = await requireSegment('admin');
+  const shipmentCounts = await withAuthRedirects(
+    getAdminShipmentStatusCounts(token),
   );
+
+  return <AdminDashboard shipmentCounts={shipmentCounts} />;
 }

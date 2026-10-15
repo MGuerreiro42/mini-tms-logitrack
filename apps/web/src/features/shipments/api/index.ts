@@ -1,3 +1,4 @@
+import { SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
@@ -91,6 +92,20 @@ export function listAdminShipments(
     undefined,
     token,
   );
+}
+
+// No admin counts endpoint yet: each status total comes from a one-row page.
+export async function getAdminShipmentStatusCounts(
+  token: string,
+): Promise<ShipmentStatusCounts> {
+  const totals = await Promise.all(
+    SHIPMENT_STATUSES.map((status) =>
+      listAdminShipments({ status, page: 1, limit: 1 }, token).then(
+        (page) => [status, page.meta.total] as const,
+      ),
+    ),
+  );
+  return Object.fromEntries(totals) as ShipmentStatusCounts;
 }
 
 export function getQueueShipment(
