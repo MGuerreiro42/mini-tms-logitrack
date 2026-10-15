@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { getSocket } from '@/services/websocket-client';
@@ -7,7 +7,10 @@ import { makeFakeSocket } from '@/test/fake-socket';
 import { useShipmentTracking } from './use-shipment-tracking';
 
 vi.mock('@/hooks/use-session', () => ({ useSession: vi.fn() }));
-vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 
 const session = {
   token: 't',
@@ -27,6 +30,10 @@ function makeWrapper(queryClient: QueryClient) {
 describe('useShipmentTracking', () => {
   beforeEach(() => {
     vi.mocked(useSession).mockReturnValue(session);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('does nothing when there is no session', () => {
@@ -111,6 +118,42 @@ describe('useShipmentTracking', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
   });
 
+  it('collapses a burst of updates into one immediate and one trailing refetch', () => {
+    vi.useFakeTimers();
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    renderHook(() => useShipmentTracking({ subscribeToMonitoring: true }), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    for (let i = 0; i < 20; i++) socket.trigger('shipment:updated', {});
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(300);
+    expect(invalidateSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops the trailing refetch on unmount', () => {
+    vi.useFakeTimers();
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    const { unmount } = renderHook(
+      () => useShipmentTracking({ subscribeToMonitoring: true }),
+      { wrapper: makeWrapper(queryClient) },
+    );
+    socket.trigger('shipment:updated', {});
+    socket.trigger('shipment:updated', {});
+
+    unmount();
+    vi.advanceTimersByTime(300);
+
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('subscribes to the monitoring room when subscribeToMonitoring is set', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
@@ -127,7 +170,7 @@ describe('useShipmentTracking', () => {
     );
   });
 
-  it('invalidates on every (re)connect, not just on a received message (regression: a message missed during a disconnect must not leave the view stuck on stale data)', () => {
+  it('invalidates after every (re)subscription, not just on a received message', async () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     const queryClient = new QueryClient();
@@ -138,11 +181,13 @@ describe('useShipmentTracking', () => {
     });
 
     socket.trigger('connect');
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
-    invalidateSpy.mockClear();
+    await act(async () => socket.ackAll({ ok: true }));
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+    socket.emit.mockClear();
 
     socket.trigger('connect');
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['shipments'] });
+    await act(async () => socket.ackAll({ ok: true }));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(2));
   });
 
   it('does not reconnect when useSession returns a new object with the same token ', () => {

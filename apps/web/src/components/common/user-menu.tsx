@@ -1,14 +1,12 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { clearSession } from '@/lib/session';
+import { useLogout } from '@/hooks/use-logout';
 
 export function UserMenu({
   name,
@@ -19,14 +17,7 @@ export function UserMenu({
   role: string;
   initials: string;
 }) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  function handleLogout() {
-    queryClient.clear();
-    clearSession();
-    router.push('/login');
-  }
+  const logout = useLogout();
 
   return (
     <DropdownMenu>
@@ -40,7 +31,7 @@ export function UserMenu({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-48">
-        <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

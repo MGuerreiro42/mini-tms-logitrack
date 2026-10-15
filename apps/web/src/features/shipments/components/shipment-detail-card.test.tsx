@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { toast } from 'sonner';
@@ -10,7 +10,10 @@ import { renderWithQueryClient } from '@/test/render';
 import type { Shipment } from '../types';
 import { ShipmentDetailCard } from './shipment-detail-card';
 
-vi.mock('@/services/websocket-client', () => ({ getSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const API_URL = 'http://localhost:3333';
@@ -35,6 +38,10 @@ const pendingShipment: Shipment = {
 };
 
 describe('ShipmentDetailCard', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
@@ -49,6 +56,53 @@ describe('ShipmentDetailCard', () => {
         HttpResponse.json(pendingShipment),
       ),
     );
+  });
+
+  it('stops polling a shipment that does not exist', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let requests = 0;
+    server.use(
+      http.get(`${API_URL}/shipments/shipment-1`, () => {
+        requests++;
+        return HttpResponse.json(
+          { statusCode: 404, message: 'Not found' },
+          { status: 404 },
+        );
+      }),
+    );
+    renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+    await screen.findByText('Shipment not found.');
+
+    await act(() => vi.advanceTimersByTimeAsync(16_000));
+
+    expect(requests).toBe(1);
+  });
+
+  it('polls every few seconds until the subscription is live, then stops', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let requests = 0;
+    server.use(
+      http.get(`${API_URL}/shipments/shipment-1`, () => {
+        requests++;
+        return HttpResponse.json(pendingShipment);
+      }),
+    );
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+    await screen.findByText('Fast Carrier');
+
+    await act(() => vi.advanceTimersByTimeAsync(5_100));
+    await waitFor(() => expect(requests).toBe(2));
+
+    act(() => socket.trigger('connect'));
+    await act(async () => socket.ackAll({ ok: true }));
+    await waitFor(() => expect(requests).toBe(3));
+    expect(screen.getByRole('status')).toHaveTextContent('Live');
+
+    await act(() => vi.advanceTimersByTimeAsync(16_000));
+
+    expect(requests).toBe(3);
   });
 
   it('shows the real public tracking URL and copies it', async () => {

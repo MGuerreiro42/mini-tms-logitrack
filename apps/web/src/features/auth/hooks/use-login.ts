@@ -2,21 +2,9 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { setSession } from '@/lib/session';
+import { ROLE_HOME, setSession } from '@/lib/session';
 import { login } from '../api';
-import type { GlobalRole, LoginInput } from '../types';
-
-function roleHomePath(role: GlobalRole): string {
-  switch (role) {
-    case 'ADMIN':
-      return '/admin';
-    case 'SELLER':
-      return '/seller';
-    case 'CARRIER_MANAGER':
-    case 'CARRIER_OPERATOR':
-      return '/carrier';
-  }
-}
+import type { LoginInput } from '../types';
 
 export function useLoginMutation() {
   const router = useRouter();
@@ -31,7 +19,7 @@ export function useLoginMutation() {
         userId: user.id,
         email: user.email,
       });
-      router.push(roleHomePath(user.role));
+      router.push(ROLE_HOME[user.role]);
     },
   });
 }

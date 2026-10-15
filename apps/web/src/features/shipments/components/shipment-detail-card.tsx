@@ -5,6 +5,7 @@ import { DetailRow } from '@/components/common/detail-row';
 import { QueryState } from '@/components/common/query-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppOrigin } from '@/hooks/use-app-origin';
+import type { LiveStatus } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
@@ -17,8 +18,8 @@ import {
 } from './shipment-detail-parts';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
-  const query = useShipment(id);
-  useShipmentTracking({ shipmentId: id });
+  const liveStatus = useShipmentTracking({ shipmentId: id });
+  const query = useShipment(id, liveStatus);
 
   return (
     <QueryState
@@ -26,18 +27,26 @@ export function ShipmentDetailCard({ id }: { id: string }) {
       errorMessage="Couldn't load this shipment."
       notFoundMessage="Shipment not found."
     >
-      {(shipment) => <ShipmentDetailView shipment={shipment} />}
+      {(shipment) => (
+        <ShipmentDetailView shipment={shipment} liveStatus={liveStatus} />
+      )}
     </QueryState>
   );
 }
 
-function ShipmentDetailView({ shipment }: { shipment: Shipment }) {
+function ShipmentDetailView({
+  shipment,
+  liveStatus,
+}: {
+  shipment: Shipment;
+  liveStatus: LiveStatus;
+}) {
   const origin = useAppOrigin();
   const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-      <ShipmentHeaderCard shipment={shipment}>
+      <ShipmentHeaderCard shipment={shipment} liveStatus={liveStatus}>
         <DetailRow label="Carrier" value={shipment.carrierName} />
         <DetailRow label="Modality" value={shipment.modalityName} />
         <ShipmentAddressRows address={shipment} />

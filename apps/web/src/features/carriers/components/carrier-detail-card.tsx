@@ -1,7 +1,8 @@
 'use client';
 
-import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
+import { CompanyReview } from '@/features/companies/components/company-cards';
+import { formatDateTime } from '@/lib/format-date';
 import {
   useApproveCarrier,
   useRejectCarrier,
@@ -23,9 +24,7 @@ export function CarrierDetailCard({ id }: { id: string }) {
       {(carrier) => (
         <CompanyReview
           company={carrier}
-          rows={carrierDetails(carrier, (iso) =>
-            new Date(iso).toLocaleString(),
-          )}
+          rows={carrierDetails(carrier, formatDateTime)}
           approve={approve}
           reject={reject}
         />

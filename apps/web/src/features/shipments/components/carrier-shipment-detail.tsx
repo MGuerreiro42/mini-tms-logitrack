@@ -1,11 +1,14 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
 import { QueryState } from '@/components/common/query-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/hooks/use-session';
+import type { LiveStatus } from '@/lib/live-status';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useQueueShipment } from '../hooks/use-queue-shipment';
@@ -42,8 +45,8 @@ function getActionState(
 }
 
 export function CarrierShipmentDetail({ id }: { id: string }) {
-  const query = useQueueShipment(id);
-  useShipmentTracking({ shipmentId: id });
+  const liveStatus = useShipmentTracking({ shipmentId: id });
+  const query = useQueueShipment(id, liveStatus);
 
   return (
     <QueryState
@@ -51,25 +54,33 @@ export function CarrierShipmentDetail({ id }: { id: string }) {
       errorMessage="Couldn't load this shipment."
       notFoundMessage="Shipment not found."
     >
-      {(shipment) => <CarrierShipmentView shipment={shipment} />}
+      {(shipment) => (
+        <CarrierShipmentView shipment={shipment} liveStatus={liveStatus} />
+      )}
     </QueryState>
   );
 }
 
-function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
+function CarrierShipmentView({
+  shipment,
+  liveStatus,
+}: {
+  shipment: CarrierShipment;
+  liveStatus: LiveStatus;
+}) {
   const { id } = shipment;
   const session = useSession();
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
 
-  const canAdvance =
-    session?.role === 'CARRIER_MANAGER' ||
-    shipment.ownerEmail === session?.email;
+  const isOwner = shipment.ownerEmail === session?.email;
+  const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
+  useCancelledNotice(shipment.status, isOwner);
   const actionState = getActionState(shipment, canAdvance);
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-      <ShipmentHeaderCard shipment={shipment}>
+      <ShipmentHeaderCard shipment={shipment} liveStatus={liveStatus}>
         <DetailRow label="Seller" value={shipment.sellerCompanyName} />
         <DetailRow label="Seller contact" value={shipment.sellerEmail} />
         <DetailRow label="Modality" value={shipment.modalityName} />
@@ -119,6 +130,18 @@ function CarrierShipmentView({ shipment }: { shipment: CarrierShipment }) {
       </div>
     </div>
   );
+}
+
+function useCancelledNotice(status: ShipmentStatus, isOwner: boolean): void {
+  const previous = useRef({ status, isOwner });
+
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = { status, isOwner };
+    if (status === 'CANCELLED' && before.status !== status && before.isOwner) {
+      toast.info('The seller cancelled this shipment.');
+    }
+  }, [status, isOwner]);
 }
 
 const SETBACK_CONFIRMATION: Partial<

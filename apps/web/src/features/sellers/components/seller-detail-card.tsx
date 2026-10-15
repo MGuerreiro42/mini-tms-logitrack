@@ -1,7 +1,8 @@
 'use client';
 
-import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
+import { CompanyReview } from '@/features/companies/components/company-cards';
+import { formatDateTime } from '@/lib/format-date';
 import {
   useApproveSeller,
   useRejectSeller,
@@ -23,7 +24,7 @@ export function SellerDetailCard({ id }: { id: string }) {
       {(seller) => (
         <CompanyReview
           company={seller}
-          rows={sellerDetails(seller, (iso) => new Date(iso).toLocaleString())}
+          rows={sellerDetails(seller, formatDateTime)}
           approve={approve}
           reject={reject}
         />

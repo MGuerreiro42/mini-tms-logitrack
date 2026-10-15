@@ -1,14 +1,16 @@
 import { act, screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { getPublicSocket } from '@/services/websocket-client';
-import { useRealtimeStore } from '@/store/realtime-store';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import type { PublicTracking } from '../types';
 import { PublicTrackingDetails } from './public-tracking-details';
 
-vi.mock('@/services/websocket-client', () => ({ getPublicSocket: vi.fn() }));
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getPublicSocket: vi.fn(),
+}));
 
 const API_URL = 'http://localhost:3333';
 
@@ -41,7 +43,7 @@ describe('PublicTrackingDetails', () => {
   it('subscribes to the tracking room and goes live once the server acks', async () => {
     renderWithQueryClient(<PublicTrackingDetails initialData={tracking} />);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Reconnecting');
+    expect(screen.getByRole('status')).toHaveTextContent('Connecting…');
     act(() => socket.trigger('connect'));
 
     const [event, code] = socket.emit.mock.calls[0];
@@ -71,17 +73,28 @@ describe('PublicTrackingDetails', () => {
     );
 
     expect((await screen.findAllByText('Collected')).length).toBeGreaterThan(0);
+    expect(document.title).toBe('TMS-AAA111 · Collected · Mini TMS');
   });
 
-  it('disconnects and resets the live flag on unmount', () => {
+  it('tells the visitor it fell back to refreshing when the socket drops', async () => {
+    renderWithQueryClient(<PublicTrackingDetails initialData={tracking} />);
+    act(() => socket.trigger('connect'));
+    await act(async () => socket.ackAll({ ok: true }));
+
+    act(() => socket.trigger('disconnect'));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Offline · updates refresh every few seconds',
+    );
+  });
+
+  it('disconnects on unmount', () => {
     const { unmount } = renderWithQueryClient(
       <PublicTrackingDetails initialData={tracking} />,
     );
-    act(() => useRealtimeStore.getState().setConnected(true));
 
     unmount();
 
     expect(socket.disconnect).toHaveBeenCalled();
-    expect(useRealtimeStore.getState().connected).toBe(false);
   });
 });

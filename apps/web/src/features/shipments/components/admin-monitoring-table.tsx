@@ -13,6 +13,7 @@ import {
   statusFilterOptions,
 } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
+import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
@@ -32,17 +33,17 @@ export function AdminMonitoringTable({
   sellerOptions,
 }: AdminMonitoringTableProps) {
   const { filters, setFilter, setPage, params } = useFilteredPagination({
-    status: 'ALL' as StatusFilter<ShipmentStatus>,
-    carrierId: 'ALL',
-    sellerId: 'ALL',
+    status: ALL as StatusFilter<ShipmentStatus>,
+    carrierId: ALL as string,
+    sellerId: ALL as string,
   });
 
-  const query = useAdminShipments(params);
-  useShipmentTracking({ subscribeToMonitoring: true });
+  const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
+  const query = useAdminShipments(params, liveStatus);
 
   return (
     <div className="space-y-4">
-      <LiveIndicator />
+      <LiveIndicator status={liveStatus} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
         value={filters.status}

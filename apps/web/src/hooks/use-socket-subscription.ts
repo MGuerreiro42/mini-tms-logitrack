@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useEffectEvent } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import type { Socket } from 'socket.io-client';
-import { useRealtimeStore } from '@/store/realtime-store';
+import type { LiveStatus } from '@/lib/live-status';
+import { retainSocket } from '@/services/websocket-client';
 
 const ACK_TIMEOUT_MS = 5000;
 
@@ -32,15 +33,14 @@ function subscribe(
   });
 }
 
-// Live only once every room acked; until then the fallback poll keeps running.
 export function useSocketSubscription<P>({
   getSocket,
   connectionKey,
   subscriptions,
   updateEvent,
   onUpdate,
-}: UseSocketSubscriptionOptions<P>): void {
-  const setConnected = useRealtimeStore((state) => state.setConnected);
+}: UseSocketSubscriptionOptions<P>): LiveStatus {
+  const [status, setStatus] = useState<LiveStatus>('connecting');
   const resolveSocket = useEffectEvent(getSocket);
   const notify = useEffectEvent((payload?: P) => onUpdate(payload));
   const subscriptionsKey = JSON.stringify(subscriptions);
@@ -50,37 +50,46 @@ export function useSocketSubscription<P>({
 
     const socket = resolveSocket();
     const rooms: SocketSubscription[] = JSON.parse(subscriptionsKey);
-    let active = true;
+    let attempt = 0;
 
     function handleUpdate(payload?: P) {
       notify(payload);
     }
 
-    // Rooms aren't replayed after a reconnect: re-subscribe, then refetch to catch up.
+    // Rooms aren't replayed after a reconnect; the catch-up refetch waits for the acks so nothing emitted before the join is missed.
     function handleConnect() {
+      const current = ++attempt;
       Promise.all(rooms.map((room) => subscribe(socket, room))).then((oks) => {
-        if (active) setConnected(oks.every(Boolean));
+        // An ack that times out after a newer connection went live must not flip it back.
+        if (current !== attempt) return;
+        setStatus(oks.every(Boolean) ? 'live' : 'offline');
+        notify();
       });
-      handleUpdate();
     }
 
-    function handleDisconnect() {
-      setConnected(false);
+    function handleOffline() {
+      attempt++;
+      setStatus('offline');
     }
 
     socket.on(updateEvent, handleUpdate);
     socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.connect();
+    socket.on('disconnect', handleOffline);
+    socket.on('connect_error', handleOffline);
+    const release = retainSocket(socket);
+    // A socket another subscriber already holds open fires no connect event for this one.
     if (socket.connected) handleConnect();
 
     return () => {
-      active = false;
+      attempt++;
       socket.off(updateEvent, handleUpdate);
       socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.disconnect();
-      setConnected(false);
+      socket.off('disconnect', handleOffline);
+      socket.off('connect_error', handleOffline);
+      release();
+      setStatus('connecting');
     };
-  }, [connectionKey, subscriptionsKey, updateEvent, setConnected]);
+  }, [connectionKey, subscriptionsKey, updateEvent]);
+
+  return status;
 }

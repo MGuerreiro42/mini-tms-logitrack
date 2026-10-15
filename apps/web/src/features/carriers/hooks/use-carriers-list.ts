@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { listCarriers } from '../api';
 import { carrierKeys } from '../api/keys';
@@ -13,5 +13,6 @@ export function useCarriersList(query: ListCarriersQuery) {
     queryKey: carrierKeys.list(query),
     queryFn: () => listCarriers(query, token),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }

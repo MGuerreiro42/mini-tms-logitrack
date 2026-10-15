@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
@@ -46,6 +46,23 @@ describe('useApiMutation', () => {
     expect(mutationFn).toHaveBeenCalledWith(undefined, 't');
     expect(toast.success).toHaveBeenCalledWith('Saved');
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['things'] });
+  });
+
+  it('stays pending until the refreshed queries have settled', async () => {
+    let finishRefetch: () => void = () => {};
+    const { result, invalidate } = setup(() => Promise.resolve());
+    invalidate.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishRefetch = resolve;
+      }),
+    );
+
+    act(() => result.current.mutate(undefined));
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
+    expect(result.current.isPending).toBe(true);
+
+    await act(async () => finishRefetch());
+    await waitFor(() => expect(result.current.isPending).toBe(false));
   });
 
   it('refreshes and shows the conflict message on a 409', async () => {

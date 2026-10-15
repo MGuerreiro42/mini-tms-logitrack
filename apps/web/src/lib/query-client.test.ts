@@ -7,6 +7,10 @@ describe('shouldRetry', () => {
     expect(shouldRetry(0, new ApiError(404, 'Not found'))).toBe(false);
   });
 
+  it('does not hammer a rate-limited endpoint', () => {
+    expect(shouldRetry(0, new ApiError(429, 'Too many requests'))).toBe(false);
+  });
+
   it('retries server and network errors up to 3 times', () => {
     expect(shouldRetry(0, new ApiError(503, 'Unavailable'))).toBe(true);
     expect(shouldRetry(2, new TypeError('Failed to fetch'))).toBe(true);
@@ -63,7 +67,7 @@ describe('global 401 handling', () => {
     });
   });
 
-  it('clears the session and redirects to /login on a 401', async () => {
+  it('clears the session and redirects to the expired-session login on a 401', async () => {
     const client = getQueryClient();
     client.setQueryData(['stale'], 'previous user data');
 
@@ -75,8 +79,22 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login');
+    expect(window.location.href).toBe('/login?expired=1');
     expect(client.getQueryData(['stale'])).toBeUndefined();
+  });
+
+  it('keeps the session when a request is rate limited', async () => {
+    const client = getQueryClient();
+
+    await client
+      .fetchQuery({
+        queryKey: ['test-429'],
+        queryFn: () => Promise.reject(new ApiError(429, 'Too many requests')),
+      })
+      .catch(() => {});
+
+    expect(document.cookie).toContain('tms_session=');
+    expect(window.location.href).toBe('');
   });
 
   it('leaves the session untouched for a non-401/403 query error', async () => {
@@ -110,7 +128,7 @@ describe('global 401 handling', () => {
     expect(window.location.href).toBe('');
   });
 
-  it('clears the session and redirects to /login on a 401 mutation error (handleMutationError is a separate function from handleQueryError — needs its own coverage)', async () => {
+  it('clears the session and redirects to the expired-session login on a 401 mutation error (handleMutationError is a separate function from handleQueryError — needs its own coverage)', async () => {
     const client = getQueryClient();
     const mutation = client.getMutationCache().build(client, {
       mutationFn: () => Promise.reject(new ApiError(401, 'Token expired')),
@@ -119,7 +137,7 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(window.location.href).toBe('/login');
+    expect(window.location.href).toBe('/login?expired=1');
   });
 
   it('does NOT clear the session on a 403 mutation error (a legitimate ownership rejection, not a broken session)', async () => {

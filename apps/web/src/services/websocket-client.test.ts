@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import { getSessionFromDocument } from '@/lib/session';
-import { getPublicSocket, getSocket } from './websocket-client';
+import { makeFakeSocket } from '@/test/fake-socket';
+import { getPublicSocket, getSocket, retainSocket } from './websocket-client';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({})) }));
 vi.mock('@/lib/session', () => ({ getSessionFromDocument: vi.fn() }));
@@ -55,5 +56,48 @@ describe('getPublicSocket', () => {
     expect(url).toBe('http://localhost:3333/public');
     expect(options).toMatchObject({ transports: ['websocket'] });
     expect(options).not.toHaveProperty('auth');
+  });
+});
+
+describe('retainSocket', () => {
+  it('connects for the first consumer only', () => {
+    const socket = makeFakeSocket();
+
+    retainSocket(socket as never);
+    retainSocket(socket as never);
+
+    expect(socket.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('disconnects only when the last consumer releases', () => {
+    const socket = makeFakeSocket();
+    const releaseFirst = retainSocket(socket as never);
+    const releaseSecond = retainSocket(socket as never);
+
+    releaseFirst();
+    expect(socket.disconnect).not.toHaveBeenCalled();
+
+    releaseSecond();
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a repeated release from the same consumer', () => {
+    const socket = makeFakeSocket();
+    const releaseFirst = retainSocket(socket as never);
+    retainSocket(socket as never);
+
+    releaseFirst();
+    releaseFirst();
+
+    expect(socket.disconnect).not.toHaveBeenCalled();
+  });
+
+  it('reconnects when a consumer returns after the last release', () => {
+    const socket = makeFakeSocket();
+
+    retainSocket(socket as never)();
+    retainSocket(socket as never);
+
+    expect(socket.connect).toHaveBeenCalledTimes(2);
   });
 });

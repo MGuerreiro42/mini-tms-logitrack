@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { listShipments } from '../api';
 import { shipmentKeys } from '../api/keys';
@@ -13,5 +13,6 @@ export function useShipmentsList(query: ListShipmentsQuery) {
     queryKey: shipmentKeys.list(query),
     queryFn: () => listShipments(query, token),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }

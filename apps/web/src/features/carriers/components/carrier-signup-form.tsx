@@ -1,6 +1,6 @@
 'use client';
 
-import { CompanySignupForm } from '@/components/common/company-signup-form';
+import { CompanySignupForm } from '@/features/companies/components/company-signup-form';
 import { useCarrierSignupMutation } from '../hooks/use-carrier-signup';
 
 const LABELS = {

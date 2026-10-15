@@ -3,16 +3,30 @@
 import Link from 'next/link';
 import { CenteredPage } from '@/components/common/centered-page';
 import { PublicCard } from '@/components/common/public-card';
-import type { SegmentErrorProps } from '@/components/common/segment-error';
+import {
+  ErrorReference,
+  type SegmentErrorProps,
+  useLoggedError,
+} from '@/components/common/segment-error';
 import { Button } from '@/components/ui/button';
 
-export default function RootError({ unstable_retry }: SegmentErrorProps) {
+export default function RootError({
+  error,
+  unstable_retry,
+}: SegmentErrorProps) {
+  useLoggedError(error);
+
   return (
     <CenteredPage>
       <PublicCard
         badge={false}
         title="Something went wrong"
-        description="An unexpected error occurred. Try again, or head back home."
+        description={
+          <>
+            An unexpected error occurred. Try again, or head back home.
+            <ErrorReference digest={error.digest} />
+          </>
+        }
         actions={
           <>
             <Button onClick={() => unstable_retry()}>Try again</Button>

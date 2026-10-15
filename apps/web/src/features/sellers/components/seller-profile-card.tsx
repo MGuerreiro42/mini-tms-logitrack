@@ -1,7 +1,8 @@
 'use client';
 
-import { CompanyProfile } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
+import { CompanyProfile } from '@/features/companies/components/company-cards';
+import { formatDate } from '@/lib/format-date';
 import { useMySeller } from '../hooks/use-my-seller';
 import { sellerDetails } from '../lib/seller-details';
 
@@ -14,9 +15,7 @@ export function SellerProfileCard() {
       {(seller) => (
         <CompanyProfile
           company={seller}
-          rows={sellerDetails(seller, (iso) =>
-            new Date(iso).toLocaleDateString(),
-          )}
+          rows={sellerDetails(seller, formatDate)}
         />
       )}
     </QueryState>

@@ -14,6 +14,26 @@ describe('ShipmentAddressForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('exposes the chosen modality as a pressed button', async () => {
+    const user = userEvent.setup();
+    render(
+      <ShipmentAddressForm
+        modalities={[...standard, { id: 'modality-2', name: 'Express' }]}
+        onNext={vi.fn()}
+      />,
+    );
+    const express = screen.getByRole('button', { name: 'Express' });
+    expect(express).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(express);
+
+    expect(express).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Standard' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
   it('shows a hint when no modality is enabled yet', async () => {
     render(<ShipmentAddressForm modalities={[]} onNext={vi.fn()} />);
 
