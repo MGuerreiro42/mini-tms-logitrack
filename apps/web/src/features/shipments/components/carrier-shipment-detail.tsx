@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
@@ -129,11 +129,11 @@ function ownerMeta(
   return isClaimable(shipment) ? 'Unclaimed' : undefined;
 }
 
-// One element serves both layouts: pinned above the tab bar on mobile, inside the panel on desktop.
+// Same element on both layouts.
 const PINNED =
-  'max-lg:fixed max-lg:inset-x-4 max-lg:bottom-[calc(--spacing(16)+max(--spacing(2),env(safe-area-inset-bottom)))] max-lg:z-30 max-lg:h-12 max-lg:shadow-panel';
+  'lg:ml-auto max-lg:fixed max-lg:inset-x-4 max-lg:bottom-[calc(--spacing(16)+max(--spacing(2),env(safe-area-inset-bottom)))] max-lg:z-30 max-lg:h-12 max-lg:shadow-panel';
 const INVERSE =
-  'lg:bg-primary-inverse lg:text-foreground lg:hover:bg-primary-inverse/85 lg:focus-visible:ring-primary-inverse/60';
+  'lg:bg-primary-inverse lg:text-foreground lg:hover:bg-primary-inverse/85 lg:focus-visible:ring-primary-inverse/60 lg:disabled:bg-background/15 lg:disabled:text-background/70 lg:disabled:opacity-100';
 
 interface StepCopy {
   title: string;
@@ -151,7 +151,9 @@ function NextStep({
   const claim = useClaimShipment();
   const updateStatus = useUpdateShipmentStatus();
   const setBack = useUpdateShipmentStatus('inline');
-  const [note, setNote] = useState('');
+  const [draft, setDraft] = useState({ status, note: '' });
+  const note = draft.status === status ? draft.note : '';
+  const noteInput = note.trim() || undefined;
   const isUpdating = updateStatus.isPending || setBack.isPending;
 
   const nextStatuses =
@@ -172,6 +174,7 @@ function NextStep({
     action = (
       <Button
         size="lg"
+        data-pinned-action
         className={cn(PINNED, INVERSE)}
         onClick={() => claim.mutate(id)}
         disabled={claim.isPending}
@@ -185,16 +188,14 @@ function NextStep({
     action = (
       <Button
         size="lg"
+        data-pinned-action
         className={cn(PINNED, INVERSE)}
         onClick={() =>
-          updateStatus.mutate(
-            { id, status: advance, note: note.trim() || undefined },
-            { onSuccess: () => setNote('') },
-          )
+          updateStatus.mutate({ id, status: advance, note: noteInput })
         }
         disabled={isUpdating}
       >
-        Advance to {label}
+        Advance to {label.toLowerCase()}
       </Button>
     );
   } else if (setbackStep) {
@@ -218,7 +219,7 @@ function NextStep({
   const strong = primary !== undefined || actionState.kind === 'claim';
   const quiet = strong ? 'text-background/70' : 'text-muted-foreground';
 
-  // Setbacks keep a stable slot, even when unavailable, so a dialog left open can explain why its step went away.
+  // Stable slot keeps an open dialog mounted.
   return (
     <section
       aria-label="Next step"
@@ -228,7 +229,7 @@ function NextStep({
       )}
     >
       <div className="flex flex-col gap-1">
-        <p className={cn('text-[13px]', quiet)}>Next step</p>
+        <p className={cn('text-sm', quiet)}>Next step</p>
         <h2 className="text-2xl font-semibold tracking-tight">{copy.title}</h2>
         {copy.description && (
           <p className={cn('max-w-[65ch] text-[15px]', quiet)}>
@@ -236,19 +237,26 @@ function NextStep({
           </p>
         )}
       </div>
-      {advance && <NoteField value={note} onChange={setNote} />}
-      <div className="flex flex-wrap items-center gap-2 empty:hidden lg:flex-row-reverse">
-        {action}
+      {primary && (
+        <NoteField
+          value={note}
+          onChange={(next) => setDraft({ status, note: next })}
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-2 empty:hidden">
         {SETBACK_STATUSES.map((setback) => (
           <SetbackAction
             key={setback}
             status={setback}
             available={nextStatuses.includes(setback)}
-            onConfirm={() => setBack.mutateAsync({ id, status: setback })}
+            onConfirm={() =>
+              setBack.mutateAsync({ id, status: setback, note: noteInput })
+            }
             isPending={isUpdating}
-            className={setback === setbackStep ? PINNED : undefined}
+            pinned={setback === setbackStep}
           />
         ))}
+        {action}
       </div>
     </section>
   );
@@ -261,16 +269,18 @@ function NoteField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const id = useId();
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3 text-[13px] text-background/70">
-        <label htmlFor="next-step-note">Note for the seller, optional</label>
+      <div className="flex items-baseline justify-between gap-3 text-sm text-background/70">
+        <label htmlFor={id}>Note for the seller, optional</label>
         <span aria-hidden>
           {value.length} / {TRACKING_NOTE_MAX_LENGTH}
         </span>
       </div>
       <textarea
-        id="next-step-note"
+        id={id}
         rows={2}
         value={value}
         maxLength={TRACKING_NOTE_MAX_LENGTH}
@@ -322,13 +332,13 @@ function SetbackAction({
   available,
   onConfirm,
   isPending,
-  className,
+  pinned,
 }: {
   status: Setback;
   available: boolean;
   onConfirm: () => Promise<unknown>;
   isPending: boolean;
-  className?: string;
+  pinned: boolean;
 }) {
   const { action, title, description } = SETBACKS[status];
 
@@ -337,8 +347,9 @@ function SetbackAction({
       trigger={
         <Button
           variant="destructive"
-          size={className ? 'lg' : 'default'}
-          className={className}
+          size={pinned ? 'lg' : 'default'}
+          className={pinned ? PINNED : undefined}
+          data-pinned-action={pinned || undefined}
           disabled={isPending}
         >
           {action}

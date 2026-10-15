@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 type ChartSectionProps = {
   title: string;
   description?: string;
-  isEmpty: boolean;
-  emptyMessage: string;
+  isEmpty?: boolean;
+  emptyMessage?: string;
   className?: string;
   children: ReactNode;
 };
@@ -13,7 +13,7 @@ type ChartSectionProps = {
 export function ChartSection({
   title,
   description,
-  isEmpty,
+  isEmpty = false,
   emptyMessage,
   className,
   children,

@@ -122,7 +122,7 @@ describe('CarrierShipmentDetail', () => {
 
     await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
-      screen.getByRole('button', { name: 'Advance to Collected' }),
+      screen.getByRole('button', { name: 'Advance to collected' }),
     ).toBeInTheDocument();
   });
 
@@ -142,8 +142,37 @@ describe('CarrierShipmentDetail', () => {
       screen.queryByRole('button', { name: /Advance to/ }),
     ).not.toBeInTheDocument();
     expect(
+      screen.getByRole('heading', { name: 'Waiting on the owner' }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/Only the owner or the carrier manager/),
     ).toBeInTheDocument();
+  });
+
+  it('drops a draft note once the status moves on', async () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    setSession({
+      token: 't',
+      role: 'CARRIER_OPERATOR',
+      userId: 'user-1',
+      email: 'operator@example.com',
+    });
+    mockDetail(claimedByOperator);
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+    await user.type(
+      await screen.findByLabelText('Note for the seller, optional'),
+      'Draft',
+    );
+
+    mockDetail({ ...claimedByOperator, status: 'COLLECTED' });
+    socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
+
+    await screen.findByRole('button', { name: 'Advance to in transit' });
+    expect(screen.getByLabelText('Note for the seller, optional')).toHaveValue(
+      '',
+    );
   });
 
   it('shows the Advance control to the carrier manager even when they are not the owner', async () => {
@@ -159,7 +188,7 @@ describe('CarrierShipmentDetail', () => {
 
     await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
-      screen.getByRole('button', { name: 'Advance to Collected' }),
+      screen.getByRole('button', { name: 'Advance to collected' }),
     ).toBeInTheDocument();
   });
 
@@ -212,8 +241,12 @@ describe('CarrierShipmentDetail', () => {
     const user = userEvent.setup();
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
+    await user.type(
+      await screen.findByLabelText('Note for the seller, optional'),
+      'Nobody at the door',
+    );
     await user.click(
-      await screen.findByRole('button', { name: 'Report failed delivery' }),
+      screen.getByRole('button', { name: 'Report failed delivery' }),
     );
     expect(body).toBeUndefined();
     const dialog = screen.getByRole('dialog');
@@ -222,7 +255,12 @@ describe('CarrierShipmentDetail', () => {
       within(dialog).getByRole('button', { name: 'Report failed delivery' }),
     );
 
-    await waitFor(() => expect(body).toEqual({ status: 'FAILED_DELIVERY' }));
+    await waitFor(() =>
+      expect(body).toEqual({
+        status: 'FAILED_DELIVERY',
+        note: 'Nobody at the door',
+      }),
+    );
   });
 
   it('sends the optional note with the advance', async () => {
@@ -254,7 +292,7 @@ describe('CarrierShipmentDetail', () => {
       ' Picked up at the dock ',
     );
     await user.click(
-      screen.getByRole('button', { name: 'Advance to Collected' }),
+      screen.getByRole('button', { name: 'Advance to collected' }),
     );
 
     await waitFor(() =>

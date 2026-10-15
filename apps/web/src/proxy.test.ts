@@ -6,7 +6,7 @@ import { config, proxy } from './proxy';
 const HOMES = [
   ['ADMIN', '/admin'],
   ['SELLER', '/seller'],
-  ['CARRIER_OPERATOR', '/carrier'],
+  ['CARRIER_OPERATOR', '/carrier/queue'],
 ] as const;
 
 function request(path: string, role?: GlobalRole) {
