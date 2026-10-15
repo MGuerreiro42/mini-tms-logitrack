@@ -12,6 +12,7 @@ function renderReview(status: 'PENDING' | 'APPROVED' | 'REJECTED') {
     <CompanyReview
       company={{ companyName: 'Acme Log', status }}
       rows={[{ label: 'Document', value: '12.345.678/0001-90' }]}
+      back={{ href: '/admin/sellers', label: 'Sellers' }}
       approve={idle}
       reject={idle}
     />,

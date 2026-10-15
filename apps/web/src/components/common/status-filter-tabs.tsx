@@ -13,14 +13,13 @@ export interface StatusFilterOption<S extends string> {
 export function statusFilterOptions<S extends string>(
   meta: Record<S, { label: string }>,
   statuses: S[],
-  allPosition: 'first' | 'last' = 'first',
 ): StatusFilterOption<S>[] {
   const all: StatusFilterOption<S> = { label: 'All', value: ALL };
   const options = statuses.map((status) => ({
     label: meta[status].label,
     value: status,
   }));
-  return allPosition === 'first' ? [all, ...options] : [...options, all];
+  return [all, ...options];
 }
 
 export function statusFilterValues<S extends string>(

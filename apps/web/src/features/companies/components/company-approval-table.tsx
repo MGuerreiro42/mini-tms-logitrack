@@ -1,22 +1,25 @@
 'use client';
 
 import {
+  type FilterChoice,
+  FilterMenu,
+  FilterToolbar,
+} from '@/components/common/filter-toolbar';
+import {
   type Column,
   PaginatedTable,
 } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import {
-  type StatusFilter,
-  StatusFilterTabs,
-  statusFilterOptions,
-  statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+import type { StatusFilter } from '@/components/common/status-filter-tabs';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
+import { ALL } from '@/lib/filters';
 import { formatDate } from '@/lib/format-date';
+import { plural } from '@/lib/plural';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
+import { sumRecord } from '@/lib/sum-record';
 import type { Paginated } from '@/types/pagination';
 import type { QuerySource } from '@/types/query';
-import type { ApprovalStatus } from '@/types/status';
+import type { ApprovalStatus, ApprovalStatusCounts } from '@/types/status';
 
 interface CompanyRow {
   id: string;
@@ -26,18 +29,32 @@ interface CompanyRow {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = statusFilterOptions(
-  APPROVAL_STATUS,
-  ['PENDING', 'APPROVED', 'REJECTED'],
-  'last',
-);
+const STATUSES: ApprovalStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
-export const APPROVAL_FILTER_VALUES = statusFilterValues(STATUS_OPTIONS);
+export const APPROVAL_FILTER_VALUES: StatusFilter<ApprovalStatus>[] = [
+  ...STATUSES,
+  ALL,
+];
+
+function statusChoices(
+  counts: ApprovalStatusCounts | undefined,
+): FilterChoice<StatusFilter<ApprovalStatus>>[] {
+  return [
+    ...STATUSES.map((status) => ({
+      value: status,
+      label: APPROVAL_STATUS[status].label,
+      count: counts?.[status],
+    })),
+    { value: ALL, label: 'All', count: counts && sumRecord(counts) },
+  ];
+}
 
 interface CompanyApprovalTableProps<T extends CompanyRow> {
   query: QuerySource<Paginated<T>>;
+  counts?: ApprovalStatusCounts;
   status: StatusFilter<ApprovalStatus>;
   onStatusChange: (status: StatusFilter<ApprovalStatus>) => void;
+  onClear?: () => void;
   onPageChange: (page: number) => void;
   hrefFor: (row: T) => string;
   noun: string;
@@ -46,45 +63,59 @@ interface CompanyApprovalTableProps<T extends CompanyRow> {
 
 export function CompanyApprovalTable<T extends CompanyRow>({
   query,
+  counts,
   status,
   onStatusChange,
+  onClear,
   onPageChange,
   hrefFor,
   noun,
   extraColumns = [],
 }: CompanyApprovalTableProps<T>) {
+  const total = query.data?.meta.total;
   const columns: Column<T>[] = [
     {
       header: 'Company',
+      card: 'title',
       cell: (c) => <span className="font-semibold">{c.companyName}</span>,
     },
     {
-      header: 'Document',
-      cell: (c) => <span className="font-mono text-xs">{c.document}</span>,
+      header: 'Tax ID',
+      card: 'meta',
+      cell: (c) => <span className="font-mono text-[13px]">{c.document}</span>,
     },
     ...extraColumns,
     {
       header: 'Status',
+      card: 'badge',
       cell: (c) => <ApprovalStatusBadge status={c.status} />,
     },
     {
-      header: 'Created',
+      header: 'Signed up',
+      card: 'meta',
       className: 'text-right text-muted-foreground',
       cell: (c) => formatDate(c.createdAt),
     },
   ];
 
   return (
-    <div className="space-y-4">
-      <StatusFilterTabs
-        options={STATUS_OPTIONS}
-        value={status}
-        onChange={onStatusChange}
-      />
+    <div className="flex flex-col gap-4">
+      <FilterToolbar
+        onClear={onClear}
+        summary={total !== undefined && plural(total, noun)}
+      >
+        <FilterMenu
+          label="Status"
+          value={status}
+          defaultValue="PENDING"
+          options={statusChoices(counts)}
+          onChange={onStatusChange}
+        />
+      </FilterToolbar>
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
         query={query}
-        errorMessage={`Couldn't load ${noun}.`}
+        errorMessage={`Couldn't load ${noun}s.`}
       >
         {(result) => (
           <PaginatedTable<T>
@@ -93,7 +124,7 @@ export function CompanyApprovalTable<T extends CompanyRow>({
             onPageChange={onPageChange}
             getRowKey={(row) => row.id}
             getRowHref={hrefFor}
-            emptyMessage={`No ${noun} match this filter.`}
+            emptyMessage={`No ${noun}s match this filter.`}
             columns={columns}
           />
         )}

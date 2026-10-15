@@ -1,8 +1,10 @@
 'use client';
 
+import type { ReactNode } from 'react';
+import { Breadcrumb } from '@/components/common/breadcrumb';
 import { DetailRow } from '@/components/common/detail-row';
 import { PageHeader } from '@/components/common/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Panel } from '@/components/common/panel';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import type { ApprovalStatus } from '@/types/status';
 import { ApproveRejectActions } from './approve-reject-actions';
@@ -18,24 +20,21 @@ interface Company {
   status: ApprovalStatus;
 }
 
-function DetailsCard({
-  title,
+function DetailsPanel({
   rows,
+  aside,
 }: {
-  title: string;
   rows: CompanyDetail[];
+  aside?: ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
+    <Panel title="Company details" aside={aside} className="max-w-3xl">
+      <div className="text-sm">
         {rows.map((row) => (
           <DetailRow key={row.label} {...row} />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </Panel>
   );
 }
 
@@ -47,20 +46,10 @@ export function CompanyProfile({
   rows: CompanyDetail[];
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-      <DetailsCard
-        title="Company details"
-        rows={[{ label: 'Company name', value: company.companyName }, ...rows]}
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ApprovalStatusBadge status={company.status} />
-        </CardContent>
-      </Card>
-    </div>
+    <DetailsPanel
+      aside={<ApprovalStatusBadge status={company.status} />}
+      rows={[{ label: 'Company name', value: company.companyName }, ...rows]}
+    />
   );
 }
 
@@ -79,37 +68,42 @@ interface Mutation {
 export function CompanyReview({
   company,
   rows,
+  back,
   approve,
   reject,
 }: {
   company: Company;
   rows: CompanyDetail[];
+  back: { href: string; label: string };
   approve: Mutation;
   reject: Mutation;
 }) {
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={
-          <span className="flex flex-wrap items-center gap-3">
-            {company.companyName}
-            <ApprovalStatusBadge status={company.status} />
-          </span>
-        }
-        description={
-          <span role="status">{REVIEW_SUBTITLE[company.status]}</span>
-        }
-        action={
-          <ApproveRejectActions
-            status={company.status}
-            onApprove={() => approve.mutate()}
-            onReject={() => reject.mutateAsync()}
-            isApproving={approve.isPending}
-            isRejecting={reject.isPending}
-          />
-        }
-      />
-      <DetailsCard title="Details" rows={rows} />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <Breadcrumb parent={back}>{company.companyName}</Breadcrumb>
+        <PageHeader
+          title={
+            <span className="flex flex-wrap items-center gap-3.5">
+              {company.companyName}
+              <ApprovalStatusBadge status={company.status} />
+            </span>
+          }
+          description={
+            <span role="status">{REVIEW_SUBTITLE[company.status]}</span>
+          }
+          action={
+            <ApproveRejectActions
+              status={company.status}
+              onApprove={() => approve.mutate()}
+              onReject={() => reject.mutateAsync()}
+              isApproving={approve.isPending}
+              isRejecting={reject.isPending}
+            />
+          }
+        />
+      </div>
+      <DetailsPanel rows={rows} />
     </div>
   );
 }

@@ -25,6 +25,7 @@ export function SellerDetailCard({ id }: { id: string }) {
         <CompanyReview
           company={seller}
           rows={sellerDetails(seller, formatDateTime)}
+          back={{ href: '/admin/sellers', label: 'Sellers' }}
           approve={approve}
           reject={reject}
         />

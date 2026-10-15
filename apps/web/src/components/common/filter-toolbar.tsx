@@ -23,6 +23,7 @@ export interface FilterChoice<V extends string> {
 interface FilterMenuProps<V extends string> {
   label: string;
   value: V;
+  defaultValue?: V;
   options: FilterChoice<V>[];
   onChange: (value: V) => void;
 }
@@ -30,6 +31,7 @@ interface FilterMenuProps<V extends string> {
 export function FilterMenu<V extends string>({
   label,
   value,
+  defaultValue = ALL as V,
   options,
   onChange,
 }: FilterMenuProps<V>) {
@@ -42,7 +44,7 @@ export function FilterMenu<V extends string>({
           variant="outline"
           className={cn(
             'font-normal',
-            value !== ALL && 'bg-selected hover:bg-selected',
+            value !== defaultValue && 'bg-selected hover:bg-selected',
           )}
         >
           {label}: <span className="font-semibold">{selected?.label}</span>{' '}

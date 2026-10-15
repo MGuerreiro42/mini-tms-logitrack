@@ -25,6 +25,7 @@ export function CarrierDetailCard({ id }: { id: string }) {
         <CompanyReview
           company={carrier}
           rows={carrierDetails(carrier, formatDateTime)}
+          back={{ href: '/admin/carriers', label: 'Carriers' }}
           approve={approve}
           reject={reject}
         />
