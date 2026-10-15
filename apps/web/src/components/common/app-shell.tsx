@@ -12,8 +12,8 @@ interface AppShellProps {
 
 export function AppShell({ navItems, user, children }: AppShellProps) {
   return (
-    <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:has-data-pinned-action:[--toast-bottom:calc(8.5rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-4 shadow-nav lg:h-16 lg:px-8">
+    <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-safe-4 shadow-nav short:static lg:h-16 lg:px-8">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary font-mono text-[10px] font-semibold text-primary-foreground">
             TMS
@@ -35,13 +35,13 @@ export function AppShell({ navItems, user, children }: AppShellProps) {
           />
         </div>
       </header>
-      <main className="flex-1 px-4 pt-5 pb-24 md:px-10 md:pt-7 lg:pb-10">
+      <main className="flex-1 px-safe-4 pt-5 pb-24 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
         {children}
       </main>
       <NavList
         items={navItems}
         variant="tabs"
-        className="fixed inset-x-0 bottom-0 z-40 lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 short:static lg:hidden"
       />
       <Toaster
         offset={{ bottom: 'var(--toast-bottom)' }}
