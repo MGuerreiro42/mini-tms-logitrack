@@ -80,7 +80,6 @@ export function PaginatedTable<T>({
             <Button
               variant="secondary"
               size="sm"
-              className="pointer-coarse:h-11"
               disabled={meta.page <= 1}
               onClick={() => onPageChange(meta.page - 1)}
             >
@@ -89,7 +88,6 @@ export function PaginatedTable<T>({
             <Button
               variant="strong"
               size="sm"
-              className="pointer-coarse:h-11"
               disabled={meta.page >= meta.totalPages}
               onClick={() => onPageChange(meta.page + 1)}
             >

@@ -99,7 +99,7 @@ export function CarrierQueueTable() {
                   isClaimable(s) ? (
                     <Button
                       size="sm"
-                      className="relative z-10 pointer-coarse:h-11 pointer-coarse:px-4"
+                      className="relative z-10 pointer-coarse:px-4"
                       aria-label={`Claim ${s.trackingCode}`}
                       onClick={() => claim.mutate(s.id)}
                       disabled={claim.isPending && claim.variables === s.id}

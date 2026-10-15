@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { PublicLink, PublicPage } from '@/components/common/public-page';
+import { PublicPage } from '@/components/common/public-page';
 import { SignOutButton } from '@/components/common/sign-out-button';
+import { TextLink } from '@/components/common/text-link';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
 import { ROUTES } from '@/lib/routes';
@@ -27,7 +28,7 @@ export default async function StatusPage() {
       <StatusCard
         title="Application submitted"
         body="Your application has been submitted and is pending review. You'll be able to sign in once an administrator reviews it."
-        action={<PublicLink href={ROUTES.login}>Back to sign in</PublicLink>}
+        action={<TextLink href={ROUTES.login}>Back to sign in</TextLink>}
       />
     );
   }

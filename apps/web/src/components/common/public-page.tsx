@@ -101,29 +101,12 @@ function Brand() {
   return (
     <Link
       href={ROUTES.home}
-      className="flex w-fit items-center gap-2.5 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="flex w-fit items-center gap-2.5 rounded-sm outline-none pointer-coarse:min-h-11 focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <span className="flex size-8 items-center justify-center rounded-md bg-primary font-mono text-[11px] font-semibold text-primary-foreground">
         TMS
       </span>
       <span className="text-[17px] font-semibold">Mini TMS</span>
-    </Link>
-  );
-}
-
-export function PublicLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="w-fit rounded-xs font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
-    >
-      {children}
     </Link>
   );
 }

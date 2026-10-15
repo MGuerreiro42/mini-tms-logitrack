@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { PublicLink, PublicPage } from '@/components/common/public-page';
+import { PublicPage } from '@/components/common/public-page';
+import { TextLink } from '@/components/common/text-link';
 import { PublicTrackingForm } from '@/features/tracking/components/public-tracking-form';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
@@ -21,8 +22,7 @@ export default async function PublicTrackingPage({
       description="No sign-in needed. Enter the tracking code you received."
       footer={
         <p>
-          Work with Mini TMS?{' '}
-          <PublicLink href={ROUTES.login}>Sign in</PublicLink>
+          Work with Mini TMS? <TextLink href={ROUTES.login}>Sign in</TextLink>
         </p>
       }
     >
