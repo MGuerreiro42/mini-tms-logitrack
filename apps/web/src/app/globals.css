@@ -71,6 +71,7 @@
   --color-status-cancelled-fg: var(--status-cancelled-fg);
   --color-status-cancelled-dot: var(--status-cancelled-dot);
   --shadow-panel: var(--panel-shadow);
+  --shadow-control: var(--control-shadow);
   --shadow-nav: 0 1px 0 var(--nav-line);
   --shadow-tab-bar: 0 -1px 0 var(--nav-line);
   --radius-xs: 5px;
@@ -84,6 +85,7 @@
 }
 
 :root {
+  color-scheme: light;
   --background: #f3f4f1;
   --wash: #e2e8e1;
   --foreground: #1c201e;
@@ -124,6 +126,7 @@
   --notice-foreground: #6b3610;
   --panel-shadow:
     0 1px 2px rgb(28 48 40 / 0.06), 0 10px 28px -14px rgb(28 48 40 / 0.22);
+  --control-shadow: 0 1px 2px rgb(28 48 40 / 0.08);
   --status-pending-bg: #f1ebd6;
   --status-pending-fg: #6a5414;
   --status-pending-dot: #a8862a;
@@ -154,6 +157,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #121614;
   --wash: #1b231f;
   --foreground: #e7ece8;
@@ -163,6 +167,8 @@
   --popover-foreground: #e7ece8;
   --primary: #6fb8a6;
   --primary-foreground: #0e1f1a;
+  --primary-inverse: #8fcfbf;
+  --primary-inverse-foreground: #1c201e;
   --emphasis: #1f3a33;
   --emphasis-foreground: #eef4f1;
   --secondary: #222823;
@@ -178,7 +184,7 @@
   --input: #343c37;
   --ring: #6fb8a6;
   --chart-1: #6fb8a6;
-  --chart-2: #2f3a35;
+  --chart-2: #43514a;
   --nav: #151a17;
   --field: #1d231f;
   --selected: #26302b;
@@ -190,6 +196,7 @@
   --notice: #36271c;
   --notice-foreground: #edb98e;
   --panel-shadow: 0 0 0 1px #222823, 0 12px 28px -16px rgb(0 0 0 / 0.6);
+  --control-shadow: 0 0 0 1px var(--input);
   --status-pending-bg: #33301f;
   --status-pending-fg: #e2cf8e;
   --status-pending-dot: #c9a848;
