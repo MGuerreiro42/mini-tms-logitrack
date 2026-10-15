@@ -101,18 +101,38 @@ describe('ConfirmDialog', () => {
   it('shows the API message of a failed confirmation and clears it on reopening', async () => {
     const user = userEvent.setup();
     renderDialog(
-      vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
+      vi.fn().mockRejectedValue(new ApiError(400, 'Reason is too long')),
     );
 
     await user.click(screen.getByRole('button', { name: 'Open' }));
     await user.click(screen.getByRole('button', { name: 'Reject' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Already rejected',
+      'Reason is too long',
     );
 
     await user.click(screen.getByRole('button', { name: 'Keep' }));
     await user.click(screen.getByRole('button', { name: 'Open' }));
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('settles a conflict into a single acknowledgement, keeping the input', async () => {
+    const user = userEvent.setup();
+    renderDialog(
+      vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.type(screen.getByLabelText('Reason'), 'Wrong address');
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Already reviewed.',
+    );
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+    expect(screen.getByLabelText('Reason')).toHaveValue('Wrong address');
+    expect(screen.getByLabelText('Reason')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('explains itself instead of vanishing when the action is withdrawn while open', async () => {
@@ -125,15 +145,15 @@ describe('ConfirmDialog', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Already reviewed.');
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
-    expect(screen.queryByLabelText('Reason')).toBeNull();
+    expect(screen.getByLabelText('Reason')).toBeDisabled();
 
-    await user.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Open' })).toBeNull();
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('keeps the API message when a conflict also withdraws the action', async () => {
+  it('explains a conflict with its own message, not the API one', async () => {
     const user = userEvent.setup();
     const { withdraw } = renderDialog(
       vi.fn().mockRejectedValue(new ApiError(409, 'Already rejected')),
@@ -144,7 +164,7 @@ describe('ConfirmDialog', () => {
     await screen.findByRole('alert');
     withdraw();
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Already rejected');
+    expect(screen.getByRole('alert')).toHaveTextContent('Already reviewed.');
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
   });
 

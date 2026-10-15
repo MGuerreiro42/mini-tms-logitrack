@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { DetailRow } from '@/components/common/detail-row';
-import { LiveIndicator } from '@/components/common/live-indicator';
+import {
+  LiveIndicator,
+  OfflineBanner,
+} from '@/components/common/live-indicator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
@@ -26,7 +29,10 @@ export function ShipmentHeaderCard({
           <LiveIndicator status={liveStatus} className="ml-auto" />
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 text-sm">{children}</CardContent>
+      <CardContent className="space-y-2 text-sm">
+        <OfflineBanner status={liveStatus} />
+        {children}
+      </CardContent>
     </Card>
   );
 }

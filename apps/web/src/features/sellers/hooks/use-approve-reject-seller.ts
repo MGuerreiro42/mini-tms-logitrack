@@ -16,6 +16,7 @@ export function useRejectSeller(id: string) {
   return useApiMutation({
     mutationFn: (_, token) => rejectSeller(id, token),
     successMessage: 'Seller rejected',
+    surface: 'inline',
     invalidates: sellerKeys.all,
   });
 }

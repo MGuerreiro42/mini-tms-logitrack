@@ -4,7 +4,7 @@ import {
   type Column,
   PaginatedTable,
 } from '@/components/common/paginated-table';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
   StatusFilterTabs,
@@ -81,7 +81,11 @@ export function CompanyApprovalTable<T extends CompanyRow>({
         value={status}
         onChange={onStatusChange}
       />
-      <QueryState query={query} errorMessage={`Couldn't load ${noun}.`}>
+      <QueryState
+        skeleton={<QuerySkeleton variant="table" />}
+        query={query}
+        errorMessage={`Couldn't load ${noun}.`}
+      >
         {(result) => (
           <PaginatedTable<T>
             data={result.data}

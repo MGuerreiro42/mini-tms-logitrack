@@ -6,6 +6,7 @@ import { ROUTES } from '@/lib/routes';
 import { hasStatus } from '@/services/api-client';
 import {
   canEnterSegment,
+  forbiddenPath,
   parseSessionCookie,
   SESSION_COOKIE,
   SESSION_EXPIRED_PATH,
@@ -21,7 +22,7 @@ export const getServerSession = cache(async (): Promise<Session | null> => {
 export async function requireSegment(segment: Segment): Promise<Session> {
   const session = await getServerSession();
   if (!session) redirect(ROUTES.login);
-  if (!canEnterSegment(session.role, segment)) redirect(ROUTES.forbidden);
+  if (!canEnterSegment(session.role, segment)) redirect(forbiddenPath(segment));
   return session;
 }
 

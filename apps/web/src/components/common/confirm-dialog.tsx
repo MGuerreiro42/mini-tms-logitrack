@@ -12,7 +12,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { apiErrorMessage } from '@/lib/toast-api-error';
+import { hasStatus } from '@/services/api-client';
 
 interface ConfirmDialogProps {
   trigger: React.ReactNode;
@@ -24,6 +26,7 @@ interface ConfirmDialogProps {
   onOpenChange?: (open: boolean) => void;
   variant?: 'default' | 'destructive';
   available?: boolean;
+  unavailableTitle?: string;
   unavailableMessage?: string;
   children?: React.ReactNode;
 }
@@ -38,16 +41,19 @@ export function ConfirmDialog({
   onOpenChange,
   variant = 'default',
   available = true,
+  unavailableTitle,
   unavailableMessage = 'This action is no longer available.',
   children,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [isConflict, setIsConflict] = useState(false);
 
   function applyOpen(next: boolean) {
     setOpen(next);
     setFailure(null);
+    setIsConflict(false);
     onOpenChange?.(next);
   }
 
@@ -63,6 +69,7 @@ export function ConfirmDialog({
       applyOpen(false);
     } catch (error) {
       setFailure(apiErrorMessage(error));
+      setIsConflict(hasStatus(error, HTTP_STATUS.CONFLICT));
     } finally {
       setIsConfirming(false);
     }
@@ -71,30 +78,41 @@ export function ConfirmDialog({
   // An open dialog outlives its action, so the user is told why instead of watching it vanish.
   if (!available && !open) return null;
 
-  const isWithdrawn = !available && !isConfirming;
-  const message = failure ?? (isWithdrawn ? unavailableMessage : null);
+  const isSettled = (!available || isConflict) && !isConfirming;
+  const message = isSettled ? unavailableMessage : failure;
 
   return (
     <Dialog open={open} onOpenChange={requestOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle>{(isSettled && unavailableTitle) || title}</DialogTitle>
+          {isSettled ? (
+            <DialogDescription role="alert">{message}</DialogDescription>
+          ) : (
+            <DialogDescription>{description}</DialogDescription>
+          )}
         </DialogHeader>
-        {!isWithdrawn && children}
-        {message && (
+        {children && (
+          <fieldset disabled={isSettled || isConfirming} className="min-w-0">
+            {children}
+          </fieldset>
+        )}
+        {!isSettled && message && (
           <p role="alert" className="text-sm text-destructive">
             {message}
           </p>
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary" disabled={isConfirming}>
-              {isWithdrawn ? 'Close' : dismissLabel}
+            <Button
+              variant={isSettled ? 'strong' : 'secondary'}
+              disabled={isConfirming}
+            >
+              {isSettled ? 'Got it' : dismissLabel}
             </Button>
           </DialogClose>
-          {!isWithdrawn && (
+          {!isSettled && (
             <Button
               variant={variant === 'destructive' ? 'destructive' : 'default'}
               onClick={confirm}

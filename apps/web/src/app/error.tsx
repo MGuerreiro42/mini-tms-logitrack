@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CenteredPage } from '@/components/common/centered-page';
-import { PublicCard } from '@/components/common/public-card';
+import { NoticePage } from '@/components/common/notice-page';
 import {
   ErrorReference,
   type SegmentErrorProps,
@@ -18,25 +17,24 @@ export default function RootError({
   useLoggedError(error);
 
   return (
-    <CenteredPage>
-      <PublicCard
-        badge={false}
-        title="Something went wrong"
-        description={
-          <>
-            An unexpected error occurred. Try again, or head back home.
-            <ErrorReference digest={error.digest} />
-          </>
-        }
-        actions={
-          <>
-            <Button onClick={() => unstable_retry()}>Try again</Button>
-            <Button asChild variant="outline">
-              <Link href={ROUTES.home}>Go home</Link>
-            </Button>
-          </>
-        }
-      />
-    </CenteredPage>
+    <NoticePage
+      title="Something went wrong"
+      description={
+        <>
+          This page stopped on an unexpected error. Try again or head back home.
+          <ErrorReference digest={error.digest} />
+        </>
+      }
+      actions={
+        <>
+          <Button variant="strong" onClick={() => unstable_retry()}>
+            Try again
+          </Button>
+          <Button asChild variant="link">
+            <Link href={ROUTES.home}>Go home</Link>
+          </Button>
+        </>
+      }
+    />
   );
 }

@@ -15,15 +15,17 @@ interface ApiMutationOptions<TInput, TData> {
   mutationFn: (input: TInput, token: string) => Promise<TData>;
   successMessage: string;
   invalidates: QueryKey;
-  conflictMessage?: string;
+  surface?: ErrorSurface;
 }
+
+export type ErrorSurface = 'toast' | 'inline';
 
 // A 409 means the server state moved on, so it refreshes the same queries a success would.
 export function useApiMutation<TInput = void, TData = unknown>({
   mutationFn,
   successMessage,
   invalidates,
-  conflictMessage,
+  surface = 'toast',
 }: ApiMutationOptions<TInput, TData>) {
   const { token } = useAuthToken();
   const queryClient = useQueryClient();
@@ -39,8 +41,7 @@ export function useApiMutation<TInput = void, TData = unknown>({
     onError: (error) => {
       const isConflict = hasStatus(error, HTTP_STATUS.CONFLICT);
       if (isConflict) refresh();
-      if (isConflict && conflictMessage) toast.error(conflictMessage);
-      else toastApiError(error);
+      if (surface === 'toast') toastApiError(error);
     },
   });
 }

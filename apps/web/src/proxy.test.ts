@@ -65,15 +65,23 @@ describe('proxy', () => {
   });
 
   it.each([
-    ['/admin', 'SELLER'],
-    ['/admin/monitoring', 'CARRIER_MANAGER'],
-    ['/seller/shipments/new', 'CARRIER_OPERATOR'],
-    ['/carrier/queue', 'SELLER'],
-  ] as const)('answers %s with the 403 page for %s, keeping the session', (path, role) => {
+    ['/admin', 'SELLER', 'http://localhost/forbidden?area=admin'],
+    [
+      '/admin/monitoring',
+      'CARRIER_MANAGER',
+      'http://localhost/forbidden?area=admin',
+    ],
+    [
+      '/seller/shipments/new',
+      'CARRIER_OPERATOR',
+      'http://localhost/forbidden?area=seller',
+    ],
+    ['/carrier/queue', 'SELLER', 'http://localhost/forbidden?area=carrier'],
+  ] as const)('answers %s with the 403 page for %s, keeping the session', (path, role, target) => {
     const response = proxy(request(path, role));
 
     expect(response.status).toBe(403);
-    expect(rewriteTarget(response)).toBe('http://localhost/forbidden');
+    expect(rewriteTarget(response)).toBe(target);
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 

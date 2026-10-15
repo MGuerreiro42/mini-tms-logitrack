@@ -133,3 +133,41 @@ describe('retainSocket', () => {
     expect(socket.connect).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('reconnectSockets', () => {
+  async function freshClient() {
+    vi.resetModules();
+    return import('./websocket-client');
+  }
+
+  it('cycles the idle sockets someone holds and settles once they answer', async () => {
+    const { reconnectSockets, retainSocket } = await freshClient();
+    const held = makeFakeSocket();
+    const released = makeFakeSocket();
+    const handshaking = makeFakeSocket();
+    handshaking.io.engine.readyState = 'opening';
+    retainSocket(held as never);
+    retainSocket(released as never)();
+    retainSocket(handshaking as never);
+    for (const socket of [held, released, handshaking]) {
+      socket.connect.mockClear();
+      socket.disconnect.mockClear();
+    }
+
+    let settled = false;
+    const done = reconnectSockets().then(() => {
+      settled = true;
+    });
+
+    expect(held.disconnect).toHaveBeenCalledTimes(1);
+    expect(held.connect).toHaveBeenCalledTimes(1);
+    expect(released.connect).not.toHaveBeenCalled();
+    expect(handshaking.disconnect).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    held.trigger('connect_error');
+    await done;
+    expect(settled).toBe(true);
+  });
+});

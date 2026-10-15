@@ -20,11 +20,20 @@ export const ROLE_HOME = Object.fromEntries(
   ),
 ) as Record<GlobalRole, string>;
 
+export function isSegment(value: string | undefined): value is Segment {
+  return value !== undefined && Object.hasOwn(SEGMENT_ROLES, value);
+}
+
 export function canEnterSegment(role: GlobalRole, segment: string): boolean {
-  return (
-    Object.hasOwn(SEGMENT_ROLES, segment) &&
-    SEGMENT_ROLES[segment as Segment].includes(role)
-  );
+  return isSegment(segment) && SEGMENT_ROLES[segment].includes(role);
+}
+
+export const FORBIDDEN_AREA_PARAM = 'area';
+
+export function forbiddenPath(segment: string): string {
+  return isSegment(segment)
+    ? `${ROUTES.forbidden}?${FORBIDDEN_AREA_PARAM}=${segment}`
+    : ROUTES.forbidden;
 }
 
 export function isCarrierRole(role: GlobalRole): boolean {
