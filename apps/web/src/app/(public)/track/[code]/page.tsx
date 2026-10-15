@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
-import { PublicCard } from '@/components/common/public-card';
+import { PublicPage } from '@/components/common/public-page';
 import { Button } from '@/components/ui/button';
 import { getPublicTracking } from '@/features/tracking/api';
 import { PublicTrackingDetails } from '@/features/tracking/components/public-tracking-details';
@@ -73,28 +73,24 @@ export default async function TrackingPage({ params }: TrackingPageProps) {
   }
 
   return (
-    <PublicCard
-      title={<span className="font-mono">{tracking.trackingCode}</span>}
-      description="Shipment status"
-    >
+    <PublicPage layout="single">
       <PublicTrackingDetails initialData={tracking} />
-    </PublicCard>
+    </PublicPage>
   );
 }
 
 function RateLimited({ code }: { code: string }) {
   return (
-    <PublicCard
-      badge={false}
+    <PublicPage
+      layout="single"
       title="Too many requests"
       description="You've looked up shipments too often in the last minute. Try again shortly."
-      actions={
-        <Button asChild>
-          <Link href={publicTrackingPath(code)} prefetch={false}>
-            Try again
-          </Link>
-        </Button>
-      }
-    />
+    >
+      <Button asChild>
+        <Link href={publicTrackingPath(code)} prefetch={false}>
+          Try again
+        </Link>
+      </Button>
+    </PublicPage>
   );
 }

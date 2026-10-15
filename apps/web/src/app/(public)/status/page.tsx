@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { PublicCard } from '@/components/common/public-card';
+import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { SignOutButton } from '@/components/common/sign-out-button';
 import { getMyCarrier } from '@/features/carriers/api';
 import { getMySeller } from '@/features/sellers/api';
@@ -28,14 +27,7 @@ export default async function StatusPage() {
       <StatusCard
         title="Application submitted"
         body="Your application has been submitted and is pending review. You'll be able to sign in once an administrator reviews it."
-        action={
-          <Link
-            href={ROUTES.login}
-            className="text-sm text-primary hover:underline"
-          >
-            Back to login
-          </Link>
-        }
+        action={<PublicLink href={ROUTES.login}>Back to sign in</PublicLink>}
       />
     );
   }
@@ -70,15 +62,8 @@ function StatusCard({
   action: ReactNode;
 }) {
   return (
-    <PublicCard
-      badge={
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-notice text-2xl">
-          ⏳
-        </div>
-      }
-      title={title}
-      description={body}
-      actions={action}
-    />
+    <PublicPage title={title} description={body}>
+      <div className="flex">{action}</div>
+    </PublicPage>
   );
 }

@@ -1,7 +1,10 @@
-import Link from 'next/link';
-import { PublicCard } from '@/components/common/public-card';
+import type { Metadata } from 'next';
+import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { LoginForm } from '@/features/auth/components/login-form';
+import { ROUTES } from '@/lib/routes';
 import { SESSION_EXPIRED_PARAM } from '@/lib/session';
+
+export const metadata: Metadata = { title: 'Sign in · Mini TMS' };
 
 export default async function LoginPage({
   searchParams,
@@ -11,29 +14,33 @@ export default async function LoginPage({
   const expired = SESSION_EXPIRED_PARAM in (await searchParams);
 
   return (
-    <PublicCard
-      title="Sign in to Mini TMS"
+    <PublicPage
+      title="Sign in"
       description={
         expired
           ? 'Your session expired. Sign in again to continue.'
-          : 'Sign in with your company account.'
+          : 'Use the account your company was approved with.'
+      }
+      footer={
+        <>
+          <p>
+            New here?{' '}
+            <PublicLink href={ROUTES.sellerSignup}>
+              Create a seller account
+            </PublicLink>{' '}
+            or{' '}
+            <PublicLink href={ROUTES.carrierSignup}>
+              register a carrier
+            </PublicLink>
+            .
+          </p>
+          <PublicLink href={ROUTES.track}>
+            Track a shipment without signing in
+          </PublicLink>
+        </>
       }
     >
       <LoginForm />
-      <div className="space-y-1 text-center text-sm text-muted-foreground">
-        <p>
-          New seller?{' '}
-          <Link href="/signup/seller" className="text-primary hover:underline">
-            Create an account
-          </Link>
-        </p>
-        <p>
-          New carrier?{' '}
-          <Link href="/signup/carrier" className="text-primary hover:underline">
-            Register your company
-          </Link>
-        </p>
-      </div>
-    </PublicCard>
+    </PublicPage>
   );
 }
