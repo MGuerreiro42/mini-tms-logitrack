@@ -24,7 +24,7 @@ const DARK_STEPS = [
   '#184f95',
 ] as const;
 
-export interface OrdinalRampStep {
+interface OrdinalRampStep {
   light: string;
   dark: string;
 }

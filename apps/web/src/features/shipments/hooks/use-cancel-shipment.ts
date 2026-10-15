@@ -1,33 +1,15 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { cancelShipment } from '../api';
-import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
+import { shipmentKeys } from '../api/keys';
 
 export function useCancelShipment() {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, note }: { id: string; note?: string }) =>
-      cancelShipment(id, note, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Shipment cancelled');
-      invalidateShipmentQueries(queryClient);
-    },
-    onError: (error) => {
-      if (error instanceof ApiError && error.statusCode === 409) {
-        toast.error('This shipment can no longer be cancelled.');
-        // The status moved on elsewhere; refresh so the page shows it.
-        invalidateShipmentQueries(queryClient);
-        return;
-      }
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }, token) =>
+      cancelShipment(id, note, token),
+    successMessage: 'Shipment cancelled',
+    invalidates: shipmentKeys.all,
+    conflictMessage: 'This shipment can no longer be cancelled.',
   });
 }

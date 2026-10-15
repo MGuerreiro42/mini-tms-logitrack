@@ -4,7 +4,7 @@ import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { formatDuration } from '@/lib/format-duration';
-import type { ShipmentStatus } from '@/lib/status-colors';
+import type { ShipmentStatus } from '@/types/status';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
@@ -24,7 +24,6 @@ export function CarrierPerformance() {
 function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
   const operatorRanking = useOperatorRanking();
 
-  // No shipments yet: 0% figures would read as real metrics.
   if (data.totalShipments === 0) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">

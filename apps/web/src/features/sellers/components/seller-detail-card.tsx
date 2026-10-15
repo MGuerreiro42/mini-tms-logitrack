@@ -1,15 +1,13 @@
 'use client';
 
-import { ApproveRejectActions } from '@/components/common/approve-reject-actions';
-import { DetailRow } from '@/components/common/detail-row';
+import { CompanyReview } from '@/components/common/company-cards';
 import { QueryState } from '@/components/common/query-state';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import {
   useApproveSeller,
   useRejectSeller,
 } from '../hooks/use-approve-reject-seller';
 import { useSeller } from '../hooks/use-seller';
+import { sellerDetails } from '../lib/seller-details';
 
 export function SellerDetailCard({ id }: { id: string }) {
   const query = useSeller(id);
@@ -23,39 +21,12 @@ export function SellerDetailCard({ id }: { id: string }) {
       notFoundMessage="Seller not found."
     >
       {(seller) => (
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="flex items-center gap-2 text-xl font-semibold">
-                {seller.companyName}
-                <ApprovalStatusPill status={seller.status} />
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Review the company details before deciding.
-              </p>
-            </div>
-            <ApproveRejectActions
-              status={seller.status}
-              onApprove={() => approve.mutate()}
-              onReject={() => reject.mutate()}
-              isApproving={approve.isPending}
-              isRejecting={reject.isPending}
-            />
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <DetailRow label="Email" value={seller.email} />
-              <DetailRow label="Tax ID" value={seller.document} mono />
-              <DetailRow
-                label="Created"
-                value={new Date(seller.createdAt).toLocaleString()}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <CompanyReview
+          company={seller}
+          rows={sellerDetails(seller, (iso) => new Date(iso).toLocaleString())}
+          approve={approve}
+          reject={reject}
+        />
       )}
     </QueryState>
   );

@@ -1,47 +1,21 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { approveSeller, rejectSeller } from '../api';
+import { sellerKeys } from '../api/keys';
 
 export function useApproveSeller(id: string) {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => approveSeller(id, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Seller approved');
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (_, token) => approveSeller(id, token),
+    successMessage: 'Seller approved',
+    invalidates: sellerKeys.all,
   });
 }
 
 export function useRejectSeller(id: string) {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => rejectSeller(id, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Seller rejected');
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'list'] });
-      queryClient.invalidateQueries({ queryKey: ['sellers', 'status-counts'] });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (_, token) => rejectSeller(id, token),
+    successMessage: 'Seller rejected',
+    invalidates: sellerKeys.all,
   });
 }

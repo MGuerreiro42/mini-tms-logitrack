@@ -1,17 +1,11 @@
 import type { PaginationQuery } from '@/types/pagination';
+import type {
+  ShipmentStatus,
+  ShipmentStatusCounts,
+  TrackingEvent,
+} from '@/types/status';
 
-export type ShipmentStatus =
-  | 'PENDING'
-  | 'ACCEPTED'
-  | 'COLLECTED'
-  | 'IN_TRANSIT'
-  | 'OUT_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'FAILED_DELIVERY'
-  | 'CANCELLED'
-  | 'RETURNED';
-
-export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
+export type { ShipmentStatus, ShipmentStatusCounts, TrackingEvent };
 
 export interface SlaSummaryItem {
   modalityCode: string;
@@ -21,21 +15,7 @@ export interface SlaSummaryItem {
   onTimeRate: number;
 }
 
-export interface TrackingEvent {
-  id: string;
-  status: ShipmentStatus;
-  note: string | null;
-  createdAt: string;
-}
-
-export interface Shipment {
-  id: string;
-  trackingCode: string;
-  status: ShipmentStatus;
-  carrierId: string;
-  carrierName: string;
-  modalityId: string;
-  modalityName: string;
+export interface ShipmentAddress {
   addressStreet: string;
   addressNumber: string;
   addressComplement: string | null;
@@ -43,35 +23,31 @@ export interface Shipment {
   addressCity: string;
   addressState: string;
   addressZipCode: string;
-  createdAt: string;
-  // Only on GET /shipments/:id, never in lists.
-  trackingEvents?: TrackingEvent[];
 }
 
-// Carrier view: adds seller contact and owner, which the seller's own view doesn't need.
-export interface CarrierShipment {
+export interface ShipmentBase extends ShipmentAddress {
   id: string;
   trackingCode: string;
   status: ShipmentStatus;
   modalityId: string;
   modalityName: string;
+  createdAt: string;
+  trackingEvents?: TrackingEvent[];
+}
+
+export interface Shipment extends ShipmentBase {
+  carrierId: string;
+  carrierName: string;
+}
+
+export interface CarrierShipment extends ShipmentBase {
   sellerId: string;
   sellerCompanyName: string;
   sellerEmail: string;
   ownerId: string | null;
   ownerEmail: string | null;
-  addressStreet: string;
-  addressNumber: string;
-  addressComplement: string | null;
-  addressNeighborhood: string;
-  addressCity: string;
-  addressState: string;
-  addressZipCode: string;
-  createdAt: string;
-  trackingEvents?: TrackingEvent[];
 }
 
-// Admin view: CarrierShipment plus the carrier name.
 export interface AdminShipment extends CarrierShipment {
   carrierCompanyName: string;
 }
@@ -94,6 +70,11 @@ export interface CreateShipmentInput {
   carrierId: string;
 }
 
+export interface ModalityOption {
+  id: string;
+  name: string;
+}
+
 export interface EligibleCarrier {
   id: string;
   companyName: string;
@@ -106,6 +87,8 @@ export interface ListShipmentsQuery extends PaginationQuery {
 export interface ListQueueQuery extends PaginationQuery {
   status?: ShipmentStatus;
 }
+
+export const TRACKING_NOTE_MAX_LENGTH = 500;
 
 export interface UpdateShipmentStatusInput {
   status: ShipmentStatus;
@@ -131,7 +114,10 @@ export function isCancellableBySeller(status: ShipmentStatus): boolean {
   return SELLER_CANCELLABLE.includes(status);
 }
 
-// A cancelled shipment can also be unowned, so ownership alone isn't enough.
 export function isClaimable(shipment: CarrierShipment): boolean {
   return shipment.status === 'PENDING' && !shipment.ownerId;
+}
+
+export function ownerLabel(shipment: CarrierShipment): string {
+  return shipment.ownerEmail ?? (isClaimable(shipment) ? 'Unclaimed' : '—');
 }

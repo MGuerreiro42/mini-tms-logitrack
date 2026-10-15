@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '@/services/api-client';
-import { QueryState, type QueryStateSource } from './query-state';
+import type { QuerySource } from '@/types/query';
+import { QueryState } from './query-state';
 
-function renderState(query: Partial<QueryStateSource<string>>) {
+function renderState(query: Partial<QuerySource<string>>) {
   const source = { data: undefined, error: null, refetch: vi.fn(), ...query };
   render(
     <QueryState query={source} notFoundMessage="Shipment not found.">
@@ -32,6 +33,13 @@ describe('QueryState', () => {
   it('shows the not-found message on a 404', () => {
     renderState({ error: new ApiError(404, 'Not Found') });
     expect(screen.getByText('Shipment not found.')).toBeInTheDocument();
+  });
+
+  it('shows an access message on a 403', () => {
+    renderState({ error: new ApiError(403, 'Carrier is not approved') });
+    expect(
+      screen.getByText("You don't have access to this."),
+    ).toBeInTheDocument();
   });
 
   it('shows an error with a working retry button', async () => {

@@ -5,15 +5,12 @@ import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/services/api-client';
+import type { QuerySource } from '@/types/query';
 
-export interface QueryStateSource<T> {
-  data: T | undefined;
-  error: unknown;
-  refetch: () => unknown;
-}
+const FORBIDDEN_MESSAGE = "You don't have access to this.";
 
 interface QueryStateProps<T> {
-  query: QueryStateSource<T>;
+  query: QuerySource<T>;
   children: (data: T) => ReactNode;
   errorMessage?: string;
   notFoundMessage?: string;
@@ -32,10 +29,12 @@ export function QueryState<T>({
 
   if (!query.error) return skeleton;
 
-  if (query.error instanceof ApiError && query.error.statusCode === 404) {
+  const status =
+    query.error instanceof ApiError ? query.error.statusCode : undefined;
+  if (status === 404 || status === 403) {
     return (
       <div className="rounded-xl border border-dashed py-16 text-center text-sm text-muted-foreground">
-        {notFoundMessage}
+        {status === 404 ? notFoundMessage : FORBIDDEN_MESSAGE}
       </div>
     );
   }

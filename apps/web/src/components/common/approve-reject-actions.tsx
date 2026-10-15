@@ -2,12 +2,12 @@
 
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import type { ApprovalStatus } from '@/lib/status-colors';
+import type { ApprovalStatus } from '@/types/status';
 
 interface ApproveRejectActionsProps {
   status: ApprovalStatus;
   onApprove: () => void;
-  onReject: () => void;
+  onReject: () => Promise<unknown>;
   isApproving?: boolean;
   isRejecting?: boolean;
 }
@@ -39,7 +39,6 @@ export function ApproveRejectActions({
         confirmLabel="Reject"
         variant="destructive"
         onConfirm={onReject}
-        isConfirming={isRejecting}
       />
     </div>
   );

@@ -3,13 +3,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { FormError } from '@/components/common/form-error';
+import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ApiError } from '@/services/api-client';
 import { useLoginMutation } from '../hooks/use-login';
 
-// Mirrors the API's LoginDto.
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -31,52 +29,23 @@ export function LoginForm() {
       noValidate
       onSubmit={handleSubmit((values) => loginMutation.mutate(values))}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? 'email-error' : undefined}
-          {...register('email')}
-        />
-        {errors.email && (
-          <p id="email-error" role="alert" className="text-sm text-destructive">
-            {errors.email.message}
-          </p>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          aria-invalid={!!errors.password}
-          aria-describedby={errors.password ? 'password-error' : undefined}
-          {...register('password')}
-        />
-        {errors.password && (
-          <p
-            id="password-error"
-            role="alert"
-            className="text-sm text-destructive"
-          >
-            {errors.password.message}
-          </p>
-        )}
-      </div>
-      {loginMutation.isError && (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {loginMutation.error instanceof ApiError
-            ? loginMutation.error.message
-            : 'Something went wrong. Please try again.'}
-        </p>
-      )}
+      <FormField
+        id="email"
+        type="email"
+        label="Email"
+        autoComplete="email"
+        error={errors.email?.message}
+        {...register('email')}
+      />
+      <FormField
+        id="password"
+        type="password"
+        label="Password"
+        autoComplete="current-password"
+        error={errors.password?.message}
+        {...register('password')}
+      />
+      <FormError error={loginMutation.error} />
       <Button
         type="submit"
         className="w-full"

@@ -110,7 +110,6 @@ function CarrierOption({
   );
 }
 
-// The key exception in this flow, so it gets more weight than a plain message.
 function NoCarrierState({ city, state }: { city: string; state: string }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-8 text-center">

@@ -1,16 +1,17 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { listShipments } from '../api';
+import { shipmentKeys } from '../api/keys';
 import type { ListShipmentsQuery } from '../types';
 
 export function useShipmentsList(query: ListShipmentsQuery) {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['shipments', 'list', query],
-    queryFn: () => listShipments(query, session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: shipmentKeys.list(query),
+    queryFn: () => listShipments(query, token),
+    enabled,
   });
 }

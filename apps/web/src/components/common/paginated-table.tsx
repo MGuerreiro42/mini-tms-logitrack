@@ -21,8 +21,8 @@ export interface Column<T> {
 interface PaginatedTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  meta: PaginationMeta;
-  onPageChange: (page: number) => void;
+  meta?: PaginationMeta;
+  onPageChange?: (page: number) => void;
   getRowHref?: (row: T) => string;
   emptyMessage?: string;
   getRowKey: (row: T) => string;
@@ -80,7 +80,7 @@ export function PaginatedTable<T>({
           </TableBody>
         </Table>
       </div>
-      {meta.totalPages > 1 && (
+      {meta && onPageChange && meta.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Page {meta.page} of {meta.totalPages} · {meta.total} total
@@ -109,8 +109,7 @@ export function PaginatedTable<T>({
   );
 }
 
-// Stretched link: the whole row is clickable, keyboard-focusable and opens in a new tab.
-// Interactive content in other cells needs `relative z-10` to stay on top.
+// Stretched link: other interactive cells need `relative z-10` to stay clickable.
 function RowLink({
   href,
   children,

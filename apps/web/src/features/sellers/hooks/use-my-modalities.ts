@@ -1,38 +1,26 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useQuery } from '@tanstack/react-query';
+import { useApiMutation } from '@/hooks/use-api-mutation';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getMyModalities, setMyModalities } from '../api';
+import { sellerKeys } from '../api/keys';
 
 export function useMyModalities() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['sellers', 'me', 'modalities'],
-    queryFn: () => getMyModalities(session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: sellerKeys.myModalities(),
+    queryFn: () => getMyModalities(token),
+    enabled,
   });
 }
 
 export function useSetMyModalities() {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (modalityIds: string[]) =>
-      setMyModalities(modalityIds, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Modalities saved');
-      queryClient.invalidateQueries({
-        queryKey: ['sellers', 'me', 'modalities'],
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (modalityIds: string[], token) =>
+      setMyModalities(modalityIds, token),
+    successMessage: 'Modalities saved',
+    invalidates: sellerKeys.myModalities(),
   });
 }

@@ -1,15 +1,16 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getCarrier } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useCarrier(id: string) {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['carriers', 'detail', id],
-    queryFn: () => getCarrier(id, session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: carrierKeys.detail(id),
+    queryFn: () => getCarrier(id, token),
+    enabled,
   });
 }

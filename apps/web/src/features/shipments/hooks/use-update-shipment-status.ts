@@ -1,35 +1,17 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSession } from '@/hooks/use-session';
-import { ApiError } from '@/services/api-client';
+import { useApiMutation } from '@/hooks/use-api-mutation';
 import { updateShipmentStatus } from '../api';
-import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
-import type { ShipmentStatus } from '../types';
+import { shipmentKeys } from '../api/keys';
+import type { UpdateShipmentStatusInput } from '../types';
 
 export function useUpdateShipmentStatus() {
-  const session = useSession();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      status,
-      note,
-    }: {
-      id: string;
-      status: ShipmentStatus;
-      note?: string;
-    }) => updateShipmentStatus(id, { status, note }, session?.token ?? ''),
-    onSuccess: () => {
-      toast.success('Status updated');
-      invalidateShipmentQueries(queryClient);
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Something went wrong.',
-      );
-    },
+  return useApiMutation({
+    mutationFn: (
+      { id, ...input }: UpdateShipmentStatusInput & { id: string },
+      token,
+    ) => updateShipmentStatus(id, input, token),
+    successMessage: 'Status updated',
+    invalidates: shipmentKeys.all,
   });
 }

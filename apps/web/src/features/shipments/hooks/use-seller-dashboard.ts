@@ -1,11 +1,14 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { sumRecord } from '@/lib/sum-record';
 import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
+import { shipmentKeys } from '../api/keys';
 import type { Shipment, ShipmentStatusCounts, SlaSummaryItem } from '../types';
+
+const RECENT_SHIPMENTS_LIMIT = 5;
 
 export interface SellerDashboardData {
   counts: ReturnType<typeof toCounts>;
@@ -19,31 +22,29 @@ function toCounts(byStatus: ShipmentStatusCounts) {
     pending: byStatus.PENDING,
     inTransit: byStatus.IN_TRANSIT,
     delivered: byStatus.DELIVERED,
-    // Statuses without a tile of their own, so the tiles always add up to Total.
     other: total - byStatus.PENDING - byStatus.IN_TRANSIT - byStatus.DELIVERED,
     total,
   };
 }
 
 export function useSellerDashboard() {
-  const session = useSession();
-  const token = session?.token ?? '';
-  const enabled = Boolean(session);
+  const { token, enabled } = useAuthToken();
 
   return useQueries({
     queries: [
       {
-        queryKey: ['shipments', 'status-counts'],
+        queryKey: shipmentKeys.statusCounts(),
         queryFn: () => getShipmentStatusCounts(token),
         enabled,
       },
       {
-        queryKey: ['shipments', 'dashboard-recent'],
-        queryFn: () => listShipments({ page: 1, limit: 5 }, token),
+        queryKey: shipmentKeys.dashboardRecent(),
+        queryFn: () =>
+          listShipments({ page: 1, limit: RECENT_SHIPMENTS_LIMIT }, token),
         enabled,
       },
       {
-        queryKey: ['shipments', 'sla-summary'],
+        queryKey: shipmentKeys.slaSummary(),
         queryFn: () => getSlaSummary(token),
         enabled,
       },

@@ -4,9 +4,8 @@ import {
   type Socket,
   type SocketOptions,
 } from 'socket.io-client';
+import { API_URL } from '@/lib/api-url';
 import { getSessionFromDocument } from '@/lib/session';
-
-const WS_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 const sockets = new Map<string, Socket>();
 
@@ -29,11 +28,11 @@ function socketFor(
 
 // Callback-form auth so every reconnect reads the current cookie token.
 export function getSocket(): Socket {
-  return socketFor(WS_URL, {
+  return socketFor(API_URL, {
     auth: (cb) => cb({ token: getSessionFromDocument()?.token }),
   });
 }
 
 export function getPublicSocket(): Socket {
-  return socketFor(`${WS_URL}/public`);
+  return socketFor(new URL('/public', API_URL).toString());
 }

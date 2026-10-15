@@ -1,15 +1,16 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/hooks/use-session';
+import { useAuthToken } from '@/hooks/use-auth-token';
 import { getMyCarrierPerformance } from '../api';
+import { carrierKeys } from '../api/keys';
 
 export function useCarrierPerformance() {
-  const session = useSession();
+  const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: ['carriers', 'me', 'performance'],
-    queryFn: () => getMyCarrierPerformance(session?.token ?? ''),
-    enabled: Boolean(session),
+    queryKey: carrierKeys.performance(),
+    queryFn: () => getMyCarrierPerformance(token),
+    enabled,
   });
 }
