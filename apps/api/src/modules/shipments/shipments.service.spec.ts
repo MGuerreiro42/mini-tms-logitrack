@@ -50,7 +50,7 @@ describe('ShipmentsService', () => {
     carrierId: 'carrier-1',
     carrier: { companyName: 'Fast Freight' },
     modalityId: 'modality-1',
-    modality: { name: 'Standard' },
+    modality: { name: 'Standard', slaHours: 72 },
     addressStreet: 'Av. Paulista',
     addressNumber: '1000',
     addressComplement: null,
@@ -91,7 +91,7 @@ describe('ShipmentsService', () => {
     ownerId: 'carrier-user-operator',
     owner: { user: { email: 'operator@example.com' } },
     modalityId: 'modality-1',
-    modality: { name: 'Standard' },
+    modality: { name: 'Standard', slaHours: null },
     addressStreet: 'Av. Paulista',
     addressNumber: '1000',
     addressComplement: null,
@@ -328,6 +328,7 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(result.id).toBe('shipment-1');
+      expect(result.dueAt).toEqual(new Date('2026-01-04'));
       expect(result.trackingEvents).toEqual([]);
     });
 
@@ -660,6 +661,7 @@ describe('ShipmentsService', () => {
           where: { id: 'shipment-1', carrierId: 'carrier-1' },
         }),
       );
+      expect(result.dueAt).toBeNull();
       expect(result.trackingEvents).toEqual([]);
     });
 

@@ -7,14 +7,19 @@ import type {
 import type { ShipmentAddressDto } from './dto/shipment-address.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
+import { computeDueAt } from './shipment-due-at';
 
 const timeline = {
   trackingEvents: { orderBy: { createdAt: 'asc' } },
 } satisfies Prisma.ShipmentInclude;
 
+const modality = {
+  modality: { select: { name: true, slaHours: true } },
+} satisfies Prisma.ShipmentInclude;
+
 export const sellerShipmentInclude = {
   carrier: { select: { companyName: true } },
-  modality: { select: { name: true } },
+  ...modality,
 } satisfies Prisma.ShipmentInclude;
 
 export const sellerShipmentDetailInclude = {
@@ -23,7 +28,7 @@ export const sellerShipmentDetailInclude = {
 } satisfies Prisma.ShipmentInclude;
 
 export const carrierShipmentInclude = {
-  modality: { select: { name: true } },
+  ...modality,
   seller: { include: { user: { select: { email: true } } } },
   owner: { include: { user: { select: { email: true } } } },
 } satisfies Prisma.ShipmentInclude;
@@ -78,6 +83,7 @@ export const toShipmentResponseDto = (
   modalityName: shipment.modality.name,
   ...pickAddress(shipment),
   createdAt: shipment.createdAt,
+  dueAt: computeDueAt(shipment.createdAt, shipment.modality.slaHours),
 });
 
 export const toShipmentDetailResponseDto = (
@@ -102,6 +108,7 @@ export const toCarrierShipmentResponseDto = (
   ownerEmail: shipment.owner?.user.email ?? null,
   ...pickAddress(shipment),
   createdAt: shipment.createdAt,
+  dueAt: computeDueAt(shipment.createdAt, shipment.modality.slaHours),
 });
 
 export const toCarrierShipmentDetailResponseDto = (
