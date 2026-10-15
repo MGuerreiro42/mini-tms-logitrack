@@ -3,7 +3,7 @@ import type { NavItem } from '@/components/common/nav-list';
 import { requireSegment } from '@/lib/server-session';
 
 const ADMIN_NAV: NavItem[] = [
-  { name: 'Dashboard', href: '/admin' },
+  { name: 'Overview', href: '/admin' },
   { name: 'Sellers', href: '/admin/sellers' },
   { name: 'Carriers', href: '/admin/carriers' },
   { name: 'Monitoring', href: '/admin/monitoring' },

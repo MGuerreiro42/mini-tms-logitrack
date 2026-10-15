@@ -1,4 +1,3 @@
-import { PageHeader } from '@/components/common/page-header';
 import { listCarriers } from '@/features/carriers/api';
 import { listSellers } from '@/features/sellers/api';
 import { AdminMonitoringTable } from '@/features/shipments/components/admin-monitoring-table';
@@ -19,15 +18,9 @@ export default async function AdminMonitoringPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Global monitoring"
-        description="Every shipment on the platform, updated live as any carrier advances one."
-      />
-      <AdminMonitoringTable
-        carrierOptions={toOptions(carriers)}
-        sellerOptions={toOptions(sellers)}
-      />
-    </div>
+    <AdminMonitoringTable
+      carrierOptions={toOptions(carriers)}
+      sellerOptions={toOptions(sellers)}
+    />
   );
 }

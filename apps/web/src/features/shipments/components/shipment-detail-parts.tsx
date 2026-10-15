@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Breadcrumb } from '@/components/common/breadcrumb';
 import { DetailRow } from '@/components/common/detail-row';
 import {
   LiveIndicator,
@@ -33,22 +33,9 @@ export function ShipmentTitle({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <nav aria-label="Breadcrumb">
-        <ol className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-          <li>
-            <Link
-              href={back.href}
-              className="rounded-xs font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
-            >
-              {back.label}
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li aria-current="page" className="font-mono">
-            {shipment.trackingCode}
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumb parent={back}>
+        <span className="font-mono">{shipment.trackingCode}</span>
+      </Breadcrumb>
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
         <h1 className="font-mono text-2xl font-medium tracking-tight md:text-3xl">
           {shipment.trackingCode}

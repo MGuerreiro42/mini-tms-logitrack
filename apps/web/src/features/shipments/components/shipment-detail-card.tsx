@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Breadcrumb } from '@/components/common/breadcrumb';
 import { CopyField } from '@/components/common/copy-field';
 import {
   LiveIndicator,
@@ -52,19 +52,9 @@ function ShipmentDetailView({
 
   return (
     <div className="space-y-5">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex gap-2 text-[13px] text-muted-foreground"
-      >
-        <Link
-          href={ROUTES.sellerShipments}
-          className="font-semibold text-primary hover:underline"
-        >
-          Shipments
-        </Link>
-        <span aria-hidden>/</span>
+      <Breadcrumb parent={{ href: ROUTES.sellerShipments, label: 'Shipments' }}>
         <span className="font-mono">{shipment.trackingCode}</span>
-      </nav>
+      </Breadcrumb>
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3.5">

@@ -2,6 +2,8 @@ import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
   AdminShipment,
+  AdminShipmentResponse,
+  AdminStatusCountsQuery,
   CarrierShipment,
   CreateShipmentInput,
   EligibleCarrier,
@@ -89,12 +91,30 @@ export function listQueue(
   );
 }
 
-export function listAdminShipments(
+export async function listAdminShipments(
   query: ListAdminShipmentsQuery,
   token: string,
 ): Promise<Paginated<AdminShipment>> {
-  return apiClient<Paginated<AdminShipment>>(
+  const page = await apiClient<Paginated<AdminShipmentResponse>>(
     `/admin/shipments${toQueryString({ ...query })}`,
+    undefined,
+    token,
+  );
+  return {
+    ...page,
+    data: page.data.map(({ carrierCompanyName, ...row }) => ({
+      ...row,
+      carrierName: carrierCompanyName,
+    })),
+  };
+}
+
+export function getAdminShipmentStatusCounts(
+  query: AdminStatusCountsQuery,
+  token: string,
+): Promise<ShipmentStatusCounts> {
+  return apiClient<ShipmentStatusCounts>(
+    `/admin/shipments/status-counts${toQueryString({ ...query })}`,
     undefined,
     token,
   );

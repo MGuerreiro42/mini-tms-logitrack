@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { ChartSection } from './chart-section';
+import { Panel } from './panel';
 
-describe('ChartSection', () => {
+describe('Panel', () => {
   it('renders the title and the chart when there is data', () => {
     render(
-      <ChartSection title="Ranking" isEmpty={false} emptyMessage="Nothing yet">
+      <Panel title="Ranking" isEmpty={false} emptyMessage="Nothing yet">
         <div>chart</div>
-      </ChartSection>,
+      </Panel>,
     );
     expect(
       screen.getByRole('heading', { name: 'Ranking' }),
@@ -16,9 +16,9 @@ describe('ChartSection', () => {
 
   it('keeps the title and swaps the chart for the empty message when there is no data', () => {
     render(
-      <ChartSection title="Ranking" isEmpty emptyMessage="Nothing yet">
+      <Panel title="Ranking" isEmpty emptyMessage="Nothing yet">
         <div>chart</div>
-      </ChartSection>,
+      </Panel>,
     );
     expect(
       screen.getByRole('heading', { name: 'Ranking' }),

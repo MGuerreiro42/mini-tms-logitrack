@@ -12,6 +12,7 @@ import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
+import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
@@ -28,9 +29,6 @@ const SLA_REFRESH_MS = 60_000;
 
 const place = (shipment: Shipment) =>
   `${shipment.addressCity}, ${shipment.addressState}`;
-const plural = (count: number, noun: string, nouns = `${noun}s`) =>
-  `${count} ${count === 1 ? noun : nouns}`;
-
 function onTimeNote({ rate, late }: SellerDashboardData['onTime']): string {
   if (rate === null) return 'No deliveries with an SLA yet';
   if (late === 0) return 'Every delivery within SLA';

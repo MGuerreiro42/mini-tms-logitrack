@@ -1,22 +1,21 @@
 'use client';
 
-import {
-  type FilterChoice,
-  FilterMenu,
-  FilterToolbar,
-} from '@/components/common/filter-toolbar';
+import { FilterMenu, FilterToolbar } from '@/components/common/filter-toolbar';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import type { StatusFilter } from '@/components/common/status-filter-tabs';
+import {
+  type StatusFilter,
+  statusFilterOptions,
+  statusFilterValues,
+} from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { ALL } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
-import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
-import type { Shipment, ShipmentStatus, ShipmentStatusCounts } from '../types';
+import type { Shipment, ShipmentStatus } from '../types';
 import {
   lateRowClassName,
   partyColumns,
@@ -26,25 +25,11 @@ import {
   withSla,
 } from './shipment-columns';
 
-const STATUS_VALUES: StatusFilter<ShipmentStatus>[] = [
-  ALL,
-  ...SHIPMENT_STATUSES,
-];
+const STATUS_VALUES = statusFilterValues(
+  statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES),
+);
 
 const SLA_REFRESH_MS = 60_000;
-
-function statusChoices(
-  counts: ShipmentStatusCounts | undefined,
-): FilterChoice<StatusFilter<ShipmentStatus>>[] {
-  return [
-    { value: ALL, label: 'All', count: counts && sumRecord(counts) },
-    ...SHIPMENT_STATUSES.map((status) => ({
-      value: status,
-      label: SHIPMENT_STATUS[status].label,
-      count: counts?.[status],
-    })),
-  ];
-}
 
 export function ShipmentsTable() {
   const { filters, isFiltered, setFilter, clearFilters, setPage, params } =
@@ -69,7 +54,9 @@ export function ShipmentsTable() {
         <FilterMenu
           label="Status"
           value={filters.status}
-          options={statusChoices(counts.data)}
+          options={statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES, {
+            counts: counts.data,
+          })}
           onChange={(value) => setFilter('status', value)}
         />
       </FilterToolbar>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { StatusDistribution } from '@/components/common/charts/status-distribution';
 import { EmptyState } from '@/components/common/feedback-state';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
@@ -11,7 +12,6 @@ import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
 import { OperatorRankingChart } from './operator-ranking-chart';
 import { StageDurationChart } from './stage-duration-chart';
-import { StatusDistribution } from './status-distribution';
 
 export function CarrierPerformance() {
   const query = useCarrierPerformance();
@@ -74,10 +74,7 @@ function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
       )}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
         <div className="flex flex-col gap-5">
-          <StatusDistribution
-            counts={data.shipmentCountsByStatus}
-            total={data.totalShipments}
-          />
+          <StatusDistribution counts={data.shipmentCountsByStatus} />
           <StageDurationChart data={data.stageDurations} />
         </div>
         {operatorRanking.data && (

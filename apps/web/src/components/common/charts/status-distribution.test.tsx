@@ -15,7 +15,7 @@ const counts = {
 
 describe('StatusDistribution', () => {
   it('lists non-empty statuses by count, largest first', () => {
-    render(<StatusDistribution counts={counts} total={27} />);
+    render(<StatusDistribution counts={counts} />);
 
     expect(
       screen.getByRole('img', {
@@ -26,5 +26,16 @@ describe('StatusDistribution', () => {
       screen.getAllByRole('listitem').map((item) => item.textContent),
     ).toEqual(['Delivered22', 'In transit3', 'Pending2']);
     expect(screen.getByText('27 shipments')).toBeInTheDocument();
+  });
+
+  it('shows an empty state instead of an empty bar when every count is zero', () => {
+    render(
+      <StatusDistribution
+        counts={{ ...counts, PENDING: 0, IN_TRANSIT: 0, DELIVERED: 0 }}
+      />,
+    );
+
+    expect(screen.getByText('No shipments yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
   });
 });

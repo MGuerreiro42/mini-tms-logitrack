@@ -45,12 +45,13 @@ describe('SellersTable', () => {
     expect(requestedUrls[0]).toContain('status=PENDING');
   });
 
-  it('switching to the All tab refetches without a status filter and resets to page 1', async () => {
+  it('choosing All in the status menu refetches without a status filter and resets to page 1', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(<SellersTable />);
     await screen.findByText('Example Store');
 
-    await user.click(screen.getByRole('tab', { name: 'All' }));
+    await user.click(screen.getByRole('button', { name: /Status: Pending/ }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'All' }));
 
     await waitFor(() => expect(requestedUrls.at(-1)).not.toContain('status='));
   });

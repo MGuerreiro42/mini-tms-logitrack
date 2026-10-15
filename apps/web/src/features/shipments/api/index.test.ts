@@ -2,6 +2,7 @@ import { apiClient } from '@/services/api-client';
 import {
   claimShipment,
   createShipment,
+  getAdminShipmentStatusCounts,
   getEligibleCarriers,
   getQueueShipment,
   getShipment,
@@ -20,6 +21,7 @@ vi.mock('@/services/api-client', async (importOriginal) => ({
 describe('shipments api', () => {
   beforeEach(() => {
     vi.mocked(apiClient).mockReset();
+    vi.mocked(apiClient).mockResolvedValue({ data: [], meta: {} });
   });
 
   it('getEligibleCarriers builds the query string from state/city/modalityId', async () => {
@@ -88,6 +90,18 @@ describe('shipments api', () => {
     );
   });
 
+  it('listAdminShipments exposes the carrier company as carrierName', async () => {
+    vi.mocked(apiClient).mockResolvedValue({
+      data: [{ id: 's-1', carrierCompanyName: 'Fast Carrier' }],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+
+    const page = await listAdminShipments({}, 'token');
+
+    expect(page.data).toEqual([{ id: 's-1', carrierName: 'Fast Carrier' }]);
+    expect(page.meta.total).toBe(1);
+  });
+
   it('listAdminShipments omits query params that are not provided', async () => {
     await listAdminShipments({}, 'token');
 
@@ -112,6 +126,16 @@ describe('shipments api', () => {
 
     expect(apiClient).toHaveBeenCalledWith(
       '/admin/shipments?status=DELIVERED&carrierId=carrier-1&sellerId=seller-1&page=2&limit=10',
+      undefined,
+      'token',
+    );
+  });
+
+  it('getAdminShipmentStatusCounts passes only the provided filters', async () => {
+    await getAdminShipmentStatusCounts({ carrierId: 'carrier-1' }, 'token');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/admin/shipments/status-counts?carrierId=carrier-1',
       undefined,
       'token',
     );
