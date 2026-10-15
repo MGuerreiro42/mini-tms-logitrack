@@ -77,16 +77,9 @@ function CarrierShipmentView({
   const canAdvance = session?.role === 'CARRIER_MANAGER' || isOwner;
   useCancelledNotice(shipment.status, isOwner);
   const actionState = getActionState(shipment, canAdvance);
-  const hasPinnedAction =
-    actionState.kind === 'claim' || actionState.kind === 'advance';
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-5',
-        hasPinnedAction && 'max-lg:not-short:pb-20',
-      )}
-    >
+    <div className="flex flex-col gap-5">
       <ShipmentTitle
         shipment={shipment}
         liveStatus={liveStatus}
@@ -367,5 +360,5 @@ function SetbackAction({
       unavailableMessage="This shipment has moved on, so this step no longer applies."
     />
   );
-  return pinned ? <PinnedAction>{dialog}</PinnedAction> : dialog;
+  return <PinnedAction pinned={pinned}>{dialog}</PinnedAction>;
 }

@@ -35,7 +35,7 @@ export function AppShell({ navItems, user, children }: AppShellProps) {
           />
         </div>
       </header>
-      <main className="flex-1 px-safe-4 pt-5 pb-24 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
+      <main className="flex-1 px-safe-4 pt-5 pb-24 max-lg:not-short:has-data-pinned-action:pb-44 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
         {children}
       </main>
       <NavList
