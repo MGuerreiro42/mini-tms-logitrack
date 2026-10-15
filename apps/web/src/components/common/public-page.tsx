@@ -59,7 +59,7 @@ export function PublicPage({
             Shipment tracking
           </span>
         </header>
-        <main className="flex flex-1 justify-center px-4 py-6 lg:px-12 lg:py-10">
+        <main className="flex flex-1 items-start justify-center px-4 py-6 lg:px-12 lg:py-10">
           {panel}
         </main>
       </div>
