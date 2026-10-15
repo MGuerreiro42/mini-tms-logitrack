@@ -16,6 +16,17 @@ describe('LiveIndicator', () => {
     render(<LiveIndicator status={status} />);
     expect(screen.getByRole('status')).toHaveTextContent(label);
   });
+
+  it('keeps the live detail outside the status region', () => {
+    render(
+      <LiveIndicator status="live" detail="2 updates in the last minute" />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(/^Live$/);
+    expect(
+      screen.getByText('· 2 updates in the last minute'),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('OfflineBanner', () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { type RefObject, useEffect, useRef } from 'react';
 import {
   type FilterChoice,
   FilterMenu,
@@ -21,6 +22,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
+import type { LiveStatus } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
@@ -75,10 +77,10 @@ export function AdminMonitoringTable({
       },
     );
 
-  const updates = useRecentCount(UPDATES_WINDOW_MS);
+  const recordUpdate = useRef<() => void>(undefined);
   const liveStatus = useShipmentTracking({
     subscribeToMonitoring: true,
-    onEvent: updates.record,
+    onEvent: () => recordUpdate.current?.(),
   });
   const query = useAdminShipments(params, liveStatus);
   const counts = useAdminShipmentStatusCounts(
@@ -93,17 +95,7 @@ export function AdminMonitoringTable({
       <PageHeader
         title="Monitoring"
         description="Every shipment on the platform, updated live."
-        action={
-          <LiveIndicator
-            status={liveStatus}
-            detail={
-              updates.count > 0
-                ? `${plural(updates.count, 'update')} in the last minute`
-                : undefined
-            }
-            className="h-8.5 rounded-lg bg-card px-3 text-foreground shadow-xs"
-          />
-        }
+        action={<RecentUpdates status={liveStatus} recordRef={recordUpdate} />}
       />
       <OfflineBanner status={liveStatus} />
       <FilterToolbar
@@ -163,5 +155,29 @@ export function AdminMonitoringTable({
         )}
       </QueryState>
     </div>
+  );
+}
+
+function RecentUpdates({
+  status,
+  recordRef,
+}: {
+  status: LiveStatus;
+  recordRef: RefObject<(() => void) | undefined>;
+}) {
+  const { count, record } = useRecentCount(UPDATES_WINDOW_MS);
+
+  useEffect(() => {
+    recordRef.current = record;
+  }, [recordRef, record]);
+
+  return (
+    <LiveIndicator
+      status={status}
+      detail={
+        count > 0 ? `${plural(count, 'update')} in the last minute` : undefined
+      }
+      className="h-8.5 rounded-lg bg-card px-3 text-foreground shadow-xs"
+    />
   );
 }

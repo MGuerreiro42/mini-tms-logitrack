@@ -25,7 +25,6 @@ export function LiveIndicator({
 
   return (
     <span
-      role="status"
       className={cn(
         'inline-flex items-center gap-2 text-[13px] font-semibold text-muted-foreground',
         className,
@@ -37,7 +36,8 @@ export function LiveIndicator({
         )}
         <span className={cn('relative size-2 rounded-full', dot)} />
       </span>
-      {status === 'live' && detail ? `${label} · ${detail}` : label}
+      <span role="status">{label}</span>
+      {status === 'live' && detail && <span className="-ml-1">· {detail}</span>}
     </span>
   );
 }

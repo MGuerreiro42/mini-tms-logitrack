@@ -101,7 +101,7 @@ describe('AdminMonitoringTable', () => {
     });
 
     expect(
-      screen.getByText('Live · 2 updates in the last minute'),
+      screen.getByText('· 2 updates in the last minute'),
     ).toBeInTheDocument();
   });
 
