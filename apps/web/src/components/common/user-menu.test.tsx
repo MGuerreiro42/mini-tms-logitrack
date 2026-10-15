@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from 'next-themes';
 import { hardNavigate } from '@/lib/hard-navigate';
 import { getSessionFromDocument, setSession } from '@/lib/session';
+import { THEME_PROVIDER_PROPS } from '@/lib/theme';
 import { renderWithQueryClient } from '@/test/render';
 import { UserMenu } from './user-menu';
 
@@ -12,6 +13,11 @@ vi.mock('@/lib/hard-navigate', () => ({ hardNavigate: vi.fn() }));
 const props = { name: 'Seller', role: 'Seller', initials: 'SE' };
 
 describe('UserMenu', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('class');
+    document.documentElement.removeAttribute('style');
+  });
+
   it('clears the query cache and the session, then leaves with a full page load', async () => {
     setSession({ token: 't', role: 'SELLER', userId: 'u', email: 'e' });
     const queryClient = new QueryClient();
@@ -30,7 +36,7 @@ describe('UserMenu', () => {
   it('switches the theme from the menu', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider {...THEME_PROVIDER_PROPS}>
         <UserMenu {...props} />
       </ThemeProvider>,
     );
