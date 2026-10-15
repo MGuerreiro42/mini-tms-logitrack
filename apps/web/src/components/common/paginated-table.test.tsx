@@ -165,6 +165,28 @@ describe('PaginatedTable', () => {
     expect(screen.queryByRole('button', { name: /next/i })).toBeNull();
   });
 
+  it('hides secondary columns below their breakpoint', () => {
+    render(
+      <PaginatedTable<Row>
+        columns={[
+          ...columns,
+          { header: 'Notes', hideBelow: 'lg', cell: () => 'note' },
+        ]}
+        data={[{ id: 'row-1', name: 'Row 1' }]}
+        getRowKey={(row) => row.id}
+      />,
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'Notes' })).toHaveClass(
+      'hidden',
+      'lg:table-cell',
+    );
+    expect(screen.getByRole('cell', { name: 'note' })).toHaveClass('hidden');
+    expect(screen.getByRole('columnheader', { name: 'Name' })).not.toHaveClass(
+      'hidden',
+    );
+  });
+
   it('applies the persisted density to the table', () => {
     setDensity('compact');
     const { container } = render(
