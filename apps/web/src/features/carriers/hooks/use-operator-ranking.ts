@@ -13,6 +13,5 @@ export function useOperatorRanking() {
     enabled: Boolean(session),
   });
 
-  // `isPending`, not `isLoading` — same reasoning as use-carrier-performance.ts.
   return { ...query, isLoading: query.isPending };
 }

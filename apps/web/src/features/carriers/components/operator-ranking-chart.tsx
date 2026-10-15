@@ -39,9 +39,6 @@ export function OperatorRankingChart({
     );
   }
 
-  // Rank order carries meaning here (1st vs. 2nd place), so this is an
-  // ordinal ramp, not a flat categorical color — same reasoning as the
-  // stage-duration funnel.
   const ramp = ordinalChartRamp(data.length);
   const rows = data.map((operator, index) => ({
     ...operator,
