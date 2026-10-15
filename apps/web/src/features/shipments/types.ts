@@ -13,9 +13,6 @@ export type ShipmentStatus =
 
 export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
 
-// A modality with no `slaHours` configured is omitted entirely by the
-// backend, not returned with a misleading 0% — mirrors this codebase's
-// null-over-0 discipline for "no data" states.
 export interface SlaSummaryItem {
   modalityCode: string;
   modalityName: string;

@@ -32,7 +32,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  // Explicit IPv4 bind: Railway's proxy can't reach an IPv6-only default listen.
+  // A bare port can bind IPv6-only, unreachable behind Railway's IPv4 proxy.
   await app.listen(configService.get('PORT', { infer: true }), '0.0.0.0');
 }
 void bootstrap();
