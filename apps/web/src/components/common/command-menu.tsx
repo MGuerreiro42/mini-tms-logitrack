@@ -60,7 +60,9 @@ export function CommandMenu({ items }: { items: NavItem[] }) {
         className="size-11 px-0 font-normal text-muted-foreground lg:h-9 lg:w-48 lg:justify-start lg:px-3 xl:w-64"
       >
         <SearchIcon aria-hidden />
-        <span className="sr-only lg:not-sr-only">Search or jump to…</span>
+        <span className="sr-only lg:not-sr-only lg:truncate">
+          Search or jump to…
+        </span>
         <kbd className="ml-auto hidden rounded-xs bg-muted px-1.5 font-mono text-xs lg:inline">
           ⌘K
         </kbd>
