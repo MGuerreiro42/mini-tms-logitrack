@@ -52,6 +52,7 @@ export const shipmentColumns = {
   },
   created: {
     header: 'Created',
+    hideBelow: 'xl',
     className: 'text-right text-muted-foreground',
     cell: (s) => formatDate(s.createdAt),
   },
@@ -61,22 +62,26 @@ export const partyColumns = {
   seller: {
     header: 'Seller',
     card: 'meta',
+    hideBelow: 'lg',
     cell: (s) => s.sellerCompanyName,
   } satisfies Column<Pick<CarrierShipment, 'sellerCompanyName'>>,
   owner: {
     header: 'Owner',
+    hideBelow: 'xl',
     className: 'text-muted-foreground',
     cell: ownerLabel,
   } satisfies Column<CarrierShipment>,
   carrier: {
     header: 'Carrier',
     card: 'meta',
+    hideBelow: 'lg',
     className: 'text-muted-foreground',
     cell: (s) => s.carrierName,
   } satisfies Column<Pick<Shipment, 'carrierName'>>,
   modality: {
     header: 'Modality',
     card: 'meta',
+    hideBelow: 'lg',
     className: 'text-muted-foreground',
     cell: (s) => s.modalityName,
   } satisfies Column<Pick<Shipment, 'modalityName'>>,
