@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
 
-// Bottom bar above the tab bar below lg; inline (pushed right) from lg up.
 export function PinnedAction({
   children,
   pinned = true,
@@ -8,7 +7,7 @@ export function PinnedAction({
   children: React.ReactNode;
   pinned?: boolean;
 }) {
-  // Same wrapper either way so an open dialog inside stays mounted.
+  // Same wrapper pinned or not so an open dialog stays mounted.
   return (
     <div
       data-pinned-action={pinned || undefined}

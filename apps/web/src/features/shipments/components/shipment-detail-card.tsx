@@ -51,13 +51,6 @@ function ShipmentDetailView({
   const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
   const place = `${shipment.addressCity}, ${shipment.addressState}`;
   const cancellable = isCancellableBySeller(shipment.status);
-  const cancelAction = (
-    <CancelShipmentAction
-      shipmentId={shipment.id}
-      status={shipment.status}
-      available={cancellable}
-    />
-  );
 
   return (
     <div className="space-y-5">
@@ -80,7 +73,13 @@ function ShipmentDetailView({
           </>
         }
         action={
-          <PinnedAction pinned={cancellable}>{cancelAction}</PinnedAction>
+          <PinnedAction pinned={cancellable}>
+            <CancelShipmentAction
+              shipmentId={shipment.id}
+              status={shipment.status}
+              available={cancellable}
+            />
+          </PinnedAction>
         }
       />
       <OfflineBanner status={liveStatus} />

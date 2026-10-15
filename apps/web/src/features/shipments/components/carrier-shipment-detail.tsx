@@ -340,25 +340,26 @@ function SetbackAction({
 }) {
   const { action, title, description } = SETBACKS[status];
 
-  const dialog = (
-    <ConfirmDialog
-      trigger={
-        <Button
-          variant="destructive"
-          size={pinned ? 'lg' : 'default'}
-          disabled={isPending}
-        >
-          {action}
-        </Button>
-      }
-      title={title}
-      description={description}
-      confirmLabel={action}
-      variant="destructive"
-      onConfirm={onConfirm}
-      available={available}
-      unavailableMessage="This shipment has moved on, so this step no longer applies."
-    />
+  return (
+    <PinnedAction pinned={pinned}>
+      <ConfirmDialog
+        trigger={
+          <Button
+            variant="destructive"
+            size={pinned ? 'lg' : 'default'}
+            disabled={isPending}
+          >
+            {action}
+          </Button>
+        }
+        title={title}
+        description={description}
+        confirmLabel={action}
+        variant="destructive"
+        onConfirm={onConfirm}
+        available={available}
+        unavailableMessage="This shipment has moved on, so this step no longer applies."
+      />
+    </PinnedAction>
   );
-  return <PinnedAction pinned={pinned}>{dialog}</PinnedAction>;
 }
