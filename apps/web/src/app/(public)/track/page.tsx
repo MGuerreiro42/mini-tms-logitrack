@@ -1,8 +1,11 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { PublicTrackingForm } from '@/features/tracking/components/public-tracking-form';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
+
+export const metadata: Metadata = { title: 'Track a shipment · Mini TMS' };
 
 export default async function PublicTrackingPage({
   searchParams,

@@ -2,7 +2,7 @@
 
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import type { NavItem } from '@/components/common/nav-list';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,27 +16,35 @@ import {
 } from '@/components/ui/command';
 import { isTrackingCode, publicTrackingPath } from '@/lib/public-tracking-path';
 
+function isShortcut(event: KeyboardEvent): boolean {
+  const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+  return (
+    event.key.toLowerCase() === 'k' && (isMac ? event.metaKey : event.ctrlKey)
+  );
+}
+
 export function CommandMenu({ items }: { items: NavItem[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const code = query.trim().toUpperCase();
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        setOpen((current) => !current);
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
   function changeOpen(next: boolean) {
     setOpen(next);
     if (!next) setQuery('');
   }
+
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (event.defaultPrevented || !isShortcut(event)) return;
+    if (!open && document.querySelector('[role="dialog"]')) return;
+    event.preventDefault();
+    changeOpen(!open);
+  });
+
+  useEffect(() => {
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, []);
 
   function go(href: string) {
     changeOpen(false);
@@ -63,16 +71,18 @@ export function CommandMenu({ items }: { items: NavItem[] }) {
         title="Search or jump to"
         description="Go to a page, or open a shipment by its tracking code."
       >
-        <Command>
+        <Command vimBindings={false}>
           <CommandInput
             placeholder="Page name or tracking code"
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
-            <CommandEmpty>
-              No matching page. Paste a full tracking code to open a shipment.
-            </CommandEmpty>
+            {!isTrackingCode(code) && (
+              <CommandEmpty>
+                No matching page. Paste a full tracking code to open a shipment.
+              </CommandEmpty>
+            )}
             {isTrackingCode(code) && (
               <CommandGroup heading="Shipment" forceMount>
                 <CommandItem

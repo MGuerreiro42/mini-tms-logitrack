@@ -47,4 +47,31 @@ describe('CommandMenu', () => {
 
     expect(router.push).toHaveBeenCalledWith('/track/TMS-DE0000000027');
   });
+
+  it('opens a pasted tracking code on Enter, with no empty message', async () => {
+    const user = userEvent.setup();
+    render(<CommandMenu items={items} />);
+
+    await user.keyboard('{Control>}k{/Control}');
+    await user.click(screen.getByRole('combobox'));
+    await user.paste('TMS-DE0000000027');
+
+    expect(screen.queryByText(/No matching page/)).toBeNull();
+    await user.keyboard('{Enter}');
+
+    expect(router.push).toHaveBeenCalledWith('/track/TMS-DE0000000027');
+  });
+
+  it('closes on the shortcut and starts empty next time', async () => {
+    const user = userEvent.setup();
+    render(<CommandMenu items={items} />);
+
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(screen.getByRole('combobox'), 'ship');
+    await user.keyboard('{Control>}k{/Control}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await user.keyboard('{Control>}k{/Control}');
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
 });

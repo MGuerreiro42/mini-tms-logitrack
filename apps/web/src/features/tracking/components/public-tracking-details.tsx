@@ -1,12 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect } from 'react';
 import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { PublicLink } from '@/components/common/public-page';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
 import { usePublicTracking } from '../hooks/use-public-tracking';
@@ -64,12 +65,7 @@ export function PublicTrackingDetails({
       <TrackingTimeline events={tracking.events} status={tracking.status} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-muted pt-4.5 text-[13px] text-muted-foreground">
         <span>This page updates by itself. No need to refresh.</span>
-        <Link
-          href="/track"
-          className="rounded-xs text-sm font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
-        >
-          Track another shipment
-        </Link>
+        <PublicLink href={ROUTES.track}>Track another shipment</PublicLink>
       </div>
     </div>
   );

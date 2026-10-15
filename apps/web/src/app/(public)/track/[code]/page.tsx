@@ -82,6 +82,7 @@ export default async function TrackingPage({ params }: TrackingPageProps) {
 function RateLimited({ code }: { code: string }) {
   return (
     <PublicPage
+      layout="single"
       title="Too many requests"
       description="You've looked up shipments too often in the last minute. Try again shortly."
     >
