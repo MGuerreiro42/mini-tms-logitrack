@@ -15,7 +15,7 @@ export default function CarrierSettingsPage() {
         title="Modalities & coverage"
         description="Choose which modalities you operate and where you deliver. Sellers only see carriers that match both."
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-start">
         {SECTIONS.map((section) => (
           <Card key={section.title}>
             <CardHeader>

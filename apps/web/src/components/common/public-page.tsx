@@ -67,7 +67,7 @@ export function PublicPage({
   }
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <section className="flex flex-col justify-between gap-10 px-5 pt-7 lg:px-18 lg:py-14">
         <Brand />
         <div className="hidden max-w-140 flex-col gap-5.5 lg:flex">

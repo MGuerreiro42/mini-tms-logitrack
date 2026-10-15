@@ -91,7 +91,7 @@ function CarrierShipmentView({
       >
         <ShipmentDueLine shipment={shipment} />
       </ShipmentTitle>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start">
         <div className="flex flex-col gap-5">
           <NextStep shipment={shipment} actionState={actionState} />
           <Card>
