@@ -60,16 +60,15 @@ describe('FilterToolbar', () => {
   it('switches and persists the table density', async () => {
     const user = userEvent.setup();
     render(<FilterToolbar />);
-    const compact = screen.getByRole('button', { name: 'Compact' });
-    expect(compact).toHaveAttribute('aria-pressed', 'false');
+    const compact = screen.getByRole('radio', { name: 'Compact' });
+    expect(screen.getByRole('radio', { name: 'Comfortable' })).toBeChecked();
 
     await user.click(compact);
 
-    expect(compact).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Comfortable' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(compact).toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'Comfortable' }),
+    ).not.toBeChecked();
     expect(localStorage.getItem('tms:density')).toBe('compact');
   });
 });
