@@ -54,8 +54,12 @@ export interface CarrierShipment extends ShipmentBase {
   ownerEmail: string | null;
 }
 
-export interface AdminShipment extends CarrierShipment {
+export interface AdminShipmentResponse extends CarrierShipment {
   carrierCompanyName: string;
+}
+
+export interface AdminShipment extends CarrierShipment {
+  carrierName: string;
 }
 
 export interface AdminStatusCountsQuery {

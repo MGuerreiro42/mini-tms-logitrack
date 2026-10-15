@@ -21,6 +21,7 @@ vi.mock('@/services/api-client', async (importOriginal) => ({
 describe('shipments api', () => {
   beforeEach(() => {
     vi.mocked(apiClient).mockReset();
+    vi.mocked(apiClient).mockResolvedValue({ data: [], meta: {} });
   });
 
   it('getEligibleCarriers builds the query string from state/city/modalityId', async () => {
@@ -87,6 +88,18 @@ describe('shipments api', () => {
       undefined,
       'token',
     );
+  });
+
+  it('listAdminShipments exposes the carrier company as carrierName', async () => {
+    vi.mocked(apiClient).mockResolvedValue({
+      data: [{ id: 's-1', carrierCompanyName: 'Fast Carrier' }],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+
+    const page = await listAdminShipments({}, 'token');
+
+    expect(page.data).toEqual([{ id: 's-1', carrierName: 'Fast Carrier' }]);
+    expect(page.meta.total).toBe(1);
   });
 
   it('listAdminShipments omits query params that are not provided', async () => {

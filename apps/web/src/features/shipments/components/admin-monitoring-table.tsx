@@ -152,12 +152,7 @@ export function AdminMonitoringTable({
             columns={[
               shipmentColumns.trackingCode,
               partyColumns.seller,
-              {
-                header: 'Carrier',
-                card: 'meta',
-                className: 'text-muted-foreground',
-                cell: (s) => s.carrierCompanyName,
-              },
+              partyColumns.carrier,
               shipmentColumns.destination,
               shipmentColumns.status,
               partyColumns.owner,
