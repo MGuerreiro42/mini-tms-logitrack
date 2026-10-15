@@ -16,6 +16,7 @@ import { useAppOrigin } from '@/hooks/use-app-origin';
 import { formatDate, formatDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
+import { ROUTES } from '@/lib/routes';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import { isCancellableBySeller, type Shipment } from '../types';
@@ -56,7 +57,7 @@ function ShipmentDetailView({
         className="flex gap-2 text-[13px] text-muted-foreground"
       >
         <Link
-          href="/seller/shipments"
+          href={ROUTES.sellerShipments}
           className="font-semibold text-primary hover:underline"
         >
           Shipments

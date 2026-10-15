@@ -28,7 +28,6 @@ import { SlaSummaryChart } from './sla-summary-chart';
 const SLA_REFRESH_MS = 60_000;
 const ATTENTION_LIMIT = 5;
 
-const shipmentHref = (shipment: Shipment) => `/seller/shipments/${shipment.id}`;
 const place = (shipment: Shipment) =>
   `${shipment.addressCity}, ${shipment.addressState}`;
 const plural = (count: number, noun: string, nouns = `${noun}s`) =>
@@ -69,7 +68,7 @@ function SellerDashboardView({
             label: 'Enable at least one delivery modality',
             action: (
               <Button asChild variant="link">
-                <Link href="/seller/modalities">Modalities</Link>
+                <Link href={ROUTES.sellerModalities}>Modalities</Link>
               </Button>
             ),
           },
@@ -127,7 +126,7 @@ function SellerDashboardView({
           aside={<LiveIndicator status={liveStatus} />}
           footer={
             <Link
-              href="/seller/shipments"
+              href={ROUTES.sellerShipments}
               className="text-sm font-semibold text-primary hover:underline"
             >
               View all shipments
@@ -137,7 +136,7 @@ function SellerDashboardView({
           <ol>
             {recentShipments.map((shipment) => (
               <li key={shipment.id}>
-                <PanelLink href={shipmentHref(shipment)}>
+                <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
                   <span
                     aria-hidden
                     className={cn(
@@ -198,7 +197,7 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
         <ul>
           {items.slice(0, ATTENTION_LIMIT).map(({ shipment, reason, sla }) => (
             <li key={shipment.id}>
-              <PanelLink href={shipmentHref(shipment)}>
+              <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
                 <span className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-3.5">
                   <span className="shrink-0 font-mono text-[13px] md:w-42">
                     {shipment.trackingCode}
