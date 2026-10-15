@@ -146,4 +146,13 @@ describe('PublicTrackingGateway', () => {
       expect(ack).toEqual({ ok: true });
     });
   });
+
+  it('leaves the tracking room on unsubscribe', async () => {
+    const socket = makeSocket(['socket-id', `tracking:${CODE}`]);
+
+    const ack = await gateway.handleUnsubscribeTracking(socket as never, CODE);
+
+    expect(socket.leave).toHaveBeenCalledWith(`tracking:${CODE}`);
+    expect(ack).toEqual({ ok: true });
+  });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDownIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DENSITIES, setDensity, useDensity } from '@/hooks/use-density';
 import { ALL } from '@/lib/filters';
+import { subscribeNever } from '@/lib/subscribe-never';
 import { cn } from '@/lib/utils';
 
 export interface FilterChoice<V extends string> {
@@ -87,20 +88,36 @@ const DENSITY_LABEL = { comfortable: 'Comfortable', compact: 'Compact' };
 
 function DensityToggle() {
   const density = useDensity();
+  // The stored choice is unknown on the server; staying invisible until mount avoids a visible flip.
+  const mounted = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 
   return (
-    <fieldset className="hidden rounded-md bg-muted p-0.75 md:flex">
+    <fieldset
+      className={cn(
+        'hidden rounded-md bg-muted p-0.75 md:flex',
+        !mounted && 'invisible',
+      )}
+    >
       <legend className="sr-only">Density</legend>
       {DENSITIES.map((option) => (
-        <button
+        <label
           key={option}
-          type="button"
-          aria-pressed={density === option}
-          onClick={() => setDensity(option)}
-          className="h-8.5 rounded-sm px-3 text-[13px] text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-xs"
+          className="flex h-8.5 cursor-pointer items-center rounded-sm px-3 text-[13px] text-muted-foreground has-checked:bg-card has-checked:font-semibold has-checked:text-foreground has-checked:shadow-xs has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
         >
+          <input
+            type="radio"
+            name="density"
+            value={option}
+            checked={mounted && density === option}
+            onChange={() => setDensity(option)}
+            className="sr-only"
+          />
           {DENSITY_LABEL[option]}
-        </button>
+        </label>
       ))}
     </fieldset>
   );

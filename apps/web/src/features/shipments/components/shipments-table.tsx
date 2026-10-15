@@ -11,6 +11,7 @@ import type { StatusFilter } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { ALL } from '@/lib/filters';
+import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
@@ -18,6 +19,7 @@ import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus, ShipmentStatusCounts } from '../types';
 import {
   lateRowClassName,
+  partyColumns,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -83,7 +85,7 @@ export function ShipmentsTable() {
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(shipment) => shipment.id}
-            getRowHref={(shipment) => `/seller/shipments/${shipment.id}`}
+            getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}
             emptyMessage={
               isFiltered
                 ? 'No shipments match these filters.'
@@ -92,16 +94,8 @@ export function ShipmentsTable() {
             columns={[
               shipmentColumns.trackingCode,
               shipmentColumns.destination,
-              {
-                header: 'Carrier',
-                cell: (s) => s.carrierName,
-                className: 'text-muted-foreground',
-              },
-              {
-                header: 'Modality',
-                cell: (s) => s.modalityName,
-                className: 'text-muted-foreground',
-              },
+              partyColumns.carrier,
+              partyColumns.modality,
               shipmentColumns.status,
               slaColumn,
               shipmentColumns.created,

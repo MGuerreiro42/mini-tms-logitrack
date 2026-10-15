@@ -13,7 +13,7 @@ export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
     <ChartSection
       title="SLA adherence by modality"
       isEmpty={data.length === 0}
-      emptyMessage="Not enough data yet — SLA adherence appears once a shipment is delivered in a modality with an SLA configured."
+      emptyMessage="Not enough data yet. SLA adherence appears once a shipment is delivered in a modality with an SLA configured."
     >
       <MetricBarChart
         data={data}

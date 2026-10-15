@@ -24,6 +24,7 @@ import { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto'
 import { EligibleCarriersQueryDto } from './dto/eligible-carriers-query.dto';
 import { ListQueueQueryDto } from './dto/list-queue-query.dto';
 import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
+import { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
@@ -223,6 +224,18 @@ export class ShipmentsController {
     @Query() query: StatsWindowQueryDto,
   ) {
     return this.shipmentsService.slaSummaryForSeller(user.id, query.since);
+  }
+
+  @ApiOperation({
+    summary:
+      'Shipments of the authenticated seller that need attention — failed deliveries first (latest first), then open shipments past createdAt + modality.slaHours (most overdue first), at most 5, plus the full counts of each',
+  })
+  @ApiResponse({ status: 200, type: ShipmentAttentionResponseDto })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @Auth(GlobalRole.SELLER)
+  @Get('attention')
+  attention(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.attentionForSeller(user.id);
   }
 
   @ApiOperation({

@@ -33,6 +33,31 @@ function subscribe(
   });
 }
 
+// Hooks share one socket, so a room is left only when its last holder lets go.
+const roomHolders = new WeakMap<Socket, Map<string, number>>();
+
+function holdRooms(socket: Socket, keys: string[]) {
+  const holders = roomHolders.get(socket) ?? new Map<string, number>();
+  roomHolders.set(socket, holders);
+  for (const key of keys) holders.set(key, (holders.get(key) ?? 0) + 1);
+}
+
+function releaseRooms(socket: Socket, keys: string[]) {
+  const holders = roomHolders.get(socket);
+  for (const key of keys) {
+    const left = (holders?.get(key) ?? 1) - 1;
+    if (left > 0) {
+      holders?.set(key, left);
+      continue;
+    }
+    holders?.delete(key);
+    const { event, args = [] }: SocketSubscription = JSON.parse(key);
+    if (socket.connected) {
+      socket.emit(event.replace(/^subscribe:/, 'unsubscribe:'), ...args);
+    }
+  }
+}
+
 export function useSocketSubscription<P>({
   getSocket,
   connectionKey,
@@ -43,13 +68,16 @@ export function useSocketSubscription<P>({
   const [status, setStatus] = useState<LiveStatus>('connecting');
   const resolveSocket = useEffectEvent(getSocket);
   const notify = useEffectEvent((payload?: P) => onUpdate(payload));
-  const subscriptionsKey = JSON.stringify(subscriptions);
+  const subscriptionsKey = JSON.stringify(
+    subscriptions.map((room) => JSON.stringify(room)).sort(),
+  );
 
   useEffect(() => {
-    if (!connectionKey) return;
+    const keys: string[] = JSON.parse(subscriptionsKey);
+    if (!connectionKey || keys.length === 0) return;
 
     const socket = resolveSocket();
-    const rooms: SocketSubscription[] = JSON.parse(subscriptionsKey);
+    const rooms: SocketSubscription[] = keys.map((key) => JSON.parse(key));
     let attempt = 0;
 
     function handleUpdate(payload?: P) {
@@ -76,6 +104,7 @@ export function useSocketSubscription<P>({
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleOffline);
     socket.on('connect_error', handleOffline);
+    holdRooms(socket, keys);
     const release = retainSocket(socket);
     // A socket another subscriber already holds open fires no connect event for this one.
     if (socket.connected) handleConnect();
@@ -86,6 +115,7 @@ export function useSocketSubscription<P>({
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleOffline);
       socket.off('connect_error', handleOffline);
+      releaseRooms(socket, keys);
       release();
       setStatus('connecting');
     };

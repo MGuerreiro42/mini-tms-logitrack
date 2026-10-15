@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ROUTES } from '@/lib/routes';
 import type { ModalityOption } from '../types';
 
 const schema = z.object({
@@ -87,7 +88,10 @@ export function ShipmentAddressForm({
           {modalities.length === 0 && (
             <p className="rounded-md bg-notice px-3 py-2 text-[13px] text-notice-foreground">
               You haven't enabled any modality yet.{' '}
-              <Link href="/seller/modalities" className="font-medium underline">
+              <Link
+                href={ROUTES.sellerModalities}
+                className="font-medium underline"
+              >
                 Enable one in Modalities
               </Link>
               .

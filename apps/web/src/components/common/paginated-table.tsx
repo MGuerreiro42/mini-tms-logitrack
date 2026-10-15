@@ -171,6 +171,7 @@ function RowCards<T>({
   const [title, badges, places, metas, actions] = (
     ['title', 'badge', 'place', 'meta', 'action'] as const
   ).map(slot);
+  const details = columns.filter((column) => !column.card);
 
   return (
     <ul className="flex flex-col gap-2.5">
@@ -213,6 +214,20 @@ function RowCards<T>({
                     {cells(metas, ' · ')}
                   </span>
                 )}
+                {details.map((column) => {
+                  const value = column.cell(row);
+                  if (value == null || value === false || value === '')
+                    return null;
+                  return (
+                    <span
+                      key={columnKey(column)}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {column.header && `${column.header}: `}
+                      {value}
+                    </span>
+                  );
+                })}
               </span>
               {cells(actions)}
             </div>

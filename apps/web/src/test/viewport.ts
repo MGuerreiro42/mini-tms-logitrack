@@ -1,9 +1,11 @@
 const DESKTOP_WIDTH = 1280;
 
 let width = DESKTOP_WIDTH;
+const listeners = new Set<() => void>();
 
 export function setViewportWidth(next: number) {
   width = next;
+  for (const listener of listeners) listener();
 }
 
 export function resetViewport() {
@@ -11,20 +13,26 @@ export function resetViewport() {
 }
 
 function matches(query: string): boolean {
+  const min = /min-width:\s*(\d+)px/.exec(query);
   const max = /max-width:\s*(\d+)px/.exec(query);
-  return max ? width <= Number(max[1]) : false;
+  if (!min && !max) return false;
+  return (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]));
 }
 
 export function installMatchMedia() {
   window.matchMedia = (query: string) =>
     ({
-      matches: matches(query),
+      get matches() {
+        return matches(query);
+      },
       media: query,
       onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
+      addEventListener: (_: string, listener: () => void) =>
+        listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) =>
+        listeners.delete(listener),
       addListener: () => {},
       removeListener: () => {},
       dispatchEvent: () => false,
-    }) as MediaQueryList;
+    }) as unknown as MediaQueryList;
 }

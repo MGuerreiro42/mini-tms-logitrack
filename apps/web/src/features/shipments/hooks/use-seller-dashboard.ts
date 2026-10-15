@@ -1,19 +1,20 @@
 'use client';
 
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
-import { fetchAllPages } from '@/lib/fetch-all-pages';
 import { fallbackPollInterval } from '@/lib/live-status';
 import { sumRecord } from '@/lib/sum-record';
-import { getShipmentStatusCounts, getSlaSummary, listShipments } from '../api';
+import { getShipmentAttention, getSlaSummary, listShipments } from '../api';
 import { shipmentKeys } from '../api/keys';
 import type {
   Shipment,
+  ShipmentAttention,
   ShipmentStatus,
   ShipmentStatusCounts,
   SlaSummaryItem,
 } from '../types';
+import { statusCountsQuery } from './use-shipment-status-counts';
 import { useShipmentTracking } from './use-shipment-tracking';
 
 const RECENT_SHIPMENTS_LIMIT = 6;
@@ -25,13 +26,11 @@ const IN_PROGRESS: ShipmentStatus[] = [
   'IN_TRANSIT',
   'OUT_FOR_DELIVERY',
 ];
-// Every status that can still change; the list endpoint filters by one status at a time.
-const OPEN: ShipmentStatus[] = [...IN_PROGRESS, 'FAILED_DELIVERY'];
 
 export interface SellerDashboardData {
   counts: ReturnType<typeof toCounts>;
   onTime: ReturnType<typeof toOnTime>;
-  openShipments: Shipment[];
+  attention: ShipmentAttention;
   recentShipments: Shipment[];
   slaSummary: SlaSummaryItem[];
 }
@@ -54,37 +53,14 @@ function toOnTime(summary: SlaSummaryItem[]) {
   };
 }
 
-async function listOpenShipments(token: string): Promise<Shipment[]> {
-  const pages = await Promise.all(
-    OPEN.map((status) =>
-      fetchAllPages((page) => listShipments({ ...page, status }, token)),
-    ),
-  );
-  return pages.flat();
-}
-
-const toIds = (shipments: Shipment[]) => shipments.map(({ id }) => id);
-
 export function useSellerDashboard() {
   const { token, enabled } = useAuthToken();
-  const open = {
-    queryKey: shipmentKeys.open(),
-    queryFn: () => listOpenShipments(token),
-    enabled,
-  };
-
-  const openIds = useQuery({ ...open, select: toIds });
-  const liveStatus = useShipmentTracking({ shipmentIds: openIds.data });
+  const liveStatus = useShipmentTracking({ subscribeToSeller: true });
   const refetchInterval = fallbackPollInterval(liveStatus);
 
   const query = useQueries({
     queries: [
-      {
-        queryKey: shipmentKeys.statusCounts(),
-        queryFn: () => getShipmentStatusCounts(token),
-        enabled,
-        refetchInterval,
-      },
+      { ...statusCountsQuery(token, enabled), refetchInterval },
       {
         queryKey: shipmentKeys.dashboardRecent(),
         queryFn: () =>
@@ -98,15 +74,20 @@ export function useSellerDashboard() {
         enabled,
         refetchInterval,
       },
-      { ...open, refetchInterval },
+      {
+        queryKey: shipmentKeys.attention(),
+        queryFn: () => getShipmentAttention(token),
+        enabled,
+        refetchInterval,
+      },
     ],
     combine: (results) =>
       combineQueries(
         results,
-        ([counts, recent, slaSummary, openShipments]): SellerDashboardData => ({
+        ([counts, recent, slaSummary, attention]): SellerDashboardData => ({
           counts: toCounts(counts),
           onTime: toOnTime(slaSummary),
-          openShipments,
+          attention,
           recentShipments: recent.data,
           slaSummary,
         }),

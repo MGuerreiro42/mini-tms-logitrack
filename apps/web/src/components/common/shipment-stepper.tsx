@@ -1,4 +1,4 @@
-import { CheckIcon } from 'lucide-react';
+import { StepDot } from '@/components/common/step-dot';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatShortDateTime } from '@/lib/format-date';
 import {
@@ -45,22 +45,11 @@ export function ShipmentStepper({
               className="flex flex-col gap-2.5"
             >
               <div className="flex items-center">
-                <span
-                  aria-hidden
-                  className={cn(
-                    'flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold',
-                    state === 'done' || state === 'current'
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-muted bg-muted text-muted-foreground',
-                    state === 'current' && 'ring-5 ring-live-halo',
-                  )}
-                >
-                  {state === 'done' ? (
-                    <CheckIcon className="size-3.5" />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
+                <StepDot
+                  state={state === 'unreached' ? 'upcoming' : state}
+                  number={index + 1}
+                  live
+                />
                 {index < HAPPY_PATH.length - 1 && (
                   <span
                     aria-hidden

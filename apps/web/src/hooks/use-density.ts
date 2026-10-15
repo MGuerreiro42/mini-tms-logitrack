@@ -7,11 +7,17 @@ export type Density = (typeof DENSITIES)[number];
 
 const STORAGE_KEY = 'tms:density';
 const listeners = new Set<() => void>();
+// Storage throws when blocked; the choice then lasts for the session only.
+let unsaved: Density = 'comfortable';
 
 function read(): Density {
-  return localStorage.getItem(STORAGE_KEY) === 'compact'
-    ? 'compact'
-    : 'comfortable';
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'compact'
+      ? 'compact'
+      : 'comfortable';
+  } catch {
+    return unsaved;
+  }
 }
 
 function subscribe(listener: () => void) {
@@ -24,7 +30,10 @@ function subscribe(listener: () => void) {
 }
 
 export function setDensity(density: Density) {
-  localStorage.setItem(STORAGE_KEY, density);
+  unsaved = density;
+  try {
+    localStorage.setItem(STORAGE_KEY, density);
+  } catch {}
   for (const listener of listeners) listener();
 }
 

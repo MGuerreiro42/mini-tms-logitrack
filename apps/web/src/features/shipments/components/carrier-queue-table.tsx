@@ -24,11 +24,11 @@ import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import {
   type CarrierShipment,
   isClaimable,
-  ownerLabel,
   type ShipmentStatus,
 } from '../types';
 import {
   lateRowClassName,
+  partyColumns,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -86,17 +86,14 @@ export function CarrierQueueTable() {
             columns={[
               shipmentColumns.trackingCode,
               shipmentColumns.status,
-              { header: 'Seller', cell: (s) => s.sellerCompanyName },
+              partyColumns.seller,
               shipmentColumns.destination,
               slaColumn,
-              {
-                header: 'Owner',
-                cell: ownerLabel,
-                className: 'text-muted-foreground',
-              },
+              partyColumns.owner,
               {
                 id: 'actions',
                 header: '',
+                card: 'action',
                 className: 'text-right',
                 cell: (s) =>
                   isClaimable(s) ? (

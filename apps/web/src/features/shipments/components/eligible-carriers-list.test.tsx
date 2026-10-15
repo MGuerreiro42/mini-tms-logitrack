@@ -79,7 +79,10 @@ describe('EligibleCarriersList', () => {
     });
     expect(continueButton).toBeDisabled();
 
-    const option = screen.getByRole('radio', { name: /Fast Freight/ });
+    const option = screen.getByRole('radio', { name: 'Fast Freight' });
+    expect(option).toHaveAccessibleDescription(
+      'Covers São Paulo, SP Modality Standard · delivered within 48 h',
+    );
     await user.click(option);
     expect(option).toBeChecked();
     expect(screen.getAllByText('Fast Freight')).toHaveLength(2);

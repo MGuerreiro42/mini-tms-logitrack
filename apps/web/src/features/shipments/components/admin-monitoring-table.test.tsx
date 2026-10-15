@@ -6,6 +6,7 @@ import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
+import { setViewportWidth } from '@/test/viewport';
 import { AdminMonitoringTable } from './admin-monitoring-table';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -89,5 +90,38 @@ describe('AdminMonitoringTable', () => {
     expect(
       screen.getByText('Live · 2 updates in the last minute'),
     ).toBeInTheDocument();
+  });
+
+  it('shows seller and carrier on mobile cards', async () => {
+    server.use(
+      http.get(`${API_URL}/admin/shipments`, () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 'shipment-1',
+              trackingCode: 'TMS-AAA111',
+              status: 'PENDING',
+              sellerCompanyName: 'Example Store',
+              carrierCompanyName: 'Fast Carrier',
+              addressCity: 'Campinas',
+              addressState: 'SP',
+              createdAt: '2026-10-01T12:00:00.000Z',
+              dueAt: null,
+            },
+          ],
+          meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+    );
+    setViewportWidth(390);
+    renderWithQueryClient(
+      <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
+    );
+
+    const card = await screen.findByRole('listitem');
+    expect(card).toHaveTextContent('TMS-AAA111');
+    expect(card).toHaveTextContent('Example Store');
+    expect(card).toHaveTextContent('Fast Carrier');
+    expect(screen.queryByRole('table')).toBeNull();
   });
 });

@@ -22,9 +22,10 @@ import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import { type AdminShipment, ownerLabel } from '../types';
+import type { AdminShipment } from '../types';
 import {
   lateRowClassName,
+  partyColumns,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -141,11 +142,7 @@ export function AdminMonitoringTable({
             }
             columns={[
               shipmentColumns.trackingCode,
-              {
-                header: 'Seller',
-                card: 'meta',
-                cell: (s) => s.sellerCompanyName,
-              },
+              partyColumns.seller,
               {
                 header: 'Carrier',
                 card: 'meta',
@@ -154,12 +151,7 @@ export function AdminMonitoringTable({
               },
               shipmentColumns.destination,
               shipmentColumns.status,
-              {
-                header: 'Owner',
-                card: 'meta',
-                className: 'text-muted-foreground',
-                cell: ownerLabel,
-              },
+              partyColumns.owner,
               slaColumn,
               shipmentColumns.created,
             ]}
