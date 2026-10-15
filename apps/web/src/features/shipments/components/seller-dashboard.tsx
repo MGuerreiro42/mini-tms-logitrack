@@ -104,7 +104,7 @@ function SellerDashboardView({
           note={`${attention.counts.failed} failed, ${attention.counts.late} late`}
         />
       </div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <AttentionPanel attention={attention} />
           <SlaSummaryChart data={slaSummary} />

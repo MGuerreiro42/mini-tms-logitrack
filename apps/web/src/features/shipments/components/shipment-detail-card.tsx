@@ -79,7 +79,7 @@ function ShipmentDetailView({
         }
       />
       <OfflineBanner status={liveStatus} />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <Panel title="Progress" aside={<LiveIndicator status={liveStatus} />}>
             <ShipmentStepper

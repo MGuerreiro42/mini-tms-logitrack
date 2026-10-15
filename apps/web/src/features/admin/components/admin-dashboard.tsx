@@ -83,7 +83,7 @@ function AdminDashboardView({
             : 'No applications waiting for review'
         }
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
         <PendingApplications waiting={waiting} />
         <QueryState
           query={shipments}

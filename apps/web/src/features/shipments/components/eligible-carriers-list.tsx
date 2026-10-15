@@ -35,7 +35,7 @@ export function EligibleCarriersList({
   const selected = query.data?.find((carrier) => carrier.id === selectedId);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <QueryState
         skeleton={<QuerySkeleton />}
         query={query}
@@ -141,7 +141,7 @@ function CarrierOption({
         </span>
         <span
           id={`${id}-facts`}
-          className="grid gap-3 text-[13px] sm:grid-cols-2"
+          className="grid grid-cols-1 gap-3 text-[13px] sm:grid-cols-2"
         >
           <CarrierFact label="Covers" value={coverage} />{' '}
           <CarrierFact label="Modality" value={modality} />

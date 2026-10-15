@@ -59,7 +59,7 @@ export function ShipmentAddressForm({
     <Card className="max-w-3xl px-6 py-5.5">
       <form className="flex flex-col gap-5" onSubmit={handleSubmit(submit)}>
         <h2 className="text-base font-semibold">Destination address</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Zip code" {...field('addressZipCode')} />
           <FormField
             label="State (UF)"
@@ -70,7 +70,7 @@ export function ShipmentAddressForm({
           <div className="md:col-span-2">
             <FormField label="City" {...field('addressCity')} />
           </div>
-          <div className="grid gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_8rem]">
+          <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-[minmax(0,1fr)_8rem]">
             <FormField label="Street" {...field('addressStreet')} />
             <FormField label="Number" {...field('addressNumber')} />
           </div>
@@ -97,7 +97,7 @@ export function ShipmentAddressForm({
               .
             </p>
           )}
-          <div className="grid gap-2.5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {modalities.map((modality) => (
               <label
                 key={modality.id}
