@@ -18,11 +18,7 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import {
-  countByStatus,
-  createdSince,
-  hoursBetween,
-} from '../../shared/stats/stats';
+import { countByStatus, createdSince } from '../../shared/stats/stats';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
@@ -49,6 +45,7 @@ import {
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
 } from './shipment.mappers';
+import { computeDueAt } from './shipment-due-at';
 import { SHIPMENT_UPDATED, type ShipmentUpdatedEvent } from './shipment-events';
 import {
   CANCELLABLE_STATUSES,
@@ -240,10 +237,12 @@ export class ShipmentsService {
     >();
 
     for (const shipment of shipments) {
-      if (shipment.modality.slaHours == null) continue;
-
+      const dueAt = computeDueAt(
+        shipment.createdAt,
+        shipment.modality.slaHours,
+      );
       const deliveredEvent = shipment.trackingEvents[0];
-      if (!deliveredEvent) continue;
+      if (!dueAt || !deliveredEvent) continue;
 
       const entry = byModality.get(shipment.modality.code) ?? {
         modalityName: shipment.modality.name,
@@ -252,11 +251,7 @@ export class ShipmentsService {
       };
       entry.deliveredCount += 1;
 
-      const elapsedHours = hoursBetween(
-        shipment.createdAt,
-        deliveredEvent.createdAt,
-      );
-      if (elapsedHours <= shipment.modality.slaHours) {
+      if (deliveredEvent.createdAt <= dueAt) {
         entry.onTimeCount += 1;
       }
 
