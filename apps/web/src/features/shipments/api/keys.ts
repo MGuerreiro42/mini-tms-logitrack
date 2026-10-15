@@ -1,4 +1,5 @@
 import type {
+  AdminStatusCountsQuery,
   ListAdminShipmentsQuery,
   ListQueueQuery,
   ListShipmentsQuery,
@@ -15,6 +16,8 @@ export const shipmentKeys = {
     [...shipmentKeys.all, 'queue', 'detail', id] as const,
   adminList: (query: ListAdminShipmentsQuery) =>
     [...shipmentKeys.all, 'admin', 'list', query] as const,
+  adminStatusCounts: (query: AdminStatusCountsQuery) =>
+    [...shipmentKeys.all, 'admin', 'status-counts', query] as const,
   statusCounts: () => [...shipmentKeys.all, 'status-counts'] as const,
   attention: () => [...shipmentKeys.all, 'attention'] as const,
   dashboardRecent: () => [...shipmentKeys.all, 'dashboard-recent'] as const,

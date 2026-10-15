@@ -58,10 +58,15 @@ export interface AdminShipment extends CarrierShipment {
   carrierCompanyName: string;
 }
 
-export interface ListAdminShipmentsQuery extends PaginationQuery {
-  status?: ShipmentStatus;
+export interface AdminStatusCountsQuery {
   carrierId?: string;
   sellerId?: string;
+}
+
+export interface ListAdminShipmentsQuery
+  extends PaginationQuery,
+    AdminStatusCountsQuery {
+  status?: ShipmentStatus;
 }
 
 export interface CreateShipmentInput {

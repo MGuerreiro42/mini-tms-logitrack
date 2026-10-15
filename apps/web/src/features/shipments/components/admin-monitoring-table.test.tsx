@@ -31,6 +31,19 @@ describe('AdminMonitoringTable', () => {
           meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
         });
       }),
+      http.get(`${API_URL}/admin/shipments/status-counts`, ({ request }) =>
+        HttpResponse.json({
+          PENDING: request.url.includes('carrierId=carrier-1') ? 2 : 5,
+          ACCEPTED: 0,
+          COLLECTED: 0,
+          IN_TRANSIT: 0,
+          OUT_FOR_DELIVERY: 0,
+          DELIVERED: 0,
+          FAILED_DELIVERY: 0,
+          RETURNED: 0,
+          CANCELLED: 1,
+        }),
+      ),
     );
   });
 
@@ -64,7 +77,7 @@ describe('AdminMonitoringTable', () => {
     await screen.findByText('No shipments on the platform yet.');
 
     await user.click(screen.getByRole('button', { name: /Status: All/ }));
-    await user.click(screen.getByRole('menuitemradio', { name: 'Cancelled' }));
+    await user.click(screen.getByRole('menuitemradio', { name: /^Cancelled/ }));
 
     expect(requestedUrls.at(-1)).toBe(
       `${API_URL}/admin/shipments?status=CANCELLED&page=1&limit=20`,
@@ -123,5 +136,27 @@ describe('AdminMonitoringTable', () => {
     expect(card).toHaveTextContent('Example Store');
     expect(card).toHaveTextContent('Fast Carrier');
     expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('shows status counts for the chosen carrier', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(
+      <AdminMonitoringTable
+        carrierOptions={[{ value: 'carrier-1', label: 'Fast Carrier' }]}
+        sellerOptions={[]}
+      />,
+    );
+    expect(
+      await screen.findByRole('button', { name: /Status: All 6/ }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Carrier: Any/ }));
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'Fast Carrier' }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /Status: All 3/ }),
+    ).toBeInTheDocument();
   });
 });

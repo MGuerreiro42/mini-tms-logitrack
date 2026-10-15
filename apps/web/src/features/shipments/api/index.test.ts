@@ -118,27 +118,14 @@ describe('shipments api', () => {
     );
   });
 
-  it('getAdminShipmentStatusCounts reads each status total from a one-row page', async () => {
-    vi.mocked(apiClient).mockImplementation(async (path) => ({
-      data: [],
-      meta: {
-        total: String(path).includes('status=DELIVERED') ? 7 : 0,
-        page: 1,
-        limit: 1,
-        totalPages: 0,
-      },
-    }));
-
-    const counts = await getAdminShipmentStatusCounts('token');
+  it('getAdminShipmentStatusCounts passes only the provided filters', async () => {
+    await getAdminShipmentStatusCounts({ carrierId: 'carrier-1' }, 'token');
 
     expect(apiClient).toHaveBeenCalledWith(
-      '/admin/shipments?status=PENDING&page=1&limit=1',
+      '/admin/shipments/status-counts?carrierId=carrier-1',
       undefined,
       'token',
     );
-    expect(counts.DELIVERED).toBe(7);
-    expect(counts.PENDING).toBe(0);
-    expect(Object.keys(counts)).toHaveLength(9);
   });
 
   it('listQueue omits query params that are not provided', async () => {

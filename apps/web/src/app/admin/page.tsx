@@ -5,7 +5,7 @@ import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 export default async function AdminDashboardPage() {
   const { token } = await requireSegment('admin');
   const shipmentCounts = await withAuthRedirects(
-    getAdminShipmentStatusCounts(token),
+    getAdminShipmentStatusCounts({}, token),
   );
 
   return <AdminDashboard shipmentCounts={shipmentCounts} />;

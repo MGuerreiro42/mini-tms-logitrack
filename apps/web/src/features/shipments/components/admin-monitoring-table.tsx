@@ -18,10 +18,13 @@ import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
 import { plural } from '@/lib/plural';
-import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
-import { useAdminShipments } from '../hooks/use-admin-shipments';
+import {
+  useAdminShipmentStatusCounts,
+  useAdminShipments,
+} from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
+import { STATUS_FILTER_VALUES, statusChoices } from '../lib/status-choices';
 import type { AdminShipment } from '../types';
 import {
   lateRowClassName,
@@ -31,14 +34,6 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
-
-const STATUS_CHOICES: FilterChoice<StatusFilter<ShipmentStatus>>[] = [
-  { value: ALL, label: 'All' },
-  ...SHIPMENT_STATUSES.map((status) => ({
-    value: status,
-    label: SHIPMENT_STATUS[status].label,
-  })),
-];
 
 const SLA_REFRESH_MS = 60_000;
 const UPDATES_WINDOW_MS = 60_000;
@@ -66,7 +61,7 @@ export function AdminMonitoringTable({
         sellerId: ALL as string,
       },
       {
-        status: STATUS_CHOICES.map((choice) => choice.value),
+        status: STATUS_FILTER_VALUES,
         carrierId: carrierChoices.map((choice) => choice.value),
         sellerId: sellerChoices.map((choice) => choice.value),
       },
@@ -78,6 +73,10 @@ export function AdminMonitoringTable({
     onEvent: updates.record,
   });
   const query = useAdminShipments(params, liveStatus);
+  const counts = useAdminShipmentStatusCounts(
+    { carrierId: params.carrierId, sellerId: params.sellerId },
+    liveStatus,
+  );
   const now = useNow(SLA_REFRESH_MS);
   const total = query.data?.meta.total;
 
@@ -106,7 +105,7 @@ export function AdminMonitoringTable({
         <FilterMenu
           label="Status"
           value={filters.status}
-          options={STATUS_CHOICES}
+          options={statusChoices(counts.data)}
           onChange={(value) => setFilter('status', value)}
         />
         <FilterMenu
