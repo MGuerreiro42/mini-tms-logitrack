@@ -2,6 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 import { signupCarrier } from '../api';
 
 export function useCarrierSignupMutation() {
@@ -9,6 +10,6 @@ export function useCarrierSignupMutation() {
 
   return useMutation({
     mutationFn: signupCarrier,
-    onSuccess: () => router.push('/status'),
+    onSuccess: () => router.push(ROUTES.status),
   });
 }

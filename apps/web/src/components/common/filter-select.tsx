@@ -14,6 +14,10 @@ export interface FilterOption {
   label: string;
 }
 
+export function filterValues(options: FilterOption[]): string[] {
+  return [ALL, ...options.map((option) => option.value)];
+}
+
 interface FilterSelectProps {
   placeholder: string;
   allLabel: string;

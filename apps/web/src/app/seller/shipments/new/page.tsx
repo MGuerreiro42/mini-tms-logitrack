@@ -1,9 +1,9 @@
 import { getMyModalities } from '@/features/sellers/api';
 import { CreateShipmentWizard } from '@/features/shipments/components/create-shipment-wizard';
-import { requireRole, withAuthRedirects } from '@/lib/server-session';
+import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 export default async function CreateShipmentPage() {
-  const { token } = await requireRole('SELLER');
+  const { token } = await requireSegment('seller');
   const modalities = (await withAuthRedirects(getMyModalities(token))).filter(
     (m) => m.enabled,
   );

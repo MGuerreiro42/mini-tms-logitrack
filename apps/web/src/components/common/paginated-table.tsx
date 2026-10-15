@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useEffectEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -38,6 +39,14 @@ export function PaginatedTable<T>({
   emptyMessage = 'Nothing here yet.',
   getRowKey,
 }: PaginatedTableProps<T>) {
+  const lastPage = Math.max(1, meta?.totalPages ?? 1);
+  const isPastTheEnd = meta !== undefined && meta.page > lastPage;
+  const goToLastPage = useEffectEvent(() => onPageChange?.(lastPage));
+
+  useEffect(() => {
+    if (isPastTheEnd) goToLastPage();
+  }, [isPastTheEnd]);
+
   return (
     <div className="space-y-3">
       <div className="rounded-lg border">
@@ -52,7 +61,7 @@ export function PaginatedTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length === 0 && (
+            {data.length === 0 && !isPastTheEnd && (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -81,7 +90,7 @@ export function PaginatedTable<T>({
           </TableBody>
         </Table>
       </div>
-      {meta && onPageChange && meta.totalPages > 1 && (
+      {meta && onPageChange && meta.totalPages > 1 && !isPastTheEnd && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Page {meta.page} of {meta.totalPages} · {meta.total} total

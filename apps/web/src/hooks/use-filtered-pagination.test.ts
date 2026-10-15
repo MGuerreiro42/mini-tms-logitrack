@@ -5,7 +5,10 @@ import { useFilteredPagination } from './use-filtered-pagination';
 function setup(href: string) {
   resetNavigation(href);
   return renderHook(() =>
-    useFilteredPagination({ status: 'ALL' as string, sellerId: 'ALL' }),
+    useFilteredPagination(
+      { status: 'ALL' as string, sellerId: 'ALL' as string },
+      { status: ['ALL', 'PENDING'], sellerId: ['ALL', 'seller-1'] },
+    ),
   );
 }
 
@@ -29,6 +32,29 @@ describe('useFilteredPagination', () => {
       sellerId: 'ALL',
     });
     expect(result.current.params).toMatchObject({ status: 'PENDING', page: 3 });
+  });
+
+  it('falls back to the default for a value outside the allowed set and cleans the URL', () => {
+    const { result } = setup(
+      '/admin/monitoring?status=BOGUS&sellerId=seller-1&page=4',
+    );
+
+    expect(result.current.filters).toEqual({
+      status: 'ALL',
+      sellerId: 'seller-1',
+    });
+    expect(result.current.params).toMatchObject({
+      status: undefined,
+      sellerId: 'seller-1',
+      page: 1,
+    });
+    expect(currentUrl()).toBe('/admin/monitoring?sellerId=seller-1');
+  });
+
+  it('leaves a valid URL untouched', () => {
+    setup('/admin/monitoring?status=PENDING&page=3');
+
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it('falls back to page 1 for an invalid page param', () => {

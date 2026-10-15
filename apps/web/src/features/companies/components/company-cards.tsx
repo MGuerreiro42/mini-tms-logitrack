@@ -63,6 +63,12 @@ export function CompanyProfile({
   );
 }
 
+const REVIEW_SUBTITLE: Record<ApprovalStatus, string> = {
+  PENDING: 'Review the company details before deciding.',
+  APPROVED: 'This application was approved.',
+  REJECTED: 'This application was rejected.',
+};
+
 interface Mutation {
   mutate: () => void;
   mutateAsync: () => Promise<unknown>;
@@ -88,8 +94,8 @@ export function CompanyReview({
             {company.companyName}
             <ApprovalStatusPill status={company.status} />
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Review the company details before deciding.
+          <p role="status" className="text-sm text-muted-foreground">
+            {REVIEW_SUBTITLE[company.status]}
           </p>
         </div>
         <ApproveRejectActions

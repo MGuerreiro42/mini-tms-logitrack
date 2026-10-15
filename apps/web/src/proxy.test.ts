@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { SESSION_COOKIE, type Session } from '@/lib/session';
+import { SEGMENT_ROLES, SESSION_COOKIE, type Session } from '@/lib/session';
 import type { GlobalRole } from '@/types/auth';
-import { proxy } from './proxy';
+import { config, proxy } from './proxy';
 
 const HOMES = [
   ['ADMIN', '/admin'],
@@ -30,6 +30,12 @@ function rewriteTarget(response: Response) {
 }
 
 describe('proxy', () => {
+  it('guards every role segment', () => {
+    for (const segment of Object.keys(SEGMENT_ROLES)) {
+      expect(config.matcher).toContain(`/${segment}/:path*`);
+    }
+  });
+
   it('sends an anonymous visitor to the login page', () => {
     const response = proxy(request('/seller/shipments'));
 
@@ -47,6 +53,15 @@ describe('proxy', () => {
     expect(response.status).toBe(200);
     expect(rewriteTarget(response)).toBeNull();
     expect(response.headers.get('location')).toBeNull();
+  });
+
+  it.each([
+    ['/seller/profile', 'SELLER'],
+    ['/admin', 'SELLER'],
+  ] as const)('keeps %s out of the browser cache', (path, role) => {
+    const response = proxy(request(path, role));
+
+    expect(response.headers.get('cache-control')).toBe('no-store');
   });
 
   it.each([

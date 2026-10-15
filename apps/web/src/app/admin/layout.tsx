@@ -1,6 +1,6 @@
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
-import { requireRole } from '@/lib/server-session';
+import { requireSegment } from '@/lib/server-session';
 
 const ADMIN_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/admin' },
@@ -14,7 +14,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole('ADMIN');
+  const session = await requireSegment('admin');
 
   return (
     <AppShell

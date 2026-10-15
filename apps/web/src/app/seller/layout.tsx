@@ -3,7 +3,8 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMySeller } from '@/features/sellers/api';
 import { initialsFor } from '@/lib/initials';
-import { requireRole, withAuthRedirects } from '@/lib/server-session';
+import { ROUTES } from '@/lib/routes';
+import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 const SELLER_NAV: NavItem[] = [
   { name: 'Dashboard', href: '/seller' },
@@ -18,11 +19,11 @@ export default async function SellerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole('SELLER');
+  const session = await requireSegment('seller');
   const seller = await withAuthRedirects(getMySeller(session.token));
 
   if (seller.status !== 'APPROVED') {
-    redirect('/status');
+    redirect(ROUTES.status);
   }
 
   return (

@@ -9,6 +9,7 @@ import {
   type StatusFilter,
   StatusFilterTabs,
   statusFilterOptions,
+  statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import { formatDate } from '@/lib/format-date';
@@ -30,6 +31,8 @@ const STATUS_OPTIONS = statusFilterOptions(
   ['PENDING', 'APPROVED', 'REJECTED'],
   'last',
 );
+
+export const APPROVAL_FILTER_VALUES = statusFilterValues(STATUS_OPTIONS);
 
 interface CompanyApprovalTableProps<T extends CompanyRow> {
   query: QuerySource<Paginated<T>>;

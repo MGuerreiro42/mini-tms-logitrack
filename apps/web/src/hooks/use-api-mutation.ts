@@ -7,8 +7,9 @@ import {
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { HTTP_STATUS } from '@/lib/http-status';
 import { toastApiError } from '@/lib/toast-api-error';
-import { ApiError } from '@/services/api-client';
+import { hasStatus } from '@/services/api-client';
 
 interface ApiMutationOptions<TInput, TData> {
   mutationFn: (input: TInput, token: string) => Promise<TData>;
@@ -36,7 +37,7 @@ export function useApiMutation<TInput = void, TData = unknown>({
       return refresh();
     },
     onError: (error) => {
-      const isConflict = error instanceof ApiError && error.statusCode === 409;
+      const isConflict = hasStatus(error, HTTP_STATUS.CONFLICT);
       if (isConflict) refresh();
       if (isConflict && conflictMessage) toast.error(conflictMessage);
       else toastApiError(error);

@@ -6,6 +6,7 @@ export function makeFakeSocket() {
   const listeners: Record<string, Listener[]> = {};
   const socket = {
     connected: false,
+    active: false,
     on: vi.fn((event: string, cb: Listener) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(cb);

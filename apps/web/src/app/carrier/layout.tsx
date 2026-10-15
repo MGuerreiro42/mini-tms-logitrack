@@ -3,7 +3,8 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMyCarrier } from '@/features/carriers/api';
 import { initialsFor } from '@/lib/initials';
-import { requireRole, withAuthRedirects } from '@/lib/server-session';
+import { ROUTES } from '@/lib/routes';
+import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 const CARRIER_NAV: NavItem[] = [
   { name: 'Company', href: '/carrier' },
@@ -17,11 +18,11 @@ export default async function CarrierLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole('CARRIER_MANAGER', 'CARRIER_OPERATOR');
+  const session = await requireSegment('carrier');
   const carrier = await withAuthRedirects(getMyCarrier(session.token));
 
   if (carrier.status !== 'APPROVED') {
-    redirect('/status');
+    redirect(ROUTES.status);
   }
 
   const roleLabel = session.role === 'CARRIER_MANAGER' ? 'Manager' : 'Operator';

@@ -38,6 +38,26 @@ export function getPublicSocket(): Socket {
   return socketFor(new URL('/public', API_URL).toString());
 }
 
+const SETTLED_EVENTS = ['connect', 'connect_error'] as const;
+
+function isUnused(socket: Socket): boolean {
+  return (consumers.get(socket) ?? 0) === 0;
+}
+
+// Closing a socket mid-handshake makes the browser warn, so an unused one is dropped only once the attempt settles.
+function disconnectOnceSettled(socket: Socket): void {
+  if (socket.connected || !socket.active) {
+    socket.disconnect();
+    return;
+  }
+
+  function handleSettled() {
+    for (const event of SETTLED_EVENTS) socket.off(event, handleSettled);
+    if (isUnused(socket)) socket.disconnect();
+  }
+  for (const event of SETTLED_EVENTS) socket.on(event, handleSettled);
+}
+
 export function retainSocket(socket: Socket): () => void {
   const held = consumers.get(socket) ?? 0;
   consumers.set(socket, held + 1);
@@ -49,6 +69,6 @@ export function retainSocket(socket: Socket): () => void {
     released = true;
     const left = (consumers.get(socket) ?? 1) - 1;
     consumers.set(socket, left);
-    if (left === 0) socket.disconnect();
+    if (left === 0) disconnectOnceSettled(socket);
   };
 }

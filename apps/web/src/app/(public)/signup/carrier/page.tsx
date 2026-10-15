@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PublicCard } from '@/components/common/public-card';
 import { CarrierSignupForm } from '@/features/carriers/components/carrier-signup-form';
+import { ROUTES } from '@/lib/routes';
 
 export default function CarrierSignupPage() {
   return (
@@ -13,7 +14,7 @@ export default function CarrierSignupPage() {
       <CarrierSignupForm />
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-primary hover:underline">
+        <Link href={ROUTES.login} className="text-primary hover:underline">
           Sign in
         </Link>
       </p>
