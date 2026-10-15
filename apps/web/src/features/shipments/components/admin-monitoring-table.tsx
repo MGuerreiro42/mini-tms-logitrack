@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import {
   Select,
@@ -57,6 +58,7 @@ export function AdminMonitoringTable() {
 
   return (
     <div className="space-y-4">
+      <LiveIndicator />
       <Tabs
         value={status}
         onValueChange={(value) => {

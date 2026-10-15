@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
@@ -31,6 +32,7 @@ export function CarrierQueueTable() {
 
   return (
     <div className="space-y-4">
+      <LiveIndicator />
       <Tabs
         value={status}
         onValueChange={(value) => {
