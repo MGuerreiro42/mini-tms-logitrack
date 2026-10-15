@@ -50,7 +50,7 @@ export function NavList({
       <nav
         aria-label="Main"
         className={cn(
-          'grid auto-cols-fr grid-flow-col bg-nav px-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
+          'grid auto-cols-fr grid-flow-col bg-nav px-safe-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
           className,
         )}
       >
