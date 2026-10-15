@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
 import {
@@ -9,7 +8,6 @@ import {
   statusFilterOptions,
   statusFilterValues,
 } from '@/components/common/status-filter-tabs';
-import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { ALL } from '@/lib/filters';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
@@ -35,16 +33,11 @@ export function ShipmentsTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <StatusFilterTabs
-          options={STATUS_OPTIONS}
-          value={filters.status}
-          onChange={(value) => setFilter('status', value)}
-        />
-        <Button asChild>
-          <Link href="/seller/shipments/new">+ Create shipment</Link>
-        </Button>
-      </div>
+      <StatusFilterTabs
+        options={STATUS_OPTIONS}
+        value={filters.status}
+        onChange={(value) => setFilter('status', value)}
+      />
       <QueryState query={query} errorMessage="Couldn't load shipments.">
         {(result) => (
           <PaginatedTable<Shipment>

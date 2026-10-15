@@ -1,6 +1,7 @@
 'use client';
 
 import { DetailRow } from '@/components/common/detail-row';
+import { PageHeader } from '@/components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import type { ApprovalStatus } from '@/types/status';
@@ -87,25 +88,27 @@ export function CompanyReview({
   reject: Mutation;
 }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
+    <div className="space-y-6">
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3">
             {company.companyName}
             <ApprovalStatusBadge status={company.status} />
-          </h1>
-          <p role="status" className="text-sm text-muted-foreground">
-            {REVIEW_SUBTITLE[company.status]}
-          </p>
-        </div>
-        <ApproveRejectActions
-          status={company.status}
-          onApprove={() => approve.mutate()}
-          onReject={() => reject.mutateAsync()}
-          isApproving={approve.isPending}
-          isRejecting={reject.isPending}
-        />
-      </div>
+          </span>
+        }
+        description={
+          <span role="status">{REVIEW_SUBTITLE[company.status]}</span>
+        }
+        action={
+          <ApproveRejectActions
+            status={company.status}
+            onApprove={() => approve.mutate()}
+            onReject={() => reject.mutateAsync()}
+            isApproving={approve.isPending}
+            isRejecting={reject.isPending}
+          />
+        }
+      />
       <DetailsCard title="Details" rows={rows} />
     </div>
   );

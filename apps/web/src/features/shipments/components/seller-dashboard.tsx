@@ -5,6 +5,7 @@ import { PaginatedTable } from '@/components/common/paginated-table';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/lib/routes';
 import {
   type SellerDashboardData,
   useSellerDashboard,
@@ -35,7 +36,7 @@ function SellerDashboardView({
           No shipments yet — create your first one to get started.
         </p>
         <Button asChild>
-          <Link href="/seller/shipments/new">+ Create shipment</Link>
+          <Link href={ROUTES.newShipment}>Create shipment</Link>
         </Button>
       </div>
     );

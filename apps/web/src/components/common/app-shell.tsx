@@ -4,47 +4,47 @@ import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
 interface AppShellProps {
-  navGroupLabel: string;
   navItems: NavItem[];
   user: { name: string; role: string; initials: string };
   children: React.ReactNode;
 }
 
-export function AppShell({
-  navGroupLabel,
-  navItems,
-  user,
-  children,
-}: AppShellProps) {
+export function AppShell({ navItems, user, children }: AppShellProps) {
   return (
-    // h-screen, not h-full: body's min-h-full isn't a definite height to resolve against.
-    <div className="flex h-screen w-full">
-      <aside className="flex h-full w-56 shrink-0 flex-col border-r bg-card">
-        <div className="flex items-center gap-2.5 border-b p-4">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary font-mono text-[10px] font-semibold tracking-wide text-primary-foreground">
+    <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px]">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-4 shadow-nav lg:h-16 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary font-mono text-[10px] font-semibold text-primary-foreground">
             TMS
-          </div>
-          <div>
-            <div className="text-[13px] font-semibold leading-tight">
-              Mini TMS
-            </div>
-            <div className="text-[10.5px] text-muted-foreground">
-              Transportation · BR
-            </div>
-          </div>
+          </span>
+          <span className="text-[15px] font-semibold whitespace-nowrap">
+            Mini TMS
+          </span>
+          <span className="hidden truncate text-[13px] text-muted-foreground xl:inline">
+            / {user.name}
+          </span>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-3.5 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {navGroupLabel}
-          </div>
-          <NavList items={navItems} />
+        <NavList items={navItems} className="hidden lg:flex" />
+        <div className="ml-auto flex items-center gap-3">
+          <UserMenu
+            name={user.name}
+            role={user.role}
+            initials={user.initials}
+          />
         </div>
-        <UserMenu name={user.name} role={user.role} initials={user.initials} />
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-      <Toaster />
+      </header>
+      <main className="flex-1 px-4 pt-5 pb-24 md:px-10 md:pt-7 lg:pb-10">
+        {children}
+      </main>
+      <NavList
+        items={navItems}
+        variant="tabs"
+        className="fixed inset-x-0 bottom-0 z-40 lg:hidden"
+      />
+      <Toaster
+        offset={{ bottom: 'var(--toast-bottom)' }}
+        mobileOffset={{ bottom: 'var(--toast-bottom)' }}
+      />
       <SessionSync />
     </div>
   );

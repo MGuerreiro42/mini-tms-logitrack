@@ -1,12 +1,13 @@
+import { PageHeader } from '@/components/common/page-header';
 import { CarriersTable } from '@/features/carriers/components/carriers-table';
 
 export default function AdminCarriersPage() {
   return (
-    <div className="space-y-1">
-      <h1 className="text-xl font-semibold">Carriers</h1>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Review carrier registrations and manage approved companies.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Carriers"
+        description="Review carrier registrations and manage approved companies."
+      />
       <CarriersTable />
     </div>
   );

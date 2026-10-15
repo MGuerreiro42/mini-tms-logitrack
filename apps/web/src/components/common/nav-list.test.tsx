@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { usePathname } from 'next/navigation';
 import { NavList } from './nav-list';
 
@@ -61,5 +62,63 @@ describe('NavList', () => {
         'aria-current',
       );
     }
+  });
+});
+
+describe('NavList tabs', () => {
+  const many = [
+    ...items,
+    { name: 'Create shipment', href: '/seller/shipments/new' },
+    { name: 'Settings', href: '/seller/settings' },
+  ];
+
+  it('shows exactly four items as tabs without More', () => {
+    vi.mocked(usePathname).mockReturnValue('/seller');
+    render(<NavList items={many.slice(0, 4)} variant="tabs" />);
+
+    expect(screen.getAllByRole('link')).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
+  });
+
+  it('labels a tab with its short name when it has one', () => {
+    vi.mocked(usePathname).mockReturnValue('/seller');
+    render(
+      <NavList
+        items={[
+          { name: 'Modalities & coverage', shortName: 'Coverage', href: '/c' },
+        ]}
+        variant="tabs"
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Coverage' })).toBeInTheDocument();
+  });
+
+  it('folds the overflow into More and marks it current for a folded route', async () => {
+    vi.mocked(usePathname).mockReturnValue('/seller/settings');
+    const user = userEvent.setup();
+    render(<NavList items={many} variant="tabs" />);
+
+    expect(screen.getAllByRole('link')).toHaveLength(3);
+    const more = screen.getByRole('button', { name: /more/i });
+    expect(more).toHaveAttribute('aria-current', 'true');
+    await user.click(more);
+
+    expect(
+      await screen.findByRole('menuitem', { name: 'Settings' }),
+    ).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('leaves More alone when the current route is a visible tab', () => {
+    vi.mocked(usePathname).mockReturnValue('/seller/modalities');
+    render(<NavList items={many} variant="tabs" />);
+
+    expect(screen.getByRole('link', { name: 'Modalities' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('button', { name: /more/i })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 });
