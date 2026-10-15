@@ -3,7 +3,7 @@ import { TrackingTimeline } from './tracking-timeline';
 
 describe('TrackingTimeline', () => {
   it('shows a placeholder message when there are no events', () => {
-    render(<TrackingTimeline events={[]} />);
+    render(<TrackingTimeline events={[]} status="PENDING" />);
 
     expect(screen.getByText('No status updates yet.')).toBeInTheDocument();
   });
@@ -23,6 +23,7 @@ describe('TrackingTimeline', () => {
             createdAt: '2026-01-02T12:00:00.000Z',
           },
         ]}
+        status="COLLECTED"
       />,
     );
 
@@ -41,11 +42,43 @@ describe('TrackingTimeline', () => {
             createdAt: '2026-01-01T12:00:00.000Z',
           },
         ]}
+        status="ACCEPTED"
       />,
     );
 
-    const time = screen.getByText('Jan 1, 2026, 09:00 GMT-3');
+    const time = screen.getByText('Jan 1, 09:00');
     expect(time.tagName).toBe('TIME');
+    expect(time).toHaveAttribute('title', 'Jan 1, 2026, 09:00 GMT-3');
     expect(time).toHaveAttribute('datetime', '2026-01-01T12:00:00.000Z');
+  });
+
+  const events = [
+    { status: 'PENDING', createdAt: '2026-01-01T12:00:00.000Z' },
+    { status: 'ACCEPTED', createdAt: '2026-01-02T12:00:00.000Z' },
+  ] as const;
+
+  it('lists the newest event first, under the next expected step', () => {
+    render(<TrackingTimeline events={[...events]} status="ACCEPTED" />);
+    const items = screen.getAllByRole('listitem');
+
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Next expected: Collected'),
+      expect.stringContaining('Accepted'),
+      expect.stringContaining('Pending'),
+    ]);
+  });
+
+  it('expects nothing more once the shipment is closed', () => {
+    render(
+      <TrackingTimeline
+        events={[
+          ...events,
+          { status: 'CANCELLED', createdAt: '2026-01-03T12:00:00.000Z' },
+        ]}
+        status="CANCELLED"
+      />,
+    );
+
+    expect(screen.queryByText(/next expected/i)).toBeNull();
   });
 });

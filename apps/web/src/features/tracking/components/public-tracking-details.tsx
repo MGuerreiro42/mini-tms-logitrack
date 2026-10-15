@@ -6,6 +6,7 @@ import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { usePublicTracking } from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
@@ -41,7 +42,8 @@ export function PublicTrackingDetails({
             {tracking.addressCity}/{tracking.addressState}
           </span>
         </div>
-        <TrackingTimeline events={tracking.events} />
+        <ShipmentStepper status={tracking.status} events={tracking.events} />
+        <TrackingTimeline events={tracking.events} status={tracking.status} />
       </div>
       <p className="text-center text-sm">
         <Link href="/track" className="text-primary hover:underline">

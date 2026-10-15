@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime } from './format-date';
+import { formatDate, formatDateTime, formatShortDateTime } from './format-date';
 
 const INSTANT = '2026-01-15T02:30:00.000Z';
 
@@ -17,6 +17,10 @@ describe('formatDateTime', () => {
     expect(formatDateTime('2026-06-01T03:05:00.000Z')).toBe(
       'Jun 1, 2026, 00:05 GMT-3',
     );
+  });
+
+  it('has a short form without year or zone', () => {
+    expect(formatShortDateTime(INSTANT)).toBe('Jan 14, 23:30');
   });
 
   it.each([

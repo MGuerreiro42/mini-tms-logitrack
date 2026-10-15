@@ -50,3 +50,15 @@ export const SHIPMENT_STATUS = withLabels<ShipmentStatus>(
 export const SHIPMENT_STATUSES = Object.keys(
   SHIPMENT_STATUS,
 ) as ShipmentStatus[];
+
+export const SHIPMENT_STATUS_DOT: Record<ShipmentStatus, string> = {
+  PENDING: 'text-status-pending-dot',
+  ACCEPTED: 'text-status-accepted-dot',
+  COLLECTED: 'text-status-collected-dot',
+  IN_TRANSIT: 'text-status-in-transit-dot',
+  OUT_FOR_DELIVERY: 'text-status-out-for-delivery-dot',
+  DELIVERED: 'text-status-delivered-dot',
+  FAILED_DELIVERY: 'text-status-failed-delivery-dot',
+  CANCELLED: 'text-status-cancelled-dot',
+  RETURNED: 'text-status-returned-dot',
+};

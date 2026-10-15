@@ -70,7 +70,10 @@ function ShipmentDetailView({
             />
           </CardContent>
         </Card>
-        <ShipmentTimelineCard events={shipment.trackingEvents} />
+        <ShipmentTimelineCard
+          events={shipment.trackingEvents}
+          status={shipment.status}
+        />
       </div>
     </div>
   );
