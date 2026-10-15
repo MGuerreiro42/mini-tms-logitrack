@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { EmptyState } from '@/components/common/feedback-state';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { Badge } from '@/components/ui/badge';
@@ -104,6 +104,8 @@ function CarrierOption({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const id = useId();
+
   return (
     <label
       className={cn(
@@ -116,14 +118,17 @@ function CarrierOption({
         name="carrier"
         checked={selected}
         onChange={onSelect}
+        aria-labelledby={`${id}-name`}
+        aria-describedby={`${id}-facts`}
         className="mt-1 size-4.5 shrink-0 accent-primary outline-none"
       />
       <span className="flex min-w-0 flex-1 flex-col gap-2.5">
         <span className="flex items-center justify-between gap-3">
-          <span className="text-[17px] font-semibold">
+          <span id={`${id}-name`} className="text-[17px] font-semibold">
             {carrier.companyName}
           </span>
           <Badge
+            aria-hidden
             variant="plain"
             className={
               selected
@@ -134,8 +139,11 @@ function CarrierOption({
             {selected ? 'Selected' : 'Available'}
           </Badge>
         </span>
-        <span className="grid gap-3 text-[13px] sm:grid-cols-2">
-          <CarrierFact label="Covers" value={coverage} />
+        <span
+          id={`${id}-facts`}
+          className="grid gap-3 text-[13px] sm:grid-cols-2"
+        >
+          <CarrierFact label="Covers" value={coverage} />{' '}
           <CarrierFact label="Modality" value={modality} />
         </span>
       </span>
@@ -146,7 +154,7 @@ function CarrierOption({
 function CarrierFact({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex flex-col gap-0.75">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground">{label}</span>{' '}
       <span className="font-semibold">{value}</span>
     </span>
   );
