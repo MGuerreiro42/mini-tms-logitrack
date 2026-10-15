@@ -200,7 +200,7 @@ function ApplicationRow({ application }: { application: Application }) {
         <div className="flex items-center gap-2.5">
           <TextLink
             href={kind.href(application.id)}
-            className="truncate text-[15px] text-foreground"
+            className="truncate text-[15px] text-foreground pointer-coarse:block pointer-coarse:leading-11"
           >
             {application.companyName}
           </TextLink>
