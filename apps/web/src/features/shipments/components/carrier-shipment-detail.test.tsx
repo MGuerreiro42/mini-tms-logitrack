@@ -61,6 +61,7 @@ describe('CarrierShipmentDetail', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -75,7 +76,7 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
       screen.getByRole('button', { name: 'Claim shipment' }),
     ).toBeInTheDocument();
@@ -101,7 +102,7 @@ describe('CarrierShipmentDetail', () => {
     );
     const user = userEvent.setup();
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
 
     await user.click(screen.getByRole('button', { name: 'Claim shipment' }));
 
@@ -119,9 +120,9 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
-      screen.getByRole('button', { name: 'Advance to Collected' }),
+      screen.getByRole('button', { name: 'Advance to collected' }),
     ).toBeInTheDocument();
   });
 
@@ -136,13 +137,42 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
       screen.queryByRole('button', { name: /Advance to/ }),
     ).not.toBeInTheDocument();
     expect(
+      screen.getByRole('heading', { name: 'Waiting on the owner' }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/Only the owner or the carrier manager/),
     ).toBeInTheDocument();
+  });
+
+  it('drops a draft note once the status moves on', async () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    setSession({
+      token: 't',
+      role: 'CARRIER_OPERATOR',
+      userId: 'user-1',
+      email: 'operator@example.com',
+    });
+    mockDetail(claimedByOperator);
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+    await user.type(
+      await screen.findByLabelText('Note for the seller, optional'),
+      'Draft',
+    );
+
+    mockDetail({ ...claimedByOperator, status: 'COLLECTED' });
+    socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
+
+    await screen.findByRole('button', { name: 'Advance to in transit' });
+    expect(screen.getByLabelText('Note for the seller, optional')).toHaveValue(
+      '',
+    );
   });
 
   it('shows the Advance control to the carrier manager even when they are not the owner', async () => {
@@ -156,9 +186,9 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(
-      screen.getByRole('button', { name: 'Advance to Collected' }),
+      screen.getByRole('button', { name: 'Advance to collected' }),
     ).toBeInTheDocument();
   });
 
@@ -183,7 +213,7 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    await screen.findByText('TMS-AAA111');
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(screen.getAllByText('Accepted').length).toBeGreaterThan(0);
   });
 
@@ -211,17 +241,109 @@ describe('CarrierShipmentDetail', () => {
     const user = userEvent.setup();
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
+    await user.type(
+      await screen.findByLabelText('Note for the seller, optional'),
+      'Nobody at the door',
+    );
     await user.click(
-      await screen.findByRole('button', { name: 'Failed delivery' }),
+      screen.getByRole('button', { name: 'Report failed delivery' }),
     );
     expect(body).toBeUndefined();
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveTextContent('Mark delivery as failed?');
     await user.click(
-      within(dialog).getByRole('button', { name: 'Failed delivery' }),
+      within(dialog).getByRole('button', { name: 'Report failed delivery' }),
     );
 
-    await waitFor(() => expect(body).toEqual({ status: 'FAILED_DELIVERY' }));
+    await waitFor(() =>
+      expect(body).toEqual({
+        status: 'FAILED_DELIVERY',
+        note: 'Nobody at the door',
+      }),
+    );
+  });
+
+  it('sends the optional note with the advance', async () => {
+    setSession({
+      token: 't',
+      role: 'CARRIER_OPERATOR',
+      userId: 'user-1',
+      email: 'operator@example.com',
+    });
+    mockDetail(claimedByOperator);
+    let body: unknown;
+    server.use(
+      http.patch(
+        `${API_URL}/shipments/shipment-1/status`,
+        async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json({
+            ...claimedByOperator,
+            status: 'COLLECTED',
+          });
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    await user.type(
+      await screen.findByLabelText('Note for the seller, optional'),
+      ' Picked up at the dock ',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Advance to collected' }),
+    );
+
+    await waitFor(() =>
+      expect(body).toEqual({
+        status: 'COLLECTED',
+        note: 'Picked up at the dock',
+      }),
+    );
+  });
+
+  it('makes returning the next step after a failed delivery', async () => {
+    setSession({
+      token: 't',
+      role: 'CARRIER_MANAGER',
+      userId: 'user-3',
+      email: 'manager@example.com',
+    });
+    mockDetail({ ...claimedByOperator, status: 'FAILED_DELIVERY' });
+
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    const step = await screen.findByRole('region', { name: 'Next step' });
+    expect(
+      within(step).getByRole('heading', { name: 'Return to the seller' }),
+    ).toBeInTheDocument();
+    expect(
+      within(step).getByRole('button', { name: 'Return to the seller' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Report failed delivery' }),
+    ).toBeNull();
+  });
+
+  it('shows the owner and the SLA in the header', async () => {
+    vi.useFakeTimers({
+      now: new Date('2026-01-06T02:00:00.000Z'),
+      toFake: ['Date'],
+    });
+    setSession({
+      token: 't',
+      role: 'CARRIER_OPERATOR',
+      userId: 'user-1',
+      email: 'operator@example.com',
+    });
+    mockDetail(claimedByOperator);
+
+    renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+    await screen.findByRole('heading', { name: 'TMS-AAA111' });
+    expect(screen.getByText('Owned by you')).toBeInTheDocument();
+    expect(screen.getByText('2 h late')).toBeInTheDocument();
   });
 
   it('offers no claim or advance for an unclaimed cancelled shipment', async () => {
@@ -235,12 +357,10 @@ describe('CarrierShipmentDetail', () => {
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
-    expect(
-      await screen.findByText('No further action available.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Nothing left to do')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Claim shipment' })).toBeNull();
     expect(screen.queryByText('Unclaimed')).toBeNull();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText(/Owned by/)).toBeNull();
   });
 
   describe('when the seller cancels while the page is open', () => {
@@ -256,11 +376,11 @@ describe('CarrierShipmentDetail', () => {
       });
       mockDetail(claimedByOperator);
       renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
-      await screen.findByText('TMS-AAA111');
+      await screen.findByRole('heading', { name: 'TMS-AAA111' });
 
       mockDetail({ ...claimedByOperator, status: 'CANCELLED' });
       socket.trigger('shipment:updated', { shipmentId: 'shipment-1' });
-      await screen.findByText('No further action available.');
+      await screen.findByText('Nothing left to do');
       return info;
     }
 
@@ -290,7 +410,7 @@ describe('CarrierShipmentDetail', () => {
     mockDetail({ ...claimedByOperator, status: 'CANCELLED' });
 
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
-    await screen.findByText('No further action available.');
+    await screen.findByText('Nothing left to do');
 
     expect(info).not.toHaveBeenCalled();
   });

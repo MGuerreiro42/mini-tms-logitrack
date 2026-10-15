@@ -14,9 +14,15 @@ export const SEGMENT_ROLES: Record<Segment, readonly GlobalRole[]> = {
   carrier: ['CARRIER_MANAGER', 'CARRIER_OPERATOR'],
 };
 
+const SEGMENT_HOME: Record<Segment, string> = {
+  admin: '/admin',
+  seller: '/seller',
+  carrier: '/carrier/queue',
+};
+
 export const ROLE_HOME = Object.fromEntries(
   Object.entries(SEGMENT_ROLES).flatMap(([segment, roles]) =>
-    roles.map((role) => [role, `/${segment}`]),
+    roles.map((role) => [role, SEGMENT_HOME[segment as Segment]]),
   ),
 ) as Record<GlobalRole, string>;
 
