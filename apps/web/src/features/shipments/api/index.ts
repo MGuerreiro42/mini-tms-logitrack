@@ -9,6 +9,7 @@ import type {
   ListQueueQuery,
   ListShipmentsQuery,
   Shipment,
+  ShipmentAttention,
   ShipmentStatusCounts,
   SlaSummaryItem,
   UpdateShipmentStatusInput,
@@ -61,6 +62,12 @@ export function getShipmentStatusCounts(
     undefined,
     token,
   );
+}
+
+export function getShipmentAttention(
+  token: string,
+): Promise<ShipmentAttention> {
+  return apiClient<ShipmentAttention>('/shipments/attention', undefined, token);
 }
 
 export function getSlaSummary(token: string): Promise<SlaSummaryItem[]> {

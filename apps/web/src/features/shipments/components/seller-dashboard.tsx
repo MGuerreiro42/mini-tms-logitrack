@@ -8,12 +8,12 @@ import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
 import { ROUTES } from '@/lib/routes';
+import { slaState } from '@/lib/sla';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
@@ -21,12 +21,10 @@ import {
   type SellerDashboardData,
   useSellerDashboard,
 } from '../hooks/use-seller-dashboard';
-import { type AttentionItem, needsAttention } from '../lib/needs-attention';
-import type { Shipment } from '../types';
+import type { Shipment, ShipmentAttention } from '../types';
 import { SlaSummaryChart } from './sla-summary-chart';
 
 const SLA_REFRESH_MS = 60_000;
-const ATTENTION_LIMIT = 5;
 
 const place = (shipment: Shipment) =>
   `${shipment.addressCity}, ${shipment.addressState}`;
@@ -50,14 +48,12 @@ export function SellerDashboard() {
 }
 
 function SellerDashboardView({
-  data: { counts, onTime, openShipments, recentShipments, slaSummary },
+  data: { counts, onTime, attention, recentShipments, slaSummary },
   liveStatus,
 }: {
   data: SellerDashboardData;
   liveStatus: LiveStatus;
 }) {
-  const now = useNow(SLA_REFRESH_MS);
-
   if (counts.total === 0) {
     return (
       <EmptyState
@@ -85,9 +81,6 @@ function SellerDashboardView({
     );
   }
 
-  const attention = needsAttention(openShipments, now);
-  const failed = attention.filter((item) => item.reason === 'failed').length;
-
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -109,16 +102,14 @@ function SellerDashboardView({
         />
         <StatTile
           label="Needs attention"
-          value={attention.length}
-          note={`${failed} failed, ${attention.length - failed} late`}
+          value={attention.counts.failed + attention.counts.late}
+          note={`${attention.counts.failed} failed, ${attention.counts.late} late`}
         />
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
-          <AttentionPanel items={attention} />
-          <Card className="px-5.5">
-            <SlaSummaryChart data={slaSummary} />
-          </Card>
+          <AttentionPanel attention={attention} />
+          <SlaSummaryChart data={slaSummary} />
         </div>
         <Panel
           title="Recent shipments"
@@ -173,8 +164,13 @@ function SellerDashboardView({
   );
 }
 
-function AttentionPanel({ items }: { items: AttentionItem[] }) {
-  const hidden = items.length - ATTENTION_LIMIT;
+function AttentionPanel({
+  attention: { shipments, counts },
+}: {
+  attention: ShipmentAttention;
+}) {
+  const now = useNow(SLA_REFRESH_MS);
+  const hidden = counts.failed + counts.late - shipments.length;
 
   return (
     <Panel
@@ -188,32 +184,21 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
         )
       }
     >
-      {items.length === 0 ? (
+      {shipments.length === 0 ? (
         <p className="border-t border-muted py-3 text-sm text-muted-foreground">
           Nothing needs you right now. Failed deliveries and late shipments show
           up here.
         </p>
       ) : (
         <ul>
-          {items.slice(0, ATTENTION_LIMIT).map(({ shipment, reason, sla }) => (
+          {shipments.map((shipment) => (
             <li key={shipment.id}>
               <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
                 <span className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-3.5">
                   <span className="shrink-0 font-mono text-[13px] md:w-42">
                     {shipment.trackingCode}
                   </span>
-                  <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm font-semibold">
-                      {reason === 'failed'
-                        ? 'Delivery attempt failed'
-                        : 'Past its SLA'}
-                    </span>
-                    <span className="truncate text-[13px] text-muted-foreground">
-                      {reason === 'failed'
-                        ? `${place(shipment)} · ${shipment.carrierName}`
-                        : `${place(shipment)} · ${shipment.modalityName} · ${sla.label}`}
-                    </span>
-                  </span>
+                  <AttentionReason shipment={shipment} now={now} />
                 </span>
                 <ShipmentStatusBadge status={shipment.status} />
               </PanelLink>
@@ -222,6 +207,24 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
         </ul>
       )}
     </Panel>
+  );
+}
+
+function AttentionReason({ shipment, now }: { shipment: Shipment; now: Date }) {
+  const failed = shipment.status === 'FAILED_DELIVERY';
+  const sla = slaState({ dueAt: shipment.dueAt, status: shipment.status, now });
+
+  return (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="text-sm font-semibold">
+        {failed ? 'Delivery attempt failed' : 'Past its SLA'}
+      </span>
+      <span className="truncate text-[13px] text-muted-foreground">
+        {failed
+          ? `${place(shipment)} · ${shipment.carrierName}`
+          : `${place(shipment)} · ${shipment.modalityName} · ${sla.label}`}
+      </span>
+    </span>
   );
 }
 

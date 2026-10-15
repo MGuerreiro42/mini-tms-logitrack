@@ -88,17 +88,19 @@ describe('SellerDashboard', () => {
           },
         ]),
       ),
-      http.get(`${API_URL}/shipments`, ({ request }) => {
-        const status = new URL(request.url).searchParams.get('status');
-        const all = [failed, late, onTrack];
-        return HttpResponse.json(
-          page(status ? all.filter((s) => s.status === status) : all),
-        );
-      }),
+      http.get(`${API_URL}/shipments/attention`, () =>
+        HttpResponse.json({
+          shipments: [failed, late],
+          counts: { failed: 1, late: 6 },
+        }),
+      ),
+      http.get(`${API_URL}/shipments`, () =>
+        HttpResponse.json(page([failed, late, onTrack])),
+      ),
     );
   });
 
-  it('derives the attention list and KPIs from the existing endpoints', async () => {
+  it('shows the attention list and KPIs', async () => {
     renderWithQueryClient(<SellerDashboard />);
 
     const attention = (
@@ -116,9 +118,11 @@ describe('SellerDashboard', () => {
       'text-destructive',
     );
     expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
+    expect(screen.getByText('1 failed, 6 late')).toBeInTheDocument();
+    expect(screen.getByText('5 more shipments not shown')).toBeInTheDocument();
   });
 
-  it('subscribes to every open shipment for live updates', async () => {
+  it('listens on the seller room for live updates', async () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     renderWithQueryClient(<SellerDashboard />);
@@ -126,9 +130,8 @@ describe('SellerDashboard', () => {
 
     act(() => socket.trigger('connect'));
 
-    const rooms = socket.emit.mock.calls
-      .filter(([event]) => event === 'subscribe:shipment')
-      .map(([, id]) => id);
-    expect(rooms.sort()).toEqual(['failed', 'late', 'ok']);
+    expect(socket.emit.mock.calls.map(([event]) => event)).toEqual([
+      'subscribe:seller',
+    ]);
   });
 });

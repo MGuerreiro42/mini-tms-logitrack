@@ -15,6 +15,11 @@ export interface SlaSummaryItem {
   onTimeRate: number;
 }
 
+export interface ShipmentAttention {
+  shipments: Shipment[];
+  counts: { failed: number; late: number };
+}
+
 export interface ShipmentAddress {
   addressStreet: string;
   addressNumber: string;
