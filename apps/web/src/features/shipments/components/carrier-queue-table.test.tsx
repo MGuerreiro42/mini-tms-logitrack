@@ -164,9 +164,9 @@ describe('CarrierQueueTable', () => {
     expect(unowned).toHaveTextContent('Example Store');
     expect(unowned).toHaveTextContent('Owner: Unclaimed');
     expect(
-      within(unowned).getByRole('button', { name: 'Claim' }),
+      within(unowned).getByRole('button', { name: 'Claim TMS-AAA111' }),
     ).toBeInTheDocument();
     expect(owned).toHaveTextContent('Owner: operator@example.com');
-    expect(within(owned).queryByRole('button', { name: 'Claim' })).toBeNull();
+    expect(within(owned).queryByRole('button', { name: /^Claim / })).toBeNull();
   });
 });
