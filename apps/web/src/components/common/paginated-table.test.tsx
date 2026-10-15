@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setDensity } from '@/hooks/use-density';
 import { setViewportWidth } from '@/test/viewport';
@@ -193,7 +193,7 @@ describe('PaginatedTable', () => {
 
     beforeEach(() => setViewportWidth(390));
 
-    it('renders rows as linked cards from the column slots', () => {
+    it('renders rows as linked cards, with unslotted columns as labeled lines', () => {
       render(
         <PaginatedTable<Row>
           columns={cardColumns}
@@ -209,11 +209,28 @@ describe('PaginatedTable', () => {
       expect(card).toHaveTextContent('Open');
       expect(card).toHaveTextContent('Campinas');
       expect(card).toHaveTextContent('Due in 2 h · Oct 1');
-      expect(card).not.toHaveTextContent('Hidden on cards');
+      expect(card).toHaveTextContent('Notes: Hidden on cards');
       expect(screen.getByRole('link', { name: 'Row 1' })).toHaveAttribute(
         'href',
         '/seller/shipments/row-1',
       );
+    });
+
+    it('switches between table and cards as the viewport changes', () => {
+      act(() => setViewportWidth(1280));
+      render(
+        <PaginatedTable<Row>
+          columns={cardColumns}
+          data={[{ id: 'row-1', name: 'Row 1' }]}
+          getRowKey={(row) => row.id}
+        />,
+      );
+      expect(screen.getByRole('table')).toBeInTheDocument();
+
+      act(() => setViewportWidth(390));
+
+      expect(screen.queryByRole('table')).toBeNull();
+      expect(screen.getByRole('listitem')).toHaveTextContent('Row 1');
     });
 
     it('keeps the table when no column has a card slot', () => {

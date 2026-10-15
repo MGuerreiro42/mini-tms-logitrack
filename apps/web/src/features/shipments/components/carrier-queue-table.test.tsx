@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
@@ -6,6 +6,7 @@ import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
+import { setViewportWidth } from '@/test/viewport';
 import { CarrierQueueTable } from './carrier-queue-table';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -151,5 +152,21 @@ describe('CarrierQueueTable', () => {
     await waitFor(() =>
       expect(requestedUrls.at(-1)).toContain('status=ACCEPTED'),
     );
+  });
+
+  it('keeps Claim, seller and owner on mobile cards', async () => {
+    setViewportWidth(390);
+    renderWithQueryClient(<CarrierQueueTable />);
+    await screen.findByText(/Example Store/);
+
+    expect(screen.queryByRole('table')).toBeNull();
+    const [unowned, owned] = screen.getAllByRole('listitem');
+    expect(unowned).toHaveTextContent('Example Store');
+    expect(unowned).toHaveTextContent('Owner: Unclaimed');
+    expect(
+      within(unowned).getByRole('button', { name: 'Claim' }),
+    ).toBeInTheDocument();
+    expect(owned).toHaveTextContent('Owner: operator@example.com');
+    expect(within(owned).queryByRole('button', { name: 'Claim' })).toBeNull();
   });
 });
