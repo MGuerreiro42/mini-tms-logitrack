@@ -1,14 +1,14 @@
 import { Panel } from '@/components/common/panel';
+import { plural } from '@/lib/plural';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
+import { sumRecord } from '@/lib/sum-record';
 import { cn } from '@/lib/utils';
 import type { ShipmentStatus, ShipmentStatusCounts } from '@/types/status';
 
 export function StatusDistribution({
   counts,
-  total,
 }: {
   counts: ShipmentStatusCounts;
-  total: number;
 }) {
   const entries = (Object.entries(counts) as [ShipmentStatus, number][])
     .filter(([, count]) => count > 0)
@@ -20,7 +20,9 @@ export function StatusDistribution({
   return (
     <Panel
       title="Status distribution"
-      description={`${total} ${total === 1 ? 'shipment' : 'shipments'}`}
+      description={plural(sumRecord(counts), 'shipment')}
+      isEmpty={entries.length === 0}
+      emptyMessage="No shipments yet."
     >
       <div
         role="img"

@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { StatusDistribution } from '@/components/common/charts/status-distribution';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Badge } from '@/components/ui/badge';
-import { StatusDistribution } from '@/features/carriers/components/status-distribution';
 import {
   useApproveCarrier,
   useRejectCarrier,
@@ -87,7 +87,7 @@ function AdminDashboardView({
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
         <PendingApplications waiting={waiting} />
-        <StatusDistribution counts={shipmentCounts} total={shipments} />
+        <StatusDistribution counts={shipmentCounts} />
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
