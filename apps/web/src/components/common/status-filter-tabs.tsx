@@ -3,7 +3,6 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL } from '@/lib/filters';
 import { sumRecord } from '@/lib/sum-record';
-import { cn } from '@/lib/utils';
 
 export type StatusFilter<S extends string> = S | typeof ALL;
 
@@ -46,26 +45,19 @@ interface StatusFilterTabsProps<S extends string> {
   options: StatusFilterOption<S>[];
   value: StatusFilter<S>;
   onChange: (value: StatusFilter<S>) => void;
-  wrap?: boolean;
 }
 
 export function StatusFilterTabs<S extends string>({
   options,
   value,
   onChange,
-  wrap,
 }: StatusFilterTabsProps<S>) {
   return (
     <Tabs
       value={value}
       onValueChange={(next) => onChange(next as StatusFilter<S>)}
     >
-      <TabsList
-        className={cn(
-          'max-w-full max-md:snap-x max-md:justify-start max-md:overflow-x-auto max-md:[scrollbar-width:none]',
-          wrap && 'flex-wrap',
-        )}
-      >
+      <TabsList className="max-w-full max-md:snap-x max-md:justify-start max-md:overflow-x-auto max-md:[scrollbar-width:none]">
         {options.map((option) => (
           <TabsTrigger
             key={option.value}
