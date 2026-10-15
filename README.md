@@ -2,76 +2,158 @@
 
 [![CI (api)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-api.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-api.yml)
 [![CI (web)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-web.yml/badge.svg)](https://github.com/MGuerreiro42/mini-tms-logitrack/actions/workflows/ci-web.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2E6B5E.svg)](./LICENSE)
 
-Multi-tenant Transportation Management System (TMS), with seller onboarding, carrier management, and real-time delivery tracking.
+Multi-tenant transportation management system. Sellers ship, carriers deliver, and everyone, including the end customer, follows each shipment live.
 
-Portfolio project: it doesn't aim to be a commercializable product, but a technical artifact demonstrating real domain modeling, multi-layer RBAC, and a horizontally-scalable real-time architecture (WebSocket + Redis pub/sub). Stack and architecture decisions, with the reasoning behind each one, are documented in [`DESIGN.md`](./DESIGN.md).
+![A carrier advances a shipment and the public tracking page updates live](docs/media/live-tracking.gif)
 
-## Stack
+<sub>A carrier advances a shipment (left); the public tracking page (right) updates with no refresh.</sub>
 
-- **Backend:** NestJS, PostgreSQL (Prisma), Redis (pub/sub, cache, BullMQ)
-- **Frontend:** Next.js (App Router), TanStack Query, Tailwind
-- **Real-time:** Socket.io with a Redis adapter (scales across multiple API instances)
-- **Local infra:** Docker Compose (Postgres + Redis)
+## Features
 
-## Structure
+**Sellers**
+- Create shipments in three steps: destination and modality, a carrier that covers it, review
+- Home focused on what needs attention: failed deliveries and shipments past their SLA, plus a live activity feed
+- Shipment list with status filters, SLA column and comfortable/compact density; cancel before pickup
+
+**Carriers**
+- Shared queue: operators claim shipments and move them step by step, with notes for the seller
+- Failed delivery and return flows behind confirmation
+- Performance: status distribution, time per stage, operator ranking
+- Own coverage areas (whole states or specific cities) and modalities
+
+**Admins**
+- Approve or reject seller and carrier sign-ups
+- Platform-wide monitoring, filterable by status, seller and carrier, updated live
+
+**Everyone**
+- Public tracking page per shipment, live over WebSocket
+- `⌘K` command menu (pages and tracking codes), light and dark themes, full mobile layout
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/media/seller-dashboard.webp" alt="Seller overview"></td>
+    <td><img src="docs/media/carrier-detail.webp" alt="Carrier shipment detail"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Seller overview</sub></td>
+    <td align="center"><sub>Carrier shipment detail</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/admin-monitoring.webp" alt="Admin monitoring"></td>
+    <td><img src="docs/media/carrier-performance.webp" alt="Carrier performance"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Admin monitoring</sub></td>
+    <td align="center"><sub>Carrier performance</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/carrier-detail-dark.webp" alt="Dark theme"></td>
+    <td><img src="docs/media/track.webp" alt="Public tracking"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Dark theme</sub></td>
+    <td align="center"><sub>Public tracking</sub></td>
+  </tr>
+</table>
+
+![Mobile: carrier queue, shipment detail with pinned action, seller overview, public tracking](docs/media/mobile.webp)
+
+## Architecture
+
+```mermaid
+flowchart LR
+  web["Web<br/>Next.js"] -- REST --> api["API<br/>NestJS"]
+  web <-- Socket.IO --> api
+  public["Public tracking"] <-- Socket.IO /public --> api
+  api --> pg[("PostgreSQL<br/>Prisma")]
+  api <--> redis[("Redis<br/>adapter · rate limit")]
+```
+
+- **Multi-tenant RBAC** in layers: global role, company membership (manager/operator) and per-resource ownership, enforced in guards and queries.
+- **Carrier matching:** a shipment can only go to an approved carrier that covers the destination city or state and offers the chosen modality.
+- **Real-time:** status changes fan out to seller, carrier and shipment rooms. The Socket.IO Redis adapter keeps it correct across multiple API instances; public tracking runs on its own unauthenticated namespace.
+- **SLA** derived from creation time and modality (`dueAt`), no extra state to keep in sync.
+
+The reasoning behind each decision is in [`DESIGN.md`](./DESIGN.md).
+
+## Tech stack
+
+| | |
+|---|---|
+| **API** | NestJS 11, Prisma 7, PostgreSQL 16, Redis 7, Socket.IO, JWT |
+| **Web** | Next.js 16 (App Router), React 19, TanStack Query, Tailwind CSS 4, shadcn/ui, Recharts |
+| **Testing** | Vitest (unit + e2e on real Postgres and Redis), Testing Library, MSW |
+| **Tooling** | pnpm, Biome, lefthook, commitlint, GitHub Actions (CI, CodeQL, gitleaks) |
+
+## Getting started
+
+Requires Node 24, pnpm 11 and Docker.
+
+```bash
+pnpm install                       # root: git hooks only
+docker compose up -d               # Postgres + Redis
+
+cd apps/api
+cp .env.example .env               # matches docker-compose; seeds the demo data
+pnpm install
+pnpm exec prisma migrate deploy
+pnpm exec prisma db seed
+pnpm start:dev                     # http://localhost:3333
+
+cd ../web
+cp .env.example .env.local
+pnpm install
+pnpm dev                           # http://localhost:3000
+```
+
+Demo accounts (local seed only):
+
+| Role | Email | Password |
+|---|---|---|
+| Seller | `seller@demo.minitms.dev` | `demo12345` |
+| Carrier manager | `carrier@demo.minitms.dev` | `demo12345` |
+| Carrier operator | `operator1@demo.minitms.dev` | `demo12345` |
+| Admin | `admin@minitms.dev` | `admin12345` |
+
+Tracking codes like `TMS-DE0000000040` open at `/track/<code>` without signing in.
+
+## Testing
+
+```bash
+# apps/api
+pnpm test          # unit
+pnpm test:e2e      # needs E2E_DATABASE_URL pointing at a database ending in _e2e
+
+# apps/web
+pnpm test
+```
+
+CI runs lint, build and tests for both apps on every pull request, with real Postgres and Redis for the API e2e suite.
+
+## Deployment
+
+- **Web** on Vercel: root directory `apps/web`, `NEXT_PUBLIC_API_URL` set to the API.
+- **API** on Railway: root directory `apps/api`. WebSockets need a long-running process, so not serverless. Build, start, healthcheck and pre-deploy (migrations + seed) are versioned in `apps/api/railway.json`. Per environment: Postgres and Redis add-ons, `JWT_SECRET`, `CORS_ORIGIN`, `TRUST_PROXY` (number of proxies in front of the API; required in production) and `ADMIN_PASSWORD`. `SEED_DEMO=true` only where the public demo accounts belong.
+
+## Project structure
 
 ```
 apps/
-├── api/   # NestJS — backend
-└── web/   # Next.js — frontend
+├── api/   NestJS: modules per domain (auth, sellers, carriers, shipments, tracking…)
+└── web/   Next.js: app routes, feature folders, shared components
 ```
 
-See sections 8 and 9 of [`DESIGN.md`](./DESIGN.md) for the full folder tree and the reasoning behind it. Screen-by-screen specification (roles, data, actions) in [`SCREENS.md`](./SCREENS.md); a sequential, frame-by-frame walkthrough of the flow that's actually built and validated today (used to brief design-prototyping tools) in [`FLOW.md`](./FLOW.md).
+The two apps are independent pnpm projects. Open [`mini-tms.code-workspace`](./mini-tms.code-workspace) in VS Code so each resolves its own `tsconfig.json`.
 
-`apps/api` and `apps/web` are independent projects, each with its own `tsconfig.json` — opening the repo root directly in VS Code can make the TypeScript server fall back to an implicit project and misreport errors (e.g. spurious `strictPropertyInitialization` complaints). Open [`mini-tms.code-workspace`](./mini-tms.code-workspace) instead (`File > Open Workspace from File...`) — it lists both apps as separate roots so each gets its own `tsconfig.json` resolved correctly, in one window.
+More docs: [`DESIGN.md`](./DESIGN.md) (architecture, data model, decisions), [`SCREENS.md`](./SCREENS.md) (screen specs), [`FLOW.md`](./FLOW.md) (end-to-end flow).
 
-## Running locally
+## Roadmap
 
-```bash
-# 1. Infra (Postgres + Redis)
-docker compose up -d
-
-# 2. Backend — http://localhost:3333 (generate + migrate run on their own)
-cd apps/api
-pnpm install
-pnpm start:dev
-
-# 3. Frontend — http://localhost:3000
-cd apps/web
-pnpm install
-pnpm dev
-```
-
-Configuration details (`.env`, dev credentials, Prisma technical notes) in [`DESIGN.md` § 8](./DESIGN.md#8-running-locally).
-
-## Deploying
-
-`apps/web` → **Vercel** ("Root Directory" = `apps/web`, env var `NEXT_PUBLIC_API_URL` pointing at the deployed API).
-
-`apps/api` → **Railway** ("Root Directory" = `apps/api`), not Vercel — the WebSocket gateway needs a persistent process, not a serverless function. Build/start commands and the healthcheck path are already versioned in `apps/api/railway.json`; what's left to configure per-environment on Railway:
-
-- Attach a **Postgres** and a **Redis** addon (Railway sets `DATABASE_URL`/`REDIS_URL` on its own).
-- Set `JWT_SECRET` (`openssl rand -hex 32`) and `CORS_ORIGIN` (the Vercel URL) manually.
-- Set `TRUST_PROXY` to the number of reverse proxies between the client and the API (the app refuses to boot in production without it): `1` for Railway's edge alone, `2` once the web server forwards the visitor's address on its SSR calls.
-- Set `ADMIN_PASSWORD` (the seed refuses to run in production without it); add `SEED_DEMO=true` only if the environment should carry the public demo accounts.
-- Migrations and the seed run in Railway's `preDeployCommand`, before the new version starts — no manual step.
-
-## Code quality
-
-Biome (format + lint, a single binary across both apps) + lefthook (`pre-commit` runs lint-staged, `commit-msg` validates Conventional Commits) + Vitest (`apps/api`, unit and e2e). The root `package.json` exists only to host this tooling — `apps/api` and `apps/web` remain independent pnpm projects. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
-
-```bash
-pnpm install   # at the root — installs lefthook/lint-staged/commitlint and activates the git hooks
-```
-
-CI on GitHub Actions (lint + build + tests, with a real Postgres and Redis for e2e) runs on pushes to `main` and on every pull request — it exists because a local hook alone guarantees nothing for someone who clones the repo or commits with `--no-verify`. Details in [`DESIGN.md` § 17](./DESIGN.md#17-code-quality--ci).
-
-## Status
-
-Under development, but the core product loop is complete end-to-end and tested (306 unit + 21 Postgres/Redis e2e backend tests, plus the frontend suite): data modeling closed ([`DESIGN.md` § 10](./DESIGN.md#10-data-model), 11 tables); auth + RBAC ([§ 11](./DESIGN.md#11-auth--authorization)); sellers ([§ 12](./DESIGN.md#12-sellers)) and carriers ([§ 13](./DESIGN.md#13-carriers)) self-signup + admin approval + own-modality/coverage config; shipment creation with real coverage+modality matching ([§ 14](./DESIGN.md#14-shipments)); seller cancellation while `PENDING`/`ACCEPTED`; carrier queue (claim/status) and real-time tracking over WebSocket + Redis, including live public tracking on an unauthenticated `/public` namespace ([§ 15](./DESIGN.md#15-carrier-queue--real-time-tracking)); dashboards for all three roles, carrier performance metrics, and admin global monitoring ([§ 16](./DESIGN.md#16-dashboards-carrier-performance-and-global-monitoring)).
-
-**Not started yet:** operator invites (`Invite` token flow, Operator Management screen) and the `notifications` module (currently an empty scaffold — will host BullMQ workers for email/SLA alerts). See the [roadmap](./DESIGN.md#7-roadmap-advanced-features--next-steps) for these and further-out ideas.
+Operator invites, email and SLA-breach notifications, rule-based assignment. See [`DESIGN.md` § 7](./DESIGN.md#7-roadmap-advanced-features--next-steps).
 
 ## License
 
