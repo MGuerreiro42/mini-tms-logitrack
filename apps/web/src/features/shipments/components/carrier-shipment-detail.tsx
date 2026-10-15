@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { DetailRow } from '@/components/common/detail-row';
+import { PinnedAction } from '@/components/common/pinned-action';
 import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,10 @@ function CarrierShipmentView({
 
   return (
     <div
-      className={cn('flex flex-col gap-5', hasPinnedAction && 'max-lg:pb-20')}
+      className={cn(
+        'flex flex-col gap-5',
+        hasPinnedAction && 'max-lg:not-short:pb-20',
+      )}
     >
       <ShipmentTitle
         shipment={shipment}
@@ -129,9 +133,6 @@ function ownerMeta(
   return isClaimable(shipment) ? 'Unclaimed' : undefined;
 }
 
-// Same element on both layouts.
-const PINNED =
-  'lg:ml-auto max-lg:fixed max-lg:inset-x-4 max-lg:bottom-[calc(--spacing(16)+max(--spacing(2),env(safe-area-inset-bottom)))] max-lg:z-30 max-lg:h-12 max-lg:shadow-panel';
 const INVERSE =
   'lg:bg-primary-inverse lg:text-primary-inverse-foreground lg:hover:bg-primary-inverse/85 lg:focus-visible:ring-primary-inverse/60 lg:disabled:bg-emphasis-foreground/15 lg:disabled:text-emphasis-foreground/70 lg:disabled:opacity-100';
 
@@ -172,31 +173,33 @@ function NextStep({
         'Claiming makes it yours to move through pickup and delivery.',
     };
     action = (
-      <Button
-        size="lg"
-        data-pinned-action
-        className={cn(PINNED, INVERSE)}
-        onClick={() => claim.mutate(id)}
-        disabled={claim.isPending}
-      >
-        {claim.isPending ? 'Claiming…' : 'Claim shipment'}
-      </Button>
+      <PinnedAction>
+        <Button
+          size="lg"
+          className={INVERSE}
+          onClick={() => claim.mutate(id)}
+          disabled={claim.isPending}
+        >
+          {claim.isPending ? 'Claiming…' : 'Claim shipment'}
+        </Button>
+      </PinnedAction>
     );
   } else if (advance) {
     const label = SHIPMENT_STATUS[advance].label;
     copy = { title: `Mark as ${label.toLowerCase()}` };
     action = (
-      <Button
-        size="lg"
-        data-pinned-action
-        className={cn(PINNED, INVERSE)}
-        onClick={() =>
-          updateStatus.mutate({ id, status: advance, note: noteInput })
-        }
-        disabled={isUpdating}
-      >
-        Advance to {label.toLowerCase()}
-      </Button>
+      <PinnedAction>
+        <Button
+          size="lg"
+          className={INVERSE}
+          onClick={() =>
+            updateStatus.mutate({ id, status: advance, note: noteInput })
+          }
+          disabled={isUpdating}
+        >
+          Advance to {label.toLowerCase()}
+        </Button>
+      </PinnedAction>
     );
   } else if (setbackStep) {
     copy = {
@@ -344,14 +347,12 @@ function SetbackAction({
 }) {
   const { action, title, description } = SETBACKS[status];
 
-  return (
+  const dialog = (
     <ConfirmDialog
       trigger={
         <Button
           variant="destructive"
           size={pinned ? 'lg' : 'default'}
-          className={pinned ? PINNED : undefined}
-          data-pinned-action={pinned || undefined}
           disabled={isPending}
         >
           {action}
@@ -366,4 +367,5 @@ function SetbackAction({
       unavailableMessage="This shipment has moved on, so this step no longer applies."
     />
   );
+  return pinned ? <PinnedAction>{dialog}</PinnedAction> : dialog;
 }
