@@ -12,19 +12,23 @@ import {
 import { PageHeader } from '@/components/common/page-header';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import type { StatusFilter } from '@/components/common/status-filter-tabs';
+import {
+  type StatusFilter,
+  statusFilterOptions,
+  statusFilterValues,
+} from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
 import { plural } from '@/lib/plural';
+import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import {
   useAdminShipmentStatusCounts,
   useAdminShipments,
 } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import { STATUS_FILTER_VALUES, statusChoices } from '../lib/status-choices';
 import type { AdminShipment } from '../types';
 import {
   lateRowClassName,
@@ -34,6 +38,10 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
+
+const STATUS_VALUES = statusFilterValues(
+  statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES),
+);
 
 const SLA_REFRESH_MS = 60_000;
 const UPDATES_WINDOW_MS = 60_000;
@@ -61,7 +69,7 @@ export function AdminMonitoringTable({
         sellerId: ALL as string,
       },
       {
-        status: STATUS_FILTER_VALUES,
+        status: STATUS_VALUES,
         carrierId: carrierChoices.map((choice) => choice.value),
         sellerId: sellerChoices.map((choice) => choice.value),
       },
@@ -105,7 +113,9 @@ export function AdminMonitoringTable({
         <FilterMenu
           label="Status"
           value={filters.status}
-          options={statusChoices(counts.data)}
+          options={statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES, {
+            counts: counts.data,
+          })}
           onChange={(value) => setFilter('status', value)}
         />
         <FilterMenu

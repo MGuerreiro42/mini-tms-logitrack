@@ -2,24 +2,37 @@
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ALL } from '@/lib/filters';
+import { sumRecord } from '@/lib/sum-record';
 
 export type StatusFilter<S extends string> = S | typeof ALL;
 
 export interface StatusFilterOption<S extends string> {
   label: string;
   value: StatusFilter<S>;
+  count?: number;
+}
+
+interface StatusFilterOptionsConfig<S extends string> {
+  counts?: Record<S, number>;
+  allPosition?: 'first' | 'last';
 }
 
 export function statusFilterOptions<S extends string>(
   meta: Record<S, { label: string }>,
   statuses: S[],
+  { counts, allPosition = 'first' }: StatusFilterOptionsConfig<S> = {},
 ): StatusFilterOption<S>[] {
-  const all: StatusFilterOption<S> = { label: 'All', value: ALL };
+  const all: StatusFilterOption<S> = {
+    label: 'All',
+    value: ALL,
+    count: counts && sumRecord(counts),
+  };
   const options = statuses.map((status) => ({
     label: meta[status].label,
     value: status,
+    count: counts?.[status],
   }));
-  return [all, ...options];
+  return allPosition === 'first' ? [all, ...options] : [...options, all];
 }
 
 export function statusFilterValues<S extends string>(

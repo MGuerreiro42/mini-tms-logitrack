@@ -1,22 +1,20 @@
 'use client';
 
-import {
-  type FilterChoice,
-  FilterMenu,
-  FilterToolbar,
-} from '@/components/common/filter-toolbar';
+import { FilterMenu, FilterToolbar } from '@/components/common/filter-toolbar';
 import {
   type Column,
   PaginatedTable,
 } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import type { StatusFilter } from '@/components/common/status-filter-tabs';
+import {
+  type StatusFilter,
+  statusFilterOptions,
+  statusFilterValues,
+} from '@/components/common/status-filter-tabs';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
-import { ALL } from '@/lib/filters';
 import { formatDate } from '@/lib/format-date';
 import { plural } from '@/lib/plural';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
-import { sumRecord } from '@/lib/sum-record';
 import type { Paginated } from '@/types/pagination';
 import type { QuerySource } from '@/types/query';
 import type { ApprovalStatus, ApprovalStatusCounts } from '@/types/status';
@@ -31,23 +29,14 @@ interface CompanyRow {
 
 const STATUSES: ApprovalStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
-export const APPROVAL_FILTER_VALUES: StatusFilter<ApprovalStatus>[] = [
-  ...STATUSES,
-  ALL,
-];
-
-function statusChoices(
-  counts: ApprovalStatusCounts | undefined,
-): FilterChoice<StatusFilter<ApprovalStatus>>[] {
-  return [
-    ...STATUSES.map((status) => ({
-      value: status,
-      label: APPROVAL_STATUS[status].label,
-      count: counts?.[status],
-    })),
-    { value: ALL, label: 'All', count: counts && sumRecord(counts) },
-  ];
+function statusOptions(counts?: ApprovalStatusCounts) {
+  return statusFilterOptions(APPROVAL_STATUS, STATUSES, {
+    counts,
+    allPosition: 'last',
+  });
 }
+
+export const APPROVAL_FILTER_VALUES = statusFilterValues(statusOptions());
 
 interface CompanyApprovalTableProps<T extends CompanyRow> {
   query: QuerySource<Paginated<T>>;
@@ -108,7 +97,7 @@ export function CompanyApprovalTable<T extends CompanyRow>({
           label="Status"
           value={status}
           defaultValue="PENDING"
-          options={statusChoices(counts)}
+          options={statusOptions(counts)}
           onChange={onStatusChange}
         />
       </FilterToolbar>
