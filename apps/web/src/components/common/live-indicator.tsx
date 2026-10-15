@@ -62,7 +62,7 @@ export function OfflineBanner({ status }: { status: LiveStatus }) {
       <Button
         size="sm"
         variant="outline"
-        className="text-notice-foreground pointer-coarse:h-11"
+        className="text-notice-foreground"
         onClick={reconnect}
         disabled={isReconnecting}
       >
