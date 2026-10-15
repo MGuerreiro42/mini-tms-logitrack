@@ -1,23 +1,20 @@
-import Link from 'next/link';
-import { PublicCard } from '@/components/common/public-card';
+import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { CarrierSignupForm } from '@/features/carriers/components/carrier-signup-form';
 import { ROUTES } from '@/lib/routes';
 
 export default function CarrierSignupPage() {
   return (
-    <PublicCard
-      badge={false}
-      align="start"
-      title="Carrier company registration"
+    <PublicPage
+      title="Register a carrier"
       description="An administrator reviews your company before you can start operating."
+      footer={
+        <p>
+          Already have an account?{' '}
+          <PublicLink href={ROUTES.login}>Sign in</PublicLink>
+        </p>
+      }
     >
       <CarrierSignupForm />
-      <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{' '}
-        <Link href={ROUTES.login} className="text-primary hover:underline">
-          Sign in
-        </Link>
-      </p>
-    </PublicCard>
+    </PublicPage>
   );
 }

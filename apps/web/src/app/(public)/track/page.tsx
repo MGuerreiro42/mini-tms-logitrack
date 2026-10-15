@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
-import { PublicCard } from '@/components/common/public-card';
+import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { PublicTrackingForm } from '@/features/tracking/components/public-tracking-form';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
+import { ROUTES } from '@/lib/routes';
 
 export default async function PublicTrackingPage({
   searchParams,
@@ -12,11 +13,17 @@ export default async function PublicTrackingPage({
   if (code) redirect(publicTrackingPath(code));
 
   return (
-    <PublicCard
+    <PublicPage
       title="Track a shipment"
-      description="No login needed — search by tracking code."
+      description="No sign-in needed. Enter the tracking code you received."
+      footer={
+        <p>
+          Work with Mini TMS?{' '}
+          <PublicLink href={ROUTES.login}>Sign in</PublicLink>
+        </p>
+      }
     >
       <PublicTrackingForm />
-    </PublicCard>
+    </PublicPage>
   );
 }
