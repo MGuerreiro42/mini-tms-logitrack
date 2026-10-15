@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { PublicLink, PublicPage } from '@/components/common/public-page';
+import { PublicPage } from '@/components/common/public-page';
+import { TextLink } from '@/components/common/text-link';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { ROUTES } from '@/lib/routes';
 import { SESSION_EXPIRED_PARAM } from '@/lib/session';
@@ -25,18 +26,15 @@ export default async function LoginPage({
         <>
           <p>
             New here?{' '}
-            <PublicLink href={ROUTES.sellerSignup}>
+            <TextLink href={ROUTES.sellerSignup}>
               Create a seller account
-            </PublicLink>{' '}
+            </TextLink>{' '}
             or{' '}
-            <PublicLink href={ROUTES.carrierSignup}>
-              register a carrier
-            </PublicLink>
-            .
+            <TextLink href={ROUTES.carrierSignup}>register a carrier</TextLink>.
           </p>
-          <PublicLink href={ROUTES.track}>
+          <TextLink href={ROUTES.track}>
             Track a shipment without signing in
-          </PublicLink>
+          </TextLink>
         </>
       }
     >

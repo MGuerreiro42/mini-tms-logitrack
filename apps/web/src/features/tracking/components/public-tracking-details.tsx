@@ -5,8 +5,8 @@ import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
-import { PublicLink } from '@/components/common/public-page';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { TextLink } from '@/components/common/text-link';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
@@ -65,7 +65,7 @@ export function PublicTrackingDetails({
       <TrackingTimeline events={tracking.events} status={tracking.status} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-muted pt-4.5 text-[13px] text-muted-foreground">
         <span>This page updates by itself. No need to refresh.</span>
-        <PublicLink href={ROUTES.track}>Track another shipment</PublicLink>
+        <TextLink href={ROUTES.track}>Track another shipment</TextLink>
       </div>
     </div>
   );

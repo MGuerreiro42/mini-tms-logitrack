@@ -7,6 +7,7 @@ import { LiveIndicator } from '@/components/common/live-indicator';
 import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
+import { TextLink } from '@/components/common/text-link';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
@@ -114,12 +115,9 @@ function SellerDashboardView({
           className="gap-2.5"
           aside={<LiveIndicator status={liveStatus} />}
           footer={
-            <Link
-              href={ROUTES.sellerShipments}
-              className="text-sm font-semibold text-primary hover:underline"
-            >
+            <TextLink href={ROUTES.sellerShipments} className="text-sm">
               View all shipments
-            </Link>
+            </TextLink>
           }
         >
           <ol>

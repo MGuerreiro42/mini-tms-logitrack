@@ -1,11 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { StatusDistribution } from '@/components/common/charts/status-distribution';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
+import { TextLink } from '@/components/common/text-link';
 import { Badge } from '@/components/ui/badge';
 import {
   useApproveCarrier,
@@ -198,12 +198,12 @@ function ApplicationRow({ application }: { application: Application }) {
     <li className="flex flex-col gap-3 border-t border-muted py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex items-center gap-2.5">
-          <Link
+          <TextLink
             href={kind.href(application.id)}
-            className="truncate rounded-xs text-[15px] font-semibold outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+            className="truncate text-[15px] text-foreground"
           >
             {application.companyName}
-          </Link>
+          </TextLink>
           <Badge variant="secondary">{kind.label}</Badge>
         </div>
         <span className="text-[13px] text-muted-foreground">

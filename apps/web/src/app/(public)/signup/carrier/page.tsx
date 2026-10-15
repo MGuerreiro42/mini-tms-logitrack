@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { PublicLink, PublicPage } from '@/components/common/public-page';
+import { PublicPage } from '@/components/common/public-page';
+import { TextLink } from '@/components/common/text-link';
 import { CarrierSignupForm } from '@/features/carriers/components/carrier-signup-form';
 import { ROUTES } from '@/lib/routes';
 
@@ -13,7 +14,7 @@ export default function CarrierSignupPage() {
       footer={
         <p>
           Already have an account?{' '}
-          <PublicLink href={ROUTES.login}>Sign in</PublicLink>
+          <TextLink href={ROUTES.login}>Sign in</TextLink>
         </p>
       }
     >
