@@ -233,7 +233,8 @@
   body {
     @apply text-foreground;
     background:
-      radial-gradient(1100px 520px at 88% -8%, var(--wash), transparent 62%),
+      radial-gradient(1100px 520px at 88% -8%, var(--wash), transparent 62%)
+      no-repeat,
       var(--background);
   }
   html {
