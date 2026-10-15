@@ -3,7 +3,7 @@ import { CarrierPerformance } from '@/features/carriers/components/carrier-perfo
 
 export default function CarrierPerformancePage() {
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Performance"
         description="How your company's shipments are performing."

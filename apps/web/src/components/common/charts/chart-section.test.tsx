@@ -14,12 +14,15 @@ describe('ChartSection', () => {
     expect(screen.getByText('chart')).toBeInTheDocument();
   });
 
-  it('renders only the empty message when there is no data', () => {
+  it('keeps the title and swaps the chart for the empty message when there is no data', () => {
     render(
       <ChartSection title="Ranking" isEmpty emptyMessage="Nothing yet">
         <div>chart</div>
       </ChartSection>,
     );
+    expect(
+      screen.getByRole('heading', { name: 'Ranking' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Nothing yet')).toBeInTheDocument();
     expect(screen.queryByText('chart')).not.toBeInTheDocument();
   });

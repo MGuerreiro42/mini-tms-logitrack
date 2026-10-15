@@ -1,8 +1,10 @@
 'use client';
 
+import { PlusIcon, XIcon } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -13,8 +15,13 @@ import {
 import { BR_STATES } from '@/lib/br-states';
 import type { CoverageArea, CoverageAreaInput } from '../types';
 
+interface AreaRow {
+  state: string;
+  city: string;
+}
+
 interface FormValues {
-  areas: { state: string; city: string }[];
+  areas: AreaRow[];
 }
 
 interface CoverageAreasEditorProps {
@@ -24,6 +31,13 @@ interface CoverageAreasEditorProps {
   readOnly?: boolean;
 }
 
+function areaLabel(area: { state: string; city: string | null }) {
+  return area.city ? `${area.city}/${area.state}` : `All of ${area.state}`;
+}
+
+const areaKey = (area: AreaRow) =>
+  `${area.state}:${area.city.trim().toLowerCase()}`;
+
 // Mount only once initialAreas is loaded, so RHF defaults are never seeded asynchronously.
 export function CoverageAreasEditor({
   initialAreas,
@@ -31,7 +45,12 @@ export function CoverageAreasEditor({
   isSaving,
   readOnly,
 }: CoverageAreasEditorProps) {
-  const { control, register, handleSubmit } = useForm<FormValues>({
+  const {
+    control,
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
     defaultValues: {
       areas: initialAreas.map((area) => ({
         state: area.state,
@@ -61,9 +80,9 @@ export function CoverageAreasEditor({
         {initialAreas.map((area) => (
           <span
             key={area.id}
-            className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground"
+            className="rounded-sm bg-secondary px-2.5 py-1.5 text-[13px] font-medium text-secondary-foreground"
           >
-            {area.city ? `${area.city}/${area.state}` : `All of ${area.state}`}
+            {areaLabel(area)}
           </span>
         ))}
       </div>
@@ -71,61 +90,81 @@ export function CoverageAreasEditor({
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(submit)}>
-      <div className="space-y-2">
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex items-center gap-2">
-            <Controller
-              control={control}
-              name={`areas.${index}.state`}
-              render={({ field: selectField }) => (
-                <Select
-                  value={selectField.value}
-                  onValueChange={selectField.onChange}
+    <form className="flex flex-col gap-5" onSubmit={handleSubmit(submit)}>
+      {fields.length > 0 && (
+        <ul className="flex flex-col gap-4">
+          {fields.map((field, index) => {
+            const stateId = `area-${field.id}-state`;
+            return (
+              <li
+                key={field.id}
+                className="grid grid-cols-[6.5rem_minmax(0,1fr)_auto] items-start gap-3"
+              >
+                <div className="space-y-1.5">
+                  <Label htmlFor={stateId}>State</Label>
+                  <Controller
+                    control={control}
+                    name={`areas.${index}.state`}
+                    render={({ field: selectField }) => (
+                      <Select
+                        value={selectField.value}
+                        onValueChange={selectField.onChange}
+                      >
+                        <SelectTrigger id={stateId} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BR_STATES.map((uf) => (
+                            <SelectItem key={uf} value={uf}>
+                              {uf}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <FormField
+                  id={`area-${field.id}-city`}
+                  label="City"
+                  placeholder="Leave empty for the whole state"
+                  error={errors.areas?.[index]?.city?.message}
+                  {...register(`areas.${index}.city`, {
+                    validate: (_city, { areas }) =>
+                      areas.findIndex(
+                        (area) => areaKey(area) === areaKey(areas[index]),
+                      ) === index || 'This area is already listed.',
+                  })}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-lg"
+                  className="mt-5"
+                  aria-label={`Remove area ${index + 1}`}
+                  onClick={() => remove(index)}
                 >
-                  <SelectTrigger className="w-24">
-                    <SelectValue placeholder="UF" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BR_STATES.map((uf) => (
-                      <SelectItem key={uf} value={uf}>
-                        {uf}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            <Input
-              placeholder="City (leave empty for whole state)"
-              className="flex-1"
-              {...register(`areas.${index}.city`)}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => remove(index)}
-            >
-              Remove
-            </Button>
-          </div>
-        ))}
-      </div>
+                  <XIcon />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {fields.length === 0 && (
-        <p className="rounded-md bg-notice px-3 py-2 text-xs text-notice-foreground">
-          No coverage areas configured — this carrier won't show up in any
-          seller's eligible-carriers match until at least one exists.
+        <p className="rounded-md bg-notice px-3 py-2 text-sm text-notice-foreground">
+          No coverage areas configured. Sellers won't find your company in any
+          match until at least one exists.
         </p>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
-          size="sm"
+          variant="secondary"
           onClick={() => append({ state: 'SP', city: '' })}
         >
-          + Add area
+          <PlusIcon data-icon="inline-start" />
+          Add area
         </Button>
         <Button type="submit" disabled={isSaving}>
           {isSaving ? 'Saving…' : 'Save changes'}

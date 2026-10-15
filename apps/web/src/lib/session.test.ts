@@ -45,12 +45,12 @@ describe('parseSessionCookie', () => {
 
 describe('segments', () => {
   it.each([
-    ['ADMIN', 'admin'],
-    ['SELLER', 'seller'],
-    ['CARRIER_MANAGER', 'carrier'],
-    ['CARRIER_OPERATOR', 'carrier'],
-  ] as const)('sends %s home to its own segment /%s', (role, segment) => {
-    expect(ROLE_HOME[role]).toBe(`/${segment}`);
+    ['ADMIN', 'admin', '/admin'],
+    ['SELLER', 'seller', '/seller'],
+    ['CARRIER_MANAGER', 'carrier', '/carrier/queue'],
+    ['CARRIER_OPERATOR', 'carrier', '/carrier/queue'],
+  ] as const)('sends %s home inside its own segment /%s', (role, segment, home) => {
+    expect(ROLE_HOME[role]).toBe(home);
     expect(canEnterSegment(role, segment)).toBe(true);
   });
 

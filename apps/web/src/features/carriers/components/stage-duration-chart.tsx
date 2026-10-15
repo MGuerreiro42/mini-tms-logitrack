@@ -19,6 +19,7 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
   return (
     <ChartSection
       title="Time per stage"
+      description="Average, happy path"
       isEmpty={rows.every((row) => !row.hasData)}
       emptyMessage="Not enough data yet — the funnel fills in as shipments move through each stage."
     >

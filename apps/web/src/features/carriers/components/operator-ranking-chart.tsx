@@ -12,6 +12,7 @@ export function OperatorRankingChart({
   return (
     <ChartSection
       title="Operator ranking"
+      description="Shipments owned"
       isEmpty={data.length === 0}
       emptyMessage="Not enough data yet — the ranking fills in once someone claims a shipment."
     >

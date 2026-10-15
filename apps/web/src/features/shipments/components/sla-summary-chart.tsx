@@ -6,6 +6,8 @@ import type { SlaSummaryItem } from '../types';
 
 const percent = (value: number) => `${value.toFixed(0)}%`;
 
+const SLA_TARGET = 90;
+
 export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
   return (
     <Panel title="SLA adherence by modality">
@@ -23,6 +25,7 @@ export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
           orientation="vertical"
           valueDomain={[0, 100]}
           formatTick={percent}
+          target={{ value: SLA_TARGET, label: `Target ${percent(SLA_TARGET)}` }}
           formatLabel={(row) => percent(row.onTimeRate)}
           formatTooltip={(row) =>
             `${percent(row.onTimeRate)} on time (${row.onTimeCount}/${row.deliveredCount} delivered)`
