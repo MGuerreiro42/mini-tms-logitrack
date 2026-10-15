@@ -1,4 +1,4 @@
-import { CheckIcon } from 'lucide-react';
+import { StepDot } from '@/components/common/step-dot';
 import { cn } from '@/lib/utils';
 
 export interface StepItem {
@@ -31,17 +31,11 @@ export function StepIndicator({
               isCurrent && 'bg-card shadow-panel',
             )}
           >
-            <span
-              aria-hidden
-              className={cn(
-                'flex size-7.5 shrink-0 items-center justify-center rounded-md text-[13px] font-semibold',
-                index > current
-                  ? 'bg-muted text-muted-foreground'
-                  : 'bg-primary text-primary-foreground',
-              )}
-            >
-              {done ? <CheckIcon className="size-4" /> : index + 1}
-            </span>
+            <StepDot
+              state={done ? 'done' : isCurrent ? 'current' : 'upcoming'}
+              number={index + 1}
+              className="size-7.5 rounded-md text-[13px]"
+            />
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="text-sm font-semibold">
                 {done && <span className="sr-only">Done: </span>}
