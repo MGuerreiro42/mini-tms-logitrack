@@ -1,11 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useRouter } from 'next/navigation';
 import { type Column, PaginatedTable } from './paginated-table';
-
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
-}));
 
 interface Row {
   id: string;
@@ -15,15 +10,6 @@ interface Row {
 const columns: Column<Row>[] = [{ header: 'Name', cell: (row) => row.name }];
 
 describe('PaginatedTable', () => {
-  const push = vi.fn();
-
-  beforeEach(() => {
-    push.mockReset();
-    vi.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<
-      typeof useRouter
-    >);
-  });
-
   it('shows the empty message when there is no data', () => {
     render(
       <PaginatedTable<Row>
@@ -89,8 +75,7 @@ describe('PaginatedTable', () => {
     expect(onPageChange).toHaveBeenCalledWith(1);
   });
 
-  it('navigates to getRowHref when a row is clicked', async () => {
-    const user = userEvent.setup();
+  it('renders each row as a real link to getRowHref', () => {
     render(
       <PaginatedTable<Row>
         columns={columns}
@@ -102,12 +87,13 @@ describe('PaginatedTable', () => {
       />,
     );
 
-    await user.click(screen.getByText('Row 1'));
-    expect(push).toHaveBeenCalledWith('/admin/sellers/row-1');
+    expect(screen.getByRole('link', { name: 'Row 1' })).toHaveAttribute(
+      'href',
+      '/admin/sellers/row-1',
+    );
   });
 
-  it('does not attach a click handler when getRowHref is not provided', async () => {
-    const user = userEvent.setup();
+  it('renders no link when getRowHref is not provided', () => {
     render(
       <PaginatedTable<Row>
         columns={columns}
@@ -118,7 +104,6 @@ describe('PaginatedTable', () => {
       />,
     );
 
-    await user.click(screen.getByText('Row 1'));
-    expect(push).not.toHaveBeenCalled();
+    expect(screen.queryByRole('link')).toBeNull();
   });
 });

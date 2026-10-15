@@ -19,6 +19,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   isConfirming?: boolean;
   variant?: 'default' | 'destructive';
+  children?: React.ReactNode;
 }
 
 export function ConfirmDialog({
@@ -29,6 +30,7 @@ export function ConfirmDialog({
   onConfirm,
   isConfirming,
   variant = 'default',
+  children,
 }: ConfirmDialogProps) {
   return (
     <Dialog>
@@ -38,6 +40,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button
             variant={variant === 'destructive' ? 'destructive' : 'default'}

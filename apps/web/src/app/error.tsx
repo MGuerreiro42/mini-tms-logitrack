@@ -1,0 +1,26 @@
+'use client';
+
+import Link from 'next/link';
+import { CenteredPage, MessageCard } from '@/components/common/message-card';
+import { Button } from '@/components/ui/button';
+
+export default function RootError({
+  unstable_retry,
+}: {
+  error: Error & { digest?: string };
+  unstable_retry: () => void;
+}) {
+  return (
+    <CenteredPage>
+      <MessageCard
+        title="Something went wrong"
+        description="An unexpected error occurred. Try again, or head back home."
+      >
+        <Button onClick={() => unstable_retry()}>Try again</Button>
+        <Button asChild variant="outline">
+          <Link href="/">Go home</Link>
+        </Button>
+      </MessageCard>
+    </CenteredPage>
+  );
+}

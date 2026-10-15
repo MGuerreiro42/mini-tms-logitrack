@@ -12,11 +12,7 @@ export interface NavItem {
 export function NavList({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
 
-  // Pick the single most specific (longest href) match, not "does this
-  // item's href prefix the pathname" independently per item — a section
-  // root like /seller is a literal string prefix of every nested route
-  // (/seller/modalities, /seller/shipments/...), so a naive per-item
-  // startsWith check marks it active on every seller page, not just its own.
+  // Longest match wins, otherwise the section root (/seller) is active on every nested route.
   const activeHref = items
     .filter(
       (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
@@ -31,6 +27,7 @@ export function NavList({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm',
               active

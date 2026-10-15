@@ -3,26 +3,32 @@
 import { useState } from 'react';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { CarrierShipment, ShipmentStatus } from '../types';
+import {
+  type CarrierShipment,
+  isClaimable,
+  type ShipmentStatus,
+} from '../types';
 
 const FILTERS: { label: string; value: ShipmentStatus | 'ALL' }[] = [
   { label: 'All', value: 'ALL' },
   { label: 'Pending', value: 'PENDING' },
   { label: 'Accepted', value: 'ACCEPTED' },
   { label: 'In transit', value: 'IN_TRANSIT' },
+  { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
 export function CarrierQueueTable() {
   const [status, setStatus] = useState<ShipmentStatus | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useShipmentQueue({
+  const query = useShipmentQueue({
     status: status === 'ALL' ? undefined : status,
     page,
     limit: 20,
@@ -48,64 +54,56 @@ export function CarrierQueueTable() {
           ))}
         </TabsList>
       </Tabs>
-      {isLoading || !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <PaginatedTable<CarrierShipment>
-          data={data.data}
-          meta={data.meta}
-          onPageChange={setPage}
-          getRowKey={(s) => s.id}
-          getRowHref={(s) => `/carrier/queue/${s.id}`}
-          emptyMessage="No shipments in the queue."
-          columns={[
-            {
-              header: 'Tracking code',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.trackingCode}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ShipmentStatusPill status={s.status} />,
-            },
-            { header: 'Seller', cell: (s) => s.sellerCompanyName },
-            {
-              header: 'Destination',
-              cell: (s) => `${s.addressCity}/${s.addressState}`,
-            },
-            {
-              header: 'Owner',
-              cell: (s) => s.ownerEmail ?? 'Unclaimed',
-              className: 'text-muted-foreground',
-            },
-            {
-              header: '',
-              className: 'text-right',
-              cell: (s) =>
-                s.ownerId ? null : (
-                  // A direct button, no confirm dialog — unlike admin
-                  // approve/reject (infrequent, higher-consequence), claiming
-                  // is meant to be a fast, in-the-flow action for an operator
-                  // working through a shared queue (DESIGN.md § 3); a modal
-                  // per claim would actively work against that.
-                  <Button
-                    size="sm"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      claim.mutate(s.id);
-                    }}
-                    disabled={claim.isPending}
-                  >
-                    Claim
-                  </Button>
+      <QueryState query={query} errorMessage="Couldn't load the queue.">
+        {(result) => (
+          <PaginatedTable<CarrierShipment>
+            data={result.data}
+            meta={result.meta}
+            onPageChange={setPage}
+            getRowKey={(s) => s.id}
+            getRowHref={(s) => `/carrier/queue/${s.id}`}
+            emptyMessage="No shipments in the queue."
+            columns={[
+              {
+                header: 'Tracking code',
+                cell: (s) => (
+                  <span className="font-mono text-xs">{s.trackingCode}</span>
                 ),
-            },
-          ]}
-        />
-      )}
+              },
+              {
+                header: 'Status',
+                cell: (s) => <ShipmentStatusPill status={s.status} />,
+              },
+              { header: 'Seller', cell: (s) => s.sellerCompanyName },
+              {
+                header: 'Destination',
+                cell: (s) => `${s.addressCity}/${s.addressState}`,
+              },
+              {
+                header: 'Owner',
+                cell: (s) => s.ownerEmail ?? 'Unclaimed',
+                className: 'text-muted-foreground',
+              },
+              {
+                header: '',
+                className: 'text-right',
+                cell: (s) =>
+                  isClaimable(s) ? (
+                    // No confirm dialog: claiming is meant to be fast.
+                    <Button
+                      size="sm"
+                      className="relative z-10"
+                      onClick={() => claim.mutate(s.id)}
+                      disabled={claim.isPending}
+                    >
+                      Claim
+                    </Button>
+                  ) : null,
+              },
+            ]}
+          />
+        )}
+      </QueryState>
     </div>
   );
 }

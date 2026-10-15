@@ -1,5 +1,6 @@
 'use client';
 
+import { DetailRow } from '@/components/common/detail-row';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError } from '@/services/api-client';
@@ -28,22 +29,19 @@ export function ShipmentConfirmReview({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 text-sm">
-          <Row
+          <DetailRow
             label="Destination"
             value={`${input.addressStreet}, ${input.addressNumber}`}
           />
-          <Row
+          <DetailRow
             label="City"
             value={`${input.addressCity}/${input.addressState}`}
           />
-          <Row label="Modality" value={modalityName} />
-          <Row label="Carrier" value={carrierName} />
+          <DetailRow label="Modality" value={modalityName} />
+          <DetailRow label="Carrier" value={carrierName} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Everything above is re-validated server-side on confirm — if the
-          seller, modality, or carrier eligibility changed since the previous
-          step, this will fail with a clear reason instead of silently
-          succeeding.
+          We'll check the carrier is still available when you confirm.
         </p>
         {createShipment.isError && (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -65,14 +63,5 @@ export function ShipmentConfirmReview({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b py-2 last:border-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
   );
 }

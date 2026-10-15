@@ -7,11 +7,9 @@ import { getMyOperatorRanking } from '../api';
 export function useOperatorRanking() {
   const session = useSession();
 
-  const query = useQuery({
+  return useQuery({
     queryKey: ['carriers', 'me', 'operator-ranking'],
     queryFn: () => getMyOperatorRanking(session?.token ?? ''),
     enabled: Boolean(session),
   });
-
-  return { ...query, isLoading: query.isPending };
 }

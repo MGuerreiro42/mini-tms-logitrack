@@ -6,8 +6,7 @@ export default function CreateShipmentPage() {
       <div>
         <h1 className="text-xl font-semibold">Create shipment</h1>
         <p className="text-sm text-muted-foreground">
-          Address + modality → eligible carriers → confirm. Everything is
-          re-validated server-side on the final step.
+          Enter the destination, pick a carrier and confirm.
         </p>
       </div>
       <CreateShipmentWizard />

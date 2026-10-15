@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
@@ -19,8 +20,10 @@ export function UserMenu({
   initials: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   function handleLogout() {
+    queryClient.clear();
     clearSession();
     router.push('/login');
   }

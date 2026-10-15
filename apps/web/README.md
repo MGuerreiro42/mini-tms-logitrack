@@ -67,3 +67,4 @@ Biome, not ESLint — loses `eslint-config-next`'s specific rules, gains Biome's
 | Var | Default | Description |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3333` | API base URL |
+| `NEXT_PUBLIC_APP_URL` | browser origin | Public origin used in shareable tracking links |

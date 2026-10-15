@@ -1,16 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMyModalities } from '@/features/sellers/hooks/use-my-modalities';
 
-// Mirrors CreateShipmentDto's address fields exactly (all required except
-// addressComplement).
+// Mirrors CreateShipmentDto's address fields.
 const schema = z.object({
   addressStreet: z.string().min(1, 'Required'),
   addressNumber: z.string().min(1, 'Required'),
@@ -33,7 +34,7 @@ export function ShipmentAddressForm({
   defaultValues,
   onNext,
 }: ShipmentAddressFormProps) {
-  const { data: modalities, isLoading } = useMyModalities();
+  const { data: modalities } = useMyModalities();
   const {
     register,
     handleSubmit,
@@ -42,16 +43,11 @@ export function ShipmentAddressForm({
     formState: { errors },
   } = useForm<AddressFormValues>({
     resolver: zodResolver(schema),
-    // modalityId starts unset (never register()'d — it's only set via the
-    // button clicks below), so it defaults to '' rather than undefined:
-    // zod's `.min(1, 'Pick a modality')` message only applies to a string
-    // that's too short, not to a value failing the base type check.
+    // '' rather than undefined so zod reports 'Pick a modality' instead of a type error.
     defaultValues: { modalityId: '', ...defaultValues },
   });
 
   const selectedModalityId = watch('modalityId');
-  // The dropdown is fed only by the seller's own enabled modalities, not the
-  // full catalog (matches SCREENS.md's Create Shipment spec).
   const enabledModalities = (modalities ?? []).filter(
     (modality) => modality.enabled,
   );
@@ -131,13 +127,18 @@ export function ShipmentAddressForm({
             </Field>
           </div>
           <div className="space-y-1.5">
-            <Label>Modality — your own enabled modalities only</Label>
-            {isLoading && (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            )}
-            {!isLoading && enabledModalities.length === 0 && (
+            <Label>Modality</Label>
+            {!modalities && <Skeleton className="h-9 w-48" />}
+            {modalities && enabledModalities.length === 0 && (
               <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                You haven't enabled any modality yet. Go to Modalities first.
+                You haven't enabled any modality yet.{' '}
+                <Link
+                  href="/seller/modalities"
+                  className="font-medium underline"
+                >
+                  Enable one in Modalities
+                </Link>
+                .
               </p>
             )}
             <div className="flex flex-wrap gap-2">

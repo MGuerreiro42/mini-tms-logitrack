@@ -5,8 +5,7 @@ export default function SellerShipmentsPage() {
     <div className="space-y-1">
       <h1 className="text-xl font-semibold">Shipments</h1>
       <p className="mb-4 text-sm text-muted-foreground">
-        Only your own shipments — scoped server-side to the authenticated
-        seller.
+        All the shipments you've created.
       </p>
       <ShipmentsTable />
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PaginatedTable } from '@/components/common/paginated-table';
+import { QueryState } from '@/components/common/query-state';
 import { ApprovalStatusPill } from '@/components/ui/status-pill';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApprovalStatus } from '@/lib/status-colors';
@@ -20,7 +21,7 @@ export function SellersTable() {
   const [status, setStatus] = useState<ApprovalStatus | 'ALL'>('PENDING');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useSellersList({
+  const query = useSellersList({
     status: status === 'ALL' ? undefined : status,
     page,
     limit: 20,
@@ -43,43 +44,41 @@ export function SellersTable() {
           ))}
         </TabsList>
       </Tabs>
-      {isLoading || !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <PaginatedTable<Seller>
-          data={data.data}
-          meta={data.meta}
-          onPageChange={setPage}
-          getRowKey={(seller) => seller.id}
-          getRowHref={(seller) => `/admin/sellers/${seller.id}`}
-          emptyMessage="No sellers match this filter."
-          columns={[
-            {
-              header: 'Company',
-              cell: (s) => (
-                <span className="font-semibold">{s.companyName}</span>
-              ),
-            },
-            {
-              header: 'Document',
-              cell: (s) => (
-                <span className="font-mono text-xs">{s.document}</span>
-              ),
-            },
-            {
-              header: 'Status',
-              cell: (s) => <ApprovalStatusPill status={s.status} />,
-            },
-            {
-              header: 'Created',
-              className: 'text-right text-muted-foreground',
-              cell: (s) => new Date(s.createdAt).toLocaleDateString(),
-            },
-          ]}
-        />
-      )}
+      <QueryState query={query} errorMessage="Couldn't load sellers.">
+        {(result) => (
+          <PaginatedTable<Seller>
+            data={result.data}
+            meta={result.meta}
+            onPageChange={setPage}
+            getRowKey={(seller) => seller.id}
+            getRowHref={(seller) => `/admin/sellers/${seller.id}`}
+            emptyMessage="No sellers match this filter."
+            columns={[
+              {
+                header: 'Company',
+                cell: (s) => (
+                  <span className="font-semibold">{s.companyName}</span>
+                ),
+              },
+              {
+                header: 'Document',
+                cell: (s) => (
+                  <span className="font-mono text-xs">{s.document}</span>
+                ),
+              },
+              {
+                header: 'Status',
+                cell: (s) => <ApprovalStatusPill status={s.status} />,
+              },
+              {
+                header: 'Created',
+                className: 'text-right text-muted-foreground',
+                cell: (s) => new Date(s.createdAt).toLocaleDateString(),
+              },
+            ]}
+          />
+        )}
+      </QueryState>
     </div>
   );
 }

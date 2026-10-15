@@ -1,20 +1,37 @@
 'use client';
 
+import { CopyField } from '@/components/common/copy-field';
 import { DetailRow } from '@/components/common/detail-row';
 import { LiveIndicator } from '@/components/common/live-indicator';
+import { QueryState } from '@/components/common/query-state';
 import { TrackingTimeline } from '@/components/common/tracking-timeline';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
+import { useAppOrigin } from '@/hooks/use-app-origin';
+import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
+import { isCancellableBySeller, type Shipment } from '../types';
+import { CancelShipmentAction } from './cancel-shipment-action';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
-  const { data: shipment, isLoading } = useShipment(id);
+  const query = useShipment(id);
   useShipmentTracking({ shipmentId: id });
 
-  if (isLoading || !shipment) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
-  }
+  return (
+    <QueryState
+      query={query}
+      errorMessage="Couldn't load this shipment."
+      notFoundMessage="Shipment not found."
+    >
+      {(shipment) => <ShipmentDetailView shipment={shipment} />}
+    </QueryState>
+  );
+}
+
+function ShipmentDetailView({ shipment }: { shipment: Shipment }) {
+  const origin = useAppOrigin();
+  const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_300px]">
@@ -35,7 +52,7 @@ export function ShipmentDetailCard({ id }: { id: string }) {
           />
           <DetailRow
             label="Neighborhood"
-            value={`${shipment.addressNeighborhood}`}
+            value={shipment.addressNeighborhood}
           />
           <DetailRow
             label="City"
@@ -45,14 +62,15 @@ export function ShipmentDetailCard({ id }: { id: string }) {
         </CardContent>
       </Card>
       <div className="space-y-4">
+        {isCancellableBySeller(shipment.status) && (
+          <CancelShipmentAction shipmentId={shipment.id} />
+        )}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Public tracking link</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs">
-              tms.app/track/{shipment.trackingCode}
-            </div>
+            <CopyField value={trackingUrl} label="Copy tracking link" />
           </CardContent>
         </Card>
         <Card>
