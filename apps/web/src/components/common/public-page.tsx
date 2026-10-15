@@ -121,7 +121,7 @@ export function PublicLink({
   return (
     <Link
       href={href}
-      className="w-fit rounded-xs font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="w-fit rounded-xs font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
     >
       {children}
     </Link>

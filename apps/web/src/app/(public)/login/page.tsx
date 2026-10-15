@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { PublicLink, PublicPage } from '@/components/common/public-page';
 import { LoginForm } from '@/features/auth/components/login-form';
+import { ROUTES } from '@/lib/routes';
 import { SESSION_EXPIRED_PARAM } from '@/lib/session';
+
+export const metadata: Metadata = { title: 'Sign in · Mini TMS' };
 
 export default async function LoginPage({
   searchParams,
@@ -21,13 +25,16 @@ export default async function LoginPage({
         <>
           <p>
             New here?{' '}
-            <PublicLink href="/signup/seller">
+            <PublicLink href={ROUTES.sellerSignup}>
               Create a seller account
             </PublicLink>{' '}
             or{' '}
-            <PublicLink href="/signup/carrier">register a carrier</PublicLink>.
+            <PublicLink href={ROUTES.carrierSignup}>
+              register a carrier
+            </PublicLink>
+            .
           </p>
-          <PublicLink href="/track">
+          <PublicLink href={ROUTES.track}>
             Track a shipment without signing in
           </PublicLink>
         </>
