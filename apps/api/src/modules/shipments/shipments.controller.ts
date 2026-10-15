@@ -32,6 +32,7 @@ import { ListQueueQueryDto } from './dto/list-queue-query.dto';
 import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
+import { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { ShipmentsService } from './shipments.service';
 
@@ -214,6 +215,22 @@ export class ShipmentsController {
   @Get('status-counts')
   countsByStatus(@CurrentUser() user: AuthenticatedUser) {
     return this.shipmentsService.countsByStatusForSeller(user.id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "SLA adherence per delivery modality, among the authenticated seller's own DELIVERED shipments — modalities with no slaHours configured are omitted",
+  })
+  @ApiResponse({ status: 200, type: [SlaSummaryItemResponseDto] })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not a seller' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.SELLER)
+  @Get('sla-summary')
+  slaSummary(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.slaSummaryForSeller(user.id);
   }
 
   @ApiBearerAuth()

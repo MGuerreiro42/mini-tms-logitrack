@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { ShipmentStatusPill } from '@/components/ui/status-pill';
 import { useSellerDashboard } from '../hooks/use-seller-dashboard';
 import type { Shipment } from '../types';
+import { SlaSummaryChart } from './sla-summary-chart';
 
 export function SellerDashboard() {
-  const { isLoading, isError, counts, recentShipments } = useSellerDashboard();
+  const { isLoading, isError, counts, recentShipments, slaSummary } =
+    useSellerDashboard();
 
   if (isLoading) {
     return (
@@ -58,6 +60,8 @@ export function SellerDashboard() {
           returned) — not broken out above, but counted in Total.
         </p>
       )}
+
+      <SlaSummaryChart data={slaSummary} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

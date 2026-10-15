@@ -29,6 +29,7 @@ import { CarrierResponseDto } from './dto/carrier-response.dto';
 import { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import { CreateCarrierDto } from './dto/create-carrier.dto';
 import { ListCarriersQueryDto } from './dto/list-carriers-query.dto';
+import { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import { SetCarrierModalitiesDto } from './dto/set-carrier-modalities.dto';
 import { SetCoverageAreasDto } from './dto/set-coverage-areas.dto';
 import { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
@@ -153,6 +154,22 @@ export class CarriersController {
   @Get('me/performance')
   performance(@CurrentUser() user: AuthenticatedUser) {
     return this.carriersService.performance(user.id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Shipments owned per CarrierUser, ranked — read-only for both manager and operator. Today's carriers only ever have one CarrierUser (the manager), since operator invites aren't built yet",
+  })
+  @ApiResponse({ status: 200, type: [OperatorRankingItemResponseDto] })
+  @ApiResponse({ status: 401, description: 'Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Not a carrier user' })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(GlobalRole.CARRIER_MANAGER, GlobalRole.CARRIER_OPERATOR)
+  @Get('me/operator-ranking')
+  operatorRanking(@CurrentUser() user: AuthenticatedUser) {
+    return this.carriersService.operatorRanking(user.id);
   }
 
   @ApiBearerAuth()

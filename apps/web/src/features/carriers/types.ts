@@ -1,4 +1,7 @@
-import type { ShipmentStatusCounts } from '@/features/shipments/types';
+import type {
+  ShipmentStatus,
+  ShipmentStatusCounts,
+} from '@/features/shipments/types';
 import type { ApprovalStatus } from '@/lib/status-colors';
 import type { PaginationQuery } from '@/types/pagination';
 
@@ -36,10 +39,25 @@ export interface CoverageAreaInput {
   city?: string;
 }
 
+export interface StageDuration {
+  fromStatus: ShipmentStatus;
+  toStatus: ShipmentStatus;
+  avgHours: number | null;
+  sampleCount: number;
+}
+
 export interface CarrierPerformance {
   shipmentCountsByStatus: ShipmentStatusCounts;
   totalShipments: number;
   avgHoursBetweenEvents: number | null;
   failedDeliveryRate: number;
   returnedRate: number;
+  stageDurations: StageDuration[];
+}
+
+export interface OperatorRankingItem {
+  carrierUserId: string;
+  email: string;
+  totalOwned: number;
+  delivered: number;
 }
