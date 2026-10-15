@@ -13,7 +13,6 @@ export type ShipmentStatus =
 
 export type ShipmentStatusCounts = Record<ShipmentStatus, number>;
 
-// Modalities without slaHours are omitted by the API, not reported as 0%.
 export interface SlaSummaryItem {
   modalityCode: string;
   modalityName: string;

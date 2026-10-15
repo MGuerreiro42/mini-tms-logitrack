@@ -39,7 +39,6 @@ export interface CoverageAreaInput {
   city?: string;
 }
 
-// Happy-path transitions only, ending at DELIVERED.
 export interface StageDuration {
   fromStatus: ShipmentStatus;
   toStatus: ShipmentStatus;

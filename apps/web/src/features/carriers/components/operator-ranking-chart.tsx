@@ -39,7 +39,6 @@ export function OperatorRankingChart({
     );
   }
 
-  // Rank order carries meaning, so an ordinal ramp rather than categorical colors.
   const ramp = ordinalChartRamp(data.length);
   const rows = data.map((operator, index) => ({
     ...operator,
