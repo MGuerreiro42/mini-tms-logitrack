@@ -89,9 +89,10 @@
                       "!@/features/admin/**",
                       "!@/features/carriers/**",
                       "!@/features/sellers/**",
-                      "!@/features/companies/**"
+                      "!@/features/companies/**",
+                      "!@/features/shipments/**"
                     ],
-                    "message": "features/admin may import carriers, sellers or companies; compose anything else in app/."
+                    "message": "features/admin may import carriers, sellers, companies or shipments; compose anything else in app/."
                   },
                   {
                     "group": [

@@ -2,10 +2,17 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
+import { getSocket } from '@/services/websocket-client';
+import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
 import type { ShipmentStatusCounts } from '@/types/status';
 import { AdminDashboard } from './admin-dashboard';
+
+vi.mock('@/services/websocket-client', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getSocket: vi.fn(),
+}));
 
 const API_URL = 'http://localhost:3333';
 
@@ -46,7 +53,11 @@ describe('AdminDashboard', () => {
   beforeEach(() => {
     approved = [];
     setSession({ token: 't', role: 'ADMIN', userId: 'u', email: 'e' });
+    vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     server.use(
+      http.get(`${API_URL}/admin/shipments/status-counts`, () =>
+        HttpResponse.json(shipmentCounts),
+      ),
       http.get(`${API_URL}/sellers/status-counts`, () =>
         HttpResponse.json({ PENDING: 1, APPROVED: 2, REJECTED: 0 }),
       ),
@@ -71,7 +82,7 @@ describe('AdminDashboard', () => {
   });
 
   it('leads with the applications waiting for review, newest first', async () => {
-    renderWithQueryClient(<AdminDashboard shipmentCounts={shipmentCounts} />);
+    renderWithQueryClient(<AdminDashboard />);
 
     expect(
       await screen.findByText('2 applications waiting for review'),
@@ -87,7 +98,7 @@ describe('AdminDashboard', () => {
 
   it('approves an application inline', async () => {
     const user = userEvent.setup();
-    renderWithQueryClient(<AdminDashboard shipmentCounts={shipmentCounts} />);
+    renderWithQueryClient(<AdminDashboard />);
 
     const row = (await screen.findByText('Rota Sul Logística')).closest('li');
     await user.click(
@@ -95,5 +106,22 @@ describe('AdminDashboard', () => {
     );
 
     await vi.waitFor(() => expect(approved).toEqual(['c-1']));
+  });
+
+  it('keeps the approvals when the shipment counts fail', async () => {
+    server.use(
+      http.get(`${API_URL}/admin/shipments/status-counts`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<AdminDashboard />);
+
+    expect(
+      await screen.findByText("Couldn't load shipment counts."),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Rota Sul Logística')).toBeInTheDocument();
+    expect(screen.getAllByText("Couldn't load shipment counts")).toHaveLength(
+      2,
+    );
   });
 });

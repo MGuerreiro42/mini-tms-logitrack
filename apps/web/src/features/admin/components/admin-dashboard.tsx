@@ -20,6 +20,7 @@ import { formatDate } from '@/lib/format-date';
 import { plural } from '@/lib/plural';
 import { HAPPY_PATH } from '@/lib/shipment-progress';
 import { sumRecord } from '@/lib/sum-record';
+import type { QuerySource } from '@/types/query';
 import type {
   ApprovalStatusCounts,
   ShipmentStatusCounts,
@@ -49,31 +50,28 @@ const KINDS = {
   },
 } satisfies Record<ApplicationKind, unknown>;
 
+const FAILED_NOTE = "Couldn't load shipment counts";
+
 const IN_PROGRESS = HAPPY_PATH.filter((status) => status !== 'DELIVERED');
 
-export function AdminDashboard({
-  shipmentCounts,
-}: {
-  shipmentCounts: ShipmentStatusCounts;
-}) {
+export function AdminDashboard() {
+  const { approvals, shipments } = useAdminDashboard();
+
   return (
-    <QueryState query={useAdminDashboard()}>
-      {(counts) => (
-        <AdminDashboardView counts={counts} shipmentCounts={shipmentCounts} />
-      )}
+    <QueryState query={approvals}>
+      {(counts) => <AdminDashboardView counts={counts} shipments={shipments} />}
     </QueryState>
   );
 }
 
 function AdminDashboardView({
   counts,
-  shipmentCounts,
+  shipments,
 }: {
   counts: AdminDashboardData;
-  shipmentCounts: ShipmentStatusCounts;
+  shipments: QuerySource<ShipmentStatusCounts>;
 }) {
   const waiting = counts.sellers.PENDING + counts.carriers.PENDING;
-  const shipments = sumRecord(shipmentCounts);
 
   return (
     <div className="flex flex-col gap-5">
@@ -87,7 +85,12 @@ function AdminDashboardView({
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
         <PendingApplications waiting={waiting} />
-        <StatusDistribution counts={shipmentCounts} />
+        <QueryState
+          query={shipments}
+          errorMessage="Couldn't load shipment counts."
+        >
+          {(shipmentCounts) => <StatusDistribution counts={shipmentCounts} />}
+        </QueryState>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
@@ -100,21 +103,43 @@ function AdminDashboardView({
           value={sumRecord(counts.carriers)}
           note={approvalNote(counts.carriers)}
         />
-        <StatTile
-          label="In progress"
-          value={IN_PROGRESS.reduce(
-            (sum, status) => sum + shipmentCounts[status],
-            0,
-          )}
-          note="Across all carriers"
-        />
-        <StatTile
-          label="Delivered"
-          value={shipmentCounts.DELIVERED}
-          note={`Of ${plural(shipments, 'shipment')}`}
-        />
+        <ShipmentTiles shipments={shipments} />
       </div>
     </div>
+  );
+}
+
+function ShipmentTiles({
+  shipments,
+}: {
+  shipments: QuerySource<ShipmentStatusCounts>;
+}) {
+  const counts = shipments.data;
+  const failed = !counts && Boolean(shipments.error);
+
+  return (
+    <>
+      <StatTile
+        label="In progress"
+        value={
+          counts
+            ? IN_PROGRESS.reduce((sum, status) => sum + counts[status], 0)
+            : '—'
+        }
+        note={failed ? FAILED_NOTE : 'Across all carriers'}
+        problem={failed}
+      />
+      <StatTile
+        label="Delivered"
+        value={counts ? counts.DELIVERED : '—'}
+        note={
+          failed
+            ? FAILED_NOTE
+            : counts && `Of ${plural(sumRecord(counts), 'shipment')}`
+        }
+        problem={failed}
+      />
+    </>
   );
 }
 
