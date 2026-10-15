@@ -1,7 +1,7 @@
 'use client';
 
-import { ChartSection } from '@/components/common/charts/chart-section';
 import { MetricBarChart } from '@/components/common/charts/metric-bar-chart';
+import { Panel } from '@/components/common/panel';
 import type { SlaSummaryItem } from '../types';
 
 const percent = (value: number) => `${value.toFixed(0)}%`;
@@ -10,7 +10,7 @@ const SLA_TARGET = 90;
 
 export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
   return (
-    <ChartSection
+    <Panel
       title="SLA adherence by modality"
       isEmpty={data.length === 0}
       emptyMessage="Not enough data yet. SLA adherence appears once a shipment is delivered in a modality with an SLA configured."
@@ -29,6 +29,6 @@ export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
           `${percent(row.onTimeRate)} on time (${row.onTimeCount}/${row.deliveredCount} delivered)`
         }
       />
-    </ChartSection>
+    </Panel>
   );
 }

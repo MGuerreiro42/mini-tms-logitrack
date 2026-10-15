@@ -1,4 +1,4 @@
-import { ChartSection } from '@/components/common/charts/chart-section';
+import { Panel } from '@/components/common/panel';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
 import type { ShipmentStatus, ShipmentStatusCounts } from '@/types/status';
@@ -18,7 +18,7 @@ export function StatusDistribution({
     .join(', ');
 
   return (
-    <ChartSection
+    <Panel
       title="Status distribution"
       description={`${total} ${total === 1 ? 'shipment' : 'shipments'}`}
     >
@@ -52,6 +52,6 @@ export function StatusDistribution({
           </li>
         ))}
       </ul>
-    </ChartSection>
+    </Panel>
   );
 }

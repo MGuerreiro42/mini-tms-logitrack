@@ -1,7 +1,7 @@
 'use client';
 
-import { ChartSection } from '@/components/common/charts/chart-section';
 import { MetricBarChart } from '@/components/common/charts/metric-bar-chart';
+import { Panel } from '@/components/common/panel';
 import { formatDuration } from '@/lib/format-duration';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import type { StageDuration } from '../types';
@@ -17,11 +17,11 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
   }));
 
   return (
-    <ChartSection
+    <Panel
       title="Time per stage"
       description="Average, happy path"
       isEmpty={rows.every((row) => !row.hasData)}
-      emptyMessage="Not enough data yet — the funnel fills in as shipments move through each stage."
+      emptyMessage="Not enough data yet. The funnel fills in as shipments move through each stage."
     >
       <MetricBarChart
         data={rows}
@@ -38,6 +38,6 @@ export function StageDurationChart({ data }: { data: StageDuration[] }) {
             : 'Not enough data yet'
         }
       />
-    </ChartSection>
+    </Panel>
   );
 }

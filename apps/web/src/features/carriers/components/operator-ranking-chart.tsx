@@ -1,7 +1,7 @@
 'use client';
 
-import { ChartSection } from '@/components/common/charts/chart-section';
 import { MetricBarChart } from '@/components/common/charts/metric-bar-chart';
+import { Panel } from '@/components/common/panel';
 import type { OperatorRankingItem } from '../types';
 
 export function OperatorRankingChart({
@@ -10,11 +10,11 @@ export function OperatorRankingChart({
   data: OperatorRankingItem[];
 }) {
   return (
-    <ChartSection
+    <Panel
       title="Operator ranking"
       description="Shipments owned"
       isEmpty={data.length === 0}
-      emptyMessage="Not enough data yet — the ranking fills in once someone claims a shipment."
+      emptyMessage="Not enough data yet. The ranking fills in once someone claims a shipment."
     >
       <MetricBarChart
         data={data}
@@ -28,6 +28,6 @@ export function OperatorRankingChart({
           `${row.totalOwned} owned, ${row.delivered} delivered`
         }
       />
-    </ChartSection>
+    </Panel>
   );
 }
