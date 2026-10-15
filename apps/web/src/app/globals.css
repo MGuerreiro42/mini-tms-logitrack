@@ -33,6 +33,7 @@
   --color-card: var(--card);
   --color-nav: var(--nav);
   --color-field: var(--field);
+  --color-selected: var(--selected);
   --color-overlay: var(--overlay);
   --color-live: var(--live);
   --color-live-halo: var(--live-halo);
@@ -107,6 +108,7 @@
   --radius: 10px;
   --nav: #fbfbf9;
   --field: #fbfbf9;
+  --selected: #dde6e1;
   --overlay: rgb(28 32 30 / 0.42);
   --nav-line: rgb(28 40 34 / 0.08);
   --live: #3a8a55;
@@ -172,6 +174,7 @@
   --chart-2: #2f3a35;
   --nav: #151a17;
   --field: #1d231f;
+  --selected: #26302b;
   --overlay: rgb(8 10 9 / 0.6);
   --nav-line: #222823;
   --live: #5cc27f;

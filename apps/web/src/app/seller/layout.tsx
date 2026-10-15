@@ -7,11 +7,11 @@ import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
 const SELLER_NAV: NavItem[] = [
-  { name: 'Dashboard', href: '/seller' },
-  { name: 'Shipments', href: '/seller/shipments' },
+  { name: 'Overview', href: ROUTES.seller },
+  { name: 'Shipments', href: ROUTES.sellerShipments },
   { name: 'Create shipment', shortName: 'Create', href: ROUTES.newShipment },
-  { name: 'Modalities', href: '/seller/modalities' },
-  { name: 'Profile', href: '/seller/profile' },
+  { name: 'Modalities', href: ROUTES.sellerModalities },
+  { name: 'Profile', href: ROUTES.sellerProfile },
 ];
 
 export default async function SellerLayout({

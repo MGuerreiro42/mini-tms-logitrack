@@ -14,6 +14,7 @@ describe('ShipmentsController', () => {
   const claim = vi.fn();
   const updateStatus = vi.fn();
   const cancel = vi.fn();
+  const attentionForSeller = vi.fn();
 
   const user: AuthenticatedUser = {
     id: 'user-1',
@@ -37,6 +38,7 @@ describe('ShipmentsController', () => {
     claim.mockReset();
     updateStatus.mockReset();
     cancel.mockReset();
+    attentionForSeller.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ShipmentsController],
@@ -53,6 +55,7 @@ describe('ShipmentsController', () => {
             claim,
             updateStatus,
             cancel,
+            attentionForSeller,
           },
         },
       ],
@@ -108,6 +111,16 @@ describe('ShipmentsController', () => {
 
     expect(findAllForSeller).toHaveBeenCalledWith('user-1', 'PENDING', 2, 10);
     expect(result).toEqual({ data: [], meta: {} });
+  });
+
+  it('attention delegates to ShipmentsService.attentionForSeller with the user id', async () => {
+    const attention = { shipments: [], counts: { failed: 0, late: 0 } };
+    attentionForSeller.mockResolvedValue(attention);
+
+    const result = await controller.attention(user);
+
+    expect(attentionForSeller).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual(attention);
   });
 
   it('findOne delegates to ShipmentsService.findOneForSeller with the user id and id param', async () => {

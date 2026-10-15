@@ -16,18 +16,21 @@ const REFRESH_THROTTLE_MS = 300;
 
 interface UseShipmentTrackingOptions {
   shipmentId?: string;
+  subscribeToSeller?: boolean;
   subscribeToQueue?: boolean;
   subscribeToMonitoring?: boolean;
 }
 
 function roomsFor({
   shipmentId,
+  subscribeToSeller,
   subscribeToQueue,
   subscribeToMonitoring,
 }: UseShipmentTrackingOptions): SocketSubscription[] {
   const rooms: SocketSubscription[] = [];
   if (shipmentId)
     rooms.push({ event: 'subscribe:shipment', args: [shipmentId] });
+  if (subscribeToSeller) rooms.push({ event: 'subscribe:seller' });
   if (subscribeToQueue) rooms.push({ event: 'subscribe:queue' });
   if (subscribeToMonitoring) rooms.push({ event: 'subscribe:monitoring' });
   return rooms;

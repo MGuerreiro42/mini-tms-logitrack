@@ -1,6 +1,7 @@
 'use client';
 
-import { QueryState } from '@/components/common/query-state';
+import { Panel } from '@/components/common/panel';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { ModalityToggleList } from '@/features/modalities/components/modality-toggle-list';
 import {
   useMyModalities,
@@ -12,14 +13,20 @@ export function SellerModalityConfig() {
   const setModalities = useSetMyModalities();
 
   return (
-    <QueryState query={query} errorMessage="Couldn't load modalities.">
+    <QueryState
+      skeleton={<QuerySkeleton />}
+      query={query}
+      errorMessage="Couldn't load modalities."
+    >
       {(modalities) => (
-        <ModalityToggleList
-          items={modalities}
-          onSave={(modalityIds) => setModalities.mutate(modalityIds)}
-          isSaving={setModalities.isPending}
-          note="Carriers are matched against these when you create a shipment."
-        />
+        <Panel title="Modalities you offer" className="max-w-2xl gap-2">
+          <ModalityToggleList
+            items={modalities}
+            onSave={(modalityIds) => setModalities.mutate(modalityIds)}
+            isSaving={setModalities.isPending}
+            note="Carriers are matched against these when you create a shipment."
+          />
+        </Panel>
       )}
     </QueryState>
   );

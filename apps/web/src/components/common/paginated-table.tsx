@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useEffectEvent } from 'react';
+import { Fragment, useEffect, useEffectEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -12,14 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useDensity } from '@/hooks/use-density';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import type { PaginationMeta } from '@/types/pagination';
+
+const MOBILE_QUERY = '(max-width: 767px)';
+
+export type CardSlot = 'title' | 'badge' | 'place' | 'meta' | 'action';
 
 export interface Column<T> {
   id?: string;
   header: string;
   cell: (row: T) => React.ReactNode;
   className?: string;
+  card?: CardSlot;
 }
 
 interface PaginatedTableProps<T> {
@@ -33,19 +40,21 @@ interface PaginatedTableProps<T> {
   getRowKey: (row: T) => string;
 }
 
+type RowsProps<T> = Omit<PaginatedTableProps<T>, 'meta' | 'onPageChange'> & {
+  isEmpty: boolean;
+};
+
 export function PaginatedTable<T>({
-  columns,
-  data,
   meta,
   onPageChange,
-  getRowHref,
-  getRowClassName,
-  emptyMessage = 'Nothing here yet.',
-  getRowKey,
+  ...rows
 }: PaginatedTableProps<T>) {
   const lastPage = Math.max(1, meta?.totalPages ?? 1);
   const isPastTheEnd = meta !== undefined && meta.page > lastPage;
   const goToLastPage = useEffectEvent(() => onPageChange?.(lastPage));
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const asCards = isMobile && rows.columns.some((column) => column.card);
+  const Rows = asCards ? RowCards : RowTable;
 
   useEffect(() => {
     if (isPastTheEnd) goToLastPage();
@@ -53,64 +62,27 @@ export function PaginatedTable<T>({
 
   return (
     <div className="space-y-3">
-      <Card className="gap-0 py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((col) => (
-                <TableHead key={columnKey(col)} className={col.className}>
-                  {col.header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.length === 0 && !isPastTheEnd && (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="py-8 text-center text-muted-foreground"
-                >
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            )}
-            {data.map((row) => (
-              <TableRow
-                key={getRowKey(row)}
-                className={cn(getRowHref && 'relative', getRowClassName?.(row))}
-              >
-                {columns.map((col, index) => (
-                  <TableCell key={columnKey(col)} className={col.className}>
-                    {getRowHref && index === 0 ? (
-                      <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
-                    ) : (
-                      col.cell(row)
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <Rows {...rows} isEmpty={rows.data.length === 0 && !isPastTheEnd} />
       {meta && onPageChange && meta.totalPages > 1 && !isPastTheEnd && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
           <span>
-            Page {meta.page} of {meta.totalPages} · {meta.total} total
+            {(meta.page - 1) * meta.limit + 1}–
+            {Math.min(meta.page * meta.limit, meta.total)} of {meta.total}
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
+              className="pointer-coarse:h-11"
               disabled={meta.page <= 1}
               onClick={() => onPageChange(meta.page - 1)}
             >
               Previous
             </Button>
             <Button
-              variant="outline"
+              variant="strong"
               size="sm"
+              className="pointer-coarse:h-11"
               disabled={meta.page >= meta.totalPages}
               onClick={() => onPageChange(meta.page + 1)}
             >
@@ -120,6 +92,149 @@ export function PaginatedTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+function RowTable<T>({
+  columns,
+  data,
+  getRowHref,
+  getRowClassName,
+  emptyMessage = 'Nothing here yet.',
+  getRowKey,
+  isEmpty,
+}: RowsProps<T>) {
+  const density = useDensity();
+
+  return (
+    <Card data-density={density} className="gap-0 py-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((col) => (
+              <TableHead key={columnKey(col)} className={col.className}>
+                {col.header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isEmpty && (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="py-8 text-center text-muted-foreground"
+              >
+                {emptyMessage}
+              </TableCell>
+            </TableRow>
+          )}
+          {data.map((row) => (
+            <TableRow
+              key={getRowKey(row)}
+              className={cn(getRowHref && 'relative', getRowClassName?.(row))}
+            >
+              {columns.map((col, index) => (
+                <TableCell key={columnKey(col)} className={col.className}>
+                  {getRowHref && index === 0 ? (
+                    <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
+                  ) : (
+                    col.cell(row)
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+
+function RowCards<T>({
+  columns,
+  data,
+  getRowHref,
+  getRowClassName,
+  emptyMessage = 'Nothing here yet.',
+  getRowKey,
+  isEmpty,
+}: RowsProps<T>) {
+  if (isEmpty) {
+    return (
+      <Card className="text-center text-muted-foreground">{emptyMessage}</Card>
+    );
+  }
+
+  const slot = (name: CardSlot) =>
+    columns.filter((column) => column.card === name);
+  const [title, badges, places, metas, actions] = (
+    ['title', 'badge', 'place', 'meta', 'action'] as const
+  ).map(slot);
+  const details = columns.filter((column) => !column.card);
+
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {data.map((row) => {
+        const href = getRowHref?.(row);
+        const cells = (list: Column<T>[], separator?: string) =>
+          list.map((column, index) => (
+            <Fragment key={columnKey(column)}>
+              {separator && index > 0 && separator}
+              {column.cell(row)}
+            </Fragment>
+          ));
+        return (
+          <li
+            key={getRowKey(row)}
+            className={cn(
+              'relative flex flex-col gap-2.5 rounded-xl bg-card px-4 py-3.5 shadow-panel',
+              getRowClassName?.(row),
+            )}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate">
+                {href ? (
+                  <RowLink href={href}>{cells(title)}</RowLink>
+                ) : (
+                  cells(title)
+                )}
+              </span>
+              {cells(badges)}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex min-w-0 flex-col gap-0.5">
+                {places.length > 0 && (
+                  <span className="text-[15px] font-semibold">
+                    {cells(places, ' · ')}
+                  </span>
+                )}
+                {metas.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {cells(metas, ' · ')}
+                  </span>
+                )}
+                {details.map((column) => {
+                  const value = column.cell(row);
+                  if (value == null || value === false || value === '')
+                    return null;
+                  return (
+                    <span
+                      key={columnKey(column)}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {column.header && `${column.header}: `}
+                      {value}
+                    </span>
+                  );
+                })}
+              </span>
+              {cells(actions)}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

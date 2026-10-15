@@ -1,20 +1,30 @@
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export function StatTile({
-  label,
-  value,
-  accentClassName,
-}: {
+interface StatTileProps {
   label: string;
-  value: string | number;
-  accentClassName?: string;
-}) {
+  value: ReactNode;
+  note?: ReactNode;
+  problem?: boolean;
+}
+
+export function StatTile({ label, value, note, problem }: StatTileProps) {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className={cn('text-2xl font-bold tracking-tight', accentClassName)}>
+    <div className="flex min-w-0 flex-col gap-2 rounded-xl bg-card px-5 py-4.5 shadow-panel">
+      <p className="text-[13px] text-muted-foreground">{label}</p>
+      <p className="text-[34px] leading-none font-semibold tracking-[-0.02em]">
         {value}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+      </p>
+      {note && (
+        <p
+          className={cn(
+            'truncate text-xs',
+            problem ? 'text-destructive' : 'text-muted-foreground',
+          )}
+        >
+          {note}
+        </p>
+      )}
     </div>
   );
 }

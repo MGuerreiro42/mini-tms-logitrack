@@ -3,7 +3,7 @@ import { SlaCell } from '@/components/common/sla-cell';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import { type SlaState, slaState } from '@/lib/sla';
-import type { Shipment } from '../types';
+import { type CarrierShipment, ownerLabel, type Shipment } from '../types';
 
 type ShipmentRow = Pick<
   Shipment,
@@ -28,20 +28,26 @@ export function lateRowClassName(row: { sla: SlaState }): string | undefined {
 
 export const slaColumn: Column<{ sla: SlaState }> = {
   header: 'SLA',
+  card: 'meta',
   cell: (s) => <SlaCell state={s.sla} />,
 };
 
 export const shipmentColumns = {
   trackingCode: {
     header: 'Tracking code',
-    cell: (s) => <span className="font-mono text-xs">{s.trackingCode}</span>,
+    card: 'title',
+    cell: (s) => (
+      <span className="font-mono text-[13px]">{s.trackingCode}</span>
+    ),
   },
   status: {
     header: 'Status',
+    card: 'badge',
     cell: (s) => <ShipmentStatusBadge status={s.status} />,
   },
   destination: {
     header: 'Destination',
+    card: 'place',
     cell: (s) => `${s.addressCity}/${s.addressState}`,
   },
   created: {
@@ -50,3 +56,28 @@ export const shipmentColumns = {
     cell: (s) => formatDate(s.createdAt),
   },
 } satisfies Record<string, Column<ShipmentRow>>;
+
+export const partyColumns = {
+  seller: {
+    header: 'Seller',
+    card: 'meta',
+    cell: (s) => s.sellerCompanyName,
+  } satisfies Column<Pick<CarrierShipment, 'sellerCompanyName'>>,
+  owner: {
+    header: 'Owner',
+    className: 'text-muted-foreground',
+    cell: ownerLabel,
+  } satisfies Column<CarrierShipment>,
+  carrier: {
+    header: 'Carrier',
+    card: 'meta',
+    className: 'text-muted-foreground',
+    cell: (s) => s.carrierName,
+  } satisfies Column<Pick<Shipment, 'carrierName'>>,
+  modality: {
+    header: 'Modality',
+    card: 'meta',
+    className: 'text-muted-foreground',
+    cell: (s) => s.modalityName,
+  } satisfies Column<Pick<Shipment, 'modalityName'>>,
+};

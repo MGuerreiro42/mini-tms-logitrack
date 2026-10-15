@@ -1,21 +1,26 @@
 'use client';
 
+import Link from 'next/link';
 import { CopyField } from '@/components/common/copy-field';
-import { DetailRow } from '@/components/common/detail-row';
+import {
+  LiveIndicator,
+  OfflineBanner,
+} from '@/components/common/live-indicator';
+import { PageHeader } from '@/components/common/page-header';
+import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { ShipmentStatusBadge } from '@/components/ui/status-badge';
+import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
+import { ROUTES } from '@/lib/routes';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import { isCancellableBySeller, type Shipment } from '../types';
 import { CancelShipmentAction } from './cancel-shipment-action';
-import {
-  ShipmentAddressRows,
-  ShipmentHeaderCard,
-  ShipmentTimelineCard,
-} from './shipment-detail-parts';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
   const liveStatus = useShipmentTracking({ shipmentId: id });
@@ -43,37 +48,88 @@ function ShipmentDetailView({
 }) {
   const origin = useAppOrigin();
   const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
+  const place = `${shipment.addressCity}, ${shipment.addressState}`;
 
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_300px]">
-      <ShipmentHeaderCard shipment={shipment} liveStatus={liveStatus}>
-        <DetailRow label="Carrier" value={shipment.carrierName} />
-        <DetailRow label="Modality" value={shipment.modalityName} />
-        <ShipmentAddressRows address={shipment} />
-      </ShipmentHeaderCard>
-      <div className="space-y-4">
-        <CancelShipmentAction
-          shipmentId={shipment.id}
-          status={shipment.status}
-          available={isCancellableBySeller(shipment.status)}
-        />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Public tracking link</CardTitle>
-          </CardHeader>
-          <CardContent>
+    <div className="space-y-5">
+      <nav
+        aria-label="Breadcrumb"
+        className="flex gap-2 text-[13px] text-muted-foreground"
+      >
+        <Link
+          href={ROUTES.sellerShipments}
+          className="font-semibold text-primary hover:underline"
+        >
+          Shipments
+        </Link>
+        <span aria-hidden>/</span>
+        <span className="font-mono">{shipment.trackingCode}</span>
+      </nav>
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3.5">
+            <span className="font-mono font-medium">
+              {shipment.trackingCode}
+            </span>
+            <ShipmentStatusBadge status={shipment.status} />
+          </span>
+        }
+        description={
+          <>
+            {shipment.modalityName} to {place}
+            {shipment.dueAt && ` · due ${formatDate(shipment.dueAt)}`}
+          </>
+        }
+        action={
+          <CancelShipmentAction
+            shipmentId={shipment.id}
+            status={shipment.status}
+            available={isCancellableBySeller(shipment.status)}
+          />
+        }
+      />
+      <OfflineBanner status={liveStatus} />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="flex min-w-0 flex-col gap-5">
+          <Panel title="Progress" aside={<LiveIndicator status={liveStatus} />}>
+            <ShipmentStepper
+              status={shipment.status}
+              events={shipment.trackingEvents}
+            />
+          </Panel>
+          <Panel title="Delivery">
+            <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-y-3 text-sm md:grid-cols-[8rem_minmax(0,1fr)]">
+              <dt className="text-muted-foreground">Destination</dt>
+              <dd>
+                {shipment.addressStreet}, {shipment.addressNumber}
+                {shipment.addressComplement &&
+                  ` · ${shipment.addressComplement}`}{' '}
+                · {shipment.addressNeighborhood}, {place} ·{' '}
+                <span className="font-mono">{shipment.addressZipCode}</span>
+              </dd>
+              <dt className="text-muted-foreground">Carrier</dt>
+              <dd className="font-semibold">{shipment.carrierName}</dd>
+              <dt className="text-muted-foreground">Modality</dt>
+              <dd>{shipment.modalityName}</dd>
+              <dt className="text-muted-foreground">Created</dt>
+              <dd>{formatDateTime(shipment.createdAt)}</dd>
+            </dl>
+          </Panel>
+          <Panel title="Public tracking link">
             <CopyField
               value={trackingUrl}
               label="Copy tracking link"
               copiedMessage="Link copied"
               failedMessage="Couldn't copy the link"
             />
-          </CardContent>
-        </Card>
-        <ShipmentTimelineCard
-          events={shipment.trackingEvents}
-          status={shipment.status}
-        />
+          </Panel>
+        </div>
+        <Panel title="Timeline">
+          <TrackingTimeline
+            events={shipment.trackingEvents ?? []}
+            status={shipment.status}
+          />
+        </Panel>
       </div>
     </div>
   );

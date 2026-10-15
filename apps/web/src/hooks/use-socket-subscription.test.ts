@@ -77,8 +77,10 @@ describe('useSocketSubscription', () => {
     const { socket, result } = setup('token');
     act(() => socket.trigger('connect'));
 
-    const [, , shipmentAck] = socket.emit.mock.calls[0];
-    const [, queueAck] = socket.emit.mock.calls[1];
+    const ackOf = (event: string) =>
+      socket.emit.mock.calls.find(([name]) => name === event)?.at(-1);
+    const shipmentAck = ackOf('subscribe:shipment');
+    const queueAck = ackOf('subscribe:queue');
     await act(async () => {
       shipmentAck(null, { ok: true });
       queueAck(new Error('operation has timed out'));
@@ -213,5 +215,42 @@ describe('useSocketSubscription', () => {
 
     second.unmount();
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves each room once its last holder unmounts', async () => {
+    const first = setup('token');
+    const { socket } = first;
+    socket.connected = true;
+    await connectAndAck(socket);
+    const second = setup('token', { socket });
+    const leaves = () =>
+      socket.emit.mock.calls.filter(([event]) =>
+        String(event).startsWith('unsubscribe:'),
+      );
+
+    first.unmount();
+    expect(leaves()).toHaveLength(0);
+
+    second.unmount();
+    expect(
+      leaves()
+        .map(([event]) => event)
+        .sort(),
+    ).toEqual(['unsubscribe:queue', 'unsubscribe:shipment']);
+  });
+
+  it('does not connect without rooms', () => {
+    const socket = makeFakeSocket();
+    renderHook(() =>
+      useSocketSubscription({
+        getSocket: () => socket as unknown as Socket,
+        connectionKey: 'token',
+        subscriptions: [],
+        updateEvent: 'shipment:updated',
+        onUpdate: vi.fn(),
+      }),
+    );
+
+    expect(socket.on).not.toHaveBeenCalled();
   });
 });

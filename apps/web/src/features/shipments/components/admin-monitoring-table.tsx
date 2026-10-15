@@ -27,6 +27,7 @@ import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
 import {
   lateRowClassName,
+  partyColumns,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -110,8 +111,12 @@ export function AdminMonitoringTable({
               shipmentColumns.status,
               shipmentColumns.destination,
               slaColumn,
-              { header: 'Seller', cell: (s) => s.sellerCompanyName },
-              { header: 'Carrier', cell: (s) => s.carrierCompanyName },
+              partyColumns.seller,
+              {
+                header: 'Carrier',
+                card: 'meta',
+                cell: (s) => s.carrierCompanyName,
+              },
               shipmentColumns.created,
             ]}
           />
