@@ -1,3 +1,4 @@
+import { CommandMenu } from '@/components/common/command-menu';
 import { type NavItem, NavList } from '@/components/common/nav-list';
 import { SessionSync } from '@/components/common/session-sync';
 import { UserMenu } from '@/components/common/user-menu';
@@ -26,6 +27,7 @@ export function AppShell({ navItems, user, children }: AppShellProps) {
         </div>
         <NavList items={navItems} className="hidden lg:flex" />
         <div className="ml-auto flex items-center gap-3">
+          <CommandMenu items={navItems} />
           <UserMenu
             name={user.name}
             role={user.role}
