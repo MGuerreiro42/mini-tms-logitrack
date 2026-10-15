@@ -1,24 +1,19 @@
 import type { ChartConfig } from '@/components/ui/chart';
-import { ordinalChartRamp } from '@/lib/ordinal-chart-ramp';
 
-export type BarColors = 'ordinal' | { light: string; dark: string };
+export type BarEmphasis = 'all' | 'max';
 
-export const rowColorKey = (index: number) => `row${index}`;
+export const ACCENT_FILL = 'var(--chart-1)';
+export const SOFT_FILL = 'var(--chart-2)';
 
-// Colors go through the config so shadcn's ChartStyle emits the CSS variables per theme.
 export function buildBarChartConfig(
   valueKey: string,
   valueLabel: string,
-  colors: BarColors,
-  rowCount: number,
 ): ChartConfig {
-  if (colors !== 'ordinal') {
-    return { [valueKey]: { label: valueLabel, theme: colors } };
-  }
+  return { [valueKey]: { label: valueLabel, color: ACCENT_FILL } };
+}
 
-  const rows = ordinalChartRamp(rowCount).map((step, index) => [
-    rowColorKey(index),
-    { label: valueLabel, theme: step },
-  ]);
-  return { [valueKey]: { label: valueLabel }, ...Object.fromEntries(rows) };
+export function barFills(values: number[], emphasis: BarEmphasis): string[] {
+  if (emphasis === 'all') return values.map(() => ACCENT_FILL);
+  const top = values.indexOf(Math.max(...values));
+  return values.map((_, index) => (index === top ? ACCENT_FILL : SOFT_FILL));
 }

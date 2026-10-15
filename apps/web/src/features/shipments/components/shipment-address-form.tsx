@@ -125,7 +125,7 @@ export function ShipmentAddressForm({
           <div className="space-y-1.5">
             <Label>Modality</Label>
             {modalities.length === 0 && (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <p className="rounded-md bg-notice px-3 py-2 text-xs text-notice-foreground">
                 You haven't enabled any modality yet.{' '}
                 <Link
                   href="/seller/modalities"

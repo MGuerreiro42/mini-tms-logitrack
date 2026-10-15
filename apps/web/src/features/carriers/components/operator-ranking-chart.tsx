@@ -21,7 +21,7 @@ export function OperatorRankingChart({
         valueKey="totalOwned"
         valueLabel="Shipments owned"
         orientation="horizontal"
-        colors="ordinal"
+        emphasis="max"
         categoryWidth={160}
         formatTooltip={(row) =>
           `${row.totalOwned} owned, ${row.delivered} delivered`

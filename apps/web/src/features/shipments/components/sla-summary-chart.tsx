@@ -19,7 +19,6 @@ export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
         valueKey="onTimeRate"
         valueLabel="On-time rate"
         orientation="vertical"
-        colors={{ light: '#2a78d6', dark: '#3987e5' }}
         valueDomain={[0, 100]}
         formatTick={percent}
         formatLabel={(row) => percent(row.onTimeRate)}

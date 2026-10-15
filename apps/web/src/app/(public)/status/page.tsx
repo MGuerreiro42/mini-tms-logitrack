@@ -72,7 +72,7 @@ function StatusCard({
   return (
     <PublicCard
       badge={
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-notice text-2xl">
           ⏳
         </div>
       }
