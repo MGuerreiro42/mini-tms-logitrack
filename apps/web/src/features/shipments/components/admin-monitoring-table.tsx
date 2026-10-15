@@ -1,30 +1,28 @@
 'use client';
 
 import {
-  type FilterOption,
-  FilterSelect,
-  filterValues,
-} from '@/components/common/filter-select';
+  type FilterChoice,
+  FilterMenu,
+  FilterToolbar,
+} from '@/components/common/filter-toolbar';
 import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { PageHeader } from '@/components/common/page-header';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import {
-  type StatusFilter,
-  StatusFilterTabs,
-  statusFilterOptions,
-  statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+import type { StatusFilter } from '@/components/common/status-filter-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
+import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
+import { plural } from '@/lib/plural';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import { useAdminShipments } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { AdminShipment } from '../types';
+import { type AdminShipment, ownerLabel } from '../types';
 import {
   lateRowClassName,
   shipmentColumns,
@@ -33,64 +31,96 @@ import {
   withSla,
 } from './shipment-columns';
 
-const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES);
-const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
-
-interface AdminMonitoringTableProps {
-  carrierOptions: FilterOption[];
-  sellerOptions: FilterOption[];
-}
+const STATUS_CHOICES: FilterChoice<StatusFilter<ShipmentStatus>>[] = [
+  { value: ALL, label: 'All' },
+  ...SHIPMENT_STATUSES.map((status) => ({
+    value: status,
+    label: SHIPMENT_STATUS[status].label,
+  })),
+];
 
 const SLA_REFRESH_MS = 60_000;
+const UPDATES_WINDOW_MS = 60_000;
+
+function withAny(options: FilterChoice<string>[]): FilterChoice<string>[] {
+  return [{ value: ALL, label: 'Any' }, ...options];
+}
+
+interface AdminMonitoringTableProps {
+  carrierOptions: FilterChoice<string>[];
+  sellerOptions: FilterChoice<string>[];
+}
 
 export function AdminMonitoringTable({
   carrierOptions,
   sellerOptions,
 }: AdminMonitoringTableProps) {
-  const { filters, setFilter, setPage, params } = useFilteredPagination(
-    {
-      status: ALL as StatusFilter<ShipmentStatus>,
-      carrierId: ALL as string,
-      sellerId: ALL as string,
-    },
-    {
-      status: STATUS_VALUES,
-      carrierId: filterValues(carrierOptions),
-      sellerId: filterValues(sellerOptions),
-    },
-  );
+  const carrierChoices = withAny(carrierOptions);
+  const sellerChoices = withAny(sellerOptions);
+  const { filters, isFiltered, setFilter, clearFilters, setPage, params } =
+    useFilteredPagination(
+      {
+        status: ALL as StatusFilter<ShipmentStatus>,
+        carrierId: ALL as string,
+        sellerId: ALL as string,
+      },
+      {
+        status: STATUS_CHOICES.map((choice) => choice.value),
+        carrierId: carrierChoices.map((choice) => choice.value),
+        sellerId: sellerChoices.map((choice) => choice.value),
+      },
+    );
 
-  const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
+  const updates = useRecentCount(UPDATES_WINDOW_MS);
+  const liveStatus = useShipmentTracking({
+    subscribeToMonitoring: true,
+    onEvent: updates.record,
+  });
   const query = useAdminShipments(params, liveStatus);
   const now = useNow(SLA_REFRESH_MS);
+  const total = query.data?.meta.total;
 
   return (
-    <div className="space-y-4">
-      <LiveIndicator status={liveStatus} />
-      <OfflineBanner status={liveStatus} />
-      <StatusFilterTabs
-        options={STATUS_OPTIONS}
-        value={filters.status}
-        onChange={(value) => setFilter('status', value)}
-        wrap
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Monitoring"
+        description="Every shipment on the platform, updated live."
+        action={
+          <LiveIndicator
+            status={liveStatus}
+            detail={
+              updates.count > 0
+                ? `${plural(updates.count, 'update')} in the last minute`
+                : undefined
+            }
+            className="h-8.5 rounded-lg bg-card px-3 text-foreground shadow-xs"
+          />
+        }
       />
-
-      <div className="flex gap-3">
-        <FilterSelect
-          placeholder="Carrier"
-          allLabel="All carriers"
-          options={carrierOptions}
+      <OfflineBanner status={liveStatus} />
+      <FilterToolbar
+        onClear={isFiltered ? clearFilters : undefined}
+        summary={total !== undefined && plural(total, 'shipment')}
+      >
+        <FilterMenu
+          label="Status"
+          value={filters.status}
+          options={STATUS_CHOICES}
+          onChange={(value) => setFilter('status', value)}
+        />
+        <FilterMenu
+          label="Carrier"
           value={filters.carrierId}
+          options={carrierChoices}
           onChange={(value) => setFilter('carrierId', value)}
         />
-        <FilterSelect
-          placeholder="Seller"
-          allLabel="All sellers"
-          options={sellerOptions}
+        <FilterMenu
+          label="Seller"
           value={filters.sellerId}
+          options={sellerChoices}
           onChange={(value) => setFilter('sellerId', value)}
         />
-      </div>
+      </FilterToolbar>
 
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
@@ -104,14 +134,33 @@ export function AdminMonitoringTable({
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
-            emptyMessage="No shipments match this filter."
+            emptyMessage={
+              isFiltered
+                ? 'No shipments match these filters.'
+                : 'No shipments on the platform yet.'
+            }
             columns={[
               shipmentColumns.trackingCode,
-              shipmentColumns.status,
+              {
+                header: 'Seller',
+                card: 'meta',
+                cell: (s) => s.sellerCompanyName,
+              },
+              {
+                header: 'Carrier',
+                card: 'meta',
+                className: 'text-muted-foreground',
+                cell: (s) => s.carrierCompanyName,
+              },
               shipmentColumns.destination,
+              shipmentColumns.status,
+              {
+                header: 'Owner',
+                card: 'meta',
+                className: 'text-muted-foreground',
+                cell: ownerLabel,
+              },
               slaColumn,
-              { header: 'Seller', cell: (s) => s.sellerCompanyName },
-              { header: 'Carrier', cell: (s) => s.carrierCompanyName },
               shipmentColumns.created,
             ]}
           />

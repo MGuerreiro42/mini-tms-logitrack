@@ -19,6 +19,7 @@ interface UseShipmentTrackingOptions {
   shipmentIds?: string[];
   subscribeToQueue?: boolean;
   subscribeToMonitoring?: boolean;
+  onEvent?: () => void;
 }
 
 function roomsFor({
@@ -50,6 +51,9 @@ export function useShipmentTracking(
     connectionKey: useSession()?.token,
     subscriptions: roomsFor(options),
     updateEvent: 'shipment:updated',
-    onUpdate: refresh,
+    onUpdate: (payload) => {
+      refresh();
+      if (payload) options.onEvent?.();
+    },
   });
 }

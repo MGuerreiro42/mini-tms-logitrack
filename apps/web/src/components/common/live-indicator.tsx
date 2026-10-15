@@ -14,9 +14,11 @@ const STATES: Record<LiveStatus, { label: string; dot: string }> = {
 
 export function LiveIndicator({
   status,
+  detail,
   className,
 }: {
   status: LiveStatus;
+  detail?: string;
   className?: string;
 }) {
   const { label, dot } = STATES[status];
@@ -35,7 +37,7 @@ export function LiveIndicator({
         )}
         <span className={cn('relative size-2 rounded-full', dot)} />
       </span>
-      {label}
+      {status === 'live' && detail ? `${label} · ${detail}` : label}
     </span>
   );
 }
