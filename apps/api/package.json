@@ -64,7 +64,7 @@
     "@nestjs/testing": "^11.0.1",
     "@swc/core": "^1.15.43",
     "@types/bcrypt": "^6.0.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
