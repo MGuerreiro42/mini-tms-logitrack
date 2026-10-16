@@ -131,41 +131,43 @@ describe('TrackingGateway', () => {
       );
     });
 
-    it.each([
-      'PENDING',
-      'REJECTED',
-    ])('leaves carrierId unset for a %s carrier, closing its rooms', async (status) => {
-      verifyAsync.mockResolvedValue({
-        sub: 'user-2',
-        email: 'op@example.com',
-        role: 'CARRIER_MANAGER',
-      });
-      userFindUnique.mockResolvedValue({
-        id: 'user-2',
-        email: 'op@example.com',
-        role: 'CARRIER_MANAGER',
-        seller: null,
-        carrierUser: { carrierId: 'carrier-1', carrier: { status } },
-      });
-      const socket = makeSocket();
-      socket.handshake.auth.token = 'good-token';
+    it.each(['PENDING', 'REJECTED'])(
+      'leaves carrierId unset for a %s carrier, closing its rooms',
+      async (status) => {
+        verifyAsync.mockResolvedValue({
+          sub: 'user-2',
+          email: 'op@example.com',
+          role: 'CARRIER_MANAGER',
+        });
+        userFindUnique.mockResolvedValue({
+          id: 'user-2',
+          email: 'op@example.com',
+          role: 'CARRIER_MANAGER',
+          seller: null,
+          carrierUser: { carrierId: 'carrier-1', carrier: { status } },
+        });
+        const socket = makeSocket();
+        socket.handshake.auth.token = 'good-token';
 
-      await authenticate(socket);
-      const queueAck = await gateway.handleSubscribeQueue(socket as never);
-      shipmentFindUnique.mockResolvedValue({
-        sellerId: 'seller-1',
-        carrierId: 'carrier-1',
-      });
-      const shipmentAck = await gateway.handleSubscribeShipment(
-        socket as never,
-        'shipment-1',
-      );
+        await authenticate(socket);
+        const queueAck = await gateway.handleSubscribeQueue(socket as never);
+        shipmentFindUnique.mockResolvedValue({
+          sellerId: 'seller-1',
+          carrierId: 'carrier-1',
+        });
+        const shipmentAck = await gateway.handleSubscribeShipment(
+          socket as never,
+          'shipment-1',
+        );
 
-      expect((socket.data as { carrierId?: string }).carrierId).toBeUndefined();
-      expect(socket.join).not.toHaveBeenCalled();
-      expect(queueAck).toEqual({ ok: false });
-      expect(shipmentAck).toEqual({ ok: false });
-    });
+        expect(
+          (socket.data as { carrierId?: string }).carrierId,
+        ).toBeUndefined();
+        expect(socket.join).not.toHaveBeenCalled();
+        expect(queueAck).toEqual({ ok: false });
+        expect(shipmentAck).toEqual({ ok: false });
+      },
+    );
   });
 
   describe('handleSubscribeShipment', () => {

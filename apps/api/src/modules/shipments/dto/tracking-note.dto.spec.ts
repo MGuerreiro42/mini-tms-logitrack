@@ -9,17 +9,17 @@ const errorsFor = async (cls: new () => object, body: object) =>
 describe('tracking note validation', () => {
   const longNote = 'x'.repeat(TRACKING_NOTE_MAX_LENGTH + 1);
 
-  it.each([
-    TrackingNoteDto,
-    UpdateShipmentStatusDto,
-  ])('%o rejects a note over the max length', async (cls) => {
-    const errors = await errorsFor(cls, {
-      status: 'COLLECTED',
-      note: longNote,
-    });
+  it.each([TrackingNoteDto, UpdateShipmentStatusDto])(
+    '%o rejects a note over the max length',
+    async (cls) => {
+      const errors = await errorsFor(cls, {
+        status: 'COLLECTED',
+        note: longNote,
+      });
 
-    expect(errors).toEqual(['note']);
-  });
+      expect(errors).toEqual(['note']);
+    },
+  );
 
   it('accepts a missing or max-length note', async () => {
     expect(
