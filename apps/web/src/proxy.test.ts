@@ -77,13 +77,16 @@ describe('proxy', () => {
       'http://localhost/forbidden?area=seller',
     ],
     ['/carrier/queue', 'SELLER', 'http://localhost/forbidden?area=carrier'],
-  ] as const)('answers %s with the 403 page for %s, keeping the session', (path, role, target) => {
-    const response = proxy(request(path, role));
+  ] as const)(
+    'answers %s with the 403 page for %s, keeping the session',
+    (path, role, target) => {
+      const response = proxy(request(path, role));
 
-    expect(response.status).toBe(403);
-    expect(rewriteTarget(response)).toBe(target);
-    expect(response.headers.get('set-cookie')).toBeNull();
-  });
+      expect(response.status).toBe(403);
+      expect(rewriteTarget(response)).toBe(target);
+      expect(response.headers.get('set-cookie')).toBeNull();
+    },
+  );
 
   it('shows the login page to an anonymous visitor', () => {
     const response = proxy(request('/login'));
@@ -92,13 +95,14 @@ describe('proxy', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
-  it.each(
-    HOMES,
-  )('sends a signed-in %s from the login page to %s', (role, home) => {
-    const response = proxy(request('/login', role));
+  it.each(HOMES)(
+    'sends a signed-in %s from the login page to %s',
+    (role, home) => {
+      const response = proxy(request('/login', role));
 
-    expect(response.headers.get('location')).toBe(`http://localhost${home}`);
-  });
+      expect(response.headers.get('location')).toBe(`http://localhost${home}`);
+    },
+  );
 
   it('drops an expired session at the login page instead of bouncing it home', () => {
     const response = proxy(request('/login?expired=1', 'SELLER'));

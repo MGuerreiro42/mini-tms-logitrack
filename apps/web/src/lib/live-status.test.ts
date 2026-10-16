@@ -12,13 +12,14 @@ describe('fallbackPollInterval', () => {
     expect(fallbackPollInterval(status)(healthy)).toBe(5000);
   });
 
-  it.each([
-    404, 403, 429,
-  ])('stops polling a query that failed with a %i', (statusCode) => {
-    const failed = { state: { error: new ApiError(statusCode, 'nope') } };
+  it.each([404, 403, 429])(
+    'stops polling a query that failed with a %i',
+    (statusCode) => {
+      const failed = { state: { error: new ApiError(statusCode, 'nope') } };
 
-    expect(fallbackPollInterval('offline')(failed)).toBe(false);
-  });
+      expect(fallbackPollInterval('offline')(failed)).toBe(false);
+    },
+  );
 
   it('keeps polling through server and network errors', () => {
     expect(

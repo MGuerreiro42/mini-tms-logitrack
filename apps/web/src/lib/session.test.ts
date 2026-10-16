@@ -49,10 +49,13 @@ describe('segments', () => {
     ['SELLER', 'seller', '/seller'],
     ['CARRIER_MANAGER', 'carrier', '/carrier/queue'],
     ['CARRIER_OPERATOR', 'carrier', '/carrier/queue'],
-  ] as const)('sends %s home inside its own segment /%s', (role, segment, home) => {
-    expect(ROLE_HOME[role]).toBe(home);
-    expect(canEnterSegment(role, segment)).toBe(true);
-  });
+  ] as const)(
+    'sends %s home inside its own segment /%s',
+    (role, segment, home) => {
+      expect(ROLE_HOME[role]).toBe(home);
+      expect(canEnterSegment(role, segment)).toBe(true);
+    },
+  );
 
   it.each([
     ['SELLER', 'admin'],

@@ -23,16 +23,15 @@ describe('formatDateTime', () => {
     expect(formatShortDateTime(INSTANT)).toBe('Jan 14, 23:30');
   });
 
-  it.each([
-    'UTC',
-    'Asia/Tokyo',
-    'America/Los_Angeles',
-  ])('renders the same text when the runtime zone is %s', (zone) => {
-    vi.stubEnv('TZ', zone);
-    try {
-      expect(formatDateTime(INSTANT)).toBe('Jan 14, 2026, 23:30 GMT-3');
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
+  it.each(['UTC', 'Asia/Tokyo', 'America/Los_Angeles'])(
+    'renders the same text when the runtime zone is %s',
+    (zone) => {
+      vi.stubEnv('TZ', zone);
+      try {
+        expect(formatDateTime(INSTANT)).toBe('Jan 14, 2026, 23:30 GMT-3');
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 });

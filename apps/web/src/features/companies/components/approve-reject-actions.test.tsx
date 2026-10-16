@@ -3,20 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { ApproveRejectActions } from './approve-reject-actions';
 
 describe('ApproveRejectActions', () => {
-  it.each([
-    'APPROVED',
-    'REJECTED',
-  ] as const)('offers no action once %s', (status) => {
-    render(
-      <ApproveRejectActions
-        status={status}
-        onApprove={vi.fn()}
-        onReject={vi.fn().mockResolvedValue(undefined)}
-      />,
-    );
+  it.each(['APPROVED', 'REJECTED'] as const)(
+    'offers no action once %s',
+    (status) => {
+      render(
+        <ApproveRejectActions
+          status={status}
+          onApprove={vi.fn()}
+          onReject={vi.fn().mockResolvedValue(undefined)}
+        />,
+      );
 
-    expect(screen.queryByRole('button')).toBeNull();
-  });
+      expect(screen.queryByRole('button')).toBeNull();
+    },
+  );
 
   it('calls onApprove directly (no confirm step)', async () => {
     const user = userEvent.setup();
