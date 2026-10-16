@@ -688,19 +688,20 @@ describe('ShipmentsService', () => {
     ] as const;
 
     for (const status of ['PENDING', 'REJECTED']) {
-      it.each(
-        operations,
-      )(`%s throws ForbiddenException for a ${status} carrier`, async (_name, operation) => {
-        carrierUserFindUnique.mockResolvedValue({
-          ...carrierManager,
-          carrier: { status },
-        });
+      it.each(operations)(
+        `%s throws ForbiddenException for a ${status} carrier`,
+        async (_name, operation) => {
+          carrierUserFindUnique.mockResolvedValue({
+            ...carrierManager,
+            carrier: { status },
+          });
 
-        await expect(operation()).rejects.toThrow(ForbiddenException);
-        expect(shipmentFindMany).not.toHaveBeenCalled();
-        expect(shipmentFindFirst).not.toHaveBeenCalled();
-        expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
-      });
+          await expect(operation()).rejects.toThrow(ForbiddenException);
+          expect(shipmentFindMany).not.toHaveBeenCalled();
+          expect(shipmentFindFirst).not.toHaveBeenCalled();
+          expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
+        },
+      );
     }
   });
 

@@ -46,16 +46,14 @@ describe('validateEnv', () => {
     );
   });
 
-  it.each([
-    '-1',
-    '1.5',
-    'true',
-    String(MAX_TRUSTED_PROXIES + 1),
-  ])('throws when TRUST_PROXY is %s', (value) => {
-    expect(() => validateEnv({ ...validConfig, TRUST_PROXY: value })).toThrow(
-      /TRUST_PROXY/,
-    );
-  });
+  it.each(['-1', '1.5', 'true', String(MAX_TRUSTED_PROXIES + 1)])(
+    'throws when TRUST_PROXY is %s',
+    (value) => {
+      expect(() => validateEnv({ ...validConfig, TRUST_PROXY: value })).toThrow(
+        /TRUST_PROXY/,
+      );
+    },
+  );
 
   it('requires an explicit TRUST_PROXY in production', () => {
     const production = { ...validConfig, NODE_ENV: 'production' };

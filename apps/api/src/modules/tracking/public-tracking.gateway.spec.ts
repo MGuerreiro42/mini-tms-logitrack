@@ -77,15 +77,21 @@ describe('PublicTrackingGateway', () => {
     'TMS-ABC123',
     'tms-abc123abc123',
     `${CODE}%`,
-  ])('acks not ok without querying for a malformed code (%j)', async (payload) => {
-    const socket = makeSocket();
+  ])(
+    'acks not ok without querying for a malformed code (%j)',
+    async (payload) => {
+      const socket = makeSocket();
 
-    const ack = await gateway.handleSubscribeTracking(socket as never, payload);
+      const ack = await gateway.handleSubscribeTracking(
+        socket as never,
+        payload,
+      );
 
-    expect(shipmentFindUnique).not.toHaveBeenCalled();
-    expect(socket.join).not.toHaveBeenCalled();
-    expect(ack).toEqual({ ok: false });
-  });
+      expect(shipmentFindUnique).not.toHaveBeenCalled();
+      expect(socket.join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ ok: false });
+    },
+  );
 
   describe('subscribe limit', () => {
     const subscribe = (socket: ReturnType<typeof makeSocket>, times: number) =>
