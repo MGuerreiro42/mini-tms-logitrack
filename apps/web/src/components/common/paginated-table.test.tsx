@@ -30,23 +30,26 @@ describe('PaginatedTable', () => {
   it.each([
     [3, 3],
     [0, 1],
-  ])('steps back from a page past the end (%i pages) to page %i', (totalPages, expected) => {
-    const onPageChange = vi.fn();
-    render(
-      <PaginatedTable<Row>
-        columns={columns}
-        data={[]}
-        meta={{ total: totalPages * 20, page: 99, limit: 20, totalPages }}
-        onPageChange={onPageChange}
-        getRowKey={(row) => row.id}
-        emptyMessage="No rows yet."
-      />,
-    );
+  ])(
+    'steps back from a page past the end (%i pages) to page %i',
+    (totalPages, expected) => {
+      const onPageChange = vi.fn();
+      render(
+        <PaginatedTable<Row>
+          columns={columns}
+          data={[]}
+          meta={{ total: totalPages * 20, page: 99, limit: 20, totalPages }}
+          onPageChange={onPageChange}
+          getRowKey={(row) => row.id}
+          emptyMessage="No rows yet."
+        />,
+      );
 
-    expect(onPageChange).toHaveBeenCalledWith(expected);
-    expect(screen.queryByText('No rows yet.')).toBeNull();
-    expect(screen.queryByText(/Page 99/)).toBeNull();
-  });
+      expect(onPageChange).toHaveBeenCalledWith(expected);
+      expect(screen.queryByText('No rows yet.')).toBeNull();
+      expect(screen.queryByText(/Page 99/)).toBeNull();
+    },
+  );
 
   it('hides the pager entirely when there is only one page', () => {
     render(

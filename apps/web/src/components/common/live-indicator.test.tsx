@@ -30,13 +30,13 @@ describe('LiveIndicator', () => {
 });
 
 describe('OfflineBanner', () => {
-  it.each([
-    'connecting',
-    'live',
-  ] as const)('stays hidden while %s', (status) => {
-    const { container } = render(<OfflineBanner status={status} />);
-    expect(container).toBeEmptyDOMElement();
-  });
+  it.each(['connecting', 'live'] as const)(
+    'stays hidden while %s',
+    (status) => {
+      const { container } = render(<OfflineBanner status={status} />);
+      expect(container).toBeEmptyDOMElement();
+    },
+  );
 
   it('explains the pause and reconnects on demand', async () => {
     const user = userEvent.setup();

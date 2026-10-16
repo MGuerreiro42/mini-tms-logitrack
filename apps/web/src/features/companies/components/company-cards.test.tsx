@@ -33,10 +33,13 @@ describe('CompanyReview', () => {
   it.each([
     ['APPROVED', 'This application was approved.'],
     ['REJECTED', 'This application was rejected.'],
-  ] as const)('replaces the prompt and the buttons with the outcome once %s', (status, outcome) => {
-    renderReview(status);
+  ] as const)(
+    'replaces the prompt and the buttons with the outcome once %s',
+    (status, outcome) => {
+      renderReview(status);
 
-    expect(screen.getByRole('status')).toHaveTextContent(outcome);
-    expect(screen.queryByRole('button')).toBeNull();
-  });
+      expect(screen.getByRole('status')).toHaveTextContent(outcome);
+      expect(screen.queryByRole('button')).toBeNull();
+    },
+  );
 });

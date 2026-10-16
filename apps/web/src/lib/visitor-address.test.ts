@@ -28,13 +28,12 @@ describe('visitorAddressHeaders', () => {
     });
   });
 
-  it.each([
-    undefined,
-    '',
-    ' , ',
-  ])('sends nothing when the request carries %j', async (value) => {
-    incoming(value);
+  it.each([undefined, '', ' , '])(
+    'sends nothing when the request carries %j',
+    async (value) => {
+      incoming(value);
 
-    expect(await visitorAddressHeaders()).toEqual({});
-  });
+      expect(await visitorAddressHeaders()).toEqual({});
+    },
+  );
 });

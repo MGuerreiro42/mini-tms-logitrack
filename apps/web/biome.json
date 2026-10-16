@@ -22,7 +22,8 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "suspicious": { "noDocumentCookie": "off" }
     },
     "domains": {
       "next": "recommended",
