@@ -49,7 +49,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret-not-for-production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
