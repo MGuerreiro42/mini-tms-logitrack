@@ -109,8 +109,11 @@ export const toAddressFields = (address: DemoAddress) => ({
   addressZipCode: address.zipCode,
 });
 
+export const DEMO_MODALITY_CODES = ['STANDARD', 'FULL', 'EXPRESS'] as const;
+export const DEMO_TRACKING_PREFIX = 'TMS-DE';
+
 type DemoMemberEmail = (typeof DEMO_CARRIER_MEMBERS)[number]['email'];
-type DemoModalityCode = 'STANDARD' | 'FULL' | 'EXPRESS';
+type DemoModalityCode = (typeof DEMO_MODALITY_CODES)[number];
 
 export interface DemoTenant {
   sellerIds: readonly string[];
@@ -175,6 +178,8 @@ const PLANS: ShipmentPlan[] = [
   ...repeat(2, { status: ACCEPTED }),
   ...repeat(2, { status: PENDING }),
 ];
+
+export const DEMO_SHIPMENT_COUNT = PLANS.length;
 
 interface PlannedEvent {
   status: ShipmentStatus;
@@ -253,7 +258,7 @@ function planEvents(
 }
 
 const demoTrackingCode = (index: number) =>
-  `TMS-DE${String(index + 1).padStart(10, '0')}`;
+  `${DEMO_TRACKING_PREFIX}${String(index + 1).padStart(10, '0')}`;
 
 // Seeded, so the seed script and the daily reset always rebuild the same shipments.
 export function buildDemoShipments(

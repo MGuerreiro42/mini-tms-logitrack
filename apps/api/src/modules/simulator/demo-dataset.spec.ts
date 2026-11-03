@@ -1,4 +1,5 @@
 import { ShipmentStatus } from '../../../generated/prisma/client';
+import { MS_PER_HOUR } from '../../shared/stats/stats';
 import { buildDemoShipments, type DemoTenant } from './demo-dataset';
 
 const tenant: DemoTenant = {
@@ -29,6 +30,73 @@ describe('buildDemoShipments', () => {
     expect(buildDemoShipments(tenant, NOW)).toEqual(
       buildDemoShipments(tenant, NOW),
     );
+  });
+
+  // Golden values: a change in the order of the seeded draws shows up here, not only in production data.
+  it('draws the same modality, address, owner and age for each shipment', () => {
+    const fingerprint = buildDemoShipments(tenant, NOW)
+      .slice(0, 6)
+      .map((s) => [
+        s.trackingCode,
+        s.status,
+        s.modalityId,
+        s.addressCity,
+        s.ownerId,
+        Math.round((NOW - (s.createdAt as Date).getTime()) / MS_PER_HOUR),
+      ]);
+
+    expect(fingerprint).toMatchInlineSnapshot(`
+      [
+        [
+          "TMS-DE0000000001",
+          "DELIVERED",
+          "full",
+          "Santos",
+          "operator-1",
+          628,
+        ],
+        [
+          "TMS-DE0000000002",
+          "DELIVERED",
+          "express",
+          "Ribeirão Preto",
+          "operator-1",
+          288,
+        ],
+        [
+          "TMS-DE0000000003",
+          "DELIVERED",
+          "full",
+          "São Paulo",
+          "operator-1",
+          263,
+        ],
+        [
+          "TMS-DE0000000004",
+          "DELIVERED",
+          "express",
+          "Campinas",
+          "operator-1",
+          377,
+        ],
+        [
+          "TMS-DE0000000005",
+          "DELIVERED",
+          "full",
+          "São José dos Campos",
+          "manager",
+          413,
+        ],
+        [
+          "TMS-DE0000000006",
+          "DELIVERED",
+          "standard",
+          "Guarulhos",
+          "manager",
+          365,
+        ],
+      ]
+    `);
   });
 
   it('builds the planned mix of statuses with unique tracking codes', () => {
@@ -64,7 +132,7 @@ describe('buildDemoShipments', () => {
   });
 
   it('shifts the whole dataset with the moment it is built for', () => {
-    const later = NOW + 24 * 60 * 60 * 1000;
+    const later = NOW + 24 * MS_PER_HOUR;
     const [first] = buildDemoShipments(tenant, NOW);
     const [shifted] = buildDemoShipments(tenant, later);
 

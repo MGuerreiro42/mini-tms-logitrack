@@ -7,6 +7,8 @@ import {
   DEMO_CARRIER,
   DEMO_PASSWORD,
   DEMO_SELLERS,
+  DEMO_SHIPMENT_COUNT,
+  DEMO_TRACKING_PREFIX,
 } from '../src/modules/simulator/demo-dataset';
 import { LAST_RESET_KEY } from '../src/modules/simulator/demo-reset.service';
 import { DEMO_QUEUE } from '../src/modules/simulator/simulator.constants';
@@ -97,10 +99,10 @@ describe('Demo reset (e2e)', () => {
       where: { sellerId: { in: await demoSellerIds() } },
       select: { trackingCode: true },
     });
-    expect(demoShipments).toHaveLength(40);
+    expect(demoShipments).toHaveLength(DEMO_SHIPMENT_COUNT);
     expect(
       demoShipments.every(({ trackingCode }) =>
-        trackingCode.startsWith('TMS-DE'),
+        trackingCode.startsWith(DEMO_TRACKING_PREFIX),
       ),
     ).toBe(true);
     await expect(

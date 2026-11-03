@@ -4,6 +4,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import {
   DEMO_CARRIER_MEMBERS,
   DEMO_EMAILS,
+  DEMO_MODALITY_CODES,
   DEMO_SELLERS,
   type DemoTenant,
 } from './demo-dataset';
@@ -12,8 +13,6 @@ export interface LoadedDemoTenant extends DemoTenant {
   sellerUserIds: string[];
   operatorUserIds: string[];
 }
-
-const DEMO_MODALITY_CODES = ['STANDARD', 'FULL', 'EXPRESS'];
 
 const isComplete = <T>(items: (T | null | undefined)[]): items is T[] =>
   items.every((item) => item != null);
@@ -37,7 +36,7 @@ export class DemoTenantService {
         include: { seller: true, carrierUser: true },
       }),
       this.prisma.deliveryModality.findMany({
-        where: { code: { in: DEMO_MODALITY_CODES } },
+        where: { code: { in: [...DEMO_MODALITY_CODES] } },
       }),
     ]);
     const userByEmail = new Map(users.map((user) => [user.email, user]));
