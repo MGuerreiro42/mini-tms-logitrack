@@ -1,4 +1,6 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
+  type OnGatewayConnection,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -6,6 +8,7 @@ import {
 import type { Namespace, Socket } from 'socket.io';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { TRACKING_CODE_PATTERN } from '../shipments/tracking-code';
+import { VIEWER_CONNECTED } from './tracking-events';
 import { TRACKING_ROOM_PREFIX, trackingRoom } from './tracking-rooms';
 
 const SUBSCRIBE_LIMIT = 10;
@@ -17,11 +20,18 @@ interface SocketData {
 
 // Unauthenticated on purpose: the tracking code is the credential, as on GET /public/tracking/:code.
 @WebSocketGateway({ namespace: '/public' })
-export class PublicTrackingGateway {
+export class PublicTrackingGateway implements OnGatewayConnection {
   @WebSocketServer()
   server: Namespace;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  handleConnection(): void {
+    this.eventEmitter.emit(VIEWER_CONNECTED);
+  }
 
   @SubscribeMessage('subscribe:tracking')
   async handleSubscribeTracking(

@@ -8,7 +8,9 @@ import {
   Logger,
   type OnApplicationBootstrap,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import type { JobsOptions, Queue } from 'bullmq';
+import { VIEWER_CONNECTED } from '../tracking/tracking-events';
 import { DemoResetService } from './demo-reset.service';
 import {
   DEMO_QUEUE,
@@ -24,6 +26,11 @@ const RESET_WAIT_MS = 30_000;
 const JOB_OPTIONS: JobsOptions = {
   removeOnComplete: true,
   removeOnFail: FAILED_JOBS_KEPT,
+};
+// A burst of arrivals adds at most one extra tick per interval.
+const VIEWER_TICK_OPTIONS: JobsOptions = {
+  ...JOB_OPTIONS,
+  deduplication: { id: 'viewer-connected', ttl: TICK_EVERY_MS },
 };
 
 @QueueEventsListener(DEMO_QUEUE)
@@ -41,9 +48,15 @@ export class SimulatorScheduler implements OnApplicationBootstrap {
 
   // Not awaited: with Redis down the API must still boot and serve requests.
   onApplicationBootstrap(): void {
-    this.schedule().catch((error: unknown) =>
-      this.logger.error(`Could not schedule demo jobs: ${String(error)}`),
-    );
+    this.schedule().catch(this.logFailure('Could not schedule demo jobs'));
+  }
+
+  // Something moves right after a visitor arrives, instead of at the next scheduled tick.
+  @OnEvent(VIEWER_CONNECTED)
+  tickSoon(): void {
+    this.queue
+      .add(TICK_JOB, {}, VIEWER_TICK_OPTIONS)
+      .catch(this.logFailure('Could not queue a tick for a new viewer'));
   }
 
   // Through the queue, so a manual reset never overlaps a tick or the scheduled reset.
@@ -69,5 +82,9 @@ export class SimulatorScheduler implements OnApplicationBootstrap {
     if (await this.demoResetService.isOverdue()) {
       await this.queue.add(RESET_JOB, {}, JOB_OPTIONS);
     }
+  }
+
+  private logFailure(action: string) {
+    return (error: unknown) => this.logger.error(`${action}: ${String(error)}`);
   }
 }

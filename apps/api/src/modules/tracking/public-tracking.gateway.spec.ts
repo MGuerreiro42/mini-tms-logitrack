@@ -1,6 +1,8 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { PublicTrackingGateway } from './public-tracking.gateway';
+import { VIEWER_CONNECTED } from './tracking-events';
 
 const CODE = 'TMS-ABC123ABC123';
 
@@ -15,6 +17,7 @@ function makeSocket(rooms: string[] = ['socket-id']) {
 }
 
 describe('PublicTrackingGateway', () => {
+  const emit = vi.fn();
   let gateway: PublicTrackingGateway;
   const shipmentFindUnique = vi.fn();
 
@@ -24,6 +27,7 @@ describe('PublicTrackingGateway', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PublicTrackingGateway,
+        { provide: EventEmitter2, useValue: { emit } },
         {
           provide: PrismaService,
           useValue: { shipment: { findUnique: shipmentFindUnique } },
@@ -160,5 +164,11 @@ describe('PublicTrackingGateway', () => {
 
     expect(socket.leave).toHaveBeenCalledWith(`tracking:${CODE}`);
     expect(ack).toEqual({ ok: true });
+  });
+
+  it('announces every connection so the demo simulator can react', () => {
+    gateway.handleConnection();
+
+    expect(emit).toHaveBeenCalledWith(VIEWER_CONNECTED);
   });
 });
