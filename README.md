@@ -119,6 +119,8 @@ Demo accounts (local seed only):
 | Carrier operator | `operator1@demo.minitms.dev` | `demo12345` |
 | Admin | `admin@minitms.dev` | `admin12345` |
 
+With `NEXT_PUBLIC_DEMO_LOGIN=true` (on in `.env.example`) the login page signs in as seller, carrier or operator in one click.
+
 Tracking codes like `TMS-DE0000000040` open at `/track/<code>` without signing in.
 
 ## Testing
@@ -136,7 +138,7 @@ CI runs lint, build and tests for both apps on every pull request, with real Pos
 
 ## Deployment
 
-- **Web** on Vercel: root directory `apps/web`, `NEXT_PUBLIC_API_URL` set to the API.
+- **Web** on Vercel: root directory `apps/web`, `NEXT_PUBLIC_API_URL` set to the API, `NEXT_PUBLIC_DEMO_LOGIN=true` where the API seeds the demo.
 - **API** on Railway: root directory `apps/api`. WebSockets need a long-running process, so not serverless. Build, start, healthcheck and pre-deploy (migrations + seed) are versioned in `apps/api/railway.json`. Per environment: Postgres and Redis add-ons, `JWT_SECRET`, `CORS_ORIGIN`, `TRUST_PROXY` (number of proxies in front of the API; required in production) and `ADMIN_PASSWORD`. `SEED_DEMO=true` only where the public demo accounts belong.
 
 ## Project structure
