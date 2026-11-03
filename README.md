@@ -121,7 +121,7 @@ Demo accounts (local seed only):
 
 With `NEXT_PUBLIC_DEMO_LOGIN=true` (on in `.env.example`) the login page signs in as seller, carrier or operator in one click.
 
-With `DEMO_SIMULATOR=true` (on in `.env.example`) the demo carrier works on its own while anyone is connected, and the demo data is restored to the seed every night ([spec](./specs/01-demo-simulator.md)).
+With `DEMO_SIMULATOR=true` (on in `.env.example`) the demo carrier and sellers act on their own while anyone is connected, and the demo data is restored to the seed every night ([spec](./specs/01-demo-simulator.md)).
 
 Tracking codes like `TMS-DE0000000040` open at `/track/<code>` without signing in.
 

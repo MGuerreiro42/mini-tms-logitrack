@@ -177,7 +177,7 @@ flowchart TB
     Gateway -.->|"6. real-time push"| Browser
 ```
 
-The BullMQ workers and external map/email providers in the diagram are roadmap items (§ 7) — not implemented yet. Everything else in the diagram is live.
+The BullMQ worker for the demo simulator (§ 5, Demo simulator) is live; the notification workers and the external map/email providers in the diagram are roadmap items (§ 7). Everything else in the diagram is live.
 
 ### Real-time flow (the project's technical core)
 
@@ -192,10 +192,10 @@ The BullMQ workers and external map/email providers in the diagram are roadmap i
 
 The public demo operates itself while someone is watching, and is restored to the seed every day.
 
-- **It acts through the domain, not the database.** Each tick claims, advances or creates a shipment by calling `ShipmentsService` as the demo user who would do it. Authorization, the status machine, the immutable `TrackingEvent` history and the real-time fan-out are the ones a human action goes through; a visitor racing the simulator gets the same 409 arbitration.
-- **BullMQ for scheduling.** One `demo` queue with two job schedulers (`tick` every 20 s, `reset` daily at 04:00 São Paulo) and a global concurrency of 1: each job runs on exactly one API instance, and ticks never overlap a reset, without a hand-rolled lock. BullMQ opens its own Redis connections, since its workers need `maxRetriesPerRequest: null` and the shared client fails fast.
+- **It acts through the domain.** Each tick advances one shipment, claims one and, on one tick in three on average, creates one, always by calling `ShipmentsService` as the demo user who would do it. Authorization, the status machine, the immutable `TrackingEvent` history and the real-time fan-out are the ones a human action goes through; a visitor racing the simulator gets the same 409 arbitration.
+- **BullMQ for scheduling.** One `demo` queue with two job schedulers (`tick` every 10 s, `reset` daily at 04:00 São Paulo), an extra tick right after a visitor connects (deduplicated for 10 s), and a global concurrency of 1: each job runs on exactly one API instance, and ticks never overlap a reset, without a hand-rolled lock. BullMQ opens its own Redis connections, since its workers need `maxRetriesPerRequest: null` and the shared client fails fast.
 - **Idle without viewers.** A tick first asks both socket namespaces, through the Redis adapter, whether anyone is connected; with nobody watching it writes nothing.
-- **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes the demo sellers' shipments in one transaction, rebuilds them and emits `demo:reset`, on which the web refetches.
+- **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes and bulk-recreates the demo sellers' shipments in one batched transaction (four statements, ids generated in the service), then emits `demo:reset`, on which the web refetches.
 - **Off unless asked.** `ConditionalModule` loads the simulator only with `DEMO_SIMULATOR=true`; elsewhere no queue, worker or route exists.
 
 ## 6. Stack
