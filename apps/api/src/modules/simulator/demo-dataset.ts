@@ -93,6 +93,22 @@ export const STATUS_NOTES: Partial<Record<ShipmentStatus, string>> = {
   CANCELLED: 'Order cancelled by the customer',
 };
 
+export const DEMO_EMAILS = [
+  ...DEMO_SELLERS.map((seller) => seller.email),
+  ...DEMO_CARRIER_MEMBERS.map((member) => member.email),
+];
+
+type DemoAddress = (typeof DEMO_ADDRESSES)[number];
+
+export const toAddressFields = (address: DemoAddress) => ({
+  addressStreet: address.street,
+  addressNumber: address.number,
+  addressNeighborhood: address.neighborhood,
+  addressCity: address.city,
+  addressState: DEMO_STATE,
+  addressZipCode: address.zipCode,
+});
+
 type DemoMemberEmail = (typeof DEMO_CARRIER_MEMBERS)[number]['email'];
 type DemoModalityCode = 'STANDARD' | 'FULL' | 'EXPRESS';
 
@@ -267,12 +283,7 @@ export function buildDemoShipments(
       modalityId: modality.id,
       ownerId,
       status: plan.status,
-      addressStreet: address.street,
-      addressNumber: address.number,
-      addressNeighborhood: address.neighborhood,
-      addressCity: address.city,
-      addressState: DEMO_STATE,
-      addressZipCode: address.zipCode,
+      ...toAddressFields(address),
       createdAt: events[0].at,
       updatedAt: events[events.length - 1].at,
       trackingEvents: {

@@ -11,5 +11,6 @@ import { ShipmentsService } from './shipments.service';
     AdminShipmentsController,
   ],
   providers: [ShipmentsService],
+  exports: [ShipmentsService],
 })
 export class ShipmentsModule {}

@@ -18,6 +18,7 @@ const envSchema = z
       .min(0)
       .max(MAX_TRUSTED_PROXIES)
       .optional(),
+    DEMO_SIMULATOR: z.enum(['true', 'false']).optional(),
   })
   .refine(
     (env) => env.NODE_ENV !== 'production' || env.TRUST_PROXY !== undefined,
@@ -30,6 +31,9 @@ const envSchema = z
   .transform((env) => ({ ...env, TRUST_PROXY: env.TRUST_PROXY ?? 0 }));
 
 export type EnvConfig = z.infer<typeof envSchema>;
+
+export const isDemoSimulatorEnabled = (env: NodeJS.ProcessEnv): boolean =>
+  env.DEMO_SIMULATOR === 'true';
 
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   const result = envSchema.safeParse(config);
