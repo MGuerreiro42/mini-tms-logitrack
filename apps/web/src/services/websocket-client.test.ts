@@ -1,9 +1,14 @@
 import { io } from 'socket.io-client';
+import { DEMO_RESET_EVENT, handleDemoReset } from '@/lib/demo-reset';
 import { getSessionFromDocument } from '@/lib/session';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { getPublicSocket, getSocket, retainSocket } from './websocket-client';
 
-vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({})) }));
+vi.mock('socket.io-client', () => ({ io: vi.fn(() => ({ on: vi.fn() })) }));
+vi.mock('@/lib/demo-reset', () => ({
+  DEMO_RESET_EVENT: 'demo:reset',
+  handleDemoReset: vi.fn(),
+}));
 vi.mock('@/lib/session', () => ({ getSessionFromDocument: vi.fn() }));
 
 describe('getSocket', () => {
@@ -169,5 +174,13 @@ describe('reconnectSockets', () => {
     held.trigger('connect_error');
     await done;
     expect(settled).toBe(true);
+  });
+});
+
+describe('demo reset', () => {
+  it('refetches and notifies on every socket when the demo data is reset', () => {
+    for (const socket of [getSocket(), getPublicSocket()]) {
+      expect(socket.on).toHaveBeenCalledWith(DEMO_RESET_EVENT, handleDemoReset);
+    }
   });
 });

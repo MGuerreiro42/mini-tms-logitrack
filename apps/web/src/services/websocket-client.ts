@@ -5,6 +5,7 @@ import {
   type SocketOptions,
 } from 'socket.io-client';
 import { API_URL } from '@/lib/api-url';
+import { DEMO_RESET_EVENT, handleDemoReset } from '@/lib/demo-reset';
 import { getSessionFromDocument } from '@/lib/session';
 
 const sockets = new Map<string, Socket>();
@@ -22,6 +23,7 @@ function socketFor(
       transports: ['websocket'],
       ...options,
     });
+    socket.on(DEMO_RESET_EVENT, handleDemoReset);
     sockets.set(url, socket);
   }
   return socket;
