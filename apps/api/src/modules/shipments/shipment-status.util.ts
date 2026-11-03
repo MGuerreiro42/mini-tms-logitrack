@@ -23,6 +23,10 @@ export const CANCELLABLE_STATUSES = Object.values(ShipmentStatus).filter(
   (status) => ALLOWED_TRANSITIONS[status].includes(ShipmentStatus.CANCELLED),
 );
 
+export const TERMINAL_STATUSES = Object.values(ShipmentStatus).filter(
+  (status) => ALLOWED_TRANSITIONS[status].length === 0,
+);
+
 export function isValidTransition(
   from: ShipmentStatus,
   to: ShipmentStatus,

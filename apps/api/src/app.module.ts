@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConditionalModule, ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -10,10 +10,15 @@ import { ModalitiesModule } from './modules/modalities/modalities.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SellersModule } from './modules/sellers/sellers.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
+import { SimulatorModule } from './modules/simulator/simulator.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
-import { validateEnv } from './shared/config/env.validation';
+import {
+  isDemoSimulatorEnabled,
+  validateEnv,
+} from './shared/config/env.validation';
 import { PasswordModule } from './shared/password/password.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
+import { QueueModule } from './shared/queue/queue.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { ThrottlingModule } from './shared/throttling/throttling.module';
 
@@ -23,6 +28,7 @@ import { ThrottlingModule } from './shared/throttling/throttling.module';
     EventEmitterModule.forRoot(),
     PrismaModule,
     RedisModule,
+    QueueModule,
     ThrottlingModule,
     PasswordModule,
     SellersModule,
@@ -31,6 +37,7 @@ import { ThrottlingModule } from './shared/throttling/throttling.module';
     ShipmentsModule,
     NotificationsModule,
     TrackingModule,
+    ConditionalModule.registerWhen(SimulatorModule, isDemoSimulatorEnabled),
     AuthModule,
     HealthModule,
   ],

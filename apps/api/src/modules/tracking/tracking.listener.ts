@@ -4,6 +4,7 @@ import {
   SHIPMENT_UPDATED,
   type ShipmentUpdatedEvent,
 } from '../shipments/shipment-events';
+import { DEMO_RESET } from '../simulator/demo-events';
 import { PublicTrackingGateway } from './public-tracking.gateway';
 import { TrackingGateway } from './tracking.gateway';
 import {
@@ -40,5 +41,11 @@ export class TrackingListener {
         trackingCode: event.trackingCode,
         status: event.status,
       });
+  }
+
+  @OnEvent(DEMO_RESET)
+  handleDemoReset(): void {
+    this.gateway.server.emit('demo:reset');
+    this.publicGateway.server.emit('demo:reset');
   }
 }

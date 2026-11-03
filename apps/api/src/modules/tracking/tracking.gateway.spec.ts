@@ -1,7 +1,9 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { TrackingGateway } from './tracking.gateway';
+import { VIEWER_CONNECTED } from './tracking-events';
 
 function makeSocket() {
   return {
@@ -13,6 +15,7 @@ function makeSocket() {
 }
 
 describe('TrackingGateway', () => {
+  const emit = vi.fn();
   let gateway: TrackingGateway;
   const verifyAsync = vi.fn();
   const userFindUnique = vi.fn();
@@ -26,6 +29,7 @@ describe('TrackingGateway', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TrackingGateway,
+        { provide: EventEmitter2, useValue: { emit } },
         { provide: JwtService, useValue: { verifyAsync } },
         {
           provide: PrismaService,
@@ -389,5 +393,11 @@ describe('TrackingGateway', () => {
 
       expect(socket.leave).toHaveBeenCalledWith('admin:monitoring');
     });
+  });
+
+  it('announces every connection so the demo simulator can react', () => {
+    gateway.handleConnection();
+
+    expect(emit).toHaveBeenCalledWith(VIEWER_CONNECTED);
   });
 });

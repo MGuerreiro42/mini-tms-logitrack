@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import {
+  type OnGatewayConnection,
   type OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -14,6 +16,7 @@ import type {
   AuthenticatedUser,
   JwtPayload,
 } from '../auth/strategies/jwt.strategy';
+import { VIEWER_CONNECTED } from './tracking-events';
 import {
   ADMIN_MONITORING_ROOM,
   carrierRoom,
@@ -29,7 +32,7 @@ interface SocketData {
 
 // Auth as server.use() middleware: awaited before 'connect', unlike handleConnection.
 @WebSocketGateway()
-export class TrackingGateway implements OnGatewayInit {
+export class TrackingGateway implements OnGatewayInit, OnGatewayConnection {
   private readonly logger = new Logger(TrackingGateway.name);
 
   @WebSocketServer()
@@ -38,6 +41,7 @@ export class TrackingGateway implements OnGatewayInit {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   afterInit(server: Server): void {
@@ -51,6 +55,11 @@ export class TrackingGateway implements OnGatewayInit {
           next(error instanceof Error ? error : new Error('Unauthorized'));
         });
     });
+  }
+
+  // Runs only for sockets that passed the auth middleware.
+  handleConnection(): void {
+    this.eventEmitter.emit(VIEWER_CONNECTED);
   }
 
   // Reload the user like JwtStrategy, so a deleted user's unexpired token stops working.

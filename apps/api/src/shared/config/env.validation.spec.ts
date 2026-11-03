@@ -93,4 +93,10 @@ describe('validateEnv', () => {
       validateEnv({ ...validConfig, CORS_ORIGIN: 'not-a-url' }),
     ).toThrow(/CORS_ORIGIN/);
   });
+
+  it('throws when DEMO_SIMULATOR is neither true nor false', () => {
+    expect(() =>
+      validateEnv({ ...validConfig, DEMO_SIMULATOR: 'yes' }),
+    ).toThrow(/DEMO_SIMULATOR/);
+  });
 });

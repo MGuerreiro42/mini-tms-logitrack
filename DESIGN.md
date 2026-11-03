@@ -177,7 +177,7 @@ flowchart TB
     Gateway -.->|"6. real-time push"| Browser
 ```
 
-The BullMQ workers and external map/email providers in the diagram are roadmap items (§ 7) — not implemented yet. Everything else in the diagram is live.
+The BullMQ worker for the demo simulator (§ 5, Demo simulator) is live; the notification workers and the external map/email providers in the diagram are roadmap items (§ 7). Everything else in the diagram is live.
 
 ### Real-time flow (the project's technical core)
 
@@ -188,6 +188,16 @@ The BullMQ workers and external map/email providers in the diagram are roadmap i
 5. The Redis adapter delivers the event to the corresponding WebSocket Gateway.
 6. The Gateway emits it via WSS to connected clients (the seller following the shipment, the admin on the global monitor).
 
+### Demo simulator ([spec 01](./specs/01-demo-simulator.md))
+
+The public demo operates itself while someone is watching, and is restored to the seed every day.
+
+- **It acts through the domain.** Each tick advances one shipment, claims one and, on one tick in three on average, creates one, always by calling `ShipmentsService` as the demo user who would do it. Authorization, the status machine, the immutable `TrackingEvent` history and the real-time fan-out are the ones a human action goes through; a visitor racing the simulator gets the same 409 arbitration.
+- **BullMQ for scheduling.** One `demo` queue with two job schedulers (`tick` every 10 s, `reset` daily at 04:00 São Paulo), an extra tick right after a visitor connects (deduplicated for 10 s), and a global concurrency of 1: each job runs on exactly one API instance, and ticks never overlap a reset, without a hand-rolled lock. BullMQ opens its own Redis connections, since its workers need `maxRetriesPerRequest: null` and the shared client fails fast.
+- **Idle without viewers.** A tick first asks both socket namespaces, through the Redis adapter, whether anyone is connected; with nobody watching it writes nothing.
+- **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes and bulk-recreates the demo sellers' shipments in one batched transaction (four statements, ids generated in the service), then emits `demo:reset`, on which the web refetches.
+- **Off unless asked.** `ConditionalModule` loads the simulator only with `DEMO_SIMULATOR=true`; elsewhere no queue, worker or route exists.
+
 ## 6. Stack
 
 | Layer | Choice | Why (short version) |
@@ -195,20 +205,19 @@ The BullMQ workers and external map/email providers in the diagram are roadmap i
 | Backend | NestJS (Node) | WebSocket is native to Node; real-time is the core of the project |
 | Database | PostgreSQL + Prisma | Domain with strong relationships and a need for transactional integrity |
 | Real-time | Socket.io + Redis pub/sub adapter | Scales across multiple API instances without losing messages |
-| Queue (roadmap) | BullMQ on Redis | Reuses the same Redis infra already needed for pub/sub |
+| Queue | BullMQ on Redis | Reuses the same Redis infra already needed for pub/sub; runs the demo simulator |
 | Frontend | React + Next.js (App Router) | Role-based routes (admin/seller/carrier) with distinct layouts |
 | Design system | shadcn/ui + Tailwind | Headless primitives, built into dense table/dashboard components |
 | Infra | Docker Compose locally, Railway/Fly.io for deploy | Cost/setup speed fitting a portfolio project |
 
 ## 7. Roadmap (Advanced Features / Next Steps)
 
-Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17).
+Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17), the [demo simulator and daily reset](./specs/01-demo-simulator.md) (§ 5).
 
 Specced, in implementation order (`specs/`):
 
-1. [Demo simulator and daily reset](./specs/01-demo-simulator.md)
-2. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
-3. [Live delivery map](./specs/03-live-map.md)
+1. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
+2. [Live delivery map](./specs/03-live-map.md)
 
 Not started yet:
 
