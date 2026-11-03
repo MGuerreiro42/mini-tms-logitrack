@@ -7,6 +7,7 @@ import { FormError } from '@/components/common/form-error';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
 import { useLoginMutation } from '../hooks/use-login';
+import { DEMO_ACCOUNTS } from '../lib/demo-accounts';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -15,7 +16,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+export function LoginForm({ showDemoAccounts = false }) {
   const {
     register,
     handleSubmit,
@@ -53,6 +54,27 @@ export function LoginForm() {
       >
         {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
       </Button>
+      {showDemoAccounts && (
+        <div className="flex flex-col gap-2.5 pt-1">
+          <p className="text-center text-xs text-muted-foreground">
+            Or try the demo as
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {DEMO_ACCOUNTS.map(({ label, email, password }) => (
+              <Button
+                key={email}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={loginMutation.isPending}
+                onClick={() => loginMutation.mutate({ email, password })}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </form>
   );
 }
