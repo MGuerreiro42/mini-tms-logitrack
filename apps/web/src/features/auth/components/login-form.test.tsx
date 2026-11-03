@@ -120,6 +120,39 @@ describe('LoginForm', () => {
     });
   });
 
+  it('hides the demo accounts unless asked to show them', () => {
+    renderWithQueryClient(<LoginForm />);
+
+    expect(screen.queryByText('Or try the demo as')).not.toBeInTheDocument();
+  });
+
+  it('signs in with a demo account in one click', async () => {
+    let body: unknown;
+    server.use(
+      http.post(`${API_URL}/auth/login`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({
+          accessToken: 'signed.jwt.token',
+          user: {
+            id: 'user-2',
+            email: 'carrier@demo.minitms.dev',
+            role: 'CARRIER_MANAGER',
+          },
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginForm showDemoAccounts />);
+
+    await user.click(screen.getByRole('button', { name: 'Carrier' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/carrier/queue'));
+    expect(body).toEqual({
+      email: 'carrier@demo.minitms.dev',
+      password: 'demo12345',
+    });
+  });
+
   it('marks invalid fields with aria-invalid', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(<LoginForm />);

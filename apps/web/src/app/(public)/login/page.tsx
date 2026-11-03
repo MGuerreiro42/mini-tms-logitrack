@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PublicPage } from '@/components/common/public-page';
 import { TextLink } from '@/components/common/text-link';
 import { LoginForm } from '@/features/auth/components/login-form';
+import { DEMO_LOGIN_ENABLED } from '@/features/auth/lib/demo-accounts';
 import { ROUTES } from '@/lib/routes';
 import { SESSION_EXPIRED_PARAM } from '@/lib/session';
 
@@ -38,7 +39,7 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm />
+      <LoginForm showDemoAccounts={DEMO_LOGIN_ENABLED} />
     </PublicPage>
   );
 }
