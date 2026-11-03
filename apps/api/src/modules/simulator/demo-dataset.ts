@@ -260,11 +260,18 @@ function planEvents(
 const demoTrackingCode = (index: number) =>
   `${DEMO_TRACKING_PREFIX}${String(index + 1).padStart(10, '0')}`;
 
+export interface DemoShipment {
+  shipment: Prisma.ShipmentCreateManyInput & { createdAt: Date };
+  events: (Omit<Prisma.TrackingEventCreateManyInput, 'shipmentId'> & {
+    createdAt: Date;
+  })[];
+}
+
 // Seeded, so the seed script and the daily reset always rebuild the same shipments.
 export function buildDemoShipments(
   tenant: DemoTenant,
   now: number,
-): Prisma.ShipmentUncheckedCreateInput[] {
+): DemoShipment[] {
   const random = new SeededRandom();
 
   return PLANS.map((plan, index) => {
@@ -282,22 +289,22 @@ export function buildDemoShipments(
       : null;
 
     return {
-      trackingCode: demoTrackingCode(index),
-      sellerId,
-      carrierId: tenant.carrierId,
-      modalityId: modality.id,
-      ownerId,
-      status: plan.status,
-      ...toAddressFields(address),
-      createdAt: events[0].at,
-      updatedAt: events[events.length - 1].at,
-      trackingEvents: {
-        create: events.map((event) => ({
-          status: event.status,
-          note: STATUS_NOTES[event.status] ?? null,
-          createdAt: event.at,
-        })),
+      shipment: {
+        trackingCode: demoTrackingCode(index),
+        sellerId,
+        carrierId: tenant.carrierId,
+        modalityId: modality.id,
+        ownerId,
+        status: plan.status,
+        ...toAddressFields(address),
+        createdAt: events[0].at,
+        updatedAt: events[events.length - 1].at,
       },
+      events: events.map((event) => ({
+        status: event.status,
+        note: STATUS_NOTES[event.status] ?? null,
+        createdAt: event.at,
+      })),
     };
   });
 }

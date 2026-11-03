@@ -19,12 +19,6 @@ const tenant: DemoTenant = {
 
 const NOW = Date.UTC(2026, 10, 3, 12);
 
-const eventsOf = (shipment: ReturnType<typeof buildDemoShipments>[number]) =>
-  shipment.trackingEvents?.create as {
-    status: ShipmentStatus;
-    createdAt: Date;
-  }[];
-
 describe('buildDemoShipments', () => {
   it('rebuilds the exact same dataset for the same moment', () => {
     expect(buildDemoShipments(tenant, NOW)).toEqual(
@@ -36,13 +30,13 @@ describe('buildDemoShipments', () => {
   it('draws the same modality, address, owner and age for each shipment', () => {
     const fingerprint = buildDemoShipments(tenant, NOW)
       .slice(0, 6)
-      .map((s) => [
-        s.trackingCode,
-        s.status,
-        s.modalityId,
-        s.addressCity,
-        s.ownerId,
-        Math.round((NOW - (s.createdAt as Date).getTime()) / MS_PER_HOUR),
+      .map(({ shipment }) => [
+        shipment.trackingCode,
+        shipment.status,
+        shipment.modalityId,
+        shipment.addressCity,
+        shipment.ownerId,
+        Math.round((NOW - shipment.createdAt.getTime()) / MS_PER_HOUR),
       ]);
 
     expect(fingerprint).toMatchInlineSnapshot(`
@@ -100,7 +94,7 @@ describe('buildDemoShipments', () => {
   });
 
   it('builds the planned mix of statuses with unique tracking codes', () => {
-    const shipments = buildDemoShipments(tenant, NOW);
+    const shipments = buildDemoShipments(tenant, NOW).map((d) => d.shipment);
     const count = (status: ShipmentStatus) =>
       shipments.filter((s) => s.status === status).length;
 
@@ -112,8 +106,7 @@ describe('buildDemoShipments', () => {
   });
 
   it('places every event in order and before now, ending on the shipment status', () => {
-    for (const shipment of buildDemoShipments(tenant, NOW)) {
-      const events = eventsOf(shipment);
+    for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
       const times = events.map((e) => e.createdAt.getTime());
 
       expect(times).toEqual([...times].sort((a, b) => a - b));
@@ -123,10 +116,8 @@ describe('buildDemoShipments', () => {
   });
 
   it('assigns an owner only once a shipment has been accepted', () => {
-    for (const shipment of buildDemoShipments(tenant, NOW)) {
-      const accepted = eventsOf(shipment).some(
-        (e) => e.status === ShipmentStatus.ACCEPTED,
-      );
+    for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
+      const accepted = events.some((e) => e.status === ShipmentStatus.ACCEPTED);
       expect(shipment.ownerId !== null).toBe(accepted);
     }
   });
@@ -137,8 +128,7 @@ describe('buildDemoShipments', () => {
     const [shifted] = buildDemoShipments(tenant, later);
 
     expect(
-      (shifted.createdAt as Date).getTime() -
-        (first.createdAt as Date).getTime(),
+      shifted.shipment.createdAt.getTime() - first.shipment.createdAt.getTime(),
     ).toBe(later - NOW);
   });
 });

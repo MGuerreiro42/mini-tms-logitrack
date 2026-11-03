@@ -113,14 +113,16 @@ async function seedShipments(tenant: DemoTenant) {
   const shipments = buildDemoShipments(tenant, Date.now());
   let created = 0;
 
-  for (const shipment of shipments) {
+  for (const { shipment, events } of shipments) {
     const exists = await prisma.shipment.findUnique({
       where: { trackingCode: shipment.trackingCode },
       select: { id: true },
     });
     if (exists) continue;
 
-    await prisma.shipment.create({ data: shipment });
+    await prisma.shipment.create({
+      data: { ...shipment, trackingEvents: { create: events } },
+    });
     created += 1;
   }
 
