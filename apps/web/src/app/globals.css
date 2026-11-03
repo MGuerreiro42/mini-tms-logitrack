@@ -96,6 +96,66 @@
   --radius-4xl: 24px;
 }
 
+/* Motion: every animation runs once, on a live change, and its base style is the final state (spec 04). */
+@theme {
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 400ms;
+  --duration-glow: 1200ms;
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --animate-enter: enter var(--duration-base) var(--ease-enter) backwards;
+  --animate-value-in: value-in var(--duration-fast) var(--ease-enter) backwards;
+  --animate-glow: glow var(--duration-glow) var(--ease-standard);
+  --animate-fill-in: fill-in var(--duration-slow) var(--ease-enter) backwards;
+  --animate-pop: pop 250ms var(--ease-standard);
+  /* Two identical animations: swapping the name restarts it without remounting the element. */
+  --animate-row-flash-a: row-flash-a var(--duration-glow) var(--ease-standard);
+  --animate-row-flash-b: row-flash-b var(--duration-glow) var(--ease-standard);
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes value-in {
+    from {
+      opacity: 0.4;
+      transform: translateY(2px);
+    }
+  }
+  @keyframes glow {
+    8% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes fill-in {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes pop {
+    50% {
+      transform: scale(1.08);
+    }
+  }
+  @keyframes row-flash-a {
+    from {
+      background-color: var(--live-halo);
+    }
+  }
+  @keyframes row-flash-b {
+    from {
+      background-color: var(--live-halo);
+    }
+  }
+}
+
 :root {
   color-scheme: light;
   --background: #f3f4f1;
@@ -258,7 +318,10 @@
   /* biome-ignore-start lint/complexity/noImportantStyles: has to beat utility classes */
   *,
   ::before,
-  ::after {
+  ::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     animation: none !important;
     transition: none !important;
   }
