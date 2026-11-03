@@ -27,6 +27,7 @@ describe('ShipmentsService', () => {
   const shipmentUpdateManyAndReturn = vi.fn();
   const shipmentFindUniqueOrThrow = vi.fn();
   const trackingEventCreate = vi.fn();
+  const trackingEventFindMany = vi.fn();
   const transaction = vi.fn();
   const queryRaw = vi.fn();
   const emit = vi.fn();
@@ -123,6 +124,7 @@ describe('ShipmentsService', () => {
     shipmentUpdateManyAndReturn.mockReset();
     shipmentFindUniqueOrThrow.mockReset();
     trackingEventCreate.mockReset();
+    trackingEventFindMany.mockReset();
     transaction.mockReset();
     queryRaw.mockReset();
     emit.mockReset();
@@ -156,7 +158,10 @@ describe('ShipmentsService', () => {
               count: shipmentCount,
               groupBy: shipmentGroupBy,
             },
-            trackingEvent: { create: trackingEventCreate },
+            trackingEvent: {
+              create: trackingEventCreate,
+              findMany: trackingEventFindMany,
+            },
             $transaction: transaction,
             $queryRaw: queryRaw,
           },
@@ -381,6 +386,54 @@ describe('ShipmentsService', () => {
       const result = await shipmentsService.attentionForSeller('user-1');
 
       expect(result).toEqual({ shipments: [], counts: { failed: 0, late: 0 } });
+    });
+  });
+
+  describe('activityForSeller', () => {
+    it("lists the latest events of the seller's own shipments, flattened for the feed", async () => {
+      const createdAt = new Date('2026-11-03T12:00:00Z');
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      trackingEventFindMany.mockResolvedValue([
+        {
+          id: 'event-1',
+          status: 'COLLECTED',
+          createdAt,
+          shipment: {
+            id: 'shipment-1',
+            trackingCode: 'TMS-ABC123',
+            addressCity: 'Sorocaba',
+          },
+        },
+      ]);
+
+      const result = await shipmentsService.activityForSeller('user-1', 8);
+
+      expect(trackingEventFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { shipment: { sellerId: 'seller-1' } },
+          orderBy: { createdAt: 'desc' },
+          take: 8,
+        }),
+      );
+      expect(result).toEqual([
+        {
+          id: 'event-1',
+          shipmentId: 'shipment-1',
+          trackingCode: 'TMS-ABC123',
+          status: 'COLLECTED',
+          city: 'Sorocaba',
+          createdAt,
+        },
+      ]);
+    });
+
+    it('rejects a user with no seller profile', async () => {
+      sellerFindUnique.mockResolvedValue(null);
+
+      await expect(
+        shipmentsService.activityForSeller('user-1', 8),
+      ).rejects.toThrow(NotFoundException);
+      expect(trackingEventFindMany).not.toHaveBeenCalled();
     });
   });
 

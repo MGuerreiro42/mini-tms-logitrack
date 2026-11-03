@@ -1,9 +1,14 @@
-import type { Prisma, TrackingEvent } from '../../../generated/prisma/client';
+import type {
+  Prisma,
+  Shipment,
+  TrackingEvent,
+} from '../../../generated/prisma/client';
 import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
 } from './dto/carrier-shipment-response.dto';
+import type { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import type { ShipmentAddressDto } from './dto/shipment-address.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
@@ -68,6 +73,19 @@ const toTrackingEventDto = (
   id: event.id,
   status: event.status,
   note: event.note,
+  createdAt: event.createdAt,
+});
+
+export const toShipmentActivityResponseDto = (
+  event: Pick<TrackingEvent, 'id' | 'status' | 'createdAt'> & {
+    shipment: Pick<Shipment, 'id' | 'trackingCode' | 'addressCity'>;
+  },
+): ShipmentActivityResponseDto => ({
+  id: event.id,
+  shipmentId: event.shipment.id,
+  trackingCode: event.shipment.trackingCode,
+  status: event.status,
+  city: event.shipment.addressCity,
   createdAt: event.createdAt,
 });
 

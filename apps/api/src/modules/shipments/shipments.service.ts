@@ -27,6 +27,7 @@ import type {
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
+import type { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import type { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
@@ -43,6 +44,7 @@ import {
   toAdminShipmentResponseDto,
   toCarrierShipmentDetailResponseDto,
   toCarrierShipmentResponseDto,
+  toShipmentActivityResponseDto,
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
 } from './shipment.mappers';
@@ -331,6 +333,27 @@ export class ShipmentsService {
       ].map(toShipmentResponseDto),
       counts: { failed: failedCount, late: late[0]?.total ?? 0 },
     };
+  }
+
+  async activityForSeller(
+    userId: string,
+    limit: number,
+  ): Promise<ShipmentActivityResponseDto[]> {
+    const seller = await this.findSellerOrThrow(userId);
+    const events = await this.prisma.trackingEvent.findMany({
+      where: { shipment: { sellerId: seller.id } },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        shipment: {
+          select: { id: true, trackingCode: true, addressCity: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return events.map(toShipmentActivityResponseDto);
   }
 
   // The due date is createdAt + modality.slaHours, not a column, so the typed client can't filter or sort on it.
