@@ -204,6 +204,12 @@ The BullMQ workers and external map/email providers in the diagram are roadmap i
 
 Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17).
 
+Specced, in implementation order (`specs/`):
+
+1. [Demo simulator and daily reset](./specs/01-demo-simulator.md)
+2. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
+3. [Live delivery map](./specs/03-live-map.md)
+
 Not started yet:
 
 - **Operator invites** — `Invite` token flow, Operator Management screen, `InviteAccept` entry point (§ 3, § 4).
