@@ -216,8 +216,9 @@ Shipped since the core loop: seller cancellation (§ 14), live public tracking o
 
 Specced, in implementation order (`specs/`):
 
-1. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
-2. [Live delivery map](./specs/03-live-map.md)
+1. [Live motion](./specs/04-live-motion.md)
+2. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
+3. [Live delivery map](./specs/03-live-map.md)
 
 Not started yet:
 
