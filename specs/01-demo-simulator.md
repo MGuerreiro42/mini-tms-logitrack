@@ -2,7 +2,7 @@
 
 **Feature**: `demo-simulator` — module `SimulatorModule`
 **Created**: 2026-11-03
-**Status**: Draft — Not Implemented
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §10 (status machine), §15 (carrier queue and real-time tracking); `apps/api/prisma/seed.ts` (demo dataset)
 
 ## Summary
@@ -37,7 +37,7 @@ The demo tenant (the two demo sellers and the demo carrier) is restored to the s
 
 **Acceptance scenarios**:
 
-1. **Given** the reset runs, **when** it completes, **then** every shipment (and its tracking events) belonging to a demo seller or the demo carrier is deleted and the demo shipment plan from the seed is recreated with timestamps relative to the reset time.
+1. **Given** the reset runs, **when** it completes, **then** every shipment (and its tracking events) belonging to a demo seller is deleted and the demo shipment plan from the seed is recreated with timestamps relative to the reset time.
 2. **Given** a seller or carrier that is not part of the demo tenant, **when** the reset runs, **then** none of its rows are read for deletion or modified.
 3. **Given** clients are connected when the reset completes, **when** they receive the reset event, **then** the web app refetches its data and shows a short notice that the demo data was reset.
 4. **Given** the API was not running at the scheduled time (sleeping or redeploying), **when** it starts and the last successful reset is older than 24 h, **then** it runs the reset once at startup.
@@ -67,7 +67,7 @@ The platform admin can trigger the same reset from the admin area, to restore th
 - Redis is unavailable: ticks and resets do not run; the API keeps serving requests (same fail-fast behavior as `RedisModule`).
 - The demo tenant does not exist (seed ran without `SEED_DEMO=true`): the simulator logs once and stays idle; it never creates demo accounts itself.
 - The number of non-terminal demo shipments reaches the cap: ticks only advance and claim; they do not create.
-- The reset overlaps a tick: the reset holds the same lock as ticks, so no tick runs while the tenant is being rebuilt.
+- The reset overlaps a tick: ticks and the reset share one queue limited to one job at a time, so no tick runs while the tenant is being rebuilt.
 
 ## Functional Requirements *(mandatory)*
 
@@ -75,22 +75,22 @@ The platform admin can trigger the same reset from the admin area, to restore th
 - **FR-002**: The simulator MUST act only on the demo tenant: shipments whose seller is one of the demo sellers and whose carrier is the demo carrier, identified by the demo account emails used in the seed.
 - **FR-003**: Every simulated action MUST go through the existing `ShipmentsService` methods (`create`, `claim`, `updateStatus`) as the corresponding demo user, so authorization rules, the status machine (`ALLOWED_TRANSITIONS`), `TrackingEvent` history and `SHIPMENT_UPDATED` events are identical to human actions.
 - **FR-004**: A tick MUST run every 20 s and MUST skip all work when no client is connected to the default or the `/public` namespace on any API instance.
-- **FR-005**: Each active tick MUST perform, in order of preference: advance one non-terminal owned shipment one step; claim one pending shipment; every third active tick, create one shipment for a random demo seller to a random seed address with a random eligible modality — subject to FR-006.
+- **FR-005**: Each active tick MUST, in this order: advance the owned non-terminal shipment updated longest ago by one step; claim the oldest pending shipment for a random demo operator; and, with a probability of 1/3, create one shipment for a random demo seller to a random seed address with a random demo modality and the demo carrier — subject to FR-006. Each step acts on at most one shipment.
 - **FR-006**: Creation MUST stop while the demo tenant has 24 or more non-terminal shipments.
 - **FR-007**: From `OUT_FOR_DELIVERY`, the simulator MUST choose `FAILED_DELIVERY` with a probability of 0.08 and `DELIVERED` otherwise. A `FAILED_DELIVERY` shipment MUST be advanced to `RETURNED`.
 - **FR-008**: Simulated status changes MUST carry the same note texts the seed uses per status (`NOTES` in `seed.ts`).
 - **FR-009**: The simulator MUST NOT cancel shipments; cancellation stays a seller-only human action (`DESIGN.md` §14).
-- **FR-010**: The reset MUST run daily at 07:00 UTC (04:00 in São Paulo), and at startup when the last successful reset is older than 24 h.
-- **FR-011**: The reset MUST delete, in one transaction, all `TrackingEvent` and `Shipment` rows of the demo tenant, then recreate the seed's demo shipment plan with timestamps relative to the reset time. Demo users, sellers, carrier, coverage areas and modalities are kept.
-- **FR-012**: Ticks and the reset MUST share one distributed lock, so they never run concurrently, and each scheduled run MUST execute on exactly one API instance.
-- **FR-013**: After a reset, the API MUST emit `demo:reset` to every connected client of both namespaces. The web app MUST invalidate all queries on that event and show a toast "Demo data was reset".
-- **FR-014**: The admin API MUST expose `POST /admin/demo/reset` (`ADMIN` only), returning 404 when `DEMO_SIMULATOR` is off. It MUST enqueue the reset job and wait for its result.
+- **FR-010**: The reset MUST run daily at 04:00 `America/Sao_Paulo`, and at startup when the last successful reset is older than 24 h.
+- **FR-011**: The reset MUST delete, in one transaction, all `TrackingEvent` and `Shipment` rows whose seller is a demo seller (whatever the carrier), then recreate the seed's demo shipment plan with timestamps relative to the reset time. Demo users, sellers, carrier, coverage areas and modalities are kept.
+- **FR-012**: Ticks and the reset MUST never run concurrently, and each scheduled run MUST execute on exactly one API instance.
+- **FR-013**: After a reset, the API MUST emit `demo:reset` to every connected client of both namespaces. The web app MUST invalidate all queries on that event and, in the signed-in app, show a toast "Demo data was reset".
+- **FR-014**: The admin API MUST expose `POST /admin/demo/reset` (`ADMIN` only), answering 204 once the reset has finished; the route does not exist (404) when `DEMO_SIMULATOR` is off. It MUST enqueue the reset job and wait for its result.
 - **FR-015**: `prisma/seed.ts` and the reset MUST build the demo shipment plan from the same code, so the seeded dataset and the reset dataset cannot drift.
 
 ### Key Entities
 
 - **`Shipment`**, **`TrackingEvent`** (`schema.prisma`): read and written through `ShipmentsService`; deleted and recreated by the reset.
-- No new model. The last reset time and the lock live in Redis.
+- No new model. The last reset time lives in Redis; jobs and schedules live in BullMQ's Redis keys.
 
 ## Success Criteria *(mandatory)*
 
@@ -101,20 +101,24 @@ The platform admin can trigger the same reset from the admin area, to restore th
 
 ## Architecture Mapping *(mandatory)*
 
-- **API (`apps/api`)**: new `src/modules/simulator/`:
-  - `simulator.module.ts` registers the queue and worker only when `DEMO_SIMULATOR=true` (FR-001).
-  - `simulator.processor.ts`: BullMQ worker with two job names, `tick` (repeatable every 20 s) and `reset` (repeatable on cron `0 7 * * *` UTC, plus on-demand).
-  - `simulator.service.ts`: picks the next action (FR-005–FR-009) and resolves the demo users; calls `ShipmentsService`.
-  - `demo-dataset.ts`: the demo shipment plan moved out of `prisma/seed.ts`, taking a Prisma client as a parameter; imported by both the seed script and the reset (FR-015).
-  - `admin-demo.controller.ts`: `POST /admin/demo/reset`, `JwtAuthGuard` + `RolesGuard` with `@Roles('ADMIN')`.
-- **Viewer detection (FR-004)**: `fetchSockets()` on both namespaces through the existing Redis adapter (`redis-io.adapter.ts`), so the count covers every instance.
-- **Lock (FR-012)**: a Redis key set with `NX` and an expiry (`SET demo:lock … NX PX`), held by ticks and the reset. BullMQ repeatable jobs already guarantee one execution per schedule across instances.
-- **Web (`apps/web`)**: listen for `demo:reset` in `services/websocket-client.ts` for both namespaces; on receipt, `queryClient.invalidateQueries()` and a `sonner` toast.
+- **API (`apps/api`)**:
+  - `src/shared/queue/queue.module.ts`: `BullModule.forRootAsync` with `REDIS_URL`. BullMQ opens its own connections, since workers need `maxRetriesPerRequest: null` and `REDIS_CLIENT` fails fast.
+  - `src/modules/simulator/`, loaded through `ConditionalModule.registerWhen` only when `DEMO_SIMULATOR=true` (FR-001):
+    - `simulator.scheduler.ts`: at bootstrap, global concurrency 1 on the `demo` queue, job schedulers `tick` (every 20 s) and `reset` (`0 4 * * *`, `America/Sao_Paulo`), and the startup catch-up (FR-010); `resetNow()` for the admin route.
+    - `simulator.processor.ts`: BullMQ worker dispatching `tick` and `reset`.
+    - `simulator.service.ts`: the tick (FR-004–FR-009), acting through `ShipmentsService`.
+    - `demo-reset.service.ts`: the reset transaction, the last-reset mark in Redis and the `DEMO_RESET` domain event.
+    - `demo-tenant.service.ts`: loads the demo sellers, carrier users and modalities by the seed emails and codes; `null` when they were never seeded.
+    - `demo-dataset.ts`: the demo accounts, addresses, notes and `buildDemoShipments`, shared with `prisma/seed.ts` (FR-015).
+    - `demo-reset.controller.ts`: `POST /admin/demo/reset`, `@Auth(GlobalRole.ADMIN)`.
+- **Viewer detection (FR-004)**: `TrackingPresence` in `TrackingModule`, `fetchSockets()` on both namespaces through the Redis adapter, so the count covers every instance.
+- **Mutual exclusion (FR-012)**: `queue.setGlobalConcurrency(1)` on the `demo` queue; ticks, scheduled resets and manual resets all go through it. BullMQ delivers each job to a single worker.
+- **Web (`apps/web`)**: `lib/demo-reset.ts` invalidates every query and shows a single toast (shared id); `services/websocket-client.ts` registers it on each socket when created. The toast renders where the `Toaster` is mounted (the signed-in app shell); the public tracking page refetches only.
 - **Prisma models touched**: `Shipment`, `TrackingEvent` (read, write, delete). No migration.
-- **Real-time**: new server-to-client event `demo:reset` on `/` and `/public`. Existing events unchanged.
-- **New dependencies**: `bullmq` and `@nestjs/bullmq` in `apps/api`. Repeatable jobs with single execution across instances, retries and job history are what this needs; `@nestjs/schedule` runs on every instance and would need its own coordination. BullMQ is already the queue named for the `notifications` module (`DESIGN.md` §7).
+- **Real-time**: new server-to-client event `demo:reset` on `/` and `/public`, emitted by `TrackingListener` from the `DEMO_RESET` domain event. Existing events unchanged.
+- **New dependencies**: `bullmq` and `@nestjs/bullmq` in `apps/api`. Repeatable jobs with single execution across instances and global concurrency are what this needs; `@nestjs/schedule` runs on every instance and would need its own coordination.
 - **Configuration**:
-  - `DEMO_SIMULATOR` (`true` to enable): `.env.example` (on), Railway production (on). Requires `SEED_DEMO=true`.
+  - `DEMO_SIMULATOR` (`true` / `false`, validated): `.env.example` (on), Railway production (on). Requires `SEED_DEMO=true`.
   - BullMQ reuses `REDIS_URL`.
 
 ## Out of Scope
@@ -143,3 +147,10 @@ The platform admin can trigger the same reset from the admin area, to restore th
 | Date | Change |
 |------|--------|
 | 2026-11-03 | Spec created |
+| 2026-11-03 | Mutual exclusion through the queue's global concurrency instead of a hand-rolled Redis lock (FR-012) |
+| 2026-11-03 | Reset scope narrowed to shipments of demo sellers, so non-demo sellers are never touched (FR-011) |
+| 2026-11-03 | Creation chance per active tick (1/3) instead of every third tick, so ticks keep no state (FR-005) |
+| 2026-11-03 | Reset schedule expressed in `America/Sao_Paulo` (FR-010) |
+| 2026-11-03 | Simulated shipments use the demo carrier directly; `ShipmentsService.create` still validates coverage and modality |
+| 2026-11-03 | Toast limited to the signed-in app, where the `Toaster` lives; the public page refetches only (FR-013) |
+| 2026-11-03 | Implemented |
