@@ -1,11 +1,15 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
-import { DEMO_QUEUE, TICK_JOB } from './simulator.constants';
+import { DemoResetService } from './demo-reset.service';
+import { DEMO_QUEUE, RESET_JOB, TICK_JOB } from './simulator.constants';
 import { SimulatorService } from './simulator.service';
 
 @Processor(DEMO_QUEUE)
 export class SimulatorProcessor extends WorkerHost {
-  constructor(private readonly simulatorService: SimulatorService) {
+  constructor(
+    private readonly simulatorService: SimulatorService,
+    private readonly demoResetService: DemoResetService,
+  ) {
     super();
   }
 
@@ -13,6 +17,8 @@ export class SimulatorProcessor extends WorkerHost {
     switch (job.name) {
       case TICK_JOB:
         return this.simulatorService.tick();
+      case RESET_JOB:
+        return this.demoResetService.reset();
       default:
         throw new Error(`Unknown ${DEMO_QUEUE} job: ${job.name}`);
     }

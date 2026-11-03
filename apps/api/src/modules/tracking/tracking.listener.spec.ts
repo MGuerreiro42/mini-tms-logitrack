@@ -8,6 +8,8 @@ describe('TrackingListener', () => {
   const to = vi.fn(() => ({ emit }));
   const publicEmit = vi.fn();
   const publicTo = vi.fn(() => ({ emit: publicEmit }));
+  const broadcast = vi.fn();
+  const publicBroadcast = vi.fn();
 
   const event: ShipmentUpdatedEvent = {
     shipmentId: 'shipment-1',
@@ -24,9 +26,13 @@ describe('TrackingListener', () => {
     to.mockClear();
     publicEmit.mockReset();
     publicTo.mockClear();
+    broadcast.mockReset();
+    publicBroadcast.mockReset();
     listener = new TrackingListener(
-      { server: { to } } as unknown as TrackingGateway,
-      { server: { to: publicTo } } as unknown as PublicTrackingGateway,
+      { server: { to, emit: broadcast } } as unknown as TrackingGateway,
+      {
+        server: { to: publicTo, emit: publicBroadcast },
+      } as unknown as PublicTrackingGateway,
     );
   });
 
@@ -53,5 +59,12 @@ describe('TrackingListener', () => {
       status: 'ACCEPTED',
     });
     expect(publicEmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells every client on both namespaces that the demo was reset', () => {
+    listener.handleDemoReset();
+
+    expect(broadcast).toHaveBeenCalledWith('demo:reset');
+    expect(publicBroadcast).toHaveBeenCalledWith('demo:reset');
   });
 });
