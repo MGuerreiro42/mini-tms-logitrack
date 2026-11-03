@@ -14,6 +14,7 @@ import { TrackingModule } from './modules/tracking/tracking.module';
 import { validateEnv } from './shared/config/env.validation';
 import { PasswordModule } from './shared/password/password.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
+import { QueueModule } from './shared/queue/queue.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { ThrottlingModule } from './shared/throttling/throttling.module';
 
@@ -23,6 +24,7 @@ import { ThrottlingModule } from './shared/throttling/throttling.module';
     EventEmitterModule.forRoot(),
     PrismaModule,
     RedisModule,
+    QueueModule,
     ThrottlingModule,
     PasswordModule,
     SellersModule,
