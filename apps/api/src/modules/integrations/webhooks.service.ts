@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import {
-  type WebhookDeliveryStatus,
+  WebhookDeliveryStatus,
   type WebhookEndpoint,
   WebhookEvent,
 } from '../../../generated/prisma/client';
@@ -14,6 +15,7 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
 import type { WebhookEndpointResponseDto } from './dto/webhook-endpoint-response.dto';
@@ -48,7 +50,7 @@ export class WebhooksService {
     const endpoint = await this.findOrCreateEndpoint(userId);
     if (
       dto.url !== undefined &&
-      dto.url !== this.inbox.urlFor(endpoint.inboxId)
+      !this.inbox.isInboxUrl(dto.url, endpoint.inboxId)
     ) {
       await assertPublicHttpsUrl(dto.url).catch((error: unknown) => {
         throw error instanceof UnsafeWebhookUrlError
@@ -63,9 +65,12 @@ export class WebhooksService {
     });
     if (dto.active === false) {
       await this.prisma.webhookDelivery.updateMany({
-        where: { endpointId: endpoint.id, status: 'PENDING' },
+        where: {
+          endpointId: endpoint.id,
+          status: WebhookDeliveryStatus.PENDING,
+        },
         data: {
-          status: 'FAILED',
+          status: WebhookDeliveryStatus.FAILED,
           error: 'Endpoint disabled',
           nextAttemptAt: null,
         },
@@ -96,7 +101,7 @@ export class WebhooksService {
     const [deliveries, total] = await Promise.all([
       this.prisma.webhookDelivery.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -143,6 +148,36 @@ export class WebhooksService {
     const endpoint = await this.findOrCreateEndpoint(userId);
     await this.inbox.setFailing(endpoint.inboxId, failing);
     return this.inbox.read(endpoint.inboxId);
+  }
+
+  // Visitors may have pointed the demo endpoints elsewhere or created keys; put them back as seeded.
+  // Errors fail the reset job, so BullMQ retries it.
+  @OnEvent(DEMO_RESET, { suppressErrors: false })
+  async resetDemo({ sellerIds }: DemoResetEvent): Promise<void> {
+    const endpoints = await this.prisma.webhookEndpoint.findMany({
+      where: { sellerId: { in: sellerIds } },
+    });
+    await this.inbox.clear(endpoints.map((endpoint) => endpoint.inboxId));
+    await this.prisma.$transaction([
+      this.prisma.webhookDelivery.deleteMany({
+        where: { endpoint: { sellerId: { in: sellerIds } } },
+      }),
+      this.prisma.apiKey.deleteMany({ where: { sellerId: { in: sellerIds } } }),
+      // Fresh inbox id and secret: the demo password is public, so yesterday's visitors knew both.
+      ...endpoints.map((endpoint) => {
+        const inboxId = randomUUID();
+        return this.prisma.webhookEndpoint.update({
+          where: { id: endpoint.id },
+          data: {
+            inboxId,
+            url: this.inbox.urlFor(inboxId),
+            events: ALL_EVENTS,
+            active: true,
+            secret: generateWebhookSecret(),
+          },
+        });
+      }),
+    ]);
   }
 
   // Every seller starts with an active endpoint on their own test inbox, so deliveries show up at once.

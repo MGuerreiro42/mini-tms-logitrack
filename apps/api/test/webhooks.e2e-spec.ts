@@ -1,5 +1,7 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import request from 'supertest';
 import { signWebhook } from '../src/modules/integrations/webhook-signature';
+import { DEMO_RESET } from '../src/modules/simulator/demo-events';
 import {
   createShipment,
   createTenants,
@@ -22,6 +24,8 @@ interface Delivery {
   nextAttemptAt: string | null;
   payload: { type: string; data: { trackingCode: string } };
 }
+
+const WAIT = { timeout: 5_000 };
 
 describe('Webhooks (e2e)', () => {
   let ctx: E2eContext;
@@ -55,7 +59,7 @@ describe('Webhooks (e2e)', () => {
       );
       expect(delivery?.attempts).toBeGreaterThan(0);
       return delivery as Delivery;
-    });
+    }, WAIT);
   }
 
   const inboxPath = (endpoint: Endpoint) => new URL(endpoint.inboxUrl).pathname;
@@ -171,7 +175,7 @@ describe('Webhooks (e2e)', () => {
         (d) => d.id === replay.body.id,
       );
       expect(replayed?.status).toBe('SUCCEEDED');
-    });
+    }, WAIT);
   });
 
   it("keeps deliveries to their seller: another seller can't see or replay them", async () => {
@@ -196,16 +200,57 @@ describe('Webhooks (e2e)', () => {
       .expect(400);
   });
 
-  it('sends nothing while the endpoint is disabled', async () => {
+  it('fails pending retries and sends nothing while the endpoint is disabled', async () => {
+    await endpointOf(tenants.sellerB);
+    await as(tenants.sellerB)
+      .patch('/webhooks/inbox')
+      .send({ failRequests: true })
+      .expect(200);
+    const retrying = await deliveryFor(
+      tenants.sellerB,
+      (await createShipment(ctx, tenants.sellerB, tenants)).trackingCode,
+    );
+    expect(retrying.status).toBe('PENDING');
+
     await as(tenants.sellerB)
       .patch('/webhooks/endpoint')
       .send({ active: false })
       .expect(200);
-    const before = (await deliveriesOf(tenants.sellerB)).length;
-
     await createShipment(ctx, tenants.sellerB, tenants);
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(await deliveriesOf(tenants.sellerB)).toHaveLength(before);
+    const deliveries = await deliveriesOf(tenants.sellerB);
+    expect(deliveries).toHaveLength(1);
+    expect(deliveries[0]).toMatchObject({ id: retrying.id, status: 'FAILED' });
+  });
+
+  it('restores the demo sellers on a demo reset', async () => {
+    const endpoint = await endpointOf(tenants.sellerA);
+    const inboxId = inboxPath(endpoint).split('/').pop();
+    const { sellerId } = await ctx.prisma.webhookEndpoint.findUniqueOrThrow({
+      where: { inboxId },
+    });
+    await as(tenants.sellerA)
+      .post('/api-keys')
+      .send({ name: 'visitor' })
+      .expect(201);
+    await as(tenants.sellerA)
+      .patch('/webhooks/endpoint')
+      .send({ url: 'https://8.8.8.8/hook', active: false })
+      .expect(200);
+
+    await ctx.app
+      .get(EventEmitter2)
+      .emitAsync(DEMO_RESET, { sellerIds: [sellerId] });
+
+    const restored = await endpointOf(tenants.sellerA);
+    expect(restored).toMatchObject({ url: restored.inboxUrl, active: true });
+    expect(restored.inboxUrl).not.toBe(endpoint.inboxUrl);
+    expect(restored.secret).not.toBe(endpoint.secret);
+    expect(await deliveriesOf(tenants.sellerA)).toEqual([]);
+    expect(
+      (await as(tenants.sellerA).get('/webhooks/inbox')).body.requests,
+    ).toEqual([]);
+    expect((await as(tenants.sellerA).get('/api-keys')).body).toEqual([]);
   });
 });
