@@ -47,3 +47,10 @@ export function formatTimeAgo(iso: string, now: Date): string {
     return `${formatDuration(elapsed / MS_PER_HOUR)} ago`;
   return formatShortDateTime(iso);
 }
+
+export function formatTimeUntil(iso: string, now: Date): string {
+  const remaining = new Date(iso).getTime() - now.getTime();
+  if (remaining < 1_000) return 'due now';
+  if (remaining < MS_PER_MINUTE) return `in ${Math.round(remaining / 1_000)} s`;
+  return `in ${formatDuration(remaining / MS_PER_HOUR)}`;
+}

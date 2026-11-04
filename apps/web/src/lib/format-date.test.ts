@@ -3,6 +3,7 @@ import {
   formatDateTime,
   formatShortDateTime,
   formatTimeAgo,
+  formatTimeUntil,
 } from './format-date';
 
 const INSTANT = '2026-01-15T02:30:00.000Z';
@@ -55,5 +56,20 @@ describe('formatTimeAgo', () => {
 
   it('falls back to the date after a day', () => {
     expect(formatTimeAgo(ago(30 * 3_600_000), now)).toBe('Jan 13, 17:30');
+  });
+});
+
+describe('formatTimeUntil', () => {
+  const now = new Date(INSTANT);
+  const inMs = (ms: number) => new Date(now.getTime() + ms).toISOString();
+
+  it.each([
+    [-5_000, 'due now'],
+    [400, 'due now'],
+    [8_000, 'in 8 s'],
+    [5 * 60_000, 'in 5 min'],
+    [150 * 60_000, 'in 2.5 h'],
+  ])('describes %i ms ahead as "%s"', (ms, text) => {
+    expect(formatTimeUntil(inMs(ms), now)).toBe(text);
   });
 });

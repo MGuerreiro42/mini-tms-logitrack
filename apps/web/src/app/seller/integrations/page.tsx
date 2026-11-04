@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/common/page-header';
 import { ApiKeysPanel } from '@/features/integrations/components/api-keys-panel';
+import { WebhookActivity } from '@/features/integrations/components/webhook-activity';
 import { WebhookEndpointCard } from '@/features/integrations/components/webhook-endpoint-card';
 
 export default function SellerIntegrationsPage() {
@@ -10,6 +11,7 @@ export default function SellerIntegrationsPage() {
         description="Send shipment updates to your systems and call the API."
       />
       <WebhookEndpointCard />
+      <WebhookActivity />
       <ApiKeysPanel />
     </div>
   );
