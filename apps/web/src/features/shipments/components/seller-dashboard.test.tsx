@@ -1,11 +1,12 @@
 import { act, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
-import type { Shipment, ShipmentStatus } from '../types';
+import type { Shipment, ShipmentActivity, ShipmentStatus } from '../types';
 import { SellerDashboard } from './seller-dashboard';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -43,7 +44,6 @@ function shipment(
 
 const failed = shipment('failed', 'FAILED_DELIVERY', -6);
 const late = shipment('late', 'IN_TRANSIT', -5);
-const onTrack = shipment('ok', 'PENDING', 40);
 
 const counts = {
   PENDING: 1,
@@ -57,12 +57,19 @@ const counts = {
   RETURNED: 0,
 };
 
-function page(data: Shipment[]) {
+function activity(id: string, status: ShipmentStatus): ShipmentActivity {
   return {
-    data,
-    meta: { total: data.length, page: 1, limit: 100, totalPages: 1 },
+    id,
+    shipmentId: `shipment-${id}`,
+    trackingCode: `TMS-${id.toUpperCase()}`,
+    status,
+    city: 'Bauru',
+    createdAt: new Date().toISOString(),
   };
 }
+
+const collected = activity('collected', 'COLLECTED');
+const delivered = activity('delivered', 'DELIVERED');
 
 describe('SellerDashboard', () => {
   beforeEach(() => {
@@ -94,8 +101,8 @@ describe('SellerDashboard', () => {
           counts: { failed: 1, late: 6 },
         }),
       ),
-      http.get(`${API_URL}/shipments`, () =>
-        HttpResponse.json(page([failed, late, onTrack])),
+      http.get(`${API_URL}/shipments/activity`, () =>
+        HttpResponse.json([collected]),
       ),
     );
   });
@@ -133,5 +140,64 @@ describe('SellerDashboard', () => {
     expect(socket.emit.mock.calls.map(([event]) => event)).toEqual([
       'subscribe:seller',
     ]);
+  });
+
+  it('lists recent updates and marks a live arrival as new', async () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    let calls = 0;
+    server.use(
+      http.get(`${API_URL}/shipments/activity`, () => {
+        calls += 1;
+        return HttpResponse.json(
+          calls === 1 ? [collected] : [delivered, collected],
+        );
+      }),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    const log = await screen.findByRole('log', { name: 'Recent updates' });
+    expect(within(log).getAllByRole('link')).toHaveLength(1);
+    expect(within(log).queryByText('New')).not.toBeInTheDocument();
+
+    act(() => socket.trigger('connect'));
+    act(() => socket.trigger('shipment:updated', { status: 'DELIVERED' }));
+
+    expect(await within(log).findByText('New')).toBeInTheDocument();
+    const [first] = within(log).getAllByRole('link');
+    expect(first).toHaveTextContent('TMS-DELIVERED');
+    expect(first).toHaveAttribute(
+      'href',
+      '/seller/shipments/shipment-delivered',
+    );
+  });
+
+  it('holds live arrivals while paused and shows them on request', async () => {
+    const socket = makeFakeSocket();
+    vi.mocked(getSocket).mockReturnValue(socket as never);
+    let calls = 0;
+    server.use(
+      http.get(`${API_URL}/shipments/activity`, () => {
+        calls += 1;
+        return HttpResponse.json(
+          calls === 1 ? [collected] : [delivered, collected],
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<SellerDashboard />);
+    const log = await screen.findByRole('log', { name: 'Recent updates' });
+
+    await user.click(screen.getByRole('button', { name: 'Pause updates' }));
+    act(() => socket.trigger('connect'));
+    act(() => socket.trigger('shipment:updated', { status: 'DELIVERED' }));
+
+    const show = await screen.findByRole('button', {
+      name: 'Show 1 new update',
+    });
+    expect(within(log).getAllByRole('link')).toHaveLength(1);
+
+    await user.click(show);
+    expect(within(log).getAllByRole('link')).toHaveLength(2);
   });
 });

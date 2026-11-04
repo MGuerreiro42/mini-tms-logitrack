@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { EmptyState } from '@/components/common/feedback-state';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { Panel } from '@/components/common/panel';
@@ -11,19 +10,17 @@ import { TextLink } from '@/components/common/text-link';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
-import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveStatus } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
-import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
-import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
-import { cn } from '@/lib/utils';
 import {
   type SellerDashboardData,
   useSellerDashboard,
 } from '../hooks/use-seller-dashboard';
 import type { Shipment, ShipmentAttention } from '../types';
+import { ActivityFeed } from './activity-feed';
+import { PanelLink } from './panel-link';
 import { SlaSummaryChart } from './sla-summary-chart';
 
 const SLA_REFRESH_MS = 60_000;
@@ -47,7 +44,7 @@ export function SellerDashboard() {
 }
 
 function SellerDashboardView({
-  data: { counts, onTime, attention, recentShipments, slaSummary },
+  data: { counts, onTime, attention, activity, slaSummary },
   liveStatus,
 }: {
   data: SellerDashboardData;
@@ -111,7 +108,7 @@ function SellerDashboardView({
           <SlaSummaryChart data={slaSummary} />
         </div>
         <Panel
-          title="Recent shipments"
+          title="Recent updates"
           className="gap-2.5"
           aside={<LiveIndicator status={liveStatus} />}
           footer={
@@ -120,40 +117,7 @@ function SellerDashboardView({
             </TextLink>
           }
         >
-          <ol>
-            {recentShipments.map((shipment) => (
-              <li key={shipment.id}>
-                <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'size-2.5 shrink-0 rounded-full bg-current',
-                      SHIPMENT_STATUS_DOT[shipment.status],
-                    )}
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-sm">
-                      <span className="font-mono text-[13px]">
-                        {shipment.trackingCode}
-                      </span>{' '}
-                      <span className="font-semibold">
-                        {SHIPMENT_STATUS_LABEL[shipment.status]}
-                      </span>
-                    </span>
-                    <span className="truncate text-[13px] text-muted-foreground">
-                      {place(shipment)} · {shipment.carrierName}
-                    </span>
-                  </span>
-                  <time
-                    dateTime={shipment.createdAt}
-                    className="shrink-0 text-[13px] text-muted-foreground"
-                  >
-                    {formatShortDateTime(shipment.createdAt)}
-                  </time>
-                </PanelLink>
-              </li>
-            ))}
-          </ol>
+          <ActivityFeed events={activity} />
         </Panel>
       </div>
     </div>
@@ -221,16 +185,5 @@ function AttentionReason({ shipment, now }: { shipment: Shipment; now: Date }) {
           : `${place(shipment)} · ${shipment.modalityName} · ${sla.label}`}
       </span>
     </span>
-  );
-}
-
-function PanelLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="-mx-2 flex min-h-11 items-center gap-3.5 rounded-sm border-t border-muted px-2 py-3 outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
-    >
-      {children}
-    </Link>
   );
 }
