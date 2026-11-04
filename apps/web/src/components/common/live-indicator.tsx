@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { LiveStatus } from '@/lib/live-status';
+import { useChangeSignal } from '@/hooks/use-change-signal';
+import { useNow } from '@/hooks/use-now';
+import { formatTimeAgo } from '@/lib/format-date';
+import type { LiveConnection, LiveStatus } from '@/lib/live-status';
 import { cn } from '@/lib/utils';
 import { reconnectSockets } from '@/services/websocket-client';
 
@@ -12,16 +15,42 @@ const STATES: Record<LiveStatus, { label: string; dot: string }> = {
   offline: { label: 'Offline', dot: 'bg-offline' },
 };
 
+const DROP_GRACE_MS = 1000;
+const UPDATED_REFRESH_MS = 15_000;
+
+// A drop shorter than the grace right after being live keeps reading "Live", so a blip doesn't flash the label.
+function useSteadyStatus(status: LiveStatus): LiveStatus {
+  const [shown, setShown] = useState(status);
+
+  useEffect(() => {
+    if (status === 'live' || shown !== 'live') {
+      setShown(status);
+      return;
+    }
+    const timeout = setTimeout(() => setShown(status), DROP_GRACE_MS);
+    return () => clearTimeout(timeout);
+  }, [status, shown]);
+
+  return shown;
+}
+
 export function LiveIndicator({
-  status,
+  live,
   detail,
   className,
 }: {
-  status: LiveStatus;
+  live: LiveConnection;
   detail?: string;
   className?: string;
 }) {
+  const status = useSteadyStatus(live.status);
   const { label, dot } = STATES[status];
+  const flash = useChangeSignal(live.lastEventAt?.getTime() ?? null);
+  const now = useNow(UPDATED_REFRESH_MS);
+  const note =
+    detail ??
+    (live.lastEventAt &&
+      `Updated ${formatTimeAgo(live.lastEventAt.toISOString(), now)}`);
 
   return (
     <span
@@ -31,13 +60,16 @@ export function LiveIndicator({
       )}
     >
       <span aria-hidden className="relative flex size-2">
-        {status === 'live' && (
-          <span className="absolute -inset-1 rounded-full animate-pulse bg-live-halo" />
+        {status === 'live' && flash > 0 && (
+          <span
+            key={flash}
+            className="absolute -inset-1 animate-glow rounded-full bg-live-halo opacity-0"
+          />
         )}
         <span className={cn('relative size-2 rounded-full', dot)} />
       </span>
       <span role="status">{label}</span>
-      {status === 'live' && detail && <span className="-ml-1">· {detail}</span>}
+      {status === 'live' && note && <span className="-ml-1">· {note}</span>}
     </span>
   );
 }

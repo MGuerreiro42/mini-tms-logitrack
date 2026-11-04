@@ -51,8 +51,8 @@ export function CarrierQueueTable() {
     { status: STATUS_VALUES },
   );
 
-  const liveStatus = useShipmentTracking({ subscribeToQueue: true });
-  const query = useShipmentQueue(params, liveStatus);
+  const live = useShipmentTracking({ subscribeToQueue: true });
+  const query = useShipmentQueue(params, live.status);
   const now = useNow(SLA_REFRESH_MS);
   const claim = useClaimShipment();
 
@@ -61,9 +61,9 @@ export function CarrierQueueTable() {
       <PageHeader
         title="Shipment queue"
         description="Shared across your company. Claim an unowned shipment to work on it."
-        action={<LiveIndicator status={liveStatus} />}
+        action={<LiveIndicator live={live} />}
       />
-      <OfflineBanner status={liveStatus} />
+      <OfflineBanner status={live.status} />
       <StatusFilterTabs
         options={STATUS_OPTIONS}
         value={filters.status}
@@ -81,6 +81,7 @@ export function CarrierQueueTable() {
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
+            getRowVersion={(s) => s.status}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
             emptyMessage="No shipments in the queue."
             columns={[

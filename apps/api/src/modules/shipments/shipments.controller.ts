@@ -15,6 +15,7 @@ import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { ActivityQueryDto } from './dto/activity-query.dto';
 import {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -24,6 +25,7 @@ import { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto'
 import { EligibleCarriersQueryDto } from './dto/eligible-carriers-query.dto';
 import { ListQueueQueryDto } from './dto/list-queue-query.dto';
 import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
+import { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
@@ -236,6 +238,21 @@ export class ShipmentsController {
   @Get('attention')
   attention(@CurrentUser() user: AuthenticatedUser) {
     return this.shipmentsService.attentionForSeller(user.id);
+  }
+
+  @ApiOperation({
+    summary:
+      "Latest tracking events of the authenticated seller's own shipments, newest first — seller activity feed",
+  })
+  @ApiResponse({ status: 200, type: [ShipmentActivityResponseDto] })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @Auth(GlobalRole.SELLER)
+  @Get('activity')
+  activity(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ActivityQueryDto,
+  ) {
+    return this.shipmentsService.activityForSeller(user.id, query.limit);
   }
 
   @ApiOperation({

@@ -1,4 +1,9 @@
-import { formatDate, formatDateTime, formatShortDateTime } from './format-date';
+import {
+  formatDate,
+  formatDateTime,
+  formatShortDateTime,
+  formatTimeAgo,
+} from './format-date';
 
 const INSTANT = '2026-01-15T02:30:00.000Z';
 
@@ -34,4 +39,21 @@ describe('formatDateTime', () => {
       }
     },
   );
+});
+
+describe('formatTimeAgo', () => {
+  const now = new Date(INSTANT);
+  const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+
+  it.each([
+    [30_000, 'just now'],
+    [5 * 60_000, '5 min ago'],
+    [150 * 60_000, '2.5 h ago'],
+  ])('describes %i ms ago as "%s"', (ms, text) => {
+    expect(formatTimeAgo(ago(ms), now)).toBe(text);
+  });
+
+  it('falls back to the date after a day', () => {
+    expect(formatTimeAgo(ago(30 * 3_600_000), now)).toBe('Jan 13, 17:30');
+  });
 });

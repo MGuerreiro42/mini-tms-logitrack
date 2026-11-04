@@ -1,3 +1,5 @@
+import { formatDuration } from './format-duration';
+
 const TIME_ZONE = 'America/Sao_Paulo';
 
 // Assembled from parts with a fixed locale, zone and 24h clock: ICU separators differ between Node and browsers and would break hydration.
@@ -33,4 +35,15 @@ export function formatShortDateTime(iso: string): string {
 export function formatDateTime(iso: string): string {
   const { hour, minute, timeZoneName } = partsOf(iso);
   return `${formatDate(iso)}, ${hour}:${minute} ${timeZoneName}`;
+}
+
+const MS_PER_HOUR = 3_600_000;
+const MS_PER_MINUTE = 60_000;
+
+export function formatTimeAgo(iso: string, now: Date): string {
+  const elapsed = now.getTime() - new Date(iso).getTime();
+  if (elapsed < MS_PER_MINUTE) return 'just now';
+  if (elapsed < 24 * MS_PER_HOUR)
+    return `${formatDuration(elapsed / MS_PER_HOUR)} ago`;
+  return formatShortDateTime(iso);
 }

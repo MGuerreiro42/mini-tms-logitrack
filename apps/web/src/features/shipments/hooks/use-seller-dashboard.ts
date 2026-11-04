@@ -5,10 +5,14 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { combineQueries } from '@/lib/combine-queries';
 import { fallbackPollInterval } from '@/lib/live-status';
 import { sumRecord } from '@/lib/sum-record';
-import { getShipmentAttention, getSlaSummary, listShipments } from '../api';
+import {
+  getShipmentActivity,
+  getShipmentAttention,
+  getSlaSummary,
+} from '../api';
 import { shipmentKeys } from '../api/keys';
 import type {
-  Shipment,
+  ShipmentActivity,
   ShipmentAttention,
   ShipmentStatus,
   ShipmentStatusCounts,
@@ -17,7 +21,7 @@ import type {
 import { statusCountsQuery } from './use-shipment-status-counts';
 import { useShipmentTracking } from './use-shipment-tracking';
 
-const RECENT_SHIPMENTS_LIMIT = 6;
+const ACTIVITY_LIMIT = 8;
 
 const IN_PROGRESS: ShipmentStatus[] = [
   'PENDING',
@@ -31,7 +35,7 @@ export interface SellerDashboardData {
   counts: ReturnType<typeof toCounts>;
   onTime: ReturnType<typeof toOnTime>;
   attention: ShipmentAttention;
-  recentShipments: Shipment[];
+  activity: ShipmentActivity[];
   slaSummary: SlaSummaryItem[];
 }
 
@@ -55,16 +59,15 @@ function toOnTime(summary: SlaSummaryItem[]) {
 
 export function useSellerDashboard() {
   const { token, enabled } = useAuthToken();
-  const liveStatus = useShipmentTracking({ subscribeToSeller: true });
-  const refetchInterval = fallbackPollInterval(liveStatus);
+  const live = useShipmentTracking({ subscribeToSeller: true });
+  const refetchInterval = fallbackPollInterval(live.status);
 
   const query = useQueries({
     queries: [
       { ...statusCountsQuery(token, enabled), refetchInterval },
       {
-        queryKey: shipmentKeys.dashboardRecent(),
-        queryFn: () =>
-          listShipments({ page: 1, limit: RECENT_SHIPMENTS_LIMIT }, token),
+        queryKey: shipmentKeys.activity(),
+        queryFn: () => getShipmentActivity(ACTIVITY_LIMIT, token),
         enabled,
         refetchInterval,
       },
@@ -84,15 +87,15 @@ export function useSellerDashboard() {
     combine: (results) =>
       combineQueries(
         results,
-        ([counts, recent, slaSummary, attention]): SellerDashboardData => ({
+        ([counts, activity, slaSummary, attention]): SellerDashboardData => ({
           counts: toCounts(counts),
           onTime: toOnTime(slaSummary),
           attention,
-          recentShipments: recent.data,
+          activity,
           slaSummary,
         }),
       ),
   });
 
-  return { query, liveStatus };
+  return { query, live };
 }

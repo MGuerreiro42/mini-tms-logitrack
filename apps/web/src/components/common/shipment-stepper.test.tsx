@@ -46,4 +46,17 @@ describe('ShipmentStepper', () => {
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.getByText(/after accepted/)).toBeInTheDocument();
   });
+
+  it('animates only the step reached by a live change, never on first render', () => {
+    const { container, rerender } = render(
+      <ShipmentStepper status="ACCEPTED" />,
+    );
+    expect(container.querySelector('.animate-fill-in')).toBeNull();
+    expect(container.querySelector('.animate-pop')).toBeNull();
+
+    rerender(<ShipmentStepper status="COLLECTED" />);
+
+    expect(container.querySelectorAll('.animate-pop')).toHaveLength(1);
+    expect(container.querySelector('.animate-fill-in')).not.toBeNull();
+  });
 });

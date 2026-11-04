@@ -12,7 +12,7 @@ import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useNow } from '@/hooks/use-now';
 import { formatShortDateTime } from '@/lib/format-date';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { nextExpectedStatus } from '@/lib/shipment-progress';
 import { slaState } from '@/lib/sla';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
@@ -20,13 +20,13 @@ import type { ShipmentAddress, ShipmentBase } from '../types';
 
 export function ShipmentTitle({
   shipment,
-  liveStatus,
+  live,
   back,
   meta,
   children,
 }: {
   shipment: ShipmentBase;
-  liveStatus: LiveStatus;
+  live: LiveConnection;
   back: { href: string; label: string };
   meta?: ReactNode;
   children?: ReactNode;
@@ -42,12 +42,12 @@ export function ShipmentTitle({
         </h1>
         <ShipmentStatusBadge status={shipment.status} />
         {meta && <span className="text-sm text-muted-foreground">{meta}</span>}
-        <LiveIndicator status={liveStatus} className="ml-auto" />
+        <LiveIndicator live={live} className="ml-auto" />
       </div>
       {children && (
         <p className="text-[15px] text-muted-foreground">{children}</p>
       )}
-      <OfflineBanner status={liveStatus} />
+      <OfflineBanner status={live.status} />
     </div>
   );
 }
@@ -80,11 +80,11 @@ export function ShipmentDueLine({
 
 export function ShipmentHeaderCard({
   shipment,
-  liveStatus,
+  live,
   children,
 }: {
   shipment: ShipmentBase;
-  liveStatus: LiveStatus;
+  live: LiveConnection;
   children: ReactNode;
 }) {
   return (
@@ -93,11 +93,11 @@ export function ShipmentHeaderCard({
         <CardTitle className="flex items-center gap-2 text-sm">
           {shipment.trackingCode}
           <ShipmentStatusBadge status={shipment.status} />
-          <LiveIndicator status={liveStatus} className="ml-auto" />
+          <LiveIndicator live={live} className="ml-auto" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
-        <OfflineBanner status={liveStatus} />
+        <OfflineBanner status={live.status} />
         <div className="pt-1 pb-3">
           <ShipmentStepper
             status={shipment.status}

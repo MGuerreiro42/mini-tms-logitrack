@@ -12,6 +12,7 @@ vi.mock('next/navigation', () => ({
   permanentRedirect: vi.fn(() => {
     throw new Error('NEXT_REDIRECT');
   }),
+  usePathname: () => '/track/TMS-ABC123',
 }));
 
 vi.mock('next/headers', () => ({ headers: vi.fn() }));

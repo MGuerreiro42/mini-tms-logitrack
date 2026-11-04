@@ -22,7 +22,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
@@ -78,14 +78,14 @@ export function AdminMonitoringTable({
     );
 
   const recordUpdate = useRef<() => void>(undefined);
-  const liveStatus = useShipmentTracking({
+  const live = useShipmentTracking({
     subscribeToMonitoring: true,
     onEvent: () => recordUpdate.current?.(),
   });
-  const query = useAdminShipments(params, liveStatus);
+  const query = useAdminShipments(params, live.status);
   const counts = useAdminShipmentStatusCounts(
     { carrierId: params.carrierId, sellerId: params.sellerId },
-    liveStatus,
+    live.status,
   );
   const now = useNow(SLA_REFRESH_MS);
   const total = query.data?.meta.total;
@@ -95,9 +95,9 @@ export function AdminMonitoringTable({
       <PageHeader
         title="Monitoring"
         description="Every shipment on the platform, updated live."
-        action={<RecentUpdates status={liveStatus} recordRef={recordUpdate} />}
+        action={<RecentUpdates live={live} recordRef={recordUpdate} />}
       />
-      <OfflineBanner status={liveStatus} />
+      <OfflineBanner status={live.status} />
       <FilterToolbar
         onClear={isFiltered ? clearFilters : undefined}
         summary={total !== undefined && plural(total, 'shipment')}
@@ -136,6 +136,7 @@ export function AdminMonitoringTable({
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
+            getRowVersion={(s) => s.status}
             emptyMessage={
               isFiltered
                 ? 'No shipments match these filters.'
@@ -159,10 +160,10 @@ export function AdminMonitoringTable({
 }
 
 function RecentUpdates({
-  status,
+  live,
   recordRef,
 }: {
-  status: LiveStatus;
+  live: LiveConnection;
   recordRef: RefObject<(() => void) | undefined>;
 }) {
   const { count, record } = useRecentCount(UPDATES_WINDOW_MS);
@@ -173,7 +174,7 @@ function RecentUpdates({
 
   return (
     <LiveIndicator
-      status={status}
+      live={live}
       detail={
         count > 0 ? `${plural(count, 'update')} in the last minute` : undefined
       }

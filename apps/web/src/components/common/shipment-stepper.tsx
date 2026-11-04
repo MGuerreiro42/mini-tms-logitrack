@@ -1,5 +1,8 @@
+'use client';
+
 import { StepDot } from '@/components/common/step-dot';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
+import { useChangeSignal } from '@/hooks/use-change-signal';
 import { formatShortDateTime } from '@/lib/format-date';
 import {
   HAPPY_PATH,
@@ -28,6 +31,9 @@ export function ShipmentStepper({
     index === current ? 'current' : index <= reached ? 'done' : ahead;
   const reachedAt = (step: ShipmentStatus) =>
     events.find((event) => event.status === step)?.createdAt;
+  const signal = useChangeSignal(reached);
+  // Only the step reached by a live change animates; a page opened mid-way renders still.
+  const justReached = (index: number) => signal > 0 && index === reached;
 
   return (
     <div className="@container space-y-3">
@@ -46,18 +52,27 @@ export function ShipmentStepper({
             >
               <div className="flex items-center">
                 <StepDot
+                  key={justReached(index) ? signal : undefined}
                   state={state === 'unreached' ? 'upcoming' : state}
                   number={index + 1}
                   live
+                  className={cn(justReached(index) && 'animate-pop')}
                 />
                 {index < HAPPY_PATH.length - 1 && (
                   <span
                     aria-hidden
-                    className={cn(
-                      'mx-1.5 h-0.5 flex-1',
-                      index < reached ? 'bg-primary' : 'bg-border',
+                    className="relative mx-1.5 h-0.5 flex-1 bg-border"
+                  >
+                    {index < reached && (
+                      <span
+                        key={justReached(index + 1) ? signal : undefined}
+                        className={cn(
+                          'absolute inset-0 origin-left bg-primary',
+                          justReached(index + 1) && 'animate-fill-in',
+                        )}
+                      />
                     )}
-                  />
+                  </span>
                 )}
               </div>
               <div className="flex flex-col gap-0.5 pr-3">
@@ -85,10 +100,11 @@ export function ShipmentStepper({
         <div aria-hidden className="grid grid-cols-6 gap-1.5">
           {HAPPY_PATH.map((step, index) => (
             <span
-              key={step}
+              key={justReached(index) ? `${step}-${signal}` : step}
               className={cn(
-                'h-1.5 rounded-full',
+                'h-1.5 origin-left rounded-full',
                 index <= reached ? 'bg-primary' : 'bg-muted',
+                justReached(index) && 'animate-fill-in',
               )}
             />
           ))}

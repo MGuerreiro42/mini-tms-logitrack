@@ -2,6 +2,11 @@ import { isClientError } from '@/services/api-client';
 
 export type LiveStatus = 'connecting' | 'live' | 'offline';
 
+export interface LiveConnection {
+  status: LiveStatus;
+  lastEventAt: Date | null;
+}
+
 const FALLBACK_POLL_MS = 5000;
 
 export function fallbackPollInterval(status: LiveStatus) {

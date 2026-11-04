@@ -84,8 +84,12 @@ describe('PublicTrackingDetails', () => {
 
     act(() => socket.trigger('disconnect'));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Offline');
     expect(screen.getByText(/refresh every few seconds/i)).toBeInTheDocument();
+    // The indicator rides out a one-second blip before reading Offline.
+    await waitFor(
+      () => expect(screen.getByRole('status')).toHaveTextContent('Offline'),
+      { timeout: 2000 },
+    );
   });
 
   it('disconnects on unmount', () => {

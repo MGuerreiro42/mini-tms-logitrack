@@ -10,7 +10,7 @@ import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/hooks/use-session';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -49,8 +49,8 @@ function getActionState(
 }
 
 export function CarrierShipmentDetail({ id }: { id: string }) {
-  const liveStatus = useShipmentTracking({ shipmentId: id });
-  const query = useQueueShipment(id, liveStatus);
+  const live = useShipmentTracking({ shipmentId: id });
+  const query = useQueueShipment(id, live.status);
 
   return (
     <QueryState
@@ -58,19 +58,17 @@ export function CarrierShipmentDetail({ id }: { id: string }) {
       errorMessage="Couldn't load this shipment."
       notFoundMessage="Shipment not found."
     >
-      {(shipment) => (
-        <CarrierShipmentView shipment={shipment} liveStatus={liveStatus} />
-      )}
+      {(shipment) => <CarrierShipmentView shipment={shipment} live={live} />}
     </QueryState>
   );
 }
 
 function CarrierShipmentView({
   shipment,
-  liveStatus,
+  live,
 }: {
   shipment: CarrierShipment;
-  liveStatus: LiveStatus;
+  live: LiveConnection;
 }) {
   const session = useSession();
   const isOwner = shipment.ownerEmail === session?.email;
@@ -82,7 +80,7 @@ function CarrierShipmentView({
     <div className="flex flex-col gap-5">
       <ShipmentTitle
         shipment={shipment}
-        liveStatus={liveStatus}
+        live={live}
         back={{ href: '/carrier/queue', label: 'Queue' }}
         meta={ownerMeta(shipment, isOwner)}
       >

@@ -15,6 +15,15 @@ export interface SlaSummaryItem {
   onTimeRate: number;
 }
 
+export interface ShipmentActivity {
+  id: string;
+  shipmentId: string;
+  trackingCode: string;
+  status: ShipmentStatus;
+  city: string;
+  createdAt: string;
+}
+
 export interface ShipmentAttention {
   shipments: Shipment[];
   counts: { failed: number; late: number };

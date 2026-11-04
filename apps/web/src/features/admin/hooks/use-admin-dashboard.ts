@@ -13,7 +13,9 @@ export interface AdminDashboardData {
 }
 
 export function useAdminDashboard() {
-  const liveStatus = useShipmentTracking({ subscribeToMonitoring: true });
+  const { status: liveStatus } = useShipmentTracking({
+    subscribeToMonitoring: true,
+  });
 
   return {
     approvals: combineQueries(
