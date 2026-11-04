@@ -11,6 +11,7 @@ const SELLER_NAV: NavItem[] = [
   { name: 'Shipments', href: ROUTES.sellerShipments },
   { name: 'Create shipment', shortName: 'Create', href: ROUTES.newShipment },
   { name: 'Modalities', href: ROUTES.sellerModalities },
+  { name: 'Integrations', href: ROUTES.sellerIntegrations },
   { name: 'Profile', href: ROUTES.sellerProfile },
 ];
 
