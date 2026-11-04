@@ -7,5 +7,7 @@ export interface ShipmentUpdatedEvent {
   carrierId: string;
   sellerId: string;
   status: ShipmentStatus;
+  // null when the shipment was just created.
+  previousStatus: ShipmentStatus | null;
   trackingCode: string;
 }

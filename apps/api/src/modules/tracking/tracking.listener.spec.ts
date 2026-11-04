@@ -16,6 +16,7 @@ describe('TrackingListener', () => {
     carrierId: 'carrier-1',
     sellerId: 'seller-1',
     status: 'ACCEPTED',
+    previousStatus: 'PENDING',
     trackingCode: 'TMS-ABC123',
   };
 
