@@ -29,11 +29,11 @@ describe('Public API (e2e)', () => {
     return res.body as { id: string; key: string; prefix: string };
   }
 
-  const createViaKey = (key: string) =>
-    server()
-      .post('/v1/shipments')
-      .set('X-Api-Key', key)
-      .send(shipmentBody(tenants));
+  const createViaKey = (key: string, idempotencyKey?: string) => {
+    const req = server().post('/v1/shipments').set('X-Api-Key', key);
+    if (idempotencyKey) req.set('Idempotency-Key', idempotencyKey);
+    return req.send(shipmentBody(tenants));
+  };
 
   beforeAll(async () => {
     ctx = await startApp();
@@ -102,6 +102,52 @@ describe('Public API (e2e)', () => {
       .set('X-Api-Key', 'tms_nope')
       .expect(401);
     await server().get('/v1/shipments').set('X-Api-Key', key).expect(401);
+  });
+
+  it('replays a repeated Idempotency-Key instead of creating again', async () => {
+    const { key } = await createKey(tenants.sellerA);
+
+    const first = await createViaKey(key, 'order-123').expect(201);
+    const again = await createViaKey(key, 'order-123').expect(201);
+    const changed = await server()
+      .post('/v1/shipments')
+      .set('X-Api-Key', key)
+      .set('Idempotency-Key', 'order-123')
+      .send({ ...shipmentBody(tenants), addressNumber: '2000' });
+
+    expect(again.body).toEqual(first.body);
+    expect(again.headers['idempotent-replayed']).toBe('true');
+    expect(first.headers['idempotent-replayed']).toBeUndefined();
+    expect(changed.status).toBe(422);
+    await expect(
+      ctx.prisma.shipment.count({
+        where: { trackingCode: first.body.trackingCode },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it('releases the Idempotency-Key when the request fails', async () => {
+    const { key } = await createKey(tenants.sellerA);
+
+    await server()
+      .post('/v1/shipments')
+      .set('X-Api-Key', key)
+      .set('Idempotency-Key', 'order-retry')
+      .send({ ...shipmentBody(tenants), addressState: 'XX' })
+      .expect(400);
+    const retried = await createViaKey(key, 'order-retry').expect(201);
+
+    expect(retried.headers['idempotent-replayed']).toBeUndefined();
+  });
+
+  it('scopes Idempotency-Key to the API key', async () => {
+    const { key } = await createKey(tenants.sellerA);
+    const { key: otherKey } = await createKey(tenants.sellerA);
+
+    const first = await createViaKey(key, 'shared-key').expect(201);
+    const other = await createViaKey(otherKey, 'shared-key').expect(201);
+
+    expect(other.body.id).not.toBe(first.body.id);
   });
 
   it('rate limits by API key, not by address', async () => {

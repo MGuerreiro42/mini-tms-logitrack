@@ -12,6 +12,7 @@ export const API_KEY_HEADER = 'X-Api-Key';
 // Express's own types are not installed; these are the fields the API key routes read.
 export interface ApiKeyRequest {
   headers: Record<string, string | string[] | undefined>;
+  body?: unknown;
   user: AuthenticatedUser;
   apiKeyId: string;
 }

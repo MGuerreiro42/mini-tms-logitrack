@@ -1,5 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseInterceptors,
+} from '@nestjs/common';
+import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -8,6 +16,11 @@ import { ListShipmentsQueryDto } from '../shipments/dto/list-shipments-query.dto
 import { ShipmentResponseDto } from '../shipments/dto/shipment-response.dto';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { ApiKeyAuth } from './api-key-auth.decorator';
+import {
+  IDEMPOTENCY_HEADER,
+  IDEMPOTENCY_KEY_MAX_LENGTH,
+  IdempotencyInterceptor,
+} from './idempotency.interceptor';
 
 @ApiTags('public-api')
 @ApiKeyAuth()
@@ -19,8 +32,22 @@ export class PublicApiController {
     summary:
       "Create a shipment for the key's seller — same validation and carrier matching as the seller app",
   })
+  @ApiHeader({
+    name: IDEMPOTENCY_HEADER,
+    required: false,
+    description: `Up to ${IDEMPOTENCY_KEY_MAX_LENGTH} characters. Repeating it within 24 h returns the first response instead of creating another shipment`,
+  })
   @ApiResponse({ status: 201, type: ShipmentResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid DTO or failed validation' })
+  @ApiResponse({
+    status: 409,
+    description: `A request with the same ${IDEMPOTENCY_HEADER} is still in progress`,
+  })
+  @ApiResponse({
+    status: 422,
+    description: `${IDEMPOTENCY_HEADER} already used with a different body`,
+  })
+  @UseInterceptors(IdempotencyInterceptor)
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
