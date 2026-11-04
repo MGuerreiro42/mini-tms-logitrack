@@ -11,6 +11,8 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3333),
     JWT_SECRET: z.string().min(16),
     CORS_ORIGIN: z.url().default('http://localhost:3000'),
+    // The API's own public origin, used to build each seller's webhook test inbox URL.
+    PUBLIC_API_URL: z.url().default('http://localhost:3333'),
     REDIS_URL: z.url().default('redis://localhost:6379'),
     TRUST_PROXY: z.coerce
       .number()

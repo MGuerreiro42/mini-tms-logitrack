@@ -29,7 +29,7 @@ describe('DemoResetService', () => {
   const transaction = vi.fn();
   const shipmentCreateMany = vi.fn();
   const eventCreateMany = vi.fn();
-  const emit = vi.fn();
+  const emitAsync = vi.fn();
   const redisGet = vi.fn();
   const redisSet = vi.fn();
 
@@ -52,7 +52,7 @@ describe('DemoResetService', () => {
             },
           },
         },
-        { provide: EventEmitter2, useValue: { emit } },
+        { provide: EventEmitter2, useValue: { emitAsync } },
         {
           provide: REDIS_CLIENT,
           useValue: { get: redisGet, set: redisSet },
@@ -83,9 +83,11 @@ describe('DemoResetService', () => {
     await service.reset();
 
     expect(redisSet).toHaveBeenCalledWith(LAST_RESET_KEY, expect.any(Number));
-    expect(emit).toHaveBeenCalledWith(DEMO_RESET);
+    expect(emitAsync).toHaveBeenCalledWith(DEMO_RESET, {
+      sellerIds: ['seller-1', 'seller-2'],
+    });
     expect(transaction.mock.invocationCallOrder[0]).toBeLessThan(
-      emit.mock.invocationCallOrder[0],
+      emitAsync.mock.invocationCallOrder[0],
     );
   });
 
@@ -95,7 +97,7 @@ describe('DemoResetService', () => {
     await service.reset();
 
     expect(transaction).not.toHaveBeenCalled();
-    expect(emit).not.toHaveBeenCalled();
+    expect(emitAsync).not.toHaveBeenCalled();
   });
 
   it.each([

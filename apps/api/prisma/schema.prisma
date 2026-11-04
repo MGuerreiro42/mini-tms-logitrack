@@ -77,6 +77,7 @@ model Seller {
   shipments         Shipment[]
   enabledModalities SellerModality[]
   apiKeys           ApiKey[]
+  webhookEndpoint   WebhookEndpoint?
 
   @@index([status])
 }
@@ -238,4 +239,51 @@ model ApiKey {
   createdAt  DateTime  @default(now())
 
   @@index([sellerId])
+}
+
+enum WebhookEvent {
+  SHIPMENT_CREATED
+  SHIPMENT_STATUS_CHANGED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model WebhookEndpoint {
+  id        String         @id @default(uuid())
+  sellerId  String         @unique
+  seller    Seller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  url       String
+  events    WebhookEvent[]
+  secret    String
+  active    Boolean        @default(true)
+  // Unguessable: the test inbox URL is public and authenticates by this id alone.
+  inboxId   String         @unique @default(uuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  deliveries WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id            String                @id @default(uuid())
+  endpointId    String
+  endpoint      WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  event         WebhookEvent
+  payload       Json
+  status        WebhookDeliveryStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  responseCode  Int?
+  durationMs    Int?
+  error         String?
+  nextAttemptAt DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  // Delivery log, newest first, optionally by status.
+  @@index([endpointId, createdAt])
+  @@index([endpointId, status])
 }

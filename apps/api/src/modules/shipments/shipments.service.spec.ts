@@ -258,6 +258,7 @@ describe('ShipmentsService', () => {
           shipmentId: shipmentWithRelations.id,
           carrierId: shipmentWithRelations.carrierId,
           status: 'PENDING',
+          previousStatus: null,
         }),
       );
     });
@@ -630,7 +631,7 @@ describe('ShipmentsService', () => {
         where: {
           id: 'shipment-1',
           sellerId: 'seller-1',
-          status: { in: ['PENDING', 'ACCEPTED'] },
+          status: 'PENDING',
         },
         data: { status: 'CANCELLED' },
       });
@@ -648,6 +649,7 @@ describe('ShipmentsService', () => {
           carrierId: 'carrier-1',
           sellerId: 'seller-1',
           status: 'CANCELLED',
+          previousStatus: 'PENDING',
         }),
       );
       expect(result.status).toBe('CANCELLED');
@@ -674,6 +676,29 @@ describe('ShipmentsService', () => {
         shipmentsService.cancel('user-1', 'someone-elses-shipment', {}),
       ).rejects.toThrow(NotFoundException);
       expect(shipmentUpdateManyAndReturn).not.toHaveBeenCalled();
+    });
+
+    it('cancels once more when a claim lands between the read and the write', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst
+        .mockResolvedValueOnce({ status: 'PENDING' })
+        .mockResolvedValueOnce({ status: 'ACCEPTED' });
+      const cancelled = { ...shipmentWithRelations, status: 'CANCELLED' };
+      shipmentUpdateManyAndReturn
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([cancelled]);
+      shipmentFindUniqueOrThrow.mockResolvedValue(cancelled);
+
+      await shipmentsService.cancel('user-1', 'shipment-1', {});
+
+      expect(shipmentUpdateManyAndReturn).toHaveBeenLastCalledWith({
+        where: { id: 'shipment-1', sellerId: 'seller-1', status: 'ACCEPTED' },
+        data: { status: 'CANCELLED' },
+      });
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_UPDATED,
+        expect.objectContaining({ previousStatus: 'ACCEPTED' }),
+      );
     });
 
     it('throws ConflictException once the shipment has been collected', async () => {
@@ -869,6 +894,7 @@ describe('ShipmentsService', () => {
         expect.objectContaining({
           shipmentId: 'shipment-1',
           status: 'ACCEPTED',
+          previousStatus: 'PENDING',
         }),
       );
       expect(result.id).toBe('shipment-1');
@@ -962,7 +988,13 @@ describe('ShipmentsService', () => {
         where: { id: 'shipment-1', status: 'ACCEPTED' },
         data: { status: 'COLLECTED' },
       });
-      expect(emit).toHaveBeenCalled();
+      expect(emit).toHaveBeenCalledWith(
+        SHIPMENT_UPDATED,
+        expect.objectContaining({
+          status: 'COLLECTED',
+          previousStatus: 'ACCEPTED',
+        }),
+      );
       expect(result.status).toBe('COLLECTED');
     });
 

@@ -184,7 +184,7 @@ export class ShipmentsService {
       include: sellerShipmentInclude,
     });
 
-    this.emitUpdated(shipment);
+    this.emitUpdated(shipment, null);
 
     return toShipmentResponseDto(shipment);
   }
@@ -395,8 +395,22 @@ export class ShipmentsService {
     dto: TrackingNoteDto,
   ): Promise<ShipmentResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
+    try {
+      return await this.cancelOnce(seller.id, shipmentId, dto);
+    } catch (error) {
+      if (!(error instanceof ConflictException)) throw error;
+      // A claim may land between the read and the write; ACCEPTED is still cancellable, so read again once.
+      return this.cancelOnce(seller.id, shipmentId, dto);
+    }
+  }
+
+  private async cancelOnce(
+    sellerId: string,
+    shipmentId: string,
+    dto: TrackingNoteDto,
+  ): Promise<ShipmentResponseDto> {
     const shipment = await this.prisma.shipment.findFirst({
-      where: { id: shipmentId, sellerId: seller.id },
+      where: { id: shipmentId, sellerId },
       select: { status: true },
     });
     if (!shipment) {
@@ -410,7 +424,8 @@ export class ShipmentsService {
 
     const updated = await this.transitionWithEvent({
       shipmentId,
-      expected: { sellerId: seller.id, status: { in: CANCELLABLE_STATUSES } },
+      from: shipment.status,
+      expected: { sellerId },
       to: ShipmentStatus.CANCELLED,
       note: dto.note,
       conflictMessage:
@@ -522,11 +537,8 @@ export class ShipmentsService {
     // Concurrent claims or a seller cancel can race this; the WHERE lets Postgres pick one winner.
     const updated = await this.transitionWithEvent({
       shipmentId,
-      expected: {
-        carrierId: carrierUser.carrierId,
-        ownerId: null,
-        status: ShipmentStatus.PENDING,
-      },
+      from: ShipmentStatus.PENDING,
+      expected: { carrierId: carrierUser.carrierId, ownerId: null },
       to: ShipmentStatus.ACCEPTED,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
@@ -573,7 +585,7 @@ export class ShipmentsService {
 
     const updated = await this.transitionWithEvent({
       shipmentId,
-      expected: { status: shipment.status },
+      from: shipment.status,
       to: dto.status,
       note: dto.note,
       conflictMessage: `Shipment status changed concurrently — expected ${shipment.status}, reload and try again`,
@@ -585,17 +597,18 @@ export class ShipmentsService {
   // Conditional write + timeline event in one transaction; 0 rows matched means someone else won (409).
   private async transitionWithEvent<I extends Prisma.ShipmentInclude>(params: {
     shipmentId: string;
-    expected: Prisma.ShipmentWhereInput;
+    from: ShipmentStatus;
+    expected?: Prisma.ShipmentWhereInput;
     to: ShipmentStatus;
     data?: Prisma.ShipmentUncheckedUpdateManyInput;
     note?: string;
     conflictMessage: string;
     include: I;
   }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
-    const { shipmentId, to } = params;
+    const { shipmentId, from, to } = params;
     const written = await this.prisma.$transaction(async (tx) => {
       const [shipment] = await tx.shipment.updateManyAndReturn({
-        where: { id: shipmentId, ...params.expected },
+        where: { id: shipmentId, ...params.expected, status: from },
         data: { ...params.data, status: to },
       });
       if (!shipment) {
@@ -614,7 +627,7 @@ export class ShipmentsService {
     });
     // The written row wins: a transition landing between commit and re-read must not replace the status this request reports and emits.
     const updated = { ...withRelations, ...written };
-    this.emitUpdated(updated);
+    this.emitUpdated(updated, from);
     return updated;
   }
 
@@ -651,12 +664,14 @@ export class ShipmentsService {
       Shipment,
       'id' | 'carrierId' | 'sellerId' | 'status' | 'trackingCode'
     >,
+    previousStatus: ShipmentStatus | null,
   ): void {
     const event: ShipmentUpdatedEvent = {
       shipmentId: shipment.id,
       carrierId: shipment.carrierId,
       sellerId: shipment.sellerId,
       status: shipment.status,
+      previousStatus,
       trackingCode: shipment.trackingCode,
     };
     this.eventEmitter.emit(SHIPMENT_UPDATED, event);

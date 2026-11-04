@@ -6,7 +6,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
 import { buildDemoShipments } from './demo-dataset';
-import { DEMO_RESET } from './demo-events';
+import { DEMO_RESET, type DemoResetEvent } from './demo-events';
 import { DemoTenantService } from './demo-tenant.service';
 
 export const LAST_RESET_KEY = 'demo:last-reset';
@@ -53,7 +53,9 @@ export class DemoResetService {
     ]);
 
     await this.redis.set(LAST_RESET_KEY, Date.now());
-    this.eventEmitter.emit(DEMO_RESET);
+    const event: DemoResetEvent = { sellerIds: [...tenant.sellerIds] };
+    // Awaited: the reset job ends once every module has restored its own demo data.
+    await this.eventEmitter.emitAsync(DEMO_RESET, event);
     this.logger.log(`Demo tenant reset with ${shipments.length} shipments`);
   }
 

@@ -2,7 +2,7 @@
 
 **Feature**: `public-api-webhooks` — module `IntegrationsModule`
 **Created**: 2026-11-03
-**Status**: In progress — API keys and `/v1` (PR 1 of 3)
+**Status**: In progress — API (PRs 1 and 2 of 3); web pending
 **Design reference**: `DESIGN.md` §11 (auth and authorization), §14 (shipments), §15 (real-time); spec `01-demo-simulator` (event source in the demo)
 
 ## Summary
@@ -38,7 +38,7 @@ On the integrations page, the demo seller sees a test inbox: every webhook the p
 
 **Acceptance scenarios**:
 
-1. **Given** a seller, **when** they open the integrations page for the first time, **then** a test inbox exists for them and can be set as their endpoint in one click.
+1. **Given** a seller, **when** they open the integrations page for the first time, **then** a test inbox exists for them and is already their active endpoint; pointing the endpoint back at it after a change takes one click.
 2. **Given** the inbox is the active endpoint, **when** a delivery arrives, **then** it is shown in the page within 2 s over the socket, newest first, keeping the latest 50.
 3. **Given** "fail requests" is on, **when** a delivery arrives, **then** the inbox answers 500 and the delivery log shows the attempt as failed with its next retry time.
 
@@ -159,3 +159,4 @@ The seller sees the delivery log (event, status, attempts, last response code, d
 |------|--------|
 | 2026-11-03 | Spec created |
 | 2026-11-04 | Signing follows Standard Webhooks; `/v1/shipments/:id` instead of `:trackingCode`; creation reuses `SHIPMENT_UPDATED` with `previousStatus` |
+| 2026-11-04 | Every seller starts on an active endpoint pointing at their inbox; deliveries to the inbox run in-process; retries end after the sixth attempt |
