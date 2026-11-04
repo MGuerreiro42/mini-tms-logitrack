@@ -212,13 +212,12 @@ The public demo operates itself while someone is watching, and is restored to th
 
 ## 7. Roadmap (Advanced Features / Next Steps)
 
-Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17), the [demo simulator and daily reset](./specs/01-demo-simulator.md) (§ 5).
+Shipped since the core loop: seller cancellation (§ 14), live public tracking over the `/public` namespace (§ 15), carrier approval enforced on every operation (§ 13), a realistic demo seed and Postgres-backed e2e tests (§ 17), the [demo simulator and daily reset](./specs/01-demo-simulator.md) (§ 5), [live motion](./specs/04-live-motion.md) (§ 9).
 
 Specced, in implementation order (`specs/`):
 
-1. [Live motion](./specs/04-live-motion.md)
-2. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
-3. [Live delivery map](./specs/03-live-map.md)
+1. [Public API and webhooks for sellers](./specs/02-public-api-webhooks.md)
+2. [Live delivery map](./specs/03-live-map.md)
 
 Not started yet:
 
@@ -314,6 +313,13 @@ apps/web/src/
 **Where state lives:** server data → TanStack Query (always via `features/*/api/`), never copied elsewhere. Table filters and the current page live in the URL (`useFilteredPagination`), so lists are linkable and survive a reload. The rest is local `useState`; there is no global client store (Zustand was removed with its last consumer).
 
 **Live updates:** each `useSocketSubscription` reports its own status, `connecting | live | offline`, instead of one global flag. Sockets are ref-counted in `websocket-client.ts`: the first consumer opens the connection, the last one closes it. The catch-up refetch runs after the subscription acks, so nothing emitted between connect and join is missed. While a subscription isn't `live`, the query polls as a fallback, and stops on a `4xx` (retrying won't fix those).
+
+**Motion ([spec 04](./specs/04-live-motion.md)):** animation exists to answer "what changed?" for a change that arrived over the socket, never for decoration.
+
+- Only live changes animate: `useChangeSignal` compares a value with its previous render and signals at most once per 600 ms, never on mount, on an equal refetch or while the tab is hidden; `useRowFlashes` does the same per table row, ignoring rows that only just appeared (paging, filtering).
+- Highlights live on an `aria-hidden` overlay keyed by the signal, or alternate between two identical keyframes on a row, so the content itself is never remounted.
+- Tokens (`--duration-*`, `--ease-*`, `--animate-*`) sit in `globals.css`; keyframes have the final state as the element's base style, so the global reduced-motion rule (which also covers `::view-transition-*`) leaves every screen correct and still. Text marks such as the feed's "New" carry the information on their own.
+- CSS for one-shot effects; `@formkit/auto-animate` (3.4 KB) only for the two live lists, where the lines below a new one must slide; React 19's `<ViewTransition>` for page crossfades, keyed by pathname.
 
 **Route protection:** `proxy.ts` (Next's successor to `middleware.ts`) reads the session cookie: no session redirects to `/login`, a wrong role gets the `/forbidden` page with a real `403`. It is a UX gate only; the API re-checks the JWT on every request. Server Components that fetch call `requireRole(...)` first and wrap the call in `withAuthRedirects` (`401` → `/login`, clearing the expired session; `403` → `/forbidden`).
 

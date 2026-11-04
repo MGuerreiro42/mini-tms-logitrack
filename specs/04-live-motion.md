@@ -2,7 +2,7 @@
 
 **Feature**: `live-motion` — `apps/web` (shared motion primitives) plus one seller endpoint in `ShipmentsModule`
 **Created**: 2026-11-03
-**Status**: Draft — Not Implemented
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §9 (frontend architecture), §15 (real-time tracking); `SCREENS.md` (seller overview, carrier queue, admin monitoring, public tracking); spec `01-demo-simulator` (event source)
 
 ## Summary
@@ -88,7 +88,7 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 
 ### Foundation
 
-- **FR-001**: The web theme MUST define motion tokens in `globals.css` `@theme` and every animation in this spec MUST use them: `--duration-fast` 150 ms, `--duration-base` 200 ms, `--duration-slow` 400 ms, `--duration-glow` 1200 ms, `--ease-out` `cubic-bezier(0.22, 1, 0.36, 1)`, `--ease-standard` `cubic-bezier(0.4, 0, 0.2, 1)`.
+- **FR-001**: The web theme MUST define motion tokens in `globals.css` `@theme` and every animation in this spec MUST use them: `--duration-fast` 150 ms, `--duration-base` 200 ms, `--duration-slow` 400 ms, `--duration-glow` 1200 ms, `--ease-enter` `cubic-bezier(0.22, 1, 0.36, 1)`, `--ease-standard` `cubic-bezier(0.4, 0, 0.2, 1)`. JS-driven list animations use the same values from `lib/motion.ts`.
 - **FR-002**: Keyframes MUST have the final visual state as the element's base style, so disabling animations never hides or misplaces content.
 - **FR-003**: The global reduced-motion rule MUST also cover `::view-transition-group(*)`, `::view-transition-old(*)` and `::view-transition-new(*)`.
 - **FR-004**: A shared `useChangeSignal(value)` hook MUST return a signal that changes only when `value` differs from its previous render value: never on mount, never for an equal value, and at most once per 600 ms (leading edge; changes inside the window update the value without a new signal). Highlights MUST attach to an `aria-hidden` element (or pseudo-element) keyed by the signal, never remount the content.
@@ -98,8 +98,8 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 
 - **FR-006**: The API MUST expose `GET /shipments/activity` (`SELLER` only, `limit` default 8, max 20) returning the latest `TrackingEvent`s of the caller's own shipments, newest first: event id, shipment id, tracking code, status, destination city, `createdAt`. Ownership MUST be enforced in the query, as for every seller route.
 - **FR-007**: The activity query MUST be part of `invalidateShipmentQueries`, so the existing throttled `shipment:updated` handler refetches it.
-- **FR-008**: The feed MUST animate only event ids not rendered since the component mounted; the set of seen ids MUST reset when the session changes. A refetch bringing more than 3 unseen events MUST apply them without animation.
-- **FR-009**: A new line MUST enter with opacity 0→1 and `translateY(-8px)`→0 over `--duration-base` with `--ease-out`, and carry a "new" mark (background tint plus visible text) for 3 s, removed by a timer cleared on unmount.
+- **FR-008**: The feed MUST animate only events absent from the list currently on screen; the list starts from the first response, so mounting (and a new session, which remounts the page) animates nothing. A batch of more than 3 new events, or one applied while the tab is hidden, MUST appear without animation.
+- **FR-009**: A new line MUST enter through `@formkit/auto-animate` (fade in while the lines below slide down, `--duration-base`, `--ease-enter`), and carry a "new" mark (background tint plus visible text) for 3 s, removed by a timer cleared on unmount.
 - **FR-010**: The feed MUST be a `role="log"` list. A pause toggle (`aria-pressed`, discreet) MUST hold arrivals (WCAG 2.2.2). Arrivals MUST also be held while focus is inside the feed and, on `(hover: hover)` devices, while the pointer is over it. Held arrivals MUST show a "N new" button outside the log, in reserved space, that applies them; leaving the feed or resuming also applies them.
 - **FR-011**: Relative times ("just now", "2 min ago") MUST update through the existing `useNow`, without animation.
 - **FR-012**: The seller overview MUST show the feed in place of "Recent shipments", keeping the "View all shipments" link and an empty state.
@@ -108,18 +108,18 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 
 - **FR-013**: `StatTile` MUST, on a change signal, show the new value with opacity 0.4→1 and `translateY(2px)`→0 over `--duration-fast`, and a glow overlay (`--live-halo`, opacity rise over 100 ms, decay to 0 by `--duration-glow`). The glow colour is the same for every tile and direction.
 - **FR-014**: The carrier queue and admin monitoring tables MUST highlight a row whose status differs from its status in the previous render of the same page, filter and sort (a `Map<id, status>` reset on any of those changes), by animating the row background from `--live-halo` to transparent over `--duration-glow`. Rows MUST NOT reorder, resize or shift because of it.
-- **FR-015**: The status badge MUST fade in its new value (opacity 0→1 over `--duration-fast`) when its status changes in place.
+- **FR-015**: The status badge MUST fade in its new value (opacity 0.4→1 and 2 px over `--duration-fast`, the same animation as stat values) when its status changes in place.
 
 ### Tracking pages
 
 - **FR-016**: The shipment stepper MUST, when the reached step increases, fill the connector with `scaleX` 0→1 (`transform-origin: left`) over `--duration-slow` with `--ease-out`, and pop the new current marker (scale 1→1.08→1 over 250 ms).
-- **FR-017**: A new timeline item MUST fade and slide 8 px in over `--duration-base`; the status word MUST fade in over `--duration-fast`.
+- **FR-017**: A new timeline item MUST enter through `@formkit/auto-animate` over `--duration-base`; the status word MUST fade in over `--duration-fast`.
 - **FR-018**: The public tracking page MUST announce a status change once through a polite live region.
 
 ### Indicator and navigation
 
-- **FR-019**: `LiveIndicator` MUST show a steady dot while live, flash its halo once (600 ms) per received event, show "Updated Xs ago" (via `useNow`), and show "Reconnecting…" only after the `connecting` state has lasted 1 s following a live period.
-- **FR-020**: Route changes MUST crossfade the main content of the signed-in shell and of public pages with React `<ViewTransition>` over `--duration-fast`; the navigation bar MUST NOT take part (`default="none"` outside the content). Same-route changes (filters, tabs, pagination) MUST NOT transition.
+- **FR-019**: `LiveIndicator` MUST show a steady dot while live, glow its halo once per received event, show "Updated just now / N min ago" (via `useNow`) when no other detail is given, and keep reading "Live" through a drop shorter than 1 s after a live period before showing the actual state. The live hooks return `{ status, lastEventAt }` (`LiveConnection`).
+- **FR-020**: Route changes MUST crossfade the main content of the signed-in shell and of public pages over `--duration-fast`, through a `PageTransition` component: a React `<ViewTransition name="page">` keyed by pathname (layouts persist across navigations, so the key is what pairs the old and new content). The navigation bar does not take part. Search-param changes (filters, tabs, pagination) keep the pathname and do not transition.
 - **FR-021**: After a link navigation, focus MUST move to the new page's `<h1>` (`tabIndex={-1}`); back/forward navigations keep the browser's behavior.
 
 ### Key Entities
@@ -132,7 +132,7 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 - **SC-002**: Opening any screen, paginating or filtering produces zero highlights.
 - **SC-003**: With `prefers-reduced-motion: reduce`, no element moves or scales during 5 minutes of live updates and navigations, and every change remains identifiable from text.
 - **SC-004**: All animations touch only `opacity`, `transform` or a single row's `background-color`; a performance trace of a live update shows no layout shift attributable to them.
-- **SC-005**: The shared JavaScript of signed-in routes grows by less than 5 KB (no animation library).
+- **SC-005**: The shared JavaScript of signed-in routes grows by less than 5 KB (`@formkit/auto-animate`, 3.4 KB gzip, is the only animation library).
 
 ## Architecture Mapping *(mandatory)*
 
@@ -145,7 +145,7 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
   - The signed-in app shell and `public-page.tsx` for `<ViewTransition>` and heading focus.
 - **Prisma models touched**: `TrackingEvent`, `Shipment` (read).
 - **Real-time**: no new event; the existing `shipment:updated` and `tracking:updated` drive everything.
-- **New dependencies**: none. CSS keyframes, `tw-animate-css` (already imported) and React 19.3's stable `<ViewTransition>` cover every item.
+- **New dependencies**: `@formkit/auto-animate` (3.4 KB gzip) for the two live lists, where the lines below must slide when one is inserted (FLIP), which CSS alone cannot do; it honours `prefers-reduced-motion` by itself. Everything else is CSS keyframes and React 19.3's stable `<ViewTransition>`.
 - **Configuration**: none.
 
 ## Out of Scope
@@ -162,7 +162,6 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 
 ## Notes for the AI Agent
 
-- Before coding: the activity endpoint is a new public contract; validate its response shape with the user first.
 - Implement only what's listed in the Functional Requirements above.
 - Overlays and marks added for motion carry no text except the feed's "new" mark, so existing `getByText` tests keep working; update `seller-dashboard.test.tsx` for the feed.
 - Mandatory verification before reporting done: in `apps/api`, `pnpm lint:ci`, `pnpm test`, `pnpm test:e2e`, `pnpm build`; in `apps/web`, `pnpm lint:ci`, `pnpm test`, `pnpm build`; plus a manual pass with reduced motion enabled.
@@ -173,3 +172,10 @@ The live indicator shows a steady dot, flashes once when an event arrives, and s
 | Date | Change |
 |------|--------|
 | 2026-11-03 | Spec created from two UI/UX research passes (product references and the repo's animation/accessibility skills), each critiqued once |
+| 2026-11-04 | `@formkit/auto-animate` adopted for the feed and timeline lists after measuring it against Motion (47 KB) and CSS-only (FR-009, FR-017, SC-005) |
+| 2026-11-04 | Entrance easing named `--ease-enter`; `--ease-out` is a Tailwind default already used by existing components (FR-001) |
+| 2026-11-04 | "New" decided against the list on screen instead of a seen-id set (FR-008) |
+| 2026-11-04 | Badge fade-in shares the stat value animation (FR-015) |
+| 2026-11-04 | A connection drop sets `offline` directly, so the indicator rides out 1 s then shows the actual state; it reuses the glow animation (FR-019) |
+| 2026-11-04 | Route crossfade keyed by pathname, since layouts persist and never fire enter/exit (FR-020) |
+| 2026-11-04 | Implemented |
