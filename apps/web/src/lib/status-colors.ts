@@ -9,7 +9,7 @@ interface StatusMeta {
   className: string;
 }
 
-function withLabels<S extends string>(
+export function withLabels<S extends string>(
   labels: Record<S, string>,
   classNames: Record<S, string>,
 ): Record<S, StatusMeta> {
