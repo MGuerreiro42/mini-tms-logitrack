@@ -5,6 +5,8 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
+import { API_KEY_HEADER } from './modules/integrations/api-key.guard';
+import { API_KEY_SECURITY } from './modules/integrations/api-key-auth.decorator';
 import type { EnvConfig } from './shared/config/env.validation';
 
 async function bootstrap() {
@@ -20,6 +22,10 @@ async function bootstrap() {
     )
     .setVersion('0.1.0')
     .addBearerAuth()
+    .addApiKey(
+      { type: 'apiKey', in: 'header', name: API_KEY_HEADER },
+      API_KEY_SECURITY,
+    )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);

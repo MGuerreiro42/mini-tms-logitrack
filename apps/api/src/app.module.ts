@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CarriersModule } from './modules/carriers/carriers.module';
 import { HealthModule } from './modules/health/health.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { ModalitiesModule } from './modules/modalities/modalities.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SellersModule } from './modules/sellers/sellers.module';
@@ -37,6 +38,7 @@ import { ThrottlingModule } from './shared/throttling/throttling.module';
     ShipmentsModule,
     NotificationsModule,
     TrackingModule,
+    IntegrationsModule,
     ConditionalModule.registerWhen(SimulatorModule, isDemoSimulatorEnabled),
     AuthModule,
     HealthModule,

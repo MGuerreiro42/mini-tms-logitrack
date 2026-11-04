@@ -128,6 +128,20 @@ export async function createTenants(ctx: E2eContext) {
   };
 }
 
+export const shipmentBody = (tenants: {
+  carrierId: string;
+  modalityId: string;
+}) => ({
+  addressStreet: 'Av. Paulista',
+  addressNumber: '1000',
+  addressNeighborhood: 'Bela Vista',
+  addressCity: 'São Paulo',
+  addressState: 'SP',
+  addressZipCode: '01310-100',
+  modalityId: tenants.modalityId,
+  carrierId: tenants.carrierId,
+});
+
 export async function createShipment(
   ctx: E2eContext,
   sellerToken: string,
@@ -136,16 +150,7 @@ export async function createShipment(
   const res = await request(ctx.app.getHttpServer())
     .post('/shipments')
     .auth(sellerToken, { type: 'bearer' })
-    .send({
-      addressStreet: 'Av. Paulista',
-      addressNumber: '1000',
-      addressNeighborhood: 'Bela Vista',
-      addressCity: 'São Paulo',
-      addressState: 'SP',
-      addressZipCode: '01310-100',
-      modalityId: tenants.modalityId,
-      carrierId: tenants.carrierId,
-    })
+    .send(shipmentBody(tenants))
     .expect(201);
   return res.body;
 }

@@ -76,6 +76,7 @@ model Seller {
 
   shipments         Shipment[]
   enabledModalities SellerModality[]
+  apiKeys           ApiKey[]
 
   @@index([status])
 }
@@ -223,4 +224,18 @@ model TrackingEvent {
 
   // Serves both the filter and the timeline sort order.
   @@index([shipmentId, createdAt])
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  sellerId   String
+  seller     Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  name       String
+  prefix     String
+  hash       String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([sellerId])
 }
