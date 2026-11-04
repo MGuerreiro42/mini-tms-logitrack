@@ -85,6 +85,15 @@ describe('Webhooks (e2e)', () => {
     expect(await endpointOf(tenants.sellerA)).toEqual(endpoint);
   });
 
+  it('creates the endpoint once when the first reads arrive together', async () => {
+    const { sellerA: freshSeller } = await createTenants(ctx);
+
+    await Promise.all([
+      as(freshSeller).get('/webhooks/endpoint').expect(200),
+      as(freshSeller).get('/webhooks/inbox').expect(200),
+    ]);
+  });
+
   it('delivers a signed event to the inbox and logs it as succeeded', async () => {
     await endpointOf(tenants.sellerA);
     const shipment = await createShipment(ctx, tenants.sellerA, tenants);

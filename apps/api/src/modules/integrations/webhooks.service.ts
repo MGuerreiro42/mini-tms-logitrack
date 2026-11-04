@@ -15,6 +15,7 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
@@ -192,18 +193,23 @@ export class WebhooksService {
     if (seller.webhookEndpoint) return seller.webhookEndpoint;
 
     const inboxId = randomUUID();
-    // upsert: two first visits at once must not race into a unique violation.
-    return this.prisma.webhookEndpoint.upsert({
-      where: { sellerId: seller.id },
-      update: {},
-      create: {
-        sellerId: seller.id,
-        inboxId,
-        url: this.inbox.urlFor(inboxId),
-        events: ALL_EVENTS,
-        secret: generateWebhookSecret(),
-      },
-    });
+    try {
+      return await this.prisma.webhookEndpoint.create({
+        data: {
+          sellerId: seller.id,
+          inboxId,
+          url: this.inbox.urlFor(inboxId),
+          events: ALL_EVENTS,
+          secret: generateWebhookSecret(),
+        },
+      });
+    } catch (error) {
+      // A concurrent first visit (endpoint + inbox load together) created it first.
+      if (!uniqueViolationTarget(error)) throw error;
+      return this.prisma.webhookEndpoint.findUniqueOrThrow({
+        where: { sellerId: seller.id },
+      });
+    }
   }
 
   private toResponse(endpoint: WebhookEndpoint): WebhookEndpointResponseDto {

@@ -236,6 +236,42 @@
       }
     },
     {
+      "includes": ["src/features/integrations/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/features/**",
+                      "!@/features/integrations/**"
+                    ],
+                    "message": "features/integrations may import no other feature; compose anything else in app/."
+                  },
+                  {
+                    "group": [
+                      "../**",
+                      "!../api",
+                      "!../api/**",
+                      "!../components/**",
+                      "!../hooks/**",
+                      "!../lib/**",
+                      "!../types"
+                    ],
+                    "message": "Relative imports stay inside the feature; reach anything else through the @/ alias so the boundary rule applies."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/features/modalities/**"],
       "linter": {
         "rules": {

@@ -18,6 +18,7 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 - Create shipments in three steps: destination and modality, a carrier that covers it, review
 - Home focused on what needs attention: failed deliveries and shipments past their SLA, plus a live activity feed
 - Shipment list with status filters, SLA column and comfortable/compact density; cancel before pickup
+- Integrations: signed webhooks with retries, a live test inbox and delivery log with replay, and API keys for the public API
 
 **Carriers**
 - Shared queue: operators claim shipments and move them step by step, with notes for the seller
@@ -130,6 +131,59 @@ With `NEXT_PUBLIC_DEMO_LOGIN=true` (on in `.env.example`) the login page signs i
 With `DEMO_SIMULATOR=true` (on in `.env.example`) the demo carrier and sellers act on their own while anyone is connected, and the demo data is restored to the seed every night ([spec](./specs/01-demo-simulator.md)).
 
 Tracking codes like `TMS-DE0000000040` open at `/track/<code>` without signing in.
+
+## Webhooks
+
+A seller's endpoint (set under Integrations) receives a `POST` for `shipment.created` and `shipment.status_changed`:
+
+```json
+{
+  "type": "shipment.status_changed",
+  "timestamp": "2026-11-04T15:00:00.000Z",
+  "data": { "shipmentId": "…", "trackingCode": "TMS-…", "status": "IN_TRANSIT", "previousStatus": "COLLECTED" }
+}
+```
+
+The endpoint must be an `https` URL on a public address; redirects are not followed. Requests are signed per [Standard Webhooks](https://www.standardwebhooks.com/) with the endpoint's `whsec_…` secret: headers `webhook-id`, `webhook-timestamp` and `webhook-signature`. Any official library verifies them; pass the raw body, not re-serialized JSON (in Express, `express.raw({ type: 'application/json' })` on the route):
+
+```ts
+import { Webhook } from 'standardwebhooks';
+
+const wh = new Webhook(process.env.WEBHOOK_SECRET!); // whsec_...
+const event = wh.verify(req.body, req.headers as Record<string, string>); // throws if invalid
+```
+
+A non-2xx answer, a timeout (5 s) or a network error is retried after 10 s, 30 s, 90 s, 270 s and 810 s; then the delivery is marked failed and can be replayed from the delivery log. A replay is a new delivery with a new `webhook-id`. Delivery is at-least-once, so deduplicate on `webhook-id`. Every seller starts pointed at a built-in test inbox that shows each request live with its signature check, and can fail on purpose to watch the retries.
+
+## Public API
+
+Create an API key under Integrations, then create and read shipments from a script. `shipment.json` takes the same fields as the seller's create flow; `modalityId` and `carrierId` come from the seller app (an enabled modality and a carrier eligible for the address):
+
+```json
+{
+  "addressStreet": "Av. Paulista",
+  "addressNumber": "1000",
+  "addressNeighborhood": "Bela Vista",
+  "addressCity": "São Paulo",
+  "addressState": "SP",
+  "addressZipCode": "01310-100",
+  "modalityId": "…",
+  "carrierId": "…"
+}
+```
+
+```bash
+API=http://localhost:3333
+KEY=$(uuidgen) # reuse it when retrying this request
+
+curl -X POST "$API/v1/shipments" \
+  -H "X-Api-Key: tms_..." \
+  -H "Idempotency-Key: $KEY" \
+  -H "Content-Type: application/json" \
+  -d @shipment.json
+```
+
+Repeating an `Idempotency-Key` (per API key) within 24 h returns the first successful response with `Idempotent-Replayed: true`; while the first is still running you get `409`; a different body gets `422`; a failed request releases the key. `GET /v1/shipments?status=&page=&limit=` (default 20, max 100) and `GET /v1/shipments/:id` read them back. Each key may make 120 requests per minute. All routes are documented at `/docs` on the API.
 
 ## Testing
 

@@ -11,5 +11,6 @@ export const ROUTES = {
   sellerShipment: (id: string) => `/seller/shipments/${id}`,
   newShipment: '/seller/shipments/new',
   sellerModalities: '/seller/modalities',
+  sellerIntegrations: '/seller/integrations',
   sellerProfile: '/seller/profile',
 } as const;
