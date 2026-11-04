@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { reconnectSockets } from '@/services/websocket-client';
 import { LiveIndicator, OfflineBanner } from './live-indicator';
@@ -13,19 +13,47 @@ describe('LiveIndicator', () => {
     ['live', 'Live'],
     ['offline', 'Offline'],
   ] as const)('labels the %s state', (status, label) => {
-    render(<LiveIndicator status={status} />);
+    render(<LiveIndicator live={{ status, lastEventAt: null }} />);
     expect(screen.getByRole('status')).toHaveTextContent(label);
   });
 
   it('keeps the live detail outside the status region', () => {
     render(
-      <LiveIndicator status="live" detail="2 updates in the last minute" />,
+      <LiveIndicator
+        live={{ status: 'live', lastEventAt: null }}
+        detail="2 updates in the last minute"
+      />,
     );
 
     expect(screen.getByRole('status')).toHaveTextContent(/^Live$/);
     expect(
       screen.getByText('· 2 updates in the last minute'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('LiveIndicator live behavior', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('says when the last live update arrived', () => {
+    render(
+      <LiveIndicator live={{ status: 'live', lastEventAt: new Date() }} />,
+    );
+
+    expect(screen.getByText('· Updated just now')).toBeInTheDocument();
+  });
+
+  it('keeps reading Live through a drop shorter than a second', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <LiveIndicator live={{ status: 'live', lastEventAt: null }} />,
+    );
+
+    rerender(<LiveIndicator live={{ status: 'offline', lastEventAt: null }} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Live');
+
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByRole('status')).toHaveTextContent('Offline');
   });
 });
 

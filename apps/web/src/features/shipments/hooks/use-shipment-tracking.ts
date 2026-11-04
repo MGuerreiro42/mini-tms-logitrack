@@ -7,7 +7,7 @@ import {
   type SocketSubscription,
   useSocketSubscription,
 } from '@/hooks/use-socket-subscription';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { throttle } from '@/lib/throttle';
 import { getSocket } from '@/services/websocket-client';
 import { invalidateShipmentQueries } from '../lib/invalidate-shipment-queries';
@@ -39,22 +39,27 @@ function roomsFor({
 
 export function useShipmentTracking(
   options: UseShipmentTrackingOptions,
-): LiveStatus {
+): LiveConnection {
   const queryClient = useQueryClient();
   const [refresh] = useState(() =>
     throttle(() => invalidateShipmentQueries(queryClient), REFRESH_THROTTLE_MS),
   );
+  const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
 
   useEffect(() => refresh.cancel, [refresh]);
 
-  return useSocketSubscription({
+  const status = useSocketSubscription({
     getSocket,
     connectionKey: useSession()?.token,
     subscriptions: roomsFor(options),
     updateEvent: 'shipment:updated',
     onUpdate: (payload) => {
       refresh();
-      if (payload) options.onEvent?.();
+      if (!payload) return;
+      setLastEventAt(new Date());
+      options.onEvent?.();
     },
   });
+
+  return { status, lastEventAt };
 }

@@ -10,7 +10,7 @@ import { TextLink } from '@/components/common/text-link';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
@@ -34,21 +34,21 @@ function onTimeNote({ rate, late }: SellerDashboardData['onTime']): string {
 }
 
 export function SellerDashboard() {
-  const { query, liveStatus } = useSellerDashboard();
+  const { query, live } = useSellerDashboard();
 
   return (
     <QueryState query={query} errorMessage="Couldn't load your dashboard.">
-      {(data) => <SellerDashboardView data={data} liveStatus={liveStatus} />}
+      {(data) => <SellerDashboardView data={data} live={live} />}
     </QueryState>
   );
 }
 
 function SellerDashboardView({
   data: { counts, onTime, attention, activity, slaSummary },
-  liveStatus,
+  live,
 }: {
   data: SellerDashboardData;
-  liveStatus: LiveStatus;
+  live: LiveConnection;
 }) {
   if (counts.total === 0) {
     return (
@@ -110,7 +110,7 @@ function SellerDashboardView({
         <Panel
           title="Recent updates"
           className="gap-2.5"
-          aside={<LiveIndicator status={liveStatus} />}
+          aside={<LiveIndicator live={live} />}
           footer={
             <TextLink href={ROUTES.sellerShipments} className="text-sm">
               View all shipments

@@ -22,8 +22,8 @@ export function PublicTrackingDetails({
 }: {
   initialData: PublicTracking;
 }) {
-  const liveStatus = usePublicTrackingSubscription(initialData.trackingCode);
-  const { data: tracking } = usePublicTracking(initialData, liveStatus);
+  const live = usePublicTrackingSubscription(initialData.trackingCode);
+  const { data: tracking } = usePublicTracking(initialData, live.status);
   const title = trackingTitle(tracking);
   const statusSignal = useChangeSignal(tracking.status);
   const statusLabel = SHIPMENT_STATUS[tracking.status].label;
@@ -45,11 +45,11 @@ export function PublicTrackingDetails({
           </span>
         </div>
         <LiveIndicator
-          status={liveStatus}
+          live={live}
           className="h-8.5 shrink-0 rounded-lg bg-muted px-3 text-foreground"
         />
       </div>
-      <OfflineBanner status={liveStatus} />
+      <OfflineBanner status={live.status} />
       <div className="flex flex-col gap-2.5">
         <h1
           className={cn(

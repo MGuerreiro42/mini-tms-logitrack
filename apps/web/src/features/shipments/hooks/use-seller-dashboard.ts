@@ -59,8 +59,8 @@ function toOnTime(summary: SlaSummaryItem[]) {
 
 export function useSellerDashboard() {
   const { token, enabled } = useAuthToken();
-  const liveStatus = useShipmentTracking({ subscribeToSeller: true });
-  const refetchInterval = fallbackPollInterval(liveStatus);
+  const live = useShipmentTracking({ subscribeToSeller: true });
+  const refetchInterval = fallbackPollInterval(live.status);
 
   const query = useQueries({
     queries: [
@@ -97,5 +97,5 @@ export function useSellerDashboard() {
       ),
   });
 
-  return { query, liveStatus };
+  return { query, live };
 }

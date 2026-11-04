@@ -15,7 +15,7 @@ import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
 import { formatDate, formatDateTime } from '@/lib/format-date';
-import type { LiveStatus } from '@/lib/live-status';
+import type { LiveConnection } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
 import { useShipment } from '../hooks/use-shipment';
@@ -24,8 +24,8 @@ import { isCancellableBySeller, type Shipment } from '../types';
 import { CancelShipmentAction } from './cancel-shipment-action';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
-  const liveStatus = useShipmentTracking({ shipmentId: id });
-  const query = useShipment(id, liveStatus);
+  const live = useShipmentTracking({ shipmentId: id });
+  const query = useShipment(id, live.status);
 
   return (
     <QueryState
@@ -33,19 +33,17 @@ export function ShipmentDetailCard({ id }: { id: string }) {
       errorMessage="Couldn't load this shipment."
       notFoundMessage="Shipment not found."
     >
-      {(shipment) => (
-        <ShipmentDetailView shipment={shipment} liveStatus={liveStatus} />
-      )}
+      {(shipment) => <ShipmentDetailView shipment={shipment} live={live} />}
     </QueryState>
   );
 }
 
 function ShipmentDetailView({
   shipment,
-  liveStatus,
+  live,
 }: {
   shipment: Shipment;
-  liveStatus: LiveStatus;
+  live: LiveConnection;
 }) {
   const origin = useAppOrigin();
   const trackingUrl = `${origin}${publicTrackingPath(shipment.trackingCode)}`;
@@ -82,10 +80,10 @@ function ShipmentDetailView({
           </PinnedAction>
         }
       />
-      <OfflineBanner status={liveStatus} />
+      <OfflineBanner status={live.status} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="flex min-w-0 flex-col gap-5">
-          <Panel title="Progress" aside={<LiveIndicator status={liveStatus} />}>
+          <Panel title="Progress" aside={<LiveIndicator live={live} />}>
             <ShipmentStepper
               status={shipment.status}
               events={shipment.trackingEvents}
