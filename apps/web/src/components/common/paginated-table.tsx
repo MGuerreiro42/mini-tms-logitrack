@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { useDensity } from '@/hooks/use-density';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { rowFlashClass, useRowFlashes } from '@/hooks/use-row-flashes';
 import { cn } from '@/lib/utils';
 import type { PaginationMeta } from '@/types/pagination';
 
@@ -45,6 +46,8 @@ interface PaginatedTableProps<T> {
   getRowClassName?: (row: T) => string | undefined;
   emptyMessage?: string;
   getRowKey: (row: T) => string;
+  // What makes a row "changed" for the live highlight, e.g. its status.
+  getRowVersion?: (row: T) => string;
 }
 
 type RowsProps<T> = Omit<PaginatedTableProps<T>, 'meta' | 'onPageChange'> & {
@@ -62,6 +65,12 @@ export function PaginatedTable<T>({
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const asCards = isMobile && rows.columns.some((column) => column.card);
   const Rows = asCards ? RowCards : RowTable;
+  const flashes = useRowFlashes(rows.data, rows.getRowKey, rows.getRowVersion);
+  const getRowClassName = (row: T) =>
+    cn(
+      rows.getRowClassName?.(row),
+      rowFlashClass(flashes.get(rows.getRowKey(row))),
+    );
 
   useEffect(() => {
     if (isPastTheEnd) goToLastPage();
@@ -69,7 +78,11 @@ export function PaginatedTable<T>({
 
   return (
     <div className="space-y-3">
-      <Rows {...rows} isEmpty={rows.data.length === 0 && !isPastTheEnd} />
+      <Rows
+        {...rows}
+        getRowClassName={getRowClassName}
+        isEmpty={rows.data.length === 0 && !isPastTheEnd}
+      />
       {meta && onPageChange && meta.totalPages > 1 && !isPastTheEnd && (
         <div className="flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
           <span>

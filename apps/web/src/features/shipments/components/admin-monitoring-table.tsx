@@ -136,6 +136,7 @@ export function AdminMonitoringTable({
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
+            getRowVersion={(s) => s.status}
             emptyMessage={
               isFiltered
                 ? 'No shipments match these filters.'

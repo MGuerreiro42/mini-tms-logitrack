@@ -81,6 +81,7 @@ export function CarrierQueueTable() {
             onPageChange={setPage}
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
+            getRowVersion={(s) => s.status}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
             emptyMessage="No shipments in the queue."
             columns={[
