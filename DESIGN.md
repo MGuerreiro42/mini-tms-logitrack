@@ -312,12 +312,12 @@ apps/web/src/
 ├── app/                      # ONLY routing (App Router) — layouts, pages, route groups
 │   ├── (public)/             # login, signup, status, track (public tracking, no login)
 │   ├── admin/                # dashboard, sellers, carriers, monitoring
-│   ├── seller/               # dashboard, shipments, modalities, profile
+│   ├── seller/               # dashboard, shipments, modalities, integrations, profile
 │   ├── carrier/              # dashboard, queue, performance, settings
 │   ├── forbidden/            # the 403 page
 │   └── providers.tsx         # QueryClientProvider
 ├── features/                 # one domain per folder
-│   ├── auth/ · sellers/ · carriers/ · shipments/ · tracking/
+│   ├── auth/ · sellers/ · carriers/ · shipments/ · tracking/ · integrations/
 │   ├── companies/ · modalities/   # shared by sellers and carriers
 │   ├── admin/                     # composes sellers and carriers
 │   │   ├── components/ · hooks/ · api/ · lib/ · types.ts

@@ -2,7 +2,7 @@
 
 **Feature**: `public-api-webhooks` — module `IntegrationsModule`
 **Created**: 2026-11-03
-**Status**: In progress — API (PRs 1 and 2 of 3); web pending
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §11 (auth and authorization), §14 (shipments), §15 (real-time); spec `01-demo-simulator` (event source in the demo)
 
 ## Summary
@@ -30,7 +30,7 @@ A seller registers a webhook URL and, from then on, receives a `POST` for each e
 
 ### User Story 2 - Watch it work in the demo (Priority: P1)
 
-On the integrations page, the demo seller sees a test inbox: every webhook the platform sends to it appears live, with headers, body and the signature check result. A switch makes the inbox answer 500, so the visitor can watch retries and then a recovery.
+On the integrations page, the demo seller sees a test inbox: every webhook the platform sends to it appears live, with its `webhook-id`, body, response status and signature check result. A switch makes the inbox answer 500, so the visitor can watch retries and then a recovery.
 
 **Why this priority**: without it, a visitor has no receiver and the feature is invisible in a portfolio demo.
 
@@ -80,8 +80,8 @@ The seller sees the delivery log (event, status, attempts, last response code, d
 
 - The endpoint URL resolves to a private, loopback or link-local address: registration and every attempt are rejected (SSRF). The built-in inbox is the only internal target allowed.
 - The endpoint is disabled or deleted while deliveries are pending: pending retries are dropped and marked `FAILED` with reason "endpoint disabled".
-- Many events for the same shipment in quick succession: each is delivered; ordering is not guaranteed, so every payload carries `occurredAt` and the shipment's current `status`.
-- The response body is large or never ends: only the first 2 KB are read and the attempt still times out at 5 s.
+- Many events for the same shipment in quick succession: each is delivered; ordering is not guaranteed, so every payload carries `timestamp` and the shipment's current `status`.
+- The response body is large or never ends: the receiver's body is never read, only its status, and the attempt still times out at 5 s.
 - The demo reset (spec 01) runs: demo deliveries, inbox entries and API keys created by visitors are removed; the demo seller's endpoint is restored to their inbox.
 
 ## Functional Requirements *(mandatory)*
@@ -121,8 +121,8 @@ The seller sees the delivery log (event, status, attempts, last response code, d
   - `api-key.guard.ts`: `X-Api-Key` authentication for `/v1`.
   - `public-api.controller.ts`: `/v1/shipments` routes (FR-003, FR-004).
   - `webhooks.controller.ts` / `webhooks.service.ts`: endpoint CRUD, secret reveal and rotation, delivery log and replay.
-  - `webhook-dispatcher.listener.ts`: subscribes to `SHIPMENT_UPDATED` and shipment creation, enqueues deliveries.
-  - `webhook-delivery.processor.ts`: BullMQ worker on queue `webhooks`; signing, SSRF check, HTTP call with `fetch` and `AbortSignal.timeout`.
+  - `webhook-dispatcher.ts`: subscribes to `SHIPMENT_UPDATED` and shipment creation, enqueues deliveries.
+  - `webhook-delivery.processor.ts`: BullMQ worker on queue `webhooks`; signing, SSRF check, `node:https` request with a public-only DNS lookup and `AbortSignal.timeout`, redirects not followed.
   - `webhook-inbox.controller.ts`: public test receiver (FR-010).
   - `ssrf.ts`: address classification used at registration and per attempt (FR-006).
 - **Event source**: `ShipmentsService` already emits `SHIPMENT_UPDATED` on creation and on every transition; `ShipmentUpdatedEvent` gains `previousStatus` (`null` on creation).
@@ -160,3 +160,4 @@ The seller sees the delivery log (event, status, attempts, last response code, d
 | 2026-11-03 | Spec created |
 | 2026-11-04 | Signing follows Standard Webhooks; `/v1/shipments/:id` instead of `:trackingCode`; creation reuses `SHIPMENT_UPDATED` with `previousStatus` |
 | 2026-11-04 | Every seller starts on an active endpoint pointing at their inbox; deliveries to the inbox run in-process; retries end after the sixth attempt |
+| 2026-11-04 | Web: integrations page with the endpoint form, live test inbox, delivery log with replay and API keys; README documents verification and `/v1`; spec text aligned with the code |
