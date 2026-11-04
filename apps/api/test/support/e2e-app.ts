@@ -21,7 +21,9 @@ export async function startApp(): Promise<E2eContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  const app = moduleRef.createNestApplication<NestExpressApplication>({
+    rawBody: true,
+  });
   await configureApp(app);
   await app.listen(0);
   return { app, url: await app.getUrl(), prisma: app.get(PrismaService) };

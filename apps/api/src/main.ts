@@ -10,7 +10,10 @@ import { API_KEY_SECURITY } from './modules/integrations/api-key-auth.decorator'
 import type { EnvConfig } from './shared/config/env.validation';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // The webhook test inbox verifies signatures over the exact bytes received.
+    rawBody: true,
+  });
   const configService = app.get<ConfigService<EnvConfig, true>>(ConfigService);
 
   await configureApp(app);

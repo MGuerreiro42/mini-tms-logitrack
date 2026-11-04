@@ -18,6 +18,7 @@ describe('validateEnv', () => {
       PORT: 3333,
       JWT_SECRET: validConfig.JWT_SECRET,
       CORS_ORIGIN: 'http://localhost:3000',
+      PUBLIC_API_URL: 'http://localhost:3333',
       REDIS_URL: 'redis://localhost:6379',
       TRUST_PROXY: 0,
     });

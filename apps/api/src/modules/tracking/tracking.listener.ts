@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
+  WEBHOOK_DELIVERY_UPDATED,
+  WEBHOOK_INBOX_RECEIVED,
+  type WebhookDeliveryUpdatedEvent,
+  type WebhookInboxReceivedEvent,
+} from '../integrations/webhook-events';
+import {
   SHIPMENT_UPDATED,
   type ShipmentUpdatedEvent,
 } from '../shipments/shipment-events';
@@ -41,6 +47,21 @@ export class TrackingListener {
         trackingCode: event.trackingCode,
         status: event.status,
       });
+  }
+
+  @OnEvent(WEBHOOK_DELIVERY_UPDATED)
+  handleWebhookDelivery({
+    sellerId,
+    delivery,
+  }: WebhookDeliveryUpdatedEvent): void {
+    this.gateway.server
+      .to(sellerRoom(sellerId))
+      .emit('webhook:delivery', delivery);
+  }
+
+  @OnEvent(WEBHOOK_INBOX_RECEIVED)
+  handleWebhookInbox({ sellerId, request }: WebhookInboxReceivedEvent): void {
+    this.gateway.server.to(sellerRoom(sellerId)).emit('webhook:inbox', request);
   }
 
   @OnEvent(DEMO_RESET)
