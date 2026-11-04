@@ -12,6 +12,8 @@ const logger = new Logger('RateLimitGuard');
 @Injectable()
 export class RateLimitGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
+    // Behind an API key, each key gets its own bucket regardless of where it calls from.
+    if (typeof req.apiKeyId === 'string') return `api-key:${req.apiKeyId}`;
     // No resolvable address: one shared bucket, so those requests stay limited instead of unlimited.
     return typeof req.ip === 'string' && req.ip ? req.ip : UNKNOWN_CLIENT;
   }
