@@ -6,9 +6,11 @@
 
 Multi-tenant transportation management system. Sellers ship, carriers deliver, and everyone, including the end customer, follows each shipment live.
 
-![A carrier advances a shipment and the public tracking page updates live](docs/media/live-tracking.gif)
+**[Live demo](https://mini-tms-logitrack.vercel.app/login)**: sign in as a seller, carrier or operator in one click. Demo shipments move on their own while you watch, and the data resets every night.
 
-<sub>A carrier advances a shipment (left); the public tracking page (right) updates with no refresh.</sub>
+![The seller overview updates live as the demo carrier moves shipments](docs/media/seller-live.gif)
+
+<sub>The seller overview with no interaction: new updates land in the feed and the counters follow.</sub>
 
 ## Features
 
@@ -61,6 +63,10 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 </table>
 
 ![Mobile: carrier queue, shipment detail with pinned action, seller overview, public tracking](docs/media/mobile.webp)
+
+![A carrier advances a shipment and the public tracking page updates live](docs/media/live-tracking.gif)
+
+<sub>A carrier advances a shipment (left); the public tracking page (right) updates with no refresh.</sub>
 
 ## Architecture
 
