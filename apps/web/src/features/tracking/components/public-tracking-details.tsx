@@ -7,6 +7,7 @@ import {
 } from '@/components/common/live-indicator';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { TextLink } from '@/components/common/text-link';
+import { useChangeSignal } from '@/hooks/use-change-signal';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,8 @@ export function PublicTrackingDetails({
   const liveStatus = usePublicTrackingSubscription(initialData.trackingCode);
   const { data: tracking } = usePublicTracking(initialData, liveStatus);
   const title = trackingTitle(tracking);
+  const statusSignal = useChangeSignal(tracking.status);
+  const statusLabel = SHIPMENT_STATUS[tracking.status].label;
 
   // Route metadata is rendered once on the server, so a live status change has to retitle the tab here.
   useEffect(() => {
@@ -54,8 +57,19 @@ export function PublicTrackingDetails({
             SHIPMENT_STATUS_DOT[tracking.status],
           )}
         >
-          {SHIPMENT_STATUS[tracking.status].label}
+          <span
+            key={statusSignal}
+            className={cn(
+              'inline-block',
+              statusSignal > 0 && 'animate-value-in',
+            )}
+          >
+            {statusLabel}
+          </span>
         </h1>
+        <p aria-live="polite" className="sr-only">
+          {statusSignal > 0 && `Status changed to ${statusLabel}`}
+        </p>
         <p className="text-base text-muted-foreground">
           {tracking.addressCity}, {tracking.addressState} ·{' '}
           {tracking.modalityName}

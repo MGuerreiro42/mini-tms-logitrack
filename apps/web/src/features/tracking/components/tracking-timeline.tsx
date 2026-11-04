@@ -1,4 +1,8 @@
+'use client';
+
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { formatDateTime, formatShortDateTime } from '@/lib/format-date';
+import { LIST_ANIMATION } from '@/lib/motion';
 import { newestFirst, nextExpectedStatus } from '@/lib/shipment-progress';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
@@ -22,6 +26,7 @@ export function TrackingTimeline({
 }) {
   const ordered = newestFirst(events);
   const next = nextExpectedStatus(status);
+  const [listRef] = useAutoAnimate<HTMLOListElement>(LIST_ANIMATION);
 
   if (ordered.length === 0) {
     return (
@@ -32,7 +37,7 @@ export function TrackingTimeline({
   }
 
   return (
-    <ol>
+    <ol ref={listRef}>
       {next && <TimelineItem stage="next" status={next} />}
       {ordered.map((event, index) => (
         <TimelineItem
