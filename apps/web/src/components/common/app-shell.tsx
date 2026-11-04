@@ -1,5 +1,6 @@
 import { CommandMenu } from '@/components/common/command-menu';
 import { type NavItem, NavList } from '@/components/common/nav-list';
+import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
@@ -36,7 +37,7 @@ export function AppShell({ navItems, user, children }: AppShellProps) {
         </div>
       </header>
       <main className="flex-1 px-safe-4 pt-5 pb-24 max-lg:not-short:has-data-pinned-action:pb-44 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
       <NavList
         items={navItems}

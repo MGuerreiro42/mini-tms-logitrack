@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PageTransition } from '@/components/common/page-transition';
 import { ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +61,7 @@ export function PublicPage({
           </span>
         </header>
         <main className="flex flex-1 items-start justify-center px-4 py-6 lg:px-12 lg:py-10">
-          {panel}
+          <PageTransition>{panel}</PageTransition>
         </main>
       </div>
     );
@@ -91,7 +92,7 @@ export function PublicPage({
         </p>
       </section>
       <main className="flex justify-center px-4 py-6 lg:items-center lg:p-14">
-        {panel}
+        <PageTransition>{panel}</PageTransition>
       </main>
     </div>
   );

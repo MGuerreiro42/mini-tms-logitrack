@@ -314,6 +314,12 @@
   }
 }
 
+::view-transition-group(page),
+::view-transition-old(page),
+::view-transition-new(page) {
+  animation-duration: var(--duration-fast);
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* biome-ignore-start lint/complexity/noImportantStyles: has to beat utility classes */
   *,
