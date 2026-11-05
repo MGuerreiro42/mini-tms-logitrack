@@ -1,6 +1,7 @@
 import { ShipmentStatus } from '../../../generated/prisma/client';
 import {
   distanceKm,
+  isPublicPosition,
   type LngLat,
   pointAt,
   publicRoute,
@@ -65,6 +66,29 @@ describe('pointAt', () => {
   it('skips repeated points and survives a segment with no length', () => {
     expect(pointAt([[0, 0], [0, 0], ...SEGMENT.slice(1)], 0).heading).toBe(0);
     expect(pointAt([[5, 6]], 0.5)).toEqual({ lng: 5, lat: 6, heading: 0 });
+  });
+});
+
+describe('isPublicPosition', () => {
+  // About 3.3 km and 1.1 km south of the destination at [0, 3].
+  const far = { lng: 0, lat: 2.97 };
+  const near = { lng: 0, lat: 2.99 };
+
+  it('shows an IN_TRANSIT position outside the last mile of a known route', () => {
+    expect(isPublicPosition(ROUTE, ShipmentStatus.IN_TRANSIT, far)).toBe(true);
+  });
+
+  it('hides a position inside the last mile', () => {
+    expect(isPublicPosition(ROUTE, ShipmentStatus.IN_TRANSIT, near)).toBe(
+      false,
+    );
+  });
+
+  it('hides OUT_FOR_DELIVERY and shipments without a route', () => {
+    expect(isPublicPosition(ROUTE, ShipmentStatus.OUT_FOR_DELIVERY, far)).toBe(
+      false,
+    );
+    expect(isPublicPosition(null, ShipmentStatus.IN_TRANSIT, far)).toBe(false);
   });
 });
 

@@ -52,6 +52,16 @@ export const segmentFor = (
     ? route.points.slice(route.splitIndex)
     : publicRoute(route);
 
+// The public link shows the vehicle only on the way to the city, never inside the last mile.
+export const isPublicPosition = (
+  route: DemoRoute | null,
+  status: ShipmentStatus,
+  position: Pick<RoutePoint, 'lat' | 'lng'>,
+): boolean =>
+  status === ShipmentStatus.IN_TRANSIT &&
+  route !== null &&
+  distanceKm([position.lng, position.lat], route.destination) >= LAST_MILE_KM;
+
 interface Leg {
   from: LngLat;
   to: LngLat;

@@ -24,4 +24,6 @@ export interface VehiclePositionReportedEvent {
   lng: number;
   heading: number | null;
   recordedAt: Date;
+  // Decided where the shipment's address is known, so the listener never sees it.
+  publiclyVisible: boolean;
 }

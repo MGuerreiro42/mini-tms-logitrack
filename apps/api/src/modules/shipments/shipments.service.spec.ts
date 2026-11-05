@@ -1107,6 +1107,7 @@ describe('ShipmentsService', () => {
         trackingCode: 'TMS-ABC123',
         status: 'IN_TRANSIT',
         ...dto,
+        publiclyVisible: true,
       });
     });
 

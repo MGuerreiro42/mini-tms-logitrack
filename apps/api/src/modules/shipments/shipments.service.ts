@@ -39,6 +39,8 @@ import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-coun
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import { isPublicPosition } from './route-geometry';
+import { findRoute } from './routes';
 import {
   adminShipmentInclude,
   carrierShipmentDetailInclude,
@@ -647,6 +649,11 @@ export class ShipmentsService {
         trackingCode: shipment.trackingCode,
         status: shipment.status,
         ...position,
+        publiclyVisible: isPublicPosition(
+          findRoute(shipment),
+          shipment.status,
+          position,
+        ),
       };
       this.eventEmitter.emit(VEHICLE_POSITION_REPORTED, event);
     }
