@@ -2,6 +2,7 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
+  type ErrorEvent,
   type GeoJSONSource,
   type LngLatBoundsLike,
   MapLibreMap,
@@ -11,16 +12,18 @@ import {
 import { useTheme } from 'next-themes';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { useNow } from '@/hooks/use-now';
-import { formatTimeAgo } from '@/lib/format-date';
 import {
   bearingDeg,
-  isNewer,
   lerpAngle,
   lerpLngLat,
   nearestIndex,
 } from '../lib/vehicle-motion';
-import type { LastPosition, LngLat, MapStage } from '../types';
+import type {
+  DeliveryMapProps,
+  LastPosition,
+  LngLat,
+  MapStage,
+} from '../types';
 import { MAP_FRAME, MapUnavailable } from './map-placeholder';
 
 // Turbopack only emits the worker as an asset when it sees this URL pattern.
@@ -36,36 +39,30 @@ const STYLES = {
   dark: 'https://tiles.openfreemap.org/styles/dark',
 } as const;
 
-// GL layers can't read CSS variables; mirrors --primary and --muted-foreground in globals.css.
-const ROUTE_COLORS = {
-  light: { traveled: '#2e6b5e', remaining: '#5d6560' },
+// GL layers can't read CSS variables; mirrors --primary in globals.css, remaining kept at ≥ 3:1 on the basemap.
+const COLORS = {
+  light: { traveled: '#2e6b5e', remaining: '#8a918c' },
   dark: { traveled: '#6fb8a6', remaining: '#9aa59f' },
 } as const;
 
 type Theme = keyof typeof STYLES;
 
 const GLIDE_MS = 2000;
-const STALE_CAPTION_S = 10;
-const STALE_MARKER_S = 30;
 const CITY_ZOOM = 11;
+const CITY_MAX_ZOOM = 12;
+const STREET_MAX_ZOOM = 15;
 const VEHICLE_ZOOM = 14;
-const ROUTE_SOURCE = 'route';
+const HALO_METERS = 8000;
+// Web Mercator meters per pixel at zoom 0 on the equator, for 512 px tiles.
+const METERS_PER_PIXEL_Z0 = 78_271.517;
 
 const VEHICLE_SVG =
-  '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2 20 21 12 16.5 4 21Z" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2 20 21 12 16.5 4 21Z" fill="currentColor" stroke-linejoin="round"/></svg>';
 
-export interface DeliveryMapProps {
-  route: LngLat[] | null;
-  splitIndex?: number;
-  // Internal only: the public caller has no address coordinates to pass.
-  destination?: LngLat;
-  // Public only: the destination city, drawn as a halo, never a pin.
-  area?: { center: LngLat; city: string };
-  stage: MapStage;
-  position: LastPosition | null;
-  label: string;
-  caption: string;
-}
+export type DeliveryCanvasProps = DeliveryMapProps & {
+  stale: boolean;
+  captionId: string;
+};
 
 function element(className: string, html = ''): HTMLDivElement {
   const node = document.createElement('div');
@@ -84,7 +81,7 @@ function traveledIndex({
   if (!route) return 0;
   if (position) return nearestIndex(route, [position.lng, position.lat]);
   if (stage === 'IN_TRANSIT') return 0;
-  // The public route already ends where the city starts, so out for delivery has traveled it all.
+  // Internal routes run to the door, so the last mile starts at the split; the public one ends there.
   if (stage === 'OUT_FOR_DELIVERY' && splitIndex !== undefined)
     return splitIndex;
   return route.length - 1;
@@ -103,6 +100,10 @@ function routeData(route: LngLat[], split: number) {
       line('traveled', route.slice(0, split + 1)),
     ].filter((feature) => feature.geometry.coordinates.length > 1),
   };
+}
+
+function haloPixelsAtZoom0([, lat]: LngLat) {
+  return HALO_METERS / (METERS_PER_PIXEL_Z0 * Math.cos((lat * Math.PI) / 180));
 }
 
 function boundsOf(points: LngLat[]): LngLatBoundsLike {
@@ -129,37 +130,59 @@ function framePoints({
   return [...route, ...end];
 }
 
-function signalAge(position: LastPosition, now: Date): number {
-  const ms = now.getTime() - Date.parse(position.recordedAt);
-  return Math.max(0, Math.floor(ms / 1000));
-}
-
-export default function DeliveryMap(props: DeliveryMapProps) {
-  const { route, area, stage, position, label, caption } = props;
+export default function DeliveryMap(props: DeliveryCanvasProps) {
+  const { route, area, stage, position, label, stale, captionId } = props;
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const vehicle = useRef<Marker | null>(null);
   const shown = useRef<{ at: LngLat; rotation: number } | null>(null);
-  const target = useRef<LastPosition | null>(null);
   const frame = useRef(0);
   const framed = useRef(false);
+  const userMoved = useRef(false);
   const [failed, setFailed] = useState(false);
   const theme: Theme = useTheme().resolvedTheme === 'dark' ? 'dark' : 'light';
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const split = traveledIndex(props);
 
-  const addRoute = useEffectEvent((map: MapLibreMap) => {
+  // Fires on the first style and after every setStyle, which drops custom sources and layers.
+  const addLayers = useEffectEvent((map: MapLibreMap) => {
+    const colors = COLORS[theme];
+    if (area) {
+      const radius = haloPixelsAtZoom0(area.center);
+      map.addSource('area', {
+        type: 'geojson',
+        data: { type: 'Point', coordinates: area.center },
+      });
+      map.addLayer({
+        id: 'area-halo',
+        type: 'circle',
+        source: 'area',
+        paint: {
+          // circle-radius is in pixels; doubling it per zoom level keeps a fixed ground size.
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            0,
+            radius,
+            22,
+            radius * 2 ** 22,
+          ],
+          'circle-color': colors.traveled,
+          'circle-opacity': 0.15,
+          'circle-stroke-color': colors.traveled,
+          'circle-stroke-opacity': 0.4,
+          'circle-stroke-width': 1,
+        },
+      });
+    }
     if (!route) return;
-    const colors = ROUTE_COLORS[theme];
-    map.addSource(ROUTE_SOURCE, {
-      type: 'geojson',
-      data: routeData(route, split),
-    });
+    map.addSource('route', { type: 'geojson', data: routeData(route, split) });
     for (const part of ['remaining', 'traveled'] as const) {
       map.addLayer({
         id: `route-${part}`,
         type: 'line',
-        source: ROUTE_SOURCE,
+        source: 'route',
         filter: ['==', ['get', 'part'], part],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
@@ -181,6 +204,7 @@ export default function DeliveryMap(props: DeliveryMapProps) {
         cooperativeGestures: true,
         dragRotate: false,
         touchPitch: false,
+        locale: { 'Map.Title': label },
       });
     } catch (error) {
       // Includes GPUInitializationError: no WebGL2, or the context was refused.
@@ -188,17 +212,6 @@ export default function DeliveryMap(props: DeliveryMapProps) {
       setFailed(true);
       return null;
     }
-    map.touchZoomRotate.disableRotation();
-    let loaded = false;
-    map.once('load', () => {
-      loaded = true;
-    });
-    map.on('error', ({ error }) => {
-      console.error(error);
-      if (!loaded) setFailed(true);
-    });
-    // Fires again after every setStyle, which drops custom sources and layers.
-    map.on('style.load', () => addRoute(map));
     if (props.destination) {
       new Marker({
         element: element(
@@ -208,30 +221,55 @@ export default function DeliveryMap(props: DeliveryMapProps) {
         .setLngLat(props.destination)
         .addTo(map);
     }
-    if (area) {
-      const halo = element(
-        'flex size-36 items-center justify-center rounded-full bg-primary/15 text-sm font-medium text-foreground ring-1 ring-primary/30',
-      );
-      halo.textContent = area.city;
-      new Marker({ element: halo }).setLngLat(area.center).addTo(map);
-    }
     return map;
   });
 
+  const onResize = useEffectEvent(() => {
+    if (!userMoved.current) fitCamera(stage, false);
+  });
+
   useEffect(() => {
-    if (!container.current) return;
-    const map = createMap(container.current);
+    const node = container.current;
+    const map = node && createMap(node);
+    if (!node || !map) return;
     mapRef.current = map;
-    return () => {
+    let disposed = false;
+    let loaded = false;
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
       cancelAnimationFrame(frame.current);
-      map?.remove();
+      map.remove();
       mapRef.current = null;
       vehicle.current = null;
       shown.current = null;
-      target.current = null;
       framed.current = false;
+      userMoved.current = false;
     };
-  }, []);
+
+    map.touchZoomRotate.disableRotation();
+    map.getCanvas().setAttribute('aria-describedby', captionId);
+    map.once('load', () => {
+      loaded = true;
+      // Compact attribution starts open; the toggle keeps the OSM credit one tap away.
+      node
+        .querySelector('.maplibregl-compact-show')
+        ?.classList.remove('maplibregl-compact-show');
+    });
+    map.on('error', (event: ErrorEvent) => {
+      console.error(event.error);
+      // A missing tile leaves the rest of the map usable; only the style or GL failing is fatal.
+      if (disposed || loaded || 'tile' in event || 'sourceId' in event) return;
+      dispose();
+      setFailed(true);
+    });
+    map.on('style.load', () => addLayers(map));
+    map.on('movestart', (event) => {
+      if (event.originalEvent) userMoved.current = true;
+    });
+    map.on('resize', onResize);
+    return dispose;
+  }, [captionId]);
 
   const applied = useRef<string>(STYLES[theme]);
   useEffect(() => {
@@ -243,47 +281,45 @@ export default function DeliveryMap(props: DeliveryMapProps) {
 
   useEffect(() => {
     if (!route) return;
-    const source = mapRef.current?.getSource<GeoJSONSource>(ROUTE_SOURCE);
+    const source = mapRef.current?.getSource<GeoJSONSource>('route');
     source?.setData(routeData(route, split));
   }, [route, split]);
 
-  const fitCamera = useEffectEvent((current: MapStage) => {
+  const fitCamera = useEffectEvent((current: MapStage, glide: boolean) => {
     const map = mapRef.current;
     if (!map) return;
-    // The first frame jumps; only later stage changes glide.
-    const animate = framed.current && !reducedMotion;
-    framed.current = true;
+    const animate = glide && !reducedMotion;
     if (area && current === 'OUT_FOR_DELIVERY') {
       map.easeTo({ center: area.center, zoom: CITY_ZOOM, animate });
       return;
     }
     const points = framePoints({ ...props, stage: current });
     if (points.length > 0) {
-      map.fitBounds(boundsOf(points), { padding: 40, maxZoom: 15, animate });
+      const maxZoom = area ? CITY_MAX_ZOOM : STREET_MAX_ZOOM;
+      map.fitBounds(boundsOf(points), { padding: 40, maxZoom, animate });
     } else if (position) {
       const center: LngLat = [position.lng, position.lat];
       map.easeTo({ center, zoom: VEHICLE_ZOOM, animate });
     }
   });
 
-  // Framed on mount and on stage changes only: following every ping would fight the user's pan.
+  // Framed on mount, on stage changes and on resize until the user pans: following every ping would fight them.
   useEffect(() => {
-    fitCamera(stage);
+    fitCamera(stage, framed.current);
+    framed.current = true;
+    userMoved.current = false;
   }, [stage]);
 
   const moveVehicle = useEffectEvent((next: LastPosition | null) => {
     const map = mapRef.current;
     if (!map) return;
+    cancelAnimationFrame(frame.current);
     if (!next) {
-      cancelAnimationFrame(frame.current);
       vehicle.current?.remove();
       vehicle.current = null;
       shown.current = null;
-      target.current = null;
       return;
     }
-    if (!isNewer(next, target.current)) return;
-    target.current = next;
 
     const to: LngLat = [next.lng, next.lat];
     const from = shown.current;
@@ -295,7 +331,7 @@ export default function DeliveryMap(props: DeliveryMapProps) {
     if (!vehicle.current) {
       vehicle.current = new Marker({
         element: element(
-          'text-primary transition-[filter,opacity] data-[stale=true]:opacity-50 data-[stale=true]:grayscale',
+          'flex size-8 items-center justify-center rounded-full bg-card text-primary shadow-md ring-1 ring-border transition-colors data-[stale=true]:text-muted-foreground',
           VEHICLE_SVG,
         ),
         rotationAlignment: 'map',
@@ -303,6 +339,7 @@ export default function DeliveryMap(props: DeliveryMapProps) {
         .setLngLat(to)
         .setRotation(heading)
         .addTo(map);
+      vehicle.current.getElement().dataset.stale = String(stale);
     }
     const marker = vehicle.current;
     const place = (at: LngLat, rotation: number) => {
@@ -310,7 +347,6 @@ export default function DeliveryMap(props: DeliveryMapProps) {
       shown.current = { at, rotation };
     };
 
-    cancelAnimationFrame(frame.current);
     if (!from || reducedMotion) {
       place(to, heading);
       return;
@@ -329,36 +365,13 @@ export default function DeliveryMap(props: DeliveryMapProps) {
     moveVehicle(position);
   }, [position]);
 
-  const now = useNow(5000);
-  const age = position ? signalAge(position, now) : 0;
-  const stale = age > STALE_MARKER_S;
   useEffect(() => {
     vehicle.current?.getElement().setAttribute('data-stale', String(stale));
   }, [stale]);
 
-  // The public link never shows the vehicle out for delivery, so it isn't waiting for one.
-  const expectsVehicle =
-    stage === 'IN_TRANSIT' || (stage === 'OUT_FOR_DELIVERY' && !area);
-  let signal: string | null = null;
-  if (position && age > STALE_CAPTION_S) {
-    signal = `Last signal ${age < 60 ? `${age}s ago` : formatTimeAgo(position.recordedAt, now)}`;
-  } else if (!position && expectsVehicle) {
-    signal = "Waiting for the vehicle's signal";
-  }
-
-  return (
-    <section aria-label={label}>
-      <figure className="flex flex-col gap-2.5">
-        {failed ? (
-          <MapUnavailable />
-        ) : (
-          <div ref={container} className={`${MAP_FRAME} bg-muted`} />
-        )}
-        <figcaption className="text-[13px] text-muted-foreground">
-          {caption}
-          {signal && ` · ${signal}`}
-        </figcaption>
-      </figure>
-    </section>
+  return failed ? (
+    <MapUnavailable />
+  ) : (
+    <div ref={container} className={`${MAP_FRAME} bg-muted`} />
   );
 }

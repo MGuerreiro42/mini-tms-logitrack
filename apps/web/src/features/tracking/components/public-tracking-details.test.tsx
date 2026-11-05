@@ -135,7 +135,7 @@ describe('PublicTrackingDetails', () => {
       const props = mapProps(element);
       expect(props).toMatchObject({
         route: inTransit.map?.route,
-        area: { center: [-46.63, -23.55], city: 'São Paulo' },
+        area: { center: [-46.63, -23.55] },
         stage: 'IN_TRANSIT',
         position: inTransit.lastPosition,
         caption: 'On the way to São Paulo',

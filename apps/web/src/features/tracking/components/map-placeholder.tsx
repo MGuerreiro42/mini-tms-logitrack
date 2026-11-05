@@ -11,7 +11,7 @@ export function MapUnavailable() {
     <div
       className={`${MAP_FRAME} flex items-center justify-center bg-muted p-4 text-center text-sm text-muted-foreground`}
     >
-      Map unavailable. The timeline below still updates live.
+      Map unavailable. The timeline still updates live.
     </div>
   );
 }

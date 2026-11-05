@@ -94,7 +94,7 @@ export function PublicTrackingDetails({
       {tracking.map && stage && (
         <LazyDeliveryMap
           route={tracking.map.route}
-          area={{ center: tracking.map.cityCenter, city: tracking.map.city }}
+          area={{ center: tracking.map.cityCenter }}
           stage={stage}
           // The last mile stays private: once out for delivery, a cached ping must not show.
           position={stage === 'IN_TRANSIT' ? tracking.lastPosition : null}
