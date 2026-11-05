@@ -2,7 +2,7 @@
 
 **Feature**: `live-map` — modules `ShipmentsModule` and `TrackingModule` (extended), `SimulatorModule` (driver)
 **Created**: 2026-11-03
-**Status**: In progress — API implemented, web map pending
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §15 (real-time tracking); `SCREENS.md` § Public → Public Tracking (no full address); spec `01-demo-simulator` (the simulator plays the driver)
 
 ## Summary
@@ -159,3 +159,4 @@ The seller's and the carrier's shipment detail show the full route to the door, 
 | 2026-11-04 | Rewritten: simulated GPS ingestion instead of derived positions, demo addresses geocoded once, last mile hidden from the public link |
 | 2026-11-04 | `recordedAt` future limit lowered to 5 s; public positions also hidden within 1.5 km of the destination |
 | 2026-11-04 | API implemented: routes, ingestion, broadcast, detail and public fields, simulator driver |
+| 2026-11-05 | Web implemented: lazy MapLibre map on the seller, carrier and public screens, live pings into the query cache |
