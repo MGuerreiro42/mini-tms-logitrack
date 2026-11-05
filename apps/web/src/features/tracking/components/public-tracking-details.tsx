@@ -11,10 +11,17 @@ import { useChangeSignal } from '@/hooks/use-change-signal';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
-import { usePublicTracking } from '../hooks/use-public-tracking';
+import { getPublicSocket } from '@/services/websocket-client';
+import { usePositionSubscription } from '../hooks/use-position-subscription';
+import {
+  publicTrackingKey,
+  usePublicTracking,
+} from '../hooks/use-public-tracking';
 import { usePublicTrackingSubscription } from '../hooks/use-public-tracking-subscription';
+import { mapCaption, mapStage } from '../lib/map-stage';
 import { trackingTitle } from '../lib/tracking-title';
-import type { PublicTracking } from '../types';
+import type { PositionEvent, PublicTracking } from '../types';
+import { LazyDeliveryMap } from './lazy-delivery-map';
 import { TrackingTimeline } from './tracking-timeline';
 
 export function PublicTrackingDetails({
@@ -22,8 +29,17 @@ export function PublicTrackingDetails({
 }: {
   initialData: PublicTracking;
 }) {
-  const live = usePublicTrackingSubscription(initialData.trackingCode);
+  const code = initialData.trackingCode;
+  const live = usePublicTrackingSubscription(code);
   const { data: tracking } = usePublicTracking(initialData, live.status);
+  usePositionSubscription<PositionEvent>({
+    getSocket: getPublicSocket,
+    connectionKey: code,
+    room: { event: 'subscribe:tracking', args: [code] },
+    accepts: (event) => event.trackingCode === code,
+    queryKey: publicTrackingKey(code),
+  });
+  const stage = mapStage(tracking.status);
   const title = trackingTitle(tracking);
   const statusSignal = useChangeSignal(tracking.status);
   const statusLabel = SHIPMENT_STATUS[tracking.status].label;
@@ -75,6 +91,17 @@ export function PublicTrackingDetails({
           {tracking.modalityName}
         </p>
       </div>
+      {tracking.map && stage && (
+        <LazyDeliveryMap
+          route={tracking.map.route}
+          area={{ center: tracking.map.cityCenter, city: tracking.map.city }}
+          stage={stage}
+          // The last mile stays private: once out for delivery, a cached ping must not show.
+          position={stage === 'IN_TRANSIT' ? tracking.lastPosition : null}
+          label={`Route to ${tracking.map.city}`}
+          caption={mapCaption(stage, tracking.map.city)}
+        />
+      )}
       <ShipmentStepper status={tracking.status} events={tracking.events} />
       <TrackingTimeline events={tracking.events} status={tracking.status} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-muted pt-4.5 text-[13px] text-muted-foreground">
