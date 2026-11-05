@@ -12,10 +12,9 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
-import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { POSITION_REPORT_RATE_LIMIT } from '../../shared/throttling/rate-limits';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
-import { Auth } from '../auth/decorators/auth.decorator';
+import { Auth, RateLimitedAuth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ActivityQueryDto } from './dto/activity-query.dto';
@@ -209,9 +208,7 @@ export class ShipmentsController {
     status: 409,
     description: 'Shipment is not IN_TRANSIT or OUT_FOR_DELIVERY',
   })
-  // Below @Auth would run first, before the user that keys the limit is known.
-  @RateLimit(POSITION_REPORT_RATE_LIMIT)
-  @Auth(...CARRIER_ROLES)
+  @RateLimitedAuth(POSITION_REPORT_RATE_LIMIT, ...CARRIER_ROLES)
   @HttpCode(202)
   @Post(':id/positions')
   reportPosition(

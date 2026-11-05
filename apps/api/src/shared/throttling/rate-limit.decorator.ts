@@ -10,7 +10,7 @@ export function RateLimit(limitPerMinute: number) {
     Throttle({ default: { ttl: RATE_LIMIT_WINDOW, limit: limitPerMinute } }),
     ApiResponse({
       status: 429,
-      description: `More than ${limitPerMinute} requests per minute from one client`,
+      description: `More than ${limitPerMinute} requests per minute per user or client`,
     }),
   );
 }

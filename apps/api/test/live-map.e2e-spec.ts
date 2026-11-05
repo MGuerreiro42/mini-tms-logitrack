@@ -4,13 +4,14 @@ import request from 'supertest';
 import { findRoute } from '../src/modules/shipments/routes';
 import { DEMO_SELLERS } from '../src/modules/simulator/demo-dataset';
 import { REDIS_CLIENT } from '../src/shared/redis/redis.module';
-import { RateLimitGuard } from '../src/shared/throttling/rate-limit.guard';
+import { POSITION_REPORT_RATE_LIMIT } from '../src/shared/throttling/rate-limits';
 import {
   connectSocket,
   createCarrier,
   createShipment,
   createTenants,
   type E2eContext,
+  randomIp,
   shipmentBody,
   startApp,
 } from './support/e2e-app';
@@ -25,13 +26,6 @@ describe('Live map (e2e)', () => {
   let seller: string;
   let otherOperator: string;
   let otherCarrierOperator: string;
-  // ThrottlerGuard binds getTracker when the app starts, so the spy goes in first.
-  const getTracker = vi.spyOn(
-    RateLimitGuard.prototype as unknown as {
-      getTracker: (req: object) => Promise<string>;
-    },
-    'getTracker',
-  );
 
   const address = shipmentBody({ carrierId: '', modalityId: '' });
   const route = findRoute({
@@ -108,7 +102,6 @@ describe('Live map (e2e)', () => {
 
   afterAll(async () => {
     await ctx.app.close();
-    getTracker.mockRestore();
     // The demo seller's email is fixed; the demo reset spec seeds its own.
     await truncateAllTables(process.env);
   });
@@ -144,15 +137,20 @@ describe('Live map (e2e)', () => {
 
     it('rate limits per user, not per address', async () => {
       const { id } = await onTheRoad();
-      const operatorId = JSON.parse(
-        Buffer.from(tenants.operator.split('.')[1], 'base64url').toString(),
-      ).sub;
+      // A user of its own, so spending its quota leaves the other tests alone.
+      const manager = await tenants.carrierToken('MANAGER');
+      const fromAnywhere = () =>
+        report(id, manager).set('X-Forwarded-For', randomIp());
 
-      await report(id, tenants.operator).expect(202);
-
-      await expect(getTracker.mock.results.at(-1)?.value).resolves.toBe(
-        `user:${operatorId}`,
+      const statuses = await Promise.all(
+        Array.from({ length: POSITION_REPORT_RATE_LIMIT }, () =>
+          fromAnywhere().then((res) => res.status),
+        ),
       );
+      expect(new Set(statuses)).toEqual(new Set([202]));
+
+      await fromAnywhere().expect(429);
+      await report(id, tenants.operator).expect(202);
     });
 
     it('lets the carrier manager report for a shipment someone else owns', async () => {

@@ -1,6 +1,7 @@
 import { applyDecorators, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import type { GlobalRole } from '../../../../generated/prisma/client';
+import { RateLimit } from '../../../shared/throttling/rate-limit.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './roles.decorator';
@@ -22,4 +23,12 @@ export function Auth(...roles: GlobalRole[]) {
     );
   }
   return applyDecorators(...decorators);
+}
+
+// Auth's guards go first: the rate limit buckets requests by the user they resolve.
+export function RateLimitedAuth(
+  limitPerMinute: number,
+  ...roles: GlobalRole[]
+) {
+  return applyDecorators(Auth(...roles), RateLimit(limitPerMinute));
 }
