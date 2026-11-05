@@ -333,3 +333,22 @@
   }
   /* biome-ignore-end lint/complexity/noImportantStyles: has to beat utility classes */
 }
+
+/* maplibre-gl's stylesheet is unlayered, so these overrides stay unlayered too. */
+.maplibregl-canvas:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.dark .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background-color: var(--card);
+  color: var(--muted-foreground);
+}
+
+.dark .maplibregl-ctrl-attrib a {
+  color: inherit;
+}
+
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
