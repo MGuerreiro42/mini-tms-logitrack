@@ -27,6 +27,12 @@ export const TERMINAL_STATUSES = Object.values(ShipmentStatus).filter(
   (status) => ALLOWED_TRANSITIONS[status].length === 0,
 );
 
+// The vehicle is on the street: the only stages that report positions.
+export const ROAD_STAGES: ShipmentStatus[] = [
+  ShipmentStatus.IN_TRANSIT,
+  ShipmentStatus.OUT_FOR_DELIVERY,
+];
+
 export function isValidTransition(
   from: ShipmentStatus,
   to: ShipmentStatus,

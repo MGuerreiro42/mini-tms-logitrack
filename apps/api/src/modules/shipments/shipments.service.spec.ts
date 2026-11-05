@@ -9,8 +9,9 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { SHIPMENT_UPDATED } from './shipment-events';
+import { SHIPMENT_UPDATED, VEHICLE_POSITION_REPORTED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
+import { VehiclePositions } from './vehicle-positions';
 
 describe('ShipmentsService', () => {
   let shipmentsService: ShipmentsService;
@@ -31,6 +32,7 @@ describe('ShipmentsService', () => {
   const transaction = vi.fn();
   const queryRaw = vi.fn();
   const emit = vi.fn();
+  const saveIfNewer = vi.fn();
 
   const dto: CreateShipmentDto = {
     addressStreet: 'Av. Paulista',
@@ -128,6 +130,7 @@ describe('ShipmentsService', () => {
     transaction.mockReset();
     queryRaw.mockReset();
     emit.mockReset();
+    saveIfNewer.mockReset();
 
     const tx = {
       shipment: {
@@ -167,6 +170,7 @@ describe('ShipmentsService', () => {
           },
         },
         { provide: EventEmitter2, useValue: { emit } },
+        { provide: VehiclePositions, useValue: { saveIfNewer } },
       ],
     }).compile();
 
@@ -1073,6 +1077,105 @@ describe('ShipmentsService', () => {
         shipmentsService.updateStatus('user-operator', 'shipment-1', dto),
       ).rejects.toThrow(ConflictException);
       expect(trackingEventCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reportPosition', () => {
+    const inTransit = { ...carrierShipment, status: 'IN_TRANSIT' };
+    const ping = (offsetMs = 0) => ({
+      lat: -23.5,
+      lng: -46.6,
+      heading: 90,
+      recordedAt: new Date(Date.now() + offsetMs),
+    });
+
+    it('stores the position and broadcasts it when it is the newest', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      const dto = ping();
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', dto),
+      ).resolves.toEqual({ applied: true });
+
+      expect(saveIfNewer).toHaveBeenCalledWith('shipment-1', dto);
+      expect(emit).toHaveBeenCalledWith(VEHICLE_POSITION_REPORTED, {
+        shipmentId: 'shipment-1',
+        carrierId: 'carrier-1',
+        sellerId: 'seller-1',
+        trackingCode: 'TMS-ABC123',
+        status: 'IN_TRANSIT',
+        ...dto,
+      });
+    });
+
+    it('accepts an older ping without broadcasting it', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierManager);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(false);
+
+      await expect(
+        shipmentsService.reportPosition('user-manager', 'shipment-1', ping()),
+      ).resolves.toEqual({ applied: false });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('stores a missing heading as null', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      const { heading: _, ...withoutHeading } = ping();
+
+      await shipmentsService.reportPosition(
+        'user-operator',
+        'shipment-1',
+        withoutHeading,
+      );
+
+      expect(saveIfNewer).toHaveBeenCalledWith(
+        'shipment-1',
+        expect.objectContaining({ heading: null }),
+      );
+    });
+
+    it('throws ForbiddenException for a non-owning operator', async () => {
+      carrierUserFindUnique.mockResolvedValue({
+        ...carrierOperator,
+        id: 'someone-else',
+      });
+      shipmentFindFirst.mockResolvedValue(inTransit);
+
+      await expect(
+        shipmentsService.reportPosition('user-other', 'shipment-1', ping()),
+      ).rejects.toThrow(ForbiddenException);
+      expect(saveIfNewer).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException off the road', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(carrierShipment);
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', ping()),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it.each([
+      ['older than 10 minutes', -10 * 60 * 1000 - 1000],
+      ['more than 5 s ahead', 6000],
+    ])('throws BadRequestException for a reading %s', async (_, offset) => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+
+      await expect(
+        shipmentsService.reportPosition(
+          'user-operator',
+          'shipment-1',
+          ping(offset),
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(saveIfNewer).not.toHaveBeenCalled();
     });
   });
 });

@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApprovalStatus,
   CarrierRole,
+  type CarrierUser,
   Prisma,
   type Shipment,
   ShipmentStatus,
@@ -27,6 +28,10 @@ import type {
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
+import type {
+  ReportPositionDto,
+  ReportPositionResponseDto,
+} from './dto/report-position.dto';
 import type { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import type { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import type { ShipmentResponseDto } from './dto/shipment-response.dto';
@@ -49,12 +54,19 @@ import {
   toShipmentResponseDto,
 } from './shipment.mappers';
 import { computeDueAt } from './shipment-due-at';
-import { SHIPMENT_UPDATED, type ShipmentUpdatedEvent } from './shipment-events';
+import {
+  SHIPMENT_UPDATED,
+  type ShipmentUpdatedEvent,
+  VEHICLE_POSITION_REPORTED,
+  type VehiclePositionReportedEvent,
+} from './shipment-events';
 import {
   CANCELLABLE_STATUSES,
   isValidTransition,
+  ROAD_STAGES,
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
+import { VehiclePositions } from './vehicle-positions';
 
 const eligibleCarrierWhere = (
   state: string,
@@ -73,6 +85,11 @@ const eligibleCarrierWhere = (
 
 const ATTENTION_LIMIT = 5;
 
+// A device buffers pings while offline; older than this they no longer describe the vehicle.
+const POSITION_MAX_AGE_MS = 10 * 60 * 1000;
+// Device clocks drift; anything further ahead would outrank every honest ping until then.
+const POSITION_MAX_LEAD_MS = 5_000;
+
 // Open and still on the clock: FAILED_DELIVERY is reported on its own, ahead of late ones.
 const LATE_CANDIDATES: ShipmentStatus[] = [
   ShipmentStatus.PENDING,
@@ -87,6 +104,7 @@ export class ShipmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly vehiclePositions: VehiclePositions,
   ) {}
 
   async findEligibleCarriers(
@@ -569,13 +587,7 @@ export class ShipmentsService {
       );
     }
 
-    const isOwner = shipment.ownerId === carrierUser.id;
-    const isManager = carrierUser.role === CarrierRole.MANAGER;
-    if (!isOwner && !isManager) {
-      throw new ForbiddenException(
-        'Only the shipment owner or the carrier manager can update its status',
-      );
-    }
+    this.assertOwnerOrManager(carrierUser, shipment, 'update its status');
 
     if (!isValidTransition(shipment.status, dto.status)) {
       throw new BadRequestException(
@@ -592,6 +604,67 @@ export class ShipmentsService {
       include: carrierShipmentInclude,
     });
     return toCarrierShipmentResponseDto(updated);
+  }
+
+  async reportPosition(
+    userId: string,
+    shipmentId: string,
+    dto: ReportPositionDto,
+  ): Promise<ReportPositionResponseDto> {
+    const carrierUser = await this.findCarrierUserOrThrow(userId);
+    const shipment = await this.findCarrierShipmentOrThrow(
+      carrierUser.carrierId,
+      shipmentId,
+    );
+    this.assertOwnerOrManager(carrierUser, shipment, 'report its position');
+    if (!ROAD_STAGES.includes(shipment.status)) {
+      throw new ConflictException(
+        `Cannot report a position for a shipment that is ${shipment.status}`,
+      );
+    }
+    const age = Date.now() - dto.recordedAt.getTime();
+    if (age > POSITION_MAX_AGE_MS || age < -POSITION_MAX_LEAD_MS) {
+      throw new BadRequestException(
+        'recordedAt must be at most 10 minutes old and 5 seconds ahead',
+      );
+    }
+
+    const position = {
+      lat: dto.lat,
+      lng: dto.lng,
+      heading: dto.heading ?? null,
+      recordedAt: dto.recordedAt,
+    };
+    const applied = await this.vehiclePositions.saveIfNewer(
+      shipment.id,
+      position,
+    );
+    if (applied) {
+      const event: VehiclePositionReportedEvent = {
+        shipmentId: shipment.id,
+        carrierId: shipment.carrierId,
+        sellerId: shipment.sellerId,
+        trackingCode: shipment.trackingCode,
+        status: shipment.status,
+        ...position,
+      };
+      this.eventEmitter.emit(VEHICLE_POSITION_REPORTED, event);
+    }
+    return { applied };
+  }
+
+  private assertOwnerOrManager(
+    carrierUser: Pick<CarrierUser, 'id' | 'role'>,
+    shipment: Pick<Shipment, 'ownerId'>,
+    action: string,
+  ): void {
+    const isOwner = shipment.ownerId === carrierUser.id;
+    const isManager = carrierUser.role === CarrierRole.MANAGER;
+    if (!isOwner && !isManager) {
+      throw new ForbiddenException(
+        `Only the shipment owner or the carrier manager can ${action}`,
+      );
+    }
   }
 
   // Conditional write + timeline event in one transaction; 0 rows matched means someone else won (409).

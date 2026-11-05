@@ -7,6 +7,8 @@ export const SIGNUP_RATE_LIMIT = 5;
 export const PUBLIC_TRACKING_RATE_LIMIT = 60;
 export const PUBLIC_API_RATE_LIMIT = 120;
 export const WEBHOOK_INBOX_RATE_LIMIT = 60;
+// A device pings every few seconds; this leaves room for a burst of resends after reconnecting.
+export const POSITION_REPORT_RATE_LIMIT = 120;
 // Replays and endpoint changes each make outbound requests; bound how fast a seller can trigger them.
 export const WEBHOOK_ACTION_RATE_LIMIT = 20;
 

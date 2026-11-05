@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -11,6 +12,8 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
 import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
+import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
+import { POSITION_REPORT_RATE_LIMIT } from '../../shared/throttling/rate-limits';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -25,6 +28,10 @@ import { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto'
 import { EligibleCarriersQueryDto } from './dto/eligible-carriers-query.dto';
 import { ListQueueQueryDto } from './dto/list-queue-query.dto';
 import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
+import {
+  ReportPositionDto,
+  ReportPositionResponseDto,
+} from './dto/report-position.dto';
 import { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
 import { ShipmentResponseDto } from './dto/shipment-response.dto';
@@ -178,6 +185,38 @@ export class ShipmentsController {
     @Body() dto: UpdateShipmentStatusDto,
   ) {
     return this.shipmentsService.updateStatus(user.id, id, dto);
+  }
+
+  @ApiOperation({
+    summary:
+      "Report the vehicle's GPS position for a shipment on the road — only the owning operator or the carrier manager; a ping older than the stored one is accepted but not applied",
+  })
+  @ApiResponse({ status: 202, type: ReportPositionResponseDto })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Invalid DTO, or recordedAt older than 10 minutes or more than 5 seconds ahead',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Not the owner nor the manager, or carrier not approved',
+  })
+  @ApiResponse({ status: 404, description: 'Shipment not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'Shipment is not IN_TRANSIT or OUT_FOR_DELIVERY',
+  })
+  // Below @Auth would run first, before the user that keys the limit is known.
+  @RateLimit(POSITION_REPORT_RATE_LIMIT)
+  @Auth(...CARRIER_ROLES)
+  @HttpCode(202)
+  @Post(':id/positions')
+  reportPosition(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: ReportPositionDto,
+  ) {
+    return this.shipmentsService.reportPosition(user.id, id, dto);
   }
 
   @ApiOperation({

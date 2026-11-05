@@ -1,4 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { RateLimitGuard } from '../../shared/throttling/rate-limit.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ShipmentsController } from './shipments.controller';
 import { ShipmentsService } from './shipments.service';
@@ -14,6 +15,7 @@ describe('ShipmentsController', () => {
   const claim = vi.fn();
   const updateStatus = vi.fn();
   const cancel = vi.fn();
+  const reportPosition = vi.fn();
   const attentionForSeller = vi.fn();
 
   const user: AuthenticatedUser = {
@@ -38,6 +40,7 @@ describe('ShipmentsController', () => {
     claim.mockReset();
     updateStatus.mockReset();
     cancel.mockReset();
+    reportPosition.mockReset();
     attentionForSeller.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,11 +58,15 @@ describe('ShipmentsController', () => {
             claim,
             updateStatus,
             cancel,
+            reportPosition,
             attentionForSeller,
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(RateLimitGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get(ShipmentsController);
   });
@@ -175,6 +182,20 @@ describe('ShipmentsController', () => {
 
     expect(updateStatus).toHaveBeenCalledWith('user-2', 'shipment-1', dto);
     expect(result).toEqual({ id: 'shipment-1', status: 'COLLECTED' });
+  });
+
+  it('reportPosition delegates to ShipmentsService.reportPosition with the user id, id param, and DTO', async () => {
+    const dto = { lat: -23.5, lng: -46.6, recordedAt: new Date() };
+    reportPosition.mockResolvedValue({ applied: true });
+
+    const result = await controller.reportPosition(
+      carrierUser,
+      'shipment-1',
+      dto,
+    );
+
+    expect(reportPosition).toHaveBeenCalledWith('user-2', 'shipment-1', dto);
+    expect(result).toEqual({ applied: true });
   });
 
   it('cancel delegates to ShipmentsService.cancel with the user id, id param, and DTO', async () => {

@@ -102,6 +102,24 @@ describe('RateLimitGuard', () => {
     ).resolves.not.toBe(fromOneIp);
   });
 
+  it('gives each authenticated user their own bucket, behind an API key first', async () => {
+    await start(0);
+    const guard = app.get(RateLimitGuard) as unknown as {
+      getTracker: (req: object) => Promise<string>;
+    };
+
+    const user = { id: 'user-1' };
+    await expect(guard.getTracker({ ip: '203.0.113.7', user })).resolves.toBe(
+      await guard.getTracker({ ip: '203.0.113.8', user }),
+    );
+    await expect(
+      guard.getTracker({ ip: '203.0.113.7', user: { id: 'user-2' } }),
+    ).resolves.not.toBe(await guard.getTracker({ ip: '203.0.113.7', user }));
+    await expect(guard.getTracker({ apiKeyId: 'key-1', user })).resolves.toBe(
+      await guard.getTracker({ apiKeyId: 'key-1' }),
+    );
+  });
+
   it('lets requests through, with a warning, when the storage fails', async () => {
     const warn = vi
       .spyOn(Logger.prototype, 'warn')
