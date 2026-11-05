@@ -209,7 +209,7 @@ describe('Live map (e2e)', () => {
       expect(sellerDetail.body.lastPosition.lat).toBe(far.lat);
     });
 
-    it('expires the stored position 10 minutes after the last ping', async () => {
+    it('expires the stored position 10 minutes after the reading', async () => {
       const { id } = await onTheRoad();
       await report(id, tenants.operator).expect(202);
 
@@ -219,6 +219,19 @@ describe('Live map (e2e)', () => {
 
       expect(ttl).toBeGreaterThan(9 * MINUTE);
       expect(ttl).toBeLessThanOrEqual(10 * MINUTE);
+    });
+
+    it('expires a buffered reading 10 minutes after it was taken, not after it arrived', async () => {
+      const { id } = await onTheRoad();
+      const recordedAt = new Date(Date.now() - 9 * MINUTE);
+      await report(id, tenants.operator, far, recordedAt).expect(202);
+
+      const ttl = await ctx.app
+        .get<Redis>(REDIS_CLIENT)
+        .pttl(`vehicle-position:${id}`);
+
+      expect(ttl).toBeGreaterThan(0);
+      expect(ttl).toBeLessThanOrEqual(MINUTE);
     });
 
     it('broadcasts the internal payload to the seller room', async () => {

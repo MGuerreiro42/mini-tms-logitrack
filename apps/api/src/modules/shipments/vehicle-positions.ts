@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Redis } from 'ioredis';
+import type { Redis, Result } from 'ioredis';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
 
 export interface VehiclePosition {
@@ -9,7 +9,8 @@ export interface VehiclePosition {
   recordedAt: Date;
 }
 
-const POSITION_TTL_MS = 10 * 60 * 1000;
+// A reading older than this no longer describes the vehicle: refused on ingestion, expired in storage.
+export const POSITION_MAX_AGE_MS = 10 * 60 * 1000;
 
 const positionKey = (shipmentId: string) => `vehicle-position:${shipmentId}`;
 
@@ -18,27 +19,42 @@ const SET_IF_NEWER = `
 local cur = tonumber(redis.call('HGET', KEYS[1], 'recordedAt'))
 if cur and cur >= tonumber(ARGV[1]) then return 0 end
 redis.call('HSET', KEYS[1], 'recordedAt', ARGV[1], 'lat', ARGV[2], 'lng', ARGV[3], 'heading', ARGV[4])
-redis.call('PEXPIRE', KEYS[1], ARGV[5])
+redis.call('PEXPIREAT', KEYS[1], ARGV[5])
 return 1`;
+
+declare module 'ioredis' {
+  interface RedisCommander<Context> {
+    setVehiclePositionIfNewer(
+      key: string,
+      ...args: (string | number)[]
+    ): Result<number, Context>;
+  }
+}
 
 @Injectable()
 export class VehiclePositions {
-  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {
+    // Sent once and then run by its SHA (EVALSHA), not resent with every ping.
+    redis.defineCommand('setVehiclePositionIfNewer', {
+      numberOfKeys: 1,
+      lua: SET_IF_NEWER,
+    });
+  }
 
   // True when this ping became the latest position.
   async saveIfNewer(
     shipmentId: string,
     position: VehiclePosition,
   ): Promise<boolean> {
-    const applied = await this.redis.eval(
-      SET_IF_NEWER,
-      1,
+    const recordedAt = position.recordedAt.getTime();
+    const applied = await this.redis.setVehiclePositionIfNewer(
       positionKey(shipmentId),
-      position.recordedAt.getTime(),
+      recordedAt,
       position.lat,
       position.lng,
       position.heading ?? '',
-      POSITION_TTL_MS,
+      // Expires with the reading's age, not the write's, so a stored position is never older than this.
+      recordedAt + POSITION_MAX_AGE_MS,
     );
     return applied === 1;
   }

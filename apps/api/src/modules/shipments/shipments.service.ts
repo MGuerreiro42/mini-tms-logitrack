@@ -74,7 +74,7 @@ import {
   ROAD_STAGES,
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
-import { VehiclePositions } from './vehicle-positions';
+import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
 
 const eligibleCarrierWhere = (
   state: string,
@@ -93,8 +93,6 @@ const eligibleCarrierWhere = (
 
 const ATTENTION_LIMIT = 5;
 
-// A device buffers pings while offline; older than this they no longer describe the vehicle.
-const POSITION_MAX_AGE_MS = 10 * 60 * 1000;
 // Device clocks drift; anything further ahead would outrank every honest ping until then.
 const POSITION_MAX_LEAD_MS = 5_000;
 
