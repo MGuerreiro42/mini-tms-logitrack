@@ -33,6 +33,7 @@ describe('ShipmentsService', () => {
   const queryRaw = vi.fn();
   const emit = vi.fn();
   const saveIfNewer = vi.fn();
+  const latest = vi.fn();
 
   const dto: CreateShipmentDto = {
     addressStreet: 'Av. Paulista',
@@ -131,6 +132,7 @@ describe('ShipmentsService', () => {
     queryRaw.mockReset();
     emit.mockReset();
     saveIfNewer.mockReset();
+    latest.mockReset();
 
     const tx = {
       shipment: {
@@ -170,7 +172,7 @@ describe('ShipmentsService', () => {
           },
         },
         { provide: EventEmitter2, useValue: { emit } },
-        { provide: VehiclePositions, useValue: { saveIfNewer } },
+        { provide: VehiclePositions, useValue: { saveIfNewer, latest } },
       ],
     }).compile();
 
@@ -460,6 +462,32 @@ describe('ShipmentsService', () => {
       expect(result.id).toBe('shipment-1');
       expect(result.dueAt).toEqual(new Date('2026-01-04'));
       expect(result.trackingEvents).toEqual([]);
+      expect(result.map?.destination).toHaveLength(2);
+      expect(result.lastPosition).toBeNull();
+      expect(latest).not.toHaveBeenCalled();
+    });
+
+    it('includes the latest position while the shipment is on the road', async () => {
+      const position = {
+        lat: -23.5,
+        lng: -46.6,
+        heading: null,
+        recordedAt: new Date(),
+      };
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({
+        ...shipmentWithRelations,
+        status: 'OUT_FOR_DELIVERY',
+      });
+      latest.mockResolvedValue(position);
+
+      const result = await shipmentsService.findOneForSeller(
+        'user-1',
+        'shipment-1',
+      );
+
+      expect(latest).toHaveBeenCalledWith('shipment-1');
+      expect(result.lastPosition).toBe(position);
     });
 
     it('throws NotFoundException when the shipment belongs to another seller (same as not existing)', async () => {

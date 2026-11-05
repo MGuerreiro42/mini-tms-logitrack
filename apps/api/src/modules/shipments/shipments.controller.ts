@@ -34,7 +34,10 @@ import {
 } from './dto/report-position.dto';
 import { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
-import { ShipmentResponseDto } from './dto/shipment-response.dto';
+import {
+  ShipmentDetailResponseDto,
+  ShipmentResponseDto,
+} from './dto/shipment-response.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import { TrackingNoteDto } from './dto/tracking-note.dto';
@@ -298,7 +301,7 @@ export class ShipmentsController {
     summary:
       'Get a single shipment owned by the authenticated seller — a shipment belonging to another seller returns 404, not 403',
   })
-  @ApiResponse({ status: 200, type: ShipmentResponseDto })
+  @ApiResponse({ status: 200, type: ShipmentDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
   @Auth(GlobalRole.SELLER)
   @Get(':id')

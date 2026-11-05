@@ -13,7 +13,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { CreateShipmentDto } from '../shipments/dto/create-shipment.dto';
 import { ListShipmentsQueryDto } from '../shipments/dto/list-shipments-query.dto';
-import { ShipmentResponseDto } from '../shipments/dto/shipment-response.dto';
+import {
+  ShipmentDetailResponseDto,
+  ShipmentResponseDto,
+} from '../shipments/dto/shipment-response.dto';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { ApiKeyAuth } from './api-key-auth.decorator';
 import {
@@ -78,7 +81,7 @@ export class PublicApiController {
     summary:
       "Get one of the key's seller shipments — another seller's shipment returns 404",
   })
-  @ApiResponse({ status: 200, type: ShipmentResponseDto })
+  @ApiResponse({ status: 200, type: ShipmentDetailResponseDto })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
   @Get(':id')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {

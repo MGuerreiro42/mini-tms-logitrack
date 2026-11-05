@@ -34,7 +34,10 @@ import type {
 } from './dto/report-position.dto';
 import type { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import type { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
-import type { ShipmentResponseDto } from './dto/shipment-response.dto';
+import type {
+  ShipmentDetailResponseDto,
+  ShipmentResponseDto,
+} from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
@@ -45,12 +48,14 @@ import {
   adminShipmentInclude,
   carrierShipmentDetailInclude,
   carrierShipmentInclude,
+  type LiveMap,
   pickAddress,
   sellerShipmentDetailInclude,
   sellerShipmentInclude,
   toAdminShipmentResponseDto,
   toCarrierShipmentDetailResponseDto,
   toCarrierShipmentResponseDto,
+  toPublicLiveMapDto,
   toShipmentActivityResponseDto,
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
@@ -145,6 +150,7 @@ export class ShipmentsService {
         status: event.status,
         createdAt: event.createdAt,
       })),
+      ...toPublicLiveMapDto(await this.liveMap(shipment), shipment.status),
     };
   }
 
@@ -393,7 +399,7 @@ export class ShipmentsService {
   async findOneForSeller(
     userId: string,
     id: string,
-  ): Promise<ShipmentResponseDto> {
+  ): Promise<ShipmentDetailResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
 
     // Scoped in the query: another seller's shipment is a 404, indistinguishable from a missing one.
@@ -406,7 +412,7 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    return toShipmentDetailResponseDto(shipment);
+    return toShipmentDetailResponseDto(shipment, await this.liveMap(shipment));
   }
 
   async cancel(
@@ -533,7 +539,10 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    return toCarrierShipmentDetailResponseDto(shipment);
+    return toCarrierShipmentDetailResponseDto(
+      shipment,
+      await this.liveMap(shipment),
+    );
   }
 
   async claim(
@@ -658,6 +667,21 @@ export class ShipmentsService {
       this.eventEmitter.emit(VEHICLE_POSITION_REPORTED, event);
     }
     return { applied };
+  }
+
+  // The stored position outlives the stage by up to its expiry; off the road it is never shown.
+  private async liveMap(
+    shipment: Pick<
+      Shipment,
+      'id' | 'status' | 'addressZipCode' | 'addressNumber'
+    >,
+  ): Promise<LiveMap> {
+    return {
+      route: findRoute(shipment),
+      lastPosition: ROAD_STAGES.includes(shipment.status)
+        ? await this.vehiclePositions.latest(shipment.id)
+        : null,
+    };
   }
 
   private assertOwnerOrManager(
