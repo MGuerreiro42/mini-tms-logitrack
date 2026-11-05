@@ -5,6 +5,7 @@ import { HttpResponse, http } from 'msw';
 import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
+import { mapProps } from '@/test/delivery-map-stub';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
@@ -15,6 +16,10 @@ vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
 }));
+vi.mock(
+  '@/features/tracking/components/lazy-delivery-map',
+  () => import('@/test/delivery-map-stub'),
+);
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const API_URL = 'http://localhost:3333';
@@ -40,6 +45,31 @@ const pendingShipment: ShipmentDetail = {
   map: null,
   lastPosition: null,
 };
+
+const liveMap: ShipmentDetail['map'] = {
+  route: [
+    [-46.9, -23.3],
+    [-46.7, -23.5],
+    [-46.65, -23.56],
+  ],
+  splitIndex: 1,
+  destination: [-46.65, -23.56],
+};
+
+const lastPosition = {
+  lat: -23.4,
+  lng: -46.8,
+  heading: 120,
+  recordedAt: '2026-01-02T00:00:00.000Z',
+};
+
+function serveDetail(overrides: Partial<ShipmentDetail>) {
+  server.use(
+    http.get(`${API_URL}/shipments/shipment-1`, () =>
+      HttpResponse.json({ ...pendingShipment, ...overrides }),
+    ),
+  );
+}
 
 describe('ShipmentDetailCard', () => {
   afterEach(() => {
@@ -233,5 +263,97 @@ describe('ShipmentDetailCard', () => {
     expect(
       dialog.queryByRole('button', { name: 'Cancel shipment' }),
     ).toBeNull();
+  });
+
+  describe('live map', () => {
+    it('shows no map on the road without a route or a position', async () => {
+      serveDetail({ status: 'IN_TRANSIT' });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+      await screen.findByText('Fast Carrier');
+      expect(screen.queryByTestId('delivery-map')).toBeNull();
+    });
+
+    it('passes the full route, the split and the address pin in transit', async () => {
+      serveDetail({ status: 'IN_TRANSIT', map: liveMap, lastPosition });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+      const props = mapProps(await screen.findByTestId('delivery-map'));
+      expect(props).toMatchObject({
+        route: liveMap?.route,
+        splitIndex: 1,
+        destination: [-46.65, -23.56],
+        stage: 'IN_TRANSIT',
+        position: lastPosition,
+        caption: 'On the way to São Paulo',
+      });
+      expect(screen.getByRole('heading', { name: 'Live map' })).toBeVisible();
+    });
+
+    it('shows no map before the shipment is on the road', async () => {
+      serveDetail({ status: 'COLLECTED', map: liveMap });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+      await screen.findByText('Fast Carrier');
+      expect(screen.queryByTestId('delivery-map')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Live map' })).toBeNull();
+    });
+
+    it('switches to the last-mile stage when a refetch brings out for delivery', async () => {
+      const queryClient = new QueryClient();
+      serveDetail({ status: 'IN_TRANSIT', map: liveMap });
+      renderWithQueryClient(
+        <ShipmentDetailCard id="shipment-1" />,
+        queryClient,
+      );
+      await screen.findByTestId('delivery-map');
+
+      serveDetail({ status: 'OUT_FOR_DELIVERY', map: liveMap });
+      await act(() => queryClient.invalidateQueries());
+
+      await waitFor(() =>
+        expect(mapProps(screen.getByTestId('delivery-map')).stage).toBe(
+          'OUT_FOR_DELIVERY',
+        ),
+      );
+    });
+
+    it('shows a marker-only map for a position without a stored route', async () => {
+      serveDetail({ status: 'OUT_FOR_DELIVERY', lastPosition });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+      const props = mapProps(await screen.findByTestId('delivery-map'));
+      expect(props).toMatchObject({ route: null, position: lastPosition });
+      expect(props).not.toHaveProperty('destination');
+    });
+
+    it('moves the vehicle on a tracking:position ping for this shipment', async () => {
+      const socket = makeFakeSocket();
+      vi.mocked(getSocket).mockReturnValue(socket as never);
+      serveDetail({ status: 'IN_TRANSIT', map: liveMap, lastPosition });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+      await screen.findByTestId('delivery-map');
+
+      const ping = {
+        lat: -23.45,
+        lng: -46.75,
+        heading: 130,
+        recordedAt: '2026-01-02T00:00:02.000Z',
+      };
+      act(() =>
+        socket.trigger('tracking:position', {
+          ...ping,
+          shipmentId: 'shipment-1',
+          trackingCode: 'TMS-AAA111',
+          status: 'IN_TRANSIT',
+        }),
+      );
+
+      await waitFor(() =>
+        expect(mapProps(screen.getByTestId('delivery-map')).position).toEqual(
+          ping,
+        ),
+      );
+    });
   });
 });

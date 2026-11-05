@@ -20,7 +20,7 @@ import {
   lerpLngLat,
   nearestIndex,
 } from '../lib/vehicle-motion';
-import type { LastPosition, LngLat } from '../types';
+import type { LastPosition, LngLat, MapStage } from '../types';
 import { MAP_FRAME, MapUnavailable } from './map-placeholder';
 
 // Turbopack only emits the worker as an asset when it sees this URL pattern.
@@ -53,8 +53,6 @@ const ROUTE_SOURCE = 'route';
 
 const VEHICLE_SVG =
   '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2 20 21 12 16.5 4 21Z" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-
-export type MapStage = 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DONE';
 
 export interface DeliveryMapProps {
   route: LngLat[] | null;

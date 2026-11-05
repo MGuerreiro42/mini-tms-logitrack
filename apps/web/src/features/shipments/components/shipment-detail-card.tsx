@@ -18,10 +18,12 @@ import { formatDate, formatDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
+import { shipmentKeys } from '../api/keys';
 import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import { isCancellableBySeller, type Shipment } from '../types';
+import { isCancellableBySeller, type ShipmentDetail } from '../types';
 import { CancelShipmentAction } from './cancel-shipment-action';
+import { ShipmentMapPanel } from './shipment-map-panel';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
   const live = useShipmentTracking({ shipmentId: id });
@@ -42,7 +44,7 @@ function ShipmentDetailView({
   shipment,
   live,
 }: {
-  shipment: Shipment;
+  shipment: ShipmentDetail;
   live: LiveConnection;
 }) {
   const origin = useAppOrigin();
@@ -89,6 +91,10 @@ function ShipmentDetailView({
               events={shipment.trackingEvents}
             />
           </Panel>
+          <ShipmentMapPanel
+            shipment={shipment}
+            queryKey={shipmentKeys.detail(shipment.id)}
+          />
           <Panel title="Delivery">
             <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-y-3 text-sm md:grid-cols-[8rem_minmax(0,1fr)]">
               <dt className="text-muted-foreground">Destination</dt>

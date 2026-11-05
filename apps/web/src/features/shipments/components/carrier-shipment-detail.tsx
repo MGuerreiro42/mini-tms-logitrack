@@ -13,6 +13,7 @@ import { useSession } from '@/hooks/use-session';
 import type { LiveConnection } from '@/lib/live-status';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import { cn } from '@/lib/utils';
+import { shipmentKeys } from '../api/keys';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useQueueShipment } from '../hooks/use-queue-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
@@ -21,6 +22,7 @@ import {
   ALLOWED_NEXT_STATUSES,
   type CarrierShipment,
   isClaimable,
+  type QueueShipmentDetail,
   type ShipmentStatus,
   TRACKING_NOTE_MAX_LENGTH,
 } from '../types';
@@ -30,6 +32,7 @@ import {
   ShipmentTimelineCard,
   ShipmentTitle,
 } from './shipment-detail-parts';
+import { ShipmentMapPanel } from './shipment-map-panel';
 
 type ActionState =
   | { kind: 'claim' }
@@ -67,7 +70,7 @@ function CarrierShipmentView({
   shipment,
   live,
 }: {
-  shipment: CarrierShipment;
+  shipment: QueueShipmentDetail;
   live: LiveConnection;
 }) {
   const session = useSession();
@@ -89,6 +92,10 @@ function CarrierShipmentView({
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start">
         <div className="flex flex-col gap-5">
           <NextStep shipment={shipment} actionState={actionState} />
+          <ShipmentMapPanel
+            shipment={shipment}
+            queryKey={shipmentKeys.queueDetail(shipment.id)}
+          />
           <Card>
             <CardHeader>
               <CardTitle>Delivery</CardTitle>

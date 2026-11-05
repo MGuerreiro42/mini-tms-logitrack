@@ -19,6 +19,8 @@ export interface PositionEvent extends LastPosition {
   trackingCode: string;
 }
 
+export type MapStage = 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DONE';
+
 export interface PublicTrackingMap {
   route: LngLat[];
   city: string;
