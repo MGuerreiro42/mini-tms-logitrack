@@ -7,7 +7,7 @@ import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
-import type { CarrierShipment } from '../types';
+import type { QueueShipmentDetail } from '../types';
 import { CarrierShipmentDetail } from './carrier-shipment-detail';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -17,7 +17,7 @@ vi.mock('@/services/websocket-client', async (importOriginal) => ({
 
 const API_URL = 'http://localhost:3333';
 
-const unclaimedShipment: CarrierShipment = {
+const unclaimedShipment: QueueShipmentDetail = {
   id: 'shipment-1',
   trackingCode: 'TMS-AAA111',
   status: 'PENDING',
@@ -38,16 +38,18 @@ const unclaimedShipment: CarrierShipment = {
   createdAt: '2026-01-01T00:00:00.000Z',
   dueAt: '2026-01-06T00:00:00.000Z',
   trackingEvents: [],
+  map: null,
+  lastPosition: null,
 };
 
-const claimedByOperator: CarrierShipment = {
+const claimedByOperator: QueueShipmentDetail = {
   ...unclaimedShipment,
   status: 'ACCEPTED',
   ownerId: 'carrier-user-1',
   ownerEmail: 'operator@example.com',
 };
 
-function mockDetail(shipment: CarrierShipment) {
+function mockDetail(shipment: QueueShipmentDetail) {
   server.use(
     http.get(`${API_URL}/shipments/queue/shipment-1`, () =>
       HttpResponse.json(shipment),

@@ -55,6 +55,8 @@ describe('TrackingPage', () => {
               addressState: 'SP',
               modalityName: 'Standard',
               events: [],
+              map: null,
+              lastPosition: null,
             })
           : HttpResponse.json(
               { statusCode: 404, message: 'Not found' },

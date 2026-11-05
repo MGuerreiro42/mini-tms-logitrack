@@ -21,6 +21,8 @@ const tracking: PublicTracking = {
   addressState: 'SP',
   modalityName: 'Standard',
   events: [{ status: 'ACCEPTED', createdAt: '2026-01-01T00:00:00.000Z' }],
+  map: null,
+  lastPosition: null,
 };
 
 function serveTracking(data: PublicTracking) {

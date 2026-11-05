@@ -8,7 +8,7 @@ import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
-import type { Shipment } from '../types';
+import type { ShipmentDetail } from '../types';
 import { ShipmentDetailCard } from './shipment-detail-card';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -19,7 +19,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const API_URL = 'http://localhost:3333';
 
-const pendingShipment: Shipment = {
+const pendingShipment: ShipmentDetail = {
   id: 'shipment-1',
   trackingCode: 'TMS-AAA111',
   status: 'PENDING',
@@ -37,6 +37,8 @@ const pendingShipment: Shipment = {
   createdAt: '2026-01-01T00:00:00.000Z',
   dueAt: '2026-01-06T00:00:00.000Z',
   trackingEvents: [],
+  map: null,
+  lastPosition: null,
 };
 
 describe('ShipmentDetailCard', () => {

@@ -1,3 +1,8 @@
+import type {
+  LastPosition,
+  LngLat,
+  PositionEvent,
+} from '@/features/tracking/types';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ShipmentStatus,
@@ -61,6 +66,26 @@ export interface CarrierShipment extends ShipmentBase {
   sellerEmail: string;
   ownerId: string | null;
   ownerEmail: string | null;
+}
+
+export interface ShipmentMap {
+  route: LngLat[];
+  splitIndex: number;
+  destination: LngLat;
+}
+
+interface LiveMapFields {
+  map: ShipmentMap | null;
+  lastPosition: LastPosition | null;
+}
+
+export interface ShipmentDetail extends Shipment, LiveMapFields {}
+
+export interface QueueShipmentDetail extends CarrierShipment, LiveMapFields {}
+
+export interface ShipmentPositionEvent extends PositionEvent {
+  shipmentId: string;
+  status: ShipmentStatus;
 }
 
 export interface AdminShipmentResponse extends CarrierShipment {
