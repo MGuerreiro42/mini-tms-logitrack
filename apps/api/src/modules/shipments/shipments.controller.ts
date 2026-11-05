@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -209,7 +210,7 @@ export class ShipmentsController {
     description: 'Shipment is not IN_TRANSIT or OUT_FOR_DELIVERY',
   })
   @RateLimitedAuth(POSITION_REPORT_RATE_LIMIT, ...CARRIER_ROLES)
-  @HttpCode(202)
+  @HttpCode(HttpStatus.ACCEPTED)
   @Post(':id/positions')
   reportPosition(
     @CurrentUser() user: AuthenticatedUser,

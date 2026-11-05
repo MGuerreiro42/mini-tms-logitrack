@@ -1,6 +1,11 @@
 import type { Redis } from 'ioredis';
 import type { Socket } from 'socket.io-client';
 import request from 'supertest';
+import {
+  distanceKm,
+  LAST_MILE_KM,
+  type LngLat,
+} from '../src/modules/shipments/route-geometry';
 import { findRoute } from '../src/modules/shipments/routes';
 import { DEMO_SELLERS } from '../src/modules/simulator/demo-dataset';
 import { REDIS_CLIENT } from '../src/shared/redis/redis.module';
@@ -267,9 +272,27 @@ describe('Live map (e2e)', () => {
       String(destLat),
       String(destLng),
     ];
+    // Every coordinate in a payload, as a [lng, lat] pair or a { lat, lng } object.
+    const coordinates = (value: unknown): LngLat[] => {
+      if (Array.isArray(value)) {
+        const isPair =
+          value.length === 2 && value.every((n) => typeof n === 'number');
+        return isPair ? [value as LngLat] : value.flatMap(coordinates);
+      }
+      if (!value || typeof value !== 'object') return [];
+      const { lat, lng } = value as { lat?: unknown; lng?: unknown };
+      const own: LngLat[] =
+        typeof lat === 'number' && typeof lng === 'number' ? [[lng, lat]] : [];
+      return [...own, ...Object.values(value).flatMap(coordinates)];
+    };
     const expectNoStreetLevel = (payload: unknown) => {
       const json = JSON.stringify(payload);
       for (const value of streetLevel) expect(json).not.toContain(value);
+      for (const point of coordinates(payload)) {
+        expect(distanceKm(point, route.destination)).toBeGreaterThanOrEqual(
+          LAST_MILE_KM,
+        );
+      }
     };
 
     it('gives the public response the route to the city and the position in transit', async () => {

@@ -10,7 +10,7 @@ export interface RoutePoint {
   heading: number;
 }
 
-// The public link never shows a point this close to the door (DESIGN.md § 15).
+// The public link never shows a point this close to the door (DESIGN.md § 5, Live map).
 export const LAST_MILE_KM = 1.5;
 
 const EARTH_RADIUS_KM = 6371;

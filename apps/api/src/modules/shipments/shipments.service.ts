@@ -624,6 +624,14 @@ export class ShipmentsService {
     shipmentId: string,
     dto: ReportPositionDto,
   ): Promise<ReportPositionResponseDto> {
+    // Checked first, like the DTO: a reading outside the window is invalid whoever sends it.
+    const age = Date.now() - dto.recordedAt.getTime();
+    if (age > POSITION_MAX_AGE_MS || age < -POSITION_MAX_LEAD_MS) {
+      throw new BadRequestException(
+        `recordedAt must be at most ${POSITION_MAX_AGE_MS / 60_000} minutes old and ${POSITION_MAX_LEAD_MS / 1000} seconds ahead`,
+      );
+    }
+
     const carrierUser = await this.findCarrierUserOrThrow(userId);
     const shipment = await this.findCarrierShipmentOrThrow(
       carrierUser.carrierId,
@@ -633,12 +641,6 @@ export class ShipmentsService {
     if (!ROAD_STAGES.includes(shipment.status)) {
       throw new ConflictException(
         `Cannot report a position for a shipment that is ${shipment.status}`,
-      );
-    }
-    const age = Date.now() - dto.recordedAt.getTime();
-    if (age > POSITION_MAX_AGE_MS || age < -POSITION_MAX_LEAD_MS) {
-      throw new BadRequestException(
-        'recordedAt must be at most 10 minutes old and 5 seconds ahead',
       );
     }
 
