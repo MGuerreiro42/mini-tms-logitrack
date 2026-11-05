@@ -1,14 +1,15 @@
 import type { Job } from 'bullmq';
 import type { DemoResetService } from './demo-reset.service';
-import { RESET_JOB, TICK_JOB } from './simulator.constants';
+import { DRIVE_JOB, RESET_JOB, TICK_JOB } from './simulator.constants';
 import { SimulatorProcessor } from './simulator.processor';
 import type { SimulatorService } from './simulator.service';
 
 describe('SimulatorProcessor', () => {
   const tick = vi.fn();
+  const drive = vi.fn();
   const reset = vi.fn();
   const processor = new SimulatorProcessor(
-    { tick } as unknown as SimulatorService,
+    { tick, drive } as unknown as SimulatorService,
     { reset } as unknown as DemoResetService,
   );
   const job = (name: string) => ({ name }) as Job;
@@ -17,6 +18,12 @@ describe('SimulatorProcessor', () => {
     await processor.process(job(TICK_JOB));
 
     expect(tick).toHaveBeenCalledOnce();
+  });
+
+  it('reports road positions for a drive job', async () => {
+    await processor.process(job(DRIVE_JOB));
+
+    expect(drive).toHaveBeenCalledOnce();
   });
 
   it('resets the demo tenant for a reset job', async () => {

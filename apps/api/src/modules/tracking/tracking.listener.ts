@@ -9,6 +9,8 @@ import {
 import {
   SHIPMENT_UPDATED,
   type ShipmentUpdatedEvent,
+  VEHICLE_POSITION_REPORTED,
+  type VehiclePositionReportedEvent,
 } from '../shipments/shipment-events';
 import { DEMO_RESET } from '../simulator/demo-events';
 import { PublicTrackingGateway } from './public-tracking.gateway';
@@ -46,6 +48,38 @@ export class TrackingListener {
       .emit('tracking:updated', {
         trackingCode: event.trackingCode,
         status: event.status,
+      });
+  }
+
+  @OnEvent(VEHICLE_POSITION_REPORTED)
+  handlePositionReported(event: VehiclePositionReportedEvent): void {
+    const { shipmentId, trackingCode, status, lat, lng, heading, recordedAt } =
+      event;
+    this.gateway.server
+      .to([
+        shipmentRoom(shipmentId),
+        carrierRoom(event.carrierId),
+        sellerRoom(event.sellerId),
+      ])
+      .emit('tracking:position', {
+        shipmentId,
+        trackingCode,
+        status,
+        lat,
+        lng,
+        heading,
+        recordedAt,
+      });
+
+    if (!event.publiclyVisible) return;
+    this.publicGateway.server
+      .to(trackingRoom(trackingCode))
+      .emit('tracking:position', {
+        trackingCode,
+        lat,
+        lng,
+        heading,
+        recordedAt,
       });
   }
 

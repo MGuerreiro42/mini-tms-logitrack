@@ -1,5 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  IntersectionType,
+} from '@nestjs/swagger';
 import { ShipmentStatus } from '../../../../generated/prisma/client';
+import { LiveMapDto } from './live-map.dto';
 import { ShipmentAddressDto } from './shipment-address.dto';
 import { TrackingEventDto } from './tracking-event.dto';
 
@@ -52,7 +57,10 @@ export class CarrierShipmentResponseDto extends ShipmentAddressDto {
   dueAt: Date | null;
 }
 
-export class CarrierShipmentDetailResponseDto extends CarrierShipmentResponseDto {
+export class CarrierShipmentDetailResponseDto extends IntersectionType(
+  CarrierShipmentResponseDto,
+  LiveMapDto,
+) {
   @ApiProperty({ type: [TrackingEventDto] })
   trackingEvents: TrackingEventDto[];
 }

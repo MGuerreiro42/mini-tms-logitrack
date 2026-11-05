@@ -1,6 +1,7 @@
 import { ShipmentStatus } from '../../../generated/prisma/client';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
 import { buildDemoShipments, type DemoTenant } from './demo-dataset';
+import { STAGE_DURATION_MS } from './simulator.constants';
 
 const tenant: DemoTenant = {
   sellerIds: ['seller-1', 'seller-2'],
@@ -112,6 +113,21 @@ describe('buildDemoShipments', () => {
       expect(times).toEqual([...times].sort((a, b) => a - b));
       expect(Math.max(...times)).toBeLessThanOrEqual(NOW);
       expect(events.at(-1)?.status).toBe(shipment.status);
+    }
+  });
+
+  it('starts each seeded vehicle somewhere along its road stage', () => {
+    const onTheRoad = buildDemoShipments(tenant, NOW).flatMap(
+      ({ shipment, events }) => {
+        const stageMs = shipment.status && STAGE_DURATION_MS[shipment.status];
+        return stageMs ? [{ stageMs, events }] : [];
+      },
+    );
+
+    expect(onTheRoad).not.toHaveLength(0);
+    for (const { stageMs, events } of onTheRoad) {
+      const stageStart = events.at(-1)?.createdAt.getTime() ?? 0;
+      expect(NOW - stageStart).toBeLessThanOrEqual(stageMs);
     }
   });
 

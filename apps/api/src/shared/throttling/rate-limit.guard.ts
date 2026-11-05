@@ -14,6 +14,9 @@ export class RateLimitGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
     // Behind an API key, each key gets its own bucket regardless of where it calls from.
     if (typeof req.apiKeyId === 'string') return `api-key:${req.apiKeyId}`;
+    // Authenticated routes key on the user, so one account can't spread its quota across addresses.
+    const user = req.user as { id?: unknown } | undefined;
+    if (typeof user?.id === 'string') return `user:${user.id}`;
     // No resolvable address: one shared bucket, so those requests stay limited instead of unlimited.
     return typeof req.ip === 'string' && req.ip ? req.ip : UNKNOWN_CLIENT;
   }

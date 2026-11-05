@@ -2,15 +2,18 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { DEMO_SELLERS } from '../simulator/demo-dataset';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { SHIPMENT_UPDATED } from './shipment-events';
+import { SHIPMENT_UPDATED, VEHICLE_POSITION_REPORTED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
+import { VehiclePositions } from './vehicle-positions';
 
 describe('ShipmentsService', () => {
   let shipmentsService: ShipmentsService;
@@ -22,6 +25,7 @@ describe('ShipmentsService', () => {
   const shipmentCreate = vi.fn();
   const shipmentFindMany = vi.fn();
   const shipmentFindFirst = vi.fn();
+  const shipmentFindUnique = vi.fn();
   const shipmentCount = vi.fn();
   const shipmentGroupBy = vi.fn();
   const shipmentUpdateManyAndReturn = vi.fn();
@@ -31,6 +35,8 @@ describe('ShipmentsService', () => {
   const transaction = vi.fn();
   const queryRaw = vi.fn();
   const emit = vi.fn();
+  const saveIfNewer = vi.fn();
+  const latest = vi.fn();
 
   const dto: CreateShipmentDto = {
     addressStreet: 'Av. Paulista',
@@ -45,7 +51,11 @@ describe('ShipmentsService', () => {
 
   const approvedSeller = { id: 'seller-1', status: 'APPROVED' };
 
+  // A demo seller at a demo address, so the shipment has a route.
+  const demoSeller = { user: { email: DEMO_SELLERS[0].email } };
+
   const shipmentWithRelations = {
+    seller: demoSeller,
     id: 'shipment-1',
     trackingCode: 'TMS-ABC123',
     status: 'PENDING',
@@ -119,6 +129,7 @@ describe('ShipmentsService', () => {
     shipmentCreate.mockReset();
     shipmentFindMany.mockReset();
     shipmentFindFirst.mockReset();
+    shipmentFindUnique.mockReset();
     shipmentCount.mockReset();
     shipmentGroupBy.mockReset();
     shipmentUpdateManyAndReturn.mockReset();
@@ -128,6 +139,8 @@ describe('ShipmentsService', () => {
     transaction.mockReset();
     queryRaw.mockReset();
     emit.mockReset();
+    saveIfNewer.mockReset();
+    latest.mockReset();
 
     const tx = {
       shipment: {
@@ -154,6 +167,7 @@ describe('ShipmentsService', () => {
               create: shipmentCreate,
               findMany: shipmentFindMany,
               findFirst: shipmentFindFirst,
+              findUnique: shipmentFindUnique,
               findUniqueOrThrow: shipmentFindUniqueOrThrow,
               count: shipmentCount,
               groupBy: shipmentGroupBy,
@@ -167,6 +181,7 @@ describe('ShipmentsService', () => {
           },
         },
         { provide: EventEmitter2, useValue: { emit } },
+        { provide: VehiclePositions, useValue: { saveIfNewer, latest } },
       ],
     }).compile();
 
@@ -456,6 +471,55 @@ describe('ShipmentsService', () => {
       expect(result.id).toBe('shipment-1');
       expect(result.dueAt).toEqual(new Date('2026-01-04'));
       expect(result.trackingEvents).toEqual([]);
+      expect(result.map?.destination).toHaveLength(2);
+      expect(result.lastPosition).toBeNull();
+      expect(latest).not.toHaveBeenCalled();
+    });
+
+    it('includes the latest position while the shipment is on the road', async () => {
+      const position = {
+        lat: -23.5,
+        lng: -46.6,
+        heading: null,
+        recordedAt: new Date(),
+      };
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({
+        ...shipmentWithRelations,
+        status: 'OUT_FOR_DELIVERY',
+      });
+      latest.mockResolvedValue(position);
+
+      const result = await shipmentsService.findOneForSeller(
+        'user-1',
+        'shipment-1',
+      );
+
+      expect(latest).toHaveBeenCalledWith('shipment-1');
+      expect(result.lastPosition).toBe(position);
+    });
+
+    it('still answers, without a position, when Redis is down', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({
+        ...shipmentWithRelations,
+        status: 'IN_TRANSIT',
+      });
+      latest.mockRejectedValue(new Error('Connection is closed.'));
+
+      const result = await shipmentsService.findOneForSeller(
+        'user-1',
+        'shipment-1',
+      );
+
+      expect(result.lastPosition).toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Connection is closed.'),
+      );
+      warn.mockRestore();
     });
 
     it('throws NotFoundException when the shipment belongs to another seller (same as not existing)', async () => {
@@ -1073,6 +1137,174 @@ describe('ShipmentsService', () => {
         shipmentsService.updateStatus('user-operator', 'shipment-1', dto),
       ).rejects.toThrow(ConflictException);
       expect(trackingEventCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reportPosition', () => {
+    const inTransit = { ...carrierShipment, status: 'IN_TRANSIT' };
+    const ping = (offsetMs = 0) => ({
+      lat: -23.5,
+      lng: -46.6,
+      heading: 90,
+      recordedAt: new Date(Date.now() + offsetMs),
+    });
+
+    // The status re-read after the write.
+    const stillIn = (status: string) =>
+      shipmentFindUnique.mockResolvedValue({
+        ...inTransit,
+        seller: demoSeller,
+        status,
+      });
+
+    it('stores the position and broadcasts it when it is the newest', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('IN_TRANSIT');
+      const dto = ping();
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', dto),
+      ).resolves.toEqual({ applied: true });
+
+      expect(saveIfNewer).toHaveBeenCalledWith('shipment-1', dto);
+      expect(emit).toHaveBeenCalledWith(VEHICLE_POSITION_REPORTED, {
+        shipmentId: 'shipment-1',
+        carrierId: 'carrier-1',
+        sellerId: 'seller-1',
+        trackingCode: 'TMS-ABC123',
+        status: 'IN_TRANSIT',
+        ...dto,
+        publiclyVisible: true,
+      });
+    });
+
+    it('broadcasts with the status read after the write', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('OUT_FOR_DELIVERY');
+
+      await shipmentsService.reportPosition(
+        'user-operator',
+        'shipment-1',
+        ping(),
+      );
+
+      expect(emit).toHaveBeenCalledWith(
+        VEHICLE_POSITION_REPORTED,
+        expect.objectContaining({
+          status: 'OUT_FOR_DELIVERY',
+          publiclyVisible: false,
+        }),
+      );
+    });
+
+    it('stays quiet when the shipment left the road during the write', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('DELIVERED');
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', ping()),
+      ).resolves.toEqual({ applied: true });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('accepts an older ping without broadcasting it', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierManager);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(false);
+
+      await expect(
+        shipmentsService.reportPosition('user-manager', 'shipment-1', ping()),
+      ).resolves.toEqual({ applied: false });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('stores a missing heading as null', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('IN_TRANSIT');
+      const { heading: _, ...withoutHeading } = ping();
+
+      await shipmentsService.reportPosition(
+        'user-operator',
+        'shipment-1',
+        withoutHeading,
+      );
+
+      expect(saveIfNewer).toHaveBeenCalledWith(
+        'shipment-1',
+        expect.objectContaining({ heading: null }),
+      );
+    });
+
+    it('throws ForbiddenException for a non-owning operator', async () => {
+      carrierUserFindUnique.mockResolvedValue({
+        ...carrierOperator,
+        id: 'someone-else',
+      });
+      shipmentFindFirst.mockResolvedValue(inTransit);
+
+      await expect(
+        shipmentsService.reportPosition('user-other', 'shipment-1', ping()),
+      ).rejects.toThrow(ForbiddenException);
+      expect(saveIfNewer).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException off the road', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(carrierShipment);
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', ping()),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    describe('recordedAt window', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ now: new Date('2026-01-01T12:00:00Z') });
+        carrierUserFindUnique.mockResolvedValue(carrierOperator);
+        shipmentFindFirst.mockResolvedValue(inTransit);
+        stillIn('IN_TRANSIT');
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it.each([
+        ['exactly 10 minutes old', -600_000],
+        ['exactly 5 s ahead', 5_000],
+      ])('accepts a reading %s', async (_, offset) => {
+        saveIfNewer.mockResolvedValue(true);
+
+        await expect(
+          shipmentsService.reportPosition(
+            'user-operator',
+            'shipment-1',
+            ping(offset),
+          ),
+        ).resolves.toEqual({ applied: true });
+      });
+
+      it.each([
+        ['older than 10 minutes', -600_001],
+        ['more than 5 s ahead', 5_001],
+      ])('rejects a reading %s', async (_, offset) => {
+        await expect(
+          shipmentsService.reportPosition(
+            'user-operator',
+            'shipment-1',
+            ping(offset),
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(saveIfNewer).not.toHaveBeenCalled();
+      });
     });
   });
 });

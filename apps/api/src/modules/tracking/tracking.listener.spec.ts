@@ -1,4 +1,7 @@
-import type { ShipmentUpdatedEvent } from '../shipments/shipment-events';
+import type {
+  ShipmentUpdatedEvent,
+  VehiclePositionReportedEvent,
+} from '../shipments/shipment-events';
 import type { PublicTrackingGateway } from './public-tracking.gateway';
 import type { TrackingGateway } from './tracking.gateway';
 import { TrackingListener } from './tracking.listener';
@@ -60,6 +63,60 @@ describe('TrackingListener', () => {
       status: 'ACCEPTED',
     });
     expect(publicEmit).toHaveBeenCalledTimes(1);
+  });
+
+  describe('tracking:position', () => {
+    const position: VehiclePositionReportedEvent = {
+      shipmentId: 'shipment-1',
+      carrierId: 'carrier-1',
+      sellerId: 'seller-1',
+      trackingCode: 'TMS-ABC123',
+      status: 'IN_TRANSIT',
+      lat: -23.5,
+      lng: -46.6,
+      heading: 90,
+      recordedAt: new Date('2026-01-01T10:00:00Z'),
+      publiclyVisible: true,
+    };
+    const fix = {
+      lat: -23.5,
+      lng: -46.6,
+      heading: 90,
+      recordedAt: position.recordedAt,
+    };
+
+    it('broadcasts the position once over the shipment, carrier and seller rooms', () => {
+      listener.handlePositionReported(position);
+
+      expect(to).toHaveBeenCalledWith([
+        'shipment:shipment-1',
+        'carrier:carrier-1',
+        'seller:seller-1',
+      ]);
+      expect(emit).toHaveBeenCalledWith('tracking:position', {
+        shipmentId: 'shipment-1',
+        trackingCode: 'TMS-ABC123',
+        status: 'IN_TRANSIT',
+        ...fix,
+      });
+    });
+
+    it('sends the public room only the trackingCode and the fix', () => {
+      listener.handlePositionReported(position);
+
+      expect(publicTo).toHaveBeenCalledWith('tracking:TMS-ABC123');
+      expect(publicEmit).toHaveBeenCalledWith('tracking:position', {
+        trackingCode: 'TMS-ABC123',
+        ...fix,
+      });
+    });
+
+    it('keeps a position that is not publicly visible off the public room', () => {
+      listener.handlePositionReported({ ...position, publiclyVisible: false });
+
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(publicEmit).not.toHaveBeenCalled();
+    });
   });
 
   it('tells every client on both namespaces that the demo was reset', () => {

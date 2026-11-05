@@ -1,6 +1,12 @@
 import type { Job, Queue } from 'bullmq';
 import type { DemoResetService } from './demo-reset.service';
-import { RESET_JOB, TICK_EVERY_MS, TICK_JOB } from './simulator.constants';
+import {
+  DRIVE_EVERY_MS,
+  DRIVE_JOB,
+  RESET_JOB,
+  TICK_EVERY_MS,
+  TICK_JOB,
+} from './simulator.constants';
 import {
   type DemoQueueEvents,
   SimulatorScheduler,
@@ -29,7 +35,7 @@ describe('SimulatorScheduler', () => {
     add.mockResolvedValue({ waitUntilFinished } as unknown as Job);
   });
 
-  it('runs one demo job at a time and schedules the tick and the daily reset', async () => {
+  it('runs one demo job at a time and schedules the tick, the drive and the daily reset', async () => {
     await bootstrap();
 
     expect(setGlobalConcurrency).toHaveBeenCalledWith(1);
@@ -37,6 +43,11 @@ describe('SimulatorScheduler', () => {
       TICK_JOB,
       { every: TICK_EVERY_MS },
       expect.objectContaining({ name: TICK_JOB }),
+    );
+    expect(upsertJobScheduler).toHaveBeenCalledWith(
+      DRIVE_JOB,
+      { every: DRIVE_EVERY_MS },
+      expect.objectContaining({ name: DRIVE_JOB }),
     );
     expect(upsertJobScheduler).toHaveBeenCalledWith(
       RESET_JOB,

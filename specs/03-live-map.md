@@ -2,7 +2,7 @@
 
 **Feature**: `live-map` — modules `ShipmentsModule` and `TrackingModule` (extended), `SimulatorModule` (driver)
 **Created**: 2026-11-03
-**Status**: Draft — Not Implemented
+**Status**: In progress — API implemented, web map pending
 **Design reference**: `DESIGN.md` §15 (real-time tracking); `SCREENS.md` § Public → Public Tracking (no full address); spec `01-demo-simulator` (the simulator plays the driver)
 
 ## Summary
@@ -81,7 +81,8 @@ The seller's and the carrier's shipment detail show the full route to the door, 
 - `prefers-reduced-motion`: the marker jumps to each new position with no interpolation.
 - A shipment whose address has no stored route (created outside the demo): no route is drawn; the internal detail still shows reported positions as a marker on the map, the public page shows no map.
 - The status changes while the page is open (e.g., `IN_TRANSIT` → `OUT_FOR_DELIVERY`): the internal map switches segment; the public map stops showing the vehicle and shows the city text.
-- A ping with `recordedAt` more than 30 s in the future or more than 10 min in the past is rejected with `400`.
+- A ping with `recordedAt` more than 5 s in the future or more than 10 min in the past is rejected with `400`.
+- A ping within 1.5 km of the destination while still `IN_TRANSIT` (the route's city entry can sit close to the address): it is broadcast to the internal rooms only; the public room and the public response never show a position that close to the door.
 - The stored position outlives the stage: it expires 10 minutes after the last ping and is never returned for a shipment outside the road stages.
 
 ## Functional Requirements *(mandatory)*
@@ -90,9 +91,9 @@ The seller's and the carrier's shipment detail show the full route to the door, 
 - **FR-002**: Routes MUST be produced by a developer script that geocodes the demo addresses and city centers once (Nominatim) and requests the routes once (OSRM), respecting both services' usage policies; nothing calls them at runtime or in CI.
 - **FR-003**: `POST /shipments/:id/positions` MUST accept `{ lat, lng, heading?, recordedAt }` from the operator who owns the shipment or the carrier manager of an approved carrier, only for shipments in `IN_TRANSIT` or `OUT_FOR_DELIVERY`, validating coordinate ranges and the `recordedAt` window (Edge Cases), rate limited per user.
 - **FR-004**: The latest position per shipment MUST be stored in Redis with a set-if-newer atomic write keyed by `recordedAt` and a 10-minute expiry; the response is `202` with `{ applied: boolean }`.
-- **FR-005**: An applied position MUST be broadcast as `tracking:position` to the shipment, seller and carrier rooms with `{ shipmentId, trackingCode, status, lat, lng, heading, recordedAt }`, and to the public tracking room with `{ trackingCode, lat, lng, heading, recordedAt }` only while the shipment is `IN_TRANSIT`.
+- **FR-005**: An applied position MUST be broadcast as `tracking:position` to the shipment, seller and carrier rooms with `{ shipmentId, trackingCode, status, lat, lng, heading, recordedAt }`, and to the public tracking room with `{ trackingCode, lat, lng, heading, recordedAt }` only while the shipment is `IN_TRANSIT`, has a stored route, and the position is at least 1.5 km (haversine) from the route's destination.
 - **FR-006**: The authenticated detail responses MUST include `map: { route, splitIndex, destination } | null` (full route, address coordinates) and `lastPosition: { lat, lng, heading, recordedAt } | null`.
-- **FR-007**: The public tracking response MUST include `map: { route, city, cityCenter } | null` with the route cut at `splitIndex` and `cityCenter` rounded to 2 decimal places, and `lastPosition` only while `IN_TRANSIT`. A test MUST assert the public response and socket payloads carry no street-level field or last-mile coordinate.
+- **FR-007**: The public tracking response MUST include `map: { route, city, cityCenter } | null` with the route cut at `splitIndex` and `cityCenter` rounded to 2 decimal places, and `lastPosition` only while `IN_TRANSIT` and under the same 1.5 km rule as FR-005. A test MUST assert the public response and socket payloads carry no street-level field or last-mile coordinate.
 - **FR-008**: The simulator MUST run a `drive` job every 2 s while someone is watching (same viewer check as the tick) that reports, as the owning demo operator and through the same service method as the endpoint, the position of every demo shipment in a road stage (User Story 3).
 - **FR-009**: The simulator tick MUST only advance road-stage shipments at `progress = 1` (User Story 3, scenario 2).
 - **FR-010**: The web map MUST load lazily, only on pages that show it, and MUST NOT increase the initial bundle of any other route.
@@ -156,3 +157,5 @@ The seller's and the carrier's shipment detail show the full route to the door, 
 |------|--------|
 | 2026-11-03 | Spec created |
 | 2026-11-04 | Rewritten: simulated GPS ingestion instead of derived positions, demo addresses geocoded once, last mile hidden from the public link |
+| 2026-11-04 | `recordedAt` future limit lowered to 5 s; public positions also hidden within 1.5 km of the destination |
+| 2026-11-04 | API implemented: routes, ingestion, broadcast, detail and public fields, simulator driver |

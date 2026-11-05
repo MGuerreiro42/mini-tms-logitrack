@@ -3,12 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ApprovalStatus,
   CarrierRole,
+  type CarrierUser,
   Prisma,
   type Shipment,
   ShipmentStatus,
@@ -27,34 +29,52 @@ import type {
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import type { PublicTrackingResponseDto } from './dto/public-tracking-response.dto';
+import type {
+  ReportPositionDto,
+  ReportPositionResponseDto,
+} from './dto/report-position.dto';
 import type { ShipmentActivityResponseDto } from './dto/shipment-activity-response.dto';
 import type { ShipmentAttentionResponseDto } from './dto/shipment-attention-response.dto';
-import type { ShipmentResponseDto } from './dto/shipment-response.dto';
+import type {
+  ShipmentDetailResponseDto,
+  ShipmentResponseDto,
+} from './dto/shipment-response.dto';
 import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import { isPublicPosition } from './route-geometry';
+import { findRoute, type RoutableShipment, routeSellerInclude } from './routes';
 import {
   adminShipmentInclude,
   carrierShipmentDetailInclude,
   carrierShipmentInclude,
+  type LiveMap,
   pickAddress,
   sellerShipmentDetailInclude,
   sellerShipmentInclude,
   toAdminShipmentResponseDto,
   toCarrierShipmentDetailResponseDto,
   toCarrierShipmentResponseDto,
+  toPublicLiveMapDto,
   toShipmentActivityResponseDto,
   toShipmentDetailResponseDto,
   toShipmentResponseDto,
 } from './shipment.mappers';
 import { computeDueAt } from './shipment-due-at';
-import { SHIPMENT_UPDATED, type ShipmentUpdatedEvent } from './shipment-events';
+import {
+  SHIPMENT_UPDATED,
+  type ShipmentUpdatedEvent,
+  VEHICLE_POSITION_REPORTED,
+  type VehiclePositionReportedEvent,
+} from './shipment-events';
 import {
   CANCELLABLE_STATUSES,
   isValidTransition,
+  ROAD_STAGES,
 } from './shipment-status.util';
 import { generateTrackingCode } from './tracking-code';
+import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
 
 const eligibleCarrierWhere = (
   state: string,
@@ -73,6 +93,9 @@ const eligibleCarrierWhere = (
 
 const ATTENTION_LIMIT = 5;
 
+// Device clocks drift; anything further ahead would outrank every honest ping until then.
+const POSITION_MAX_LEAD_MS = 5_000;
+
 // Open and still on the clock: FAILED_DELIVERY is reported on its own, ahead of late ones.
 const LATE_CANDIDATES: ShipmentStatus[] = [
   ShipmentStatus.PENDING,
@@ -84,9 +107,12 @@ const LATE_CANDIDATES: ShipmentStatus[] = [
 
 @Injectable()
 export class ShipmentsService {
+  private readonly logger = new Logger(ShipmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly vehiclePositions: VehiclePositions,
   ) {}
 
   async findEligibleCarriers(
@@ -109,6 +135,7 @@ export class ShipmentsService {
       include: {
         modality: { select: { name: true } },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
+        ...routeSellerInclude,
       },
     });
     if (!shipment) {
@@ -125,6 +152,7 @@ export class ShipmentsService {
         status: event.status,
         createdAt: event.createdAt,
       })),
+      ...toPublicLiveMapDto(await this.liveMap(shipment), shipment.status),
     };
   }
 
@@ -373,7 +401,7 @@ export class ShipmentsService {
   async findOneForSeller(
     userId: string,
     id: string,
-  ): Promise<ShipmentResponseDto> {
+  ): Promise<ShipmentDetailResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
 
     // Scoped in the query: another seller's shipment is a 404, indistinguishable from a missing one.
@@ -386,7 +414,7 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    return toShipmentDetailResponseDto(shipment);
+    return toShipmentDetailResponseDto(shipment, await this.liveMap(shipment));
   }
 
   async cancel(
@@ -513,7 +541,10 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    return toCarrierShipmentDetailResponseDto(shipment);
+    return toCarrierShipmentDetailResponseDto(
+      shipment,
+      await this.liveMap(shipment),
+    );
   }
 
   async claim(
@@ -569,13 +600,7 @@ export class ShipmentsService {
       );
     }
 
-    const isOwner = shipment.ownerId === carrierUser.id;
-    const isManager = carrierUser.role === CarrierRole.MANAGER;
-    if (!isOwner && !isManager) {
-      throw new ForbiddenException(
-        'Only the shipment owner or the carrier manager can update its status',
-      );
-    }
+    this.assertOwnerOrManager(carrierUser, shipment, 'update its status');
 
     if (!isValidTransition(shipment.status, dto.status)) {
       throw new BadRequestException(
@@ -592,6 +617,110 @@ export class ShipmentsService {
       include: carrierShipmentInclude,
     });
     return toCarrierShipmentResponseDto(updated);
+  }
+
+  async reportPosition(
+    userId: string,
+    shipmentId: string,
+    dto: ReportPositionDto,
+  ): Promise<ReportPositionResponseDto> {
+    // Checked first, like the DTO: a reading outside the window is invalid whoever sends it.
+    const age = Date.now() - dto.recordedAt.getTime();
+    if (age > POSITION_MAX_AGE_MS || age < -POSITION_MAX_LEAD_MS) {
+      throw new BadRequestException(
+        `recordedAt must be at most ${POSITION_MAX_AGE_MS / 60_000} minutes old and ${POSITION_MAX_LEAD_MS / 1000} seconds ahead`,
+      );
+    }
+
+    const carrierUser = await this.findCarrierUserOrThrow(userId);
+    const shipment = await this.findCarrierShipmentOrThrow(
+      carrierUser.carrierId,
+      shipmentId,
+    );
+    this.assertOwnerOrManager(carrierUser, shipment, 'report its position');
+    if (!ROAD_STAGES.includes(shipment.status)) {
+      throw new ConflictException(
+        `Cannot report a position for a shipment that is ${shipment.status}`,
+      );
+    }
+
+    const position = {
+      lat: dto.lat,
+      lng: dto.lng,
+      heading: dto.heading ?? null,
+      recordedAt: dto.recordedAt,
+    };
+    const applied = await this.vehiclePositions.saveIfNewer(
+      shipment.id,
+      position,
+    );
+    if (!applied) return { applied };
+
+    // A status change can land between the check and the write: the fresh status decides the broadcast.
+    const current = await this.prisma.shipment.findUnique({
+      where: { id: shipment.id },
+      select: {
+        status: true,
+        addressZipCode: true,
+        addressNumber: true,
+        ...routeSellerInclude,
+      },
+    });
+    if (current && ROAD_STAGES.includes(current.status)) {
+      const event: VehiclePositionReportedEvent = {
+        shipmentId: shipment.id,
+        carrierId: shipment.carrierId,
+        sellerId: shipment.sellerId,
+        trackingCode: shipment.trackingCode,
+        status: current.status,
+        ...position,
+        publiclyVisible: isPublicPosition(
+          findRoute(current),
+          current.status,
+          position,
+        ),
+      };
+      this.eventEmitter.emit(VEHICLE_POSITION_REPORTED, event);
+    }
+    return { applied };
+  }
+
+  // The stored position outlives the stage by up to its expiry; off the road it is never shown.
+  private async liveMap(
+    shipment: RoutableShipment & Pick<Shipment, 'id' | 'status'>,
+  ): Promise<LiveMap> {
+    return {
+      route: findRoute(shipment),
+      lastPosition: ROAD_STAGES.includes(shipment.status)
+        ? await this.latestPosition(shipment.id)
+        : null,
+    };
+  }
+
+  // Best effort: with Redis down the detail and the tracking page still render, without the vehicle.
+  private async latestPosition(shipmentId: string) {
+    try {
+      return await this.vehiclePositions.latest(shipmentId);
+    } catch (error) {
+      this.logger.warn(
+        `Could not read the position of shipment ${shipmentId}: ${String(error)}`,
+      );
+      return null;
+    }
+  }
+
+  private assertOwnerOrManager(
+    carrierUser: Pick<CarrierUser, 'id' | 'role'>,
+    shipment: Pick<Shipment, 'ownerId'>,
+    action: string,
+  ): void {
+    const isOwner = shipment.ownerId === carrierUser.id;
+    const isManager = carrierUser.role === CarrierRole.MANAGER;
+    if (!isOwner && !isManager) {
+      throw new ForbiddenException(
+        `Only the shipment owner or the carrier manager can ${action}`,
+      );
+    }
   }
 
   // Conditional write + timeline event in one transaction; 0 rows matched means someone else won (409).
