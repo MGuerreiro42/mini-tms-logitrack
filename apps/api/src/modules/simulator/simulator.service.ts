@@ -1,8 +1,11 @@
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
-import { ShipmentStatus } from '../../../generated/prisma/client';
+import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { pointAt, segmentFor } from '../shipments/route-geometry';
+import { findRoute } from '../shipments/routes';
 import {
   ALLOWED_TRANSITIONS,
+  ROAD_STAGES,
   TERMINAL_STATUSES,
 } from '../shipments/shipment-status.util';
 import { ShipmentsService } from '../shipments/shipments.service';
@@ -13,7 +16,11 @@ import {
   demoShipmentsWhere,
   type LoadedDemoTenant,
 } from './demo-tenant.service';
-import { type RandomSource, SIMULATOR_RANDOM } from './simulator.constants';
+import {
+  type RandomSource,
+  SIMULATOR_RANDOM,
+  STAGE_DURATION_MS,
+} from './simulator.constants';
 
 const ACTIVE_SHIPMENT_CAP = 24;
 const FAILURE_RATE = 0.08;
@@ -27,6 +34,33 @@ const ADVANCEABLE_STATUSES = Object.values(ShipmentStatus).filter(
   (status) =>
     status !== ShipmentStatus.PENDING && forwardTransitions(status).length > 0,
 );
+
+// The latest TrackingEvent marks when the current stage started.
+const stageStart = {
+  trackingEvents: {
+    select: { createdAt: true },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+  },
+} satisfies Prisma.ShipmentSelect;
+
+interface StagedShipment {
+  status: ShipmentStatus;
+  trackingEvents: { createdAt: Date }[];
+}
+
+const stageStartedAt = (shipment: StagedShipment) =>
+  shipment.trackingEvents[0]?.createdAt.getTime() ?? 0;
+
+// Stages without a duration are ready as soon as they start.
+const readyAt = (shipment: StagedShipment) =>
+  stageStartedAt(shipment) + (STAGE_DURATION_MS[shipment.status] ?? 0);
+
+const stageProgress = (shipment: StagedShipment, now: number) => {
+  const duration = STAGE_DURATION_MS[shipment.status];
+  if (!duration) return 1;
+  return Math.min(Math.max((now - stageStartedAt(shipment)) / duration, 0), 1);
+};
 
 @Injectable()
 export class SimulatorService {
@@ -42,13 +76,8 @@ export class SimulatorService {
   ) {}
 
   async tick(): Promise<void> {
-    if (!(await this.presence.hasViewers())) return;
-
-    const tenant = await this.demoTenantService.load();
-    if (!tenant) {
-      this.warnMissingTenantOnce();
-      return;
-    }
+    const tenant = await this.watchedTenant();
+    if (!tenant) return;
 
     await this.attempt(() => this.advanceOne(tenant));
     await this.attempt(() => this.claimOne(tenant));
@@ -57,16 +86,71 @@ export class SimulatorService {
     }
   }
 
+  // Plays the driver: reports where each road-stage shipment is, as its owner would from the road.
+  async drive(): Promise<void> {
+    const tenant = await this.watchedTenant();
+    if (!tenant) return;
+
+    const shipments = await this.prisma.shipment.findMany({
+      where: {
+        ...demoShipmentsWhere(tenant),
+        status: { in: ROAD_STAGES },
+        ownerId: { not: null },
+      },
+      select: {
+        id: true,
+        status: true,
+        addressZipCode: true,
+        addressNumber: true,
+        owner: { select: { userId: true } },
+        ...stageStart,
+      },
+    });
+    const now = Date.now();
+    for (const shipment of shipments) {
+      const route = findRoute(shipment);
+      if (!route || !shipment.owner) continue;
+      const { userId } = shipment.owner;
+      const position = pointAt(
+        segmentFor(route, shipment.status),
+        stageProgress(shipment, now),
+      );
+      await this.attempt(() =>
+        this.shipmentsService.reportPosition(userId, shipment.id, {
+          ...position,
+          recordedAt: new Date(now),
+        }),
+      );
+    }
+  }
+
+  private async watchedTenant(): Promise<LoadedDemoTenant | null> {
+    if (!(await this.presence.hasViewers())) return null;
+
+    const tenant = await this.demoTenantService.load();
+    if (!tenant) this.warnMissingTenantOnce();
+    return tenant;
+  }
+
+  // A road stage only ends when the vehicle arrives; the first to arrive goes first.
   private async advanceOne(tenant: LoadedDemoTenant): Promise<void> {
-    const shipment = await this.prisma.shipment.findFirst({
+    const candidates = await this.prisma.shipment.findMany({
       where: {
         ...demoShipmentsWhere(tenant),
         status: { in: ADVANCEABLE_STATUSES },
         ownerId: { not: null },
       },
-      orderBy: { updatedAt: 'asc' },
-      select: { id: true, status: true, owner: { select: { userId: true } } },
+      select: {
+        id: true,
+        status: true,
+        owner: { select: { userId: true } },
+        ...stageStart,
+      },
     });
+    const now = Date.now();
+    const [shipment] = candidates
+      .filter((candidate) => readyAt(candidate) <= now)
+      .sort((a, b) => readyAt(a) - readyAt(b));
     if (!shipment?.owner) return;
 
     const status = this.nextStatus(shipment.status);
@@ -121,7 +205,7 @@ export class SimulatorService {
   }
 
   // A visitor may act on the same shipment first; the domain rejects the loser with 409.
-  private async attempt(action: () => Promise<void>): Promise<void> {
+  private async attempt(action: () => Promise<unknown>): Promise<void> {
     try {
       await action();
     } catch (error) {

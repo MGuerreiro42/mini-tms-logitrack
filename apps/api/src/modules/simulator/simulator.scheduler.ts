@@ -14,6 +14,8 @@ import { VIEWER_CONNECTED } from '../tracking/tracking-events';
 import { DemoResetService } from './demo-reset.service';
 import {
   DEMO_QUEUE,
+  DRIVE_EVERY_MS,
+  DRIVE_JOB,
   RESET_CRON,
   RESET_JOB,
   RESET_TIMEZONE,
@@ -66,12 +68,17 @@ export class SimulatorScheduler implements OnApplicationBootstrap {
   }
 
   private async schedule(): Promise<void> {
-    // One job at a time across every instance, so a tick never overlaps another demo job.
+    // One job at a time across every instance, so a tick, a drive and a reset never overlap.
     await this.queue.setGlobalConcurrency(1);
     await this.queue.upsertJobScheduler(
       TICK_JOB,
       { every: TICK_EVERY_MS },
       { name: TICK_JOB, opts: JOB_OPTIONS },
+    );
+    await this.queue.upsertJobScheduler(
+      DRIVE_JOB,
+      { every: DRIVE_EVERY_MS },
+      { name: DRIVE_JOB, opts: JOB_OPTIONS },
     );
     await this.queue.upsertJobScheduler(
       RESET_JOB,

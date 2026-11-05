@@ -28,10 +28,15 @@ const tenant: LoadedDemoTenant = {
   },
 };
 
-const owned = (status: ShipmentStatus) => ({
+const NOW = new Date('2026-01-01T12:00:00Z').getTime();
+const MINUTE = 60_000;
+
+// The stage started long enough ago that even a road stage has arrived.
+const owned = (status: ShipmentStatus, stageAgeMs = 60 * MINUTE) => ({
   id: 'shipment-1',
   status,
   owner: { userId: 'operator-user-1' },
+  trackingEvents: [{ createdAt: new Date(NOW - stageAgeMs) }],
 });
 
 describe('SimulatorService', () => {
@@ -39,15 +44,18 @@ describe('SimulatorService', () => {
   const hasViewers = vi.fn();
   const load = vi.fn();
   const findFirst = vi.fn();
+  const findMany = vi.fn();
   const count = vi.fn();
   const updateStatus = vi.fn();
   const claim = vi.fn();
   const create = vi.fn();
+  const reportPosition = vi.fn();
   const random = vi.fn();
 
-  // advanceOne and claimOne each call findFirst once, in that order.
+  // advanceOne lists the candidates, then claimOne picks one pending shipment.
   const givenShipments = (toAdvance: unknown, toClaim: unknown = null) => {
-    findFirst.mockResolvedValueOnce(toAdvance).mockResolvedValueOnce(toClaim);
+    findMany.mockResolvedValueOnce(toAdvance ? [toAdvance] : []);
+    findFirst.mockResolvedValueOnce(toClaim);
   };
 
   beforeEach(async () => {
@@ -55,17 +63,18 @@ describe('SimulatorService', () => {
     hasViewers.mockResolvedValue(true);
     load.mockResolvedValue(tenant);
     random.mockReturnValue(0.5);
+    vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         SimulatorService,
         {
           provide: PrismaService,
-          useValue: { shipment: { findFirst, count } },
+          useValue: { shipment: { findFirst, findMany, count } },
         },
         {
           provide: ShipmentsService,
-          useValue: { updateStatus, claim, create },
+          useValue: { updateStatus, claim, create, reportPosition },
         },
         { provide: TrackingPresence, useValue: { hasViewers } },
         { provide: DemoTenantService, useValue: { load } },
@@ -73,6 +82,10 @@ describe('SimulatorService', () => {
       ],
     }).compile();
     simulator = moduleRef.get(SimulatorService);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('does nothing while nobody is watching', async () => {
@@ -139,6 +152,32 @@ describe('SimulatorService', () => {
     );
   });
 
+  it('leaves a road stage alone until the vehicle arrives', async () => {
+    givenShipments(owned(ShipmentStatus.IN_TRANSIT, 3 * MINUTE));
+
+    await simulator.tick();
+
+    expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('advances the shipment that arrived first', async () => {
+    findMany.mockResolvedValueOnce([
+      { ...owned(ShipmentStatus.OUT_FOR_DELIVERY, 3 * MINUTE), id: 'late' },
+      { ...owned(ShipmentStatus.IN_TRANSIT, 10 * MINUTE), id: 'early' },
+      { ...owned(ShipmentStatus.COLLECTED, 5 * MINUTE), id: 'collected' },
+    ]);
+    findFirst.mockResolvedValueOnce(null);
+
+    await simulator.tick();
+
+    expect(updateStatus).toHaveBeenCalledOnce();
+    expect(updateStatus).toHaveBeenCalledWith(
+      'operator-user-1',
+      'early',
+      expect.objectContaining({ status: ShipmentStatus.OUT_FOR_DELIVERY }),
+    );
+  });
+
   it('claims the oldest pending shipment for an operator', async () => {
     givenShipments(null, { id: 'pending-1' });
 
@@ -197,5 +236,84 @@ describe('SimulatorService', () => {
 
     expect(count).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  describe('drive', () => {
+    // A demo address with a stored route.
+    const onTheRoad = (status: ShipmentStatus, stageAgeMs: number) => ({
+      ...owned(status, stageAgeMs),
+      addressZipCode: '01310-100',
+      addressNumber: '1000',
+    });
+
+    it('does nothing while nobody is watching', async () => {
+      hasViewers.mockResolvedValue(false);
+
+      await simulator.drive();
+
+      expect(findMany).not.toHaveBeenCalled();
+    });
+
+    it('reports the point along the stage, as the owner, timestamped now', async () => {
+      findMany.mockResolvedValue([onTheRoad(ShipmentStatus.IN_TRANSIT, 0)]);
+
+      await simulator.drive();
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ['IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+          }),
+        }),
+      );
+      expect(reportPosition).toHaveBeenCalledWith(
+        'operator-user-1',
+        'shipment-1',
+        {
+          lng: -46.835,
+          lat: -23.33605,
+          heading: expect.any(Number),
+          recordedAt: new Date(NOW),
+        },
+      );
+    });
+
+    it('moves further along as the stage runs', async () => {
+      findMany
+        .mockResolvedValueOnce([onTheRoad(ShipmentStatus.OUT_FOR_DELIVERY, 0)])
+        .mockResolvedValueOnce([
+          onTheRoad(ShipmentStatus.OUT_FOR_DELIVERY, MINUTE),
+        ]);
+
+      await simulator.drive();
+      await simulator.drive();
+
+      const [start, halfway] = reportPosition.mock.calls.map(
+        ([, , position]) => position,
+      );
+      expect(halfway).not.toEqual(start);
+    });
+
+    it('skips a shipment whose address has no route', async () => {
+      findMany.mockResolvedValue([
+        { ...onTheRoad(ShipmentStatus.IN_TRANSIT, 0), addressNumber: '1' },
+      ]);
+
+      await simulator.drive();
+
+      expect(reportPosition).not.toHaveBeenCalled();
+    });
+
+    it('keeps driving the others when a status changed under it', async () => {
+      findMany.mockResolvedValue([
+        onTheRoad(ShipmentStatus.IN_TRANSIT, 0),
+        { ...onTheRoad(ShipmentStatus.IN_TRANSIT, 0), id: 'shipment-2' },
+      ]);
+      reportPosition.mockRejectedValueOnce(new ConflictException());
+
+      await simulator.drive();
+
+      expect(reportPosition).toHaveBeenCalledTimes(2);
+    });
   });
 });
