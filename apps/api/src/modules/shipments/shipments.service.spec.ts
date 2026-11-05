@@ -8,6 +8,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { DEMO_SELLERS } from '../simulator/demo-dataset';
 import type { CreateShipmentDto } from './dto/create-shipment.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { SHIPMENT_UPDATED, VEHICLE_POSITION_REPORTED } from './shipment-events';
@@ -50,7 +51,11 @@ describe('ShipmentsService', () => {
 
   const approvedSeller = { id: 'seller-1', status: 'APPROVED' };
 
+  // A demo seller at a demo address, so the shipment has a route.
+  const demoSeller = { user: { email: DEMO_SELLERS[0].email } };
+
   const shipmentWithRelations = {
+    seller: demoSeller,
     id: 'shipment-1',
     trackingCode: 'TMS-ABC123',
     status: 'PENDING',
@@ -1146,7 +1151,11 @@ describe('ShipmentsService', () => {
 
     // The status re-read after the write.
     const stillIn = (status: string) =>
-      shipmentFindUnique.mockResolvedValue({ ...inTransit, status });
+      shipmentFindUnique.mockResolvedValue({
+        ...inTransit,
+        seller: demoSeller,
+        status,
+      });
 
     it('stores the position and broadcasts it when it is the newest', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);

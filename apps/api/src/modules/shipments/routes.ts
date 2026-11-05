@@ -1,4 +1,5 @@
-import type { Shipment } from '../../../generated/prisma/client';
+import type { Prisma, Shipment } from '../../../generated/prisma/client';
+import { DEMO_SELLERS } from '../simulator/demo-dataset';
 import type { LngLat } from './route-geometry';
 import paulista from './routes/01310100-1000.json';
 import augusta from './routes/01412000-2340.json';
@@ -38,12 +39,26 @@ const ROUTES = new Map(
   ).map((route) => [route.key, route]),
 );
 
-export const findRoute = (
-  shipment: Pick<Shipment, 'addressZipCode' | 'addressNumber'>,
-): DemoRoute | null =>
-  ROUTES.get(
-    routeKey({
-      zipCode: shipment.addressZipCode,
-      number: shipment.addressNumber,
-    }),
-  ) ?? null;
+const DEMO_SELLER_EMAILS: string[] = DEMO_SELLERS.map(({ email }) => email);
+
+// What findRoute needs to tell a demo shipment apart; works as an include or a select.
+export const routeSellerInclude = {
+  seller: { select: { user: { select: { email: true } } } },
+} satisfies Prisma.ShipmentInclude;
+
+export type RoutableShipment = Pick<
+  Shipment,
+  'addressZipCode' | 'addressNumber'
+> & { seller: { user: { email: string } } };
+
+// Demo sellers only: the route files are public, so a real seller shipping to a matching address
+// would have its exact destination drawn on the public map.
+export const findRoute = (shipment: RoutableShipment): DemoRoute | null =>
+  DEMO_SELLER_EMAILS.includes(shipment.seller.user.email)
+    ? (ROUTES.get(
+        routeKey({
+          zipCode: shipment.addressZipCode,
+          number: shipment.addressNumber,
+        }),
+      ) ?? null)
+    : null;

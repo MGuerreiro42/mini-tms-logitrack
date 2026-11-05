@@ -55,11 +55,13 @@ export const randomIp = () =>
 const uniqueDocument = () =>
   Array.from({ length: 14 }, () => randomInt(10)).join('');
 
-async function createUser(ctx: E2eContext, role: GlobalRole) {
+async function createUser(
+  ctx: E2eContext,
+  role: GlobalRole,
+  email = `${randomUUID()}@e2e.test`,
+) {
   const passwordHash = await ctx.app.get(PasswordService).hash(PASSWORD);
-  return ctx.prisma.user.create({
-    data: { email: `${randomUUID()}@e2e.test`, passwordHash, role },
-  });
+  return ctx.prisma.user.create({ data: { email, passwordHash, role } });
 }
 
 async function login(ctx: E2eContext, email: string): Promise<string> {
@@ -106,8 +108,8 @@ export async function createTenants(ctx: E2eContext) {
   });
   const carrier = await createCarrier(ctx, modality.id);
 
-  const sellerToken = async () => {
-    const user = await createUser(ctx, 'SELLER');
+  const sellerToken = async (email?: string) => {
+    const user = await createUser(ctx, 'SELLER', email);
     await ctx.prisma.seller.create({
       data: {
         userId: user.id,
@@ -128,6 +130,7 @@ export async function createTenants(ctx: E2eContext) {
     manager: await carrier.token('MANAGER'),
     operator: await carrier.token('OPERATOR'),
     carrierToken: carrier.token,
+    sellerToken,
   };
 }
 

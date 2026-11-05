@@ -44,7 +44,7 @@ import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { isPublicPosition } from './route-geometry';
-import { findRoute } from './routes';
+import { findRoute, type RoutableShipment, routeSellerInclude } from './routes';
 import {
   adminShipmentInclude,
   carrierShipmentDetailInclude,
@@ -137,6 +137,7 @@ export class ShipmentsService {
       include: {
         modality: { select: { name: true } },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
+        ...routeSellerInclude,
       },
     });
     if (!shipment) {
@@ -658,7 +659,12 @@ export class ShipmentsService {
     // A status change can land between the check and the write: the fresh status decides the broadcast.
     const current = await this.prisma.shipment.findUnique({
       where: { id: shipment.id },
-      select: { status: true, addressZipCode: true, addressNumber: true },
+      select: {
+        status: true,
+        addressZipCode: true,
+        addressNumber: true,
+        ...routeSellerInclude,
+      },
     });
     if (current && ROAD_STAGES.includes(current.status)) {
       const event: VehiclePositionReportedEvent = {
@@ -681,10 +687,7 @@ export class ShipmentsService {
 
   // The stored position outlives the stage by up to its expiry; off the road it is never shown.
   private async liveMap(
-    shipment: Pick<
-      Shipment,
-      'id' | 'status' | 'addressZipCode' | 'addressNumber'
-    >,
+    shipment: RoutableShipment & Pick<Shipment, 'id' | 'status'>,
   ): Promise<LiveMap> {
     return {
       route: findRoute(shipment),

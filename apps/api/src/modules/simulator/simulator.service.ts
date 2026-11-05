@@ -2,7 +2,7 @@ import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { pointAt, segmentFor } from '../shipments/route-geometry';
-import { findRoute } from '../shipments/routes';
+import { findRoute, routeSellerInclude } from '../shipments/routes';
 import {
   ALLOWED_TRANSITIONS,
   ROAD_STAGES,
@@ -102,6 +102,7 @@ export class SimulatorService {
         status: true,
         addressZipCode: true,
         addressNumber: true,
+        ...routeSellerInclude,
         owner: { select: { userId: true } },
         ...stageStart,
       },

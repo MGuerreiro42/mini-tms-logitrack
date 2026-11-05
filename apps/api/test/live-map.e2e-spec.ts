@@ -2,6 +2,7 @@ import type { Redis } from 'ioredis';
 import type { Socket } from 'socket.io-client';
 import request from 'supertest';
 import { findRoute } from '../src/modules/shipments/routes';
+import { DEMO_SELLERS } from '../src/modules/simulator/demo-dataset';
 import { REDIS_CLIENT } from '../src/shared/redis/redis.module';
 import { RateLimitGuard } from '../src/shared/throttling/rate-limit.guard';
 import {
@@ -13,12 +14,15 @@ import {
   shipmentBody,
   startApp,
 } from './support/e2e-app';
+import { truncateAllTables } from './support/e2e-database';
 
 const MINUTE = 60_000;
 
 describe('Live map (e2e)', () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
+  // Only demo sellers get a route, so the shipments here belong to one.
+  let seller: string;
   let otherOperator: string;
   let otherCarrierOperator: string;
   // ThrottlerGuard binds getTracker when the app starts, so the spy goes in first.
@@ -30,7 +34,10 @@ describe('Live map (e2e)', () => {
   );
 
   const address = shipmentBody({ carrierId: '', modalityId: '' });
-  const route = findRoute(address);
+  const route = findRoute({
+    ...address,
+    seller: { user: { email: DEMO_SELLERS[0].email } },
+  });
   if (!route) throw new Error('the e2e shipment address must have a route');
   const [destLng, destLat] = route.destination;
   const [hubLng, hubLat] = route.points[0];
@@ -60,7 +67,7 @@ describe('Live map (e2e)', () => {
   async function onTheRoad(
     status: 'ACCEPTED' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' = 'IN_TRANSIT',
   ) {
-    const shipment = await createShipment(ctx, tenants.sellerA, tenants);
+    const shipment = await createShipment(ctx, seller, tenants);
     await http()
       .patch(`/shipments/${shipment.id}/claim`)
       .auth(tenants.operator, { type: 'bearer' })
@@ -93,6 +100,7 @@ describe('Live map (e2e)', () => {
   beforeAll(async () => {
     ctx = await startApp();
     tenants = await createTenants(ctx);
+    seller = await tenants.sellerToken(DEMO_SELLERS[0].email);
     otherOperator = await tenants.carrierToken('OPERATOR');
     const otherCarrier = await createCarrier(ctx, tenants.modalityId);
     otherCarrierOperator = await otherCarrier.token('OPERATOR');
@@ -101,6 +109,8 @@ describe('Live map (e2e)', () => {
   afterAll(async () => {
     await ctx.app.close();
     getTracker.mockRestore();
+    // The demo seller's email is fixed; the demo reset spec seeds its own.
+    await truncateAllTables(process.env);
   });
 
   describe('ingestion', () => {
@@ -114,12 +124,12 @@ describe('Live map (e2e)', () => {
       expect(res.body).toEqual({ applied: true });
 
       const lastPosition = { ...far, recordedAt: recordedAt.toISOString() };
-      const seller = await http()
+      const sellerDetail = await http()
         .get(`/shipments/${id}`)
-        .auth(tenants.sellerA, { type: 'bearer' })
+        .auth(seller, { type: 'bearer' })
         .expect(200);
-      expect(seller.body.lastPosition).toEqual(lastPosition);
-      expect(seller.body.map).toEqual({
+      expect(sellerDetail.body.lastPosition).toEqual(lastPosition);
+      expect(sellerDetail.body.map).toEqual({
         route: route.points,
         splitIndex: route.splitIndex,
         destination: route.destination,
@@ -156,7 +166,7 @@ describe('Live map (e2e)', () => {
 
       await report(id, otherOperator).expect(403);
       await report(id, otherCarrierOperator).expect(404);
-      await report(id, tenants.sellerA).expect(403);
+      await report(id, seller).expect(403);
       await report(
         '00000000-0000-0000-0000-000000000000',
         tenants.operator,
@@ -192,11 +202,11 @@ describe('Live map (e2e)', () => {
       ).expect(202);
 
       expect(older.body).toEqual({ applied: false });
-      const seller = await http()
+      const sellerDetail = await http()
         .get(`/shipments/${id}`)
-        .auth(tenants.sellerA, { type: 'bearer' })
+        .auth(seller, { type: 'bearer' })
         .expect(200);
-      expect(seller.body.lastPosition.lat).toBe(far.lat);
+      expect(sellerDetail.body.lastPosition.lat).toBe(far.lat);
     });
 
     it('expires the stored position 10 minutes after the last ping', async () => {
@@ -214,7 +224,7 @@ describe('Live map (e2e)', () => {
     it('broadcasts the internal payload to the seller room', async () => {
       const { id, trackingCode } = await onTheRoad('OUT_FOR_DELIVERY');
       const socket: Socket = await connectSocket(ctx, '/', {
-        token: tenants.sellerA,
+        token: seller,
       });
       await socket.emitWithAck('subscribe:seller');
       const received = new Promise((resolve) =>
@@ -337,10 +347,27 @@ describe('Live map (e2e)', () => {
       expect(body.lastPosition).toBeNull();
     });
 
+    it('has no map for a seller outside the demo, even at a demo address', async () => {
+      const { id, trackingCode } = await createShipment(
+        ctx,
+        tenants.sellerA,
+        tenants,
+      );
+
+      const detail = await http()
+        .get(`/shipments/${id}`)
+        .auth(tenants.sellerA, { type: 'bearer' })
+        .expect(200);
+      const { body } = await publicTracking(trackingCode);
+
+      expect(detail.body.map).toBeNull();
+      expect(body.map).toBeNull();
+    });
+
     it('has no map and no public position for an address without a route', async () => {
       const res = await http()
         .post('/shipments')
-        .auth(tenants.sellerA, { type: 'bearer' })
+        .auth(seller, { type: 'bearer' })
         .send({ ...shipmentBody(tenants), addressNumber: '1' })
         .expect(201);
 

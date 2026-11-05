@@ -4,6 +4,7 @@ import { ShipmentStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { TrackingPresence } from '../tracking/tracking-presence';
+import { DEMO_SELLERS } from './demo-dataset';
 import {
   DemoTenantService,
   type LoadedDemoTenant,
@@ -244,6 +245,7 @@ describe('SimulatorService', () => {
       ...owned(status, stageAgeMs),
       addressZipCode: '01310-100',
       addressNumber: '1000',
+      seller: { user: { email: DEMO_SELLERS[0].email } },
     });
 
     it('does nothing while nobody is watching', async () => {

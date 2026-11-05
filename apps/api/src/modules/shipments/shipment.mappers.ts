@@ -18,7 +18,7 @@ import type {
 } from './dto/shipment-response.dto';
 import type { TrackingEventDto } from './dto/tracking-event.dto';
 import { isPublicPosition, publicRoute } from './route-geometry';
-import type { DemoRoute } from './routes';
+import { type DemoRoute, routeSellerInclude } from './routes';
 import { computeDueAt } from './shipment-due-at';
 import type { VehiclePosition } from './vehicle-positions';
 
@@ -38,6 +38,7 @@ export const sellerShipmentInclude = {
 export const sellerShipmentDetailInclude = {
   ...sellerShipmentInclude,
   ...timeline,
+  ...routeSellerInclude,
 } satisfies Prisma.ShipmentInclude;
 
 export const carrierShipmentInclude = {
