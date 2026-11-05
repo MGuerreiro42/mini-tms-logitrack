@@ -21,21 +21,23 @@ export function ShipmentMapPanel({
   queryKey: QueryKey;
 }) {
   const { id, status, map, lastPosition, addressCity } = shipment;
+  const stage = mapStage(status);
+  const onRoad = stage === 'IN_TRANSIT' || stage === 'OUT_FOR_DELIVERY';
+  const token = useSession()?.token;
+  // Pings only exist on the road, so no room is joined in any other status.
   usePositionSubscription<ShipmentPositionEvent>({
     getSocket,
-    connectionKey: useSession()?.token,
+    connectionKey: onRoad ? token : undefined,
     room: { event: 'subscribe:shipment', args: [id] },
     accepts: (event) => event.shipmentId === id,
     queryKey,
   });
 
-  const stage = mapStage(status);
-  const onRoad = stage === 'IN_TRANSIT' || stage === 'OUT_FOR_DELIVERY';
   // Without a stored route (address outside the demo), reported positions still get a marker.
   if (!stage || (!map && !(onRoad && lastPosition))) return null;
 
   return (
-    <Panel title="Live map">
+    <Panel title={stage === 'DONE' ? 'Delivery route' : 'Live map'}>
       <LazyDeliveryMap
         route={map?.route ?? null}
         splitIndex={map?.splitIndex}

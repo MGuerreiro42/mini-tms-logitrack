@@ -85,7 +85,6 @@ export interface QueueShipmentDetail extends CarrierShipment, LiveMapFields {}
 
 export interface ShipmentPositionEvent extends PositionEvent {
   shipmentId: string;
-  status: ShipmentStatus;
 }
 
 export interface AdminShipmentResponse extends CarrierShipment {

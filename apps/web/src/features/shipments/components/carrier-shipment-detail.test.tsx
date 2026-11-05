@@ -470,6 +470,7 @@ describe('CarrierShipmentDetail', () => {
 
       const element = await screen.findByTestId('delivery-map');
       expect(mapProps(element)).toMatchObject({
+        route: map?.route,
         splitIndex: 1,
         destination: [-46.65, -23.56],
         stage: 'IN_TRANSIT',

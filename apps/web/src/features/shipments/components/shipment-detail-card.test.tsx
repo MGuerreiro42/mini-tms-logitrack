@@ -318,6 +318,22 @@ describe('ShipmentDetailCard', () => {
       );
     });
 
+    it('titles a delivered route without calling it live', async () => {
+      serveDetail({ status: 'DELIVERED', map: liveMap });
+      renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+      expect(mapProps(await screen.findByTestId('delivery-map'))).toMatchObject(
+        {
+          stage: 'DONE',
+          position: null,
+        },
+      );
+      expect(
+        screen.getByRole('heading', { name: 'Delivery route' }),
+      ).toBeVisible();
+      expect(screen.queryByRole('heading', { name: 'Live map' })).toBeNull();
+    });
+
     it('shows a marker-only map for a position without a stored route', async () => {
       serveDetail({ status: 'OUT_FOR_DELIVERY', lastPosition });
       renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
