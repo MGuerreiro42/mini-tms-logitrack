@@ -146,14 +146,19 @@ async function buildRoute(
       `${key}: no route point enters ${address.city} after the hub`,
     );
   }
-  const splitKm = distanceKm(points[splitIndex], destination);
-  // The public map stops at the split; closer than the last-mile radius it would reveal the door.
-  if (splitKm < LAST_MILE_KM) {
+  // The public map draws up to the split; any point of it inside the last mile would reveal the door.
+  const closestKm = Math.min(
+    ...points
+      .slice(0, splitIndex + 1)
+      .map((point) => distanceKm(point, destination)),
+  );
+  if (closestKm < LAST_MILE_KM) {
     throw new Error(
-      `${key}: the split is ${splitKm.toFixed(2)} km from the address, under ${LAST_MILE_KM} km`,
+      `${key}: the public route comes ${closestKm.toFixed(2)} km from the address, under ${LAST_MILE_KM} km`,
     );
   }
 
+  const splitKm = distanceKm(points[splitIndex], destination);
   console.log(
     `${key} (${address.city}): ${points.length} points, split at ${splitIndex}, ${splitKm.toFixed(1)} km from the address`,
   );

@@ -26,14 +26,19 @@ describe('demo routes', () => {
   });
 
   it.each(DEMO_ADDRESSES)(
-    'splits $street, $number outside the last mile',
+    'keeps the public part of $street, $number outside the last mile, with a rounded city center',
     (address) => {
       const route = findRoute(demoShipment(address));
       if (!route) throw new Error('missing route');
 
-      expect(
-        distanceKm(route.points[route.splitIndex], route.destination),
-      ).toBeGreaterThanOrEqual(LAST_MILE_KM);
+      for (const point of route.points.slice(0, route.splitIndex + 1)) {
+        expect(distanceKm(point, route.destination)).toBeGreaterThanOrEqual(
+          LAST_MILE_KM,
+        );
+      }
+      for (const coordinate of route.cityCenter) {
+        expect(coordinate).toBe(Number(coordinate.toFixed(2)));
+      }
     },
   );
 

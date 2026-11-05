@@ -117,16 +117,17 @@ describe('buildDemoShipments', () => {
   });
 
   it('starts each seeded vehicle somewhere along its road stage', () => {
-    const onTheRoad = buildDemoShipments(tenant, NOW).filter(
-      ({ shipment }) => STAGE_DURATION_MS[shipment.status],
+    const onTheRoad = buildDemoShipments(tenant, NOW).flatMap(
+      ({ shipment, events }) => {
+        const stageMs = shipment.status && STAGE_DURATION_MS[shipment.status];
+        return stageMs ? [{ stageMs, events }] : [];
+      },
     );
 
     expect(onTheRoad).not.toHaveLength(0);
-    for (const { shipment, events } of onTheRoad) {
+    for (const { stageMs, events } of onTheRoad) {
       const stageStart = events.at(-1)?.createdAt.getTime() ?? 0;
-      expect(NOW - stageStart).toBeLessThanOrEqual(
-        STAGE_DURATION_MS[shipment.status] ?? 0,
-      );
+      expect(NOW - stageStart).toBeLessThanOrEqual(stageMs);
     }
   });
 

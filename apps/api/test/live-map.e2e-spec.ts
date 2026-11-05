@@ -189,7 +189,7 @@ describe('Live map (e2e)', () => {
       await report(id, tenants.operator, far, at(4_000)).expect(202);
     });
 
-    it('accepts an out-of-order ping without moving the vehicle back', async () => {
+    it('accepts an out-of-order or resent ping without moving the vehicle back', async () => {
       const { id } = await onTheRoad();
       const newer = new Date();
       await report(id, tenants.operator, far, newer).expect(202);
@@ -202,6 +202,8 @@ describe('Live map (e2e)', () => {
       ).expect(202);
 
       expect(older.body).toEqual({ applied: false });
+      const resent = await report(id, tenants.operator, far, newer).expect(202);
+      expect(resent.body).toEqual({ applied: false });
       const sellerDetail = await http()
         .get(`/shipments/${id}`)
         .auth(seller, { type: 'bearer' })

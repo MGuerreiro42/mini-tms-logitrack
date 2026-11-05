@@ -1265,21 +1265,46 @@ describe('ShipmentsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it.each([
-      ['older than 10 minutes', -10 * 60 * 1000 - 1000],
-      ['more than 5 s ahead', 6000],
-    ])('throws BadRequestException for a reading %s', async (_, offset) => {
-      carrierUserFindUnique.mockResolvedValue(carrierOperator);
-      shipmentFindFirst.mockResolvedValue(inTransit);
+    describe('recordedAt window', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ now: new Date('2026-01-01T12:00:00Z') });
+        carrierUserFindUnique.mockResolvedValue(carrierOperator);
+        shipmentFindFirst.mockResolvedValue(inTransit);
+        stillIn('IN_TRANSIT');
+      });
 
-      await expect(
-        shipmentsService.reportPosition(
-          'user-operator',
-          'shipment-1',
-          ping(offset),
-        ),
-      ).rejects.toThrow(BadRequestException);
-      expect(saveIfNewer).not.toHaveBeenCalled();
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it.each([
+        ['exactly 10 minutes old', -600_000],
+        ['exactly 5 s ahead', 5_000],
+      ])('accepts a reading %s', async (_, offset) => {
+        saveIfNewer.mockResolvedValue(true);
+
+        await expect(
+          shipmentsService.reportPosition(
+            'user-operator',
+            'shipment-1',
+            ping(offset),
+          ),
+        ).resolves.toEqual({ applied: true });
+      });
+
+      it.each([
+        ['older than 10 minutes', -600_001],
+        ['more than 5 s ahead', 5_001],
+      ])('rejects a reading %s', async (_, offset) => {
+        await expect(
+          shipmentsService.reportPosition(
+            'user-operator',
+            'shipment-1',
+            ping(offset),
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(saveIfNewer).not.toHaveBeenCalled();
+      });
     });
   });
 });
