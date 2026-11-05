@@ -127,6 +127,7 @@ export async function createTenants(ctx: E2eContext) {
     sellerB: await sellerToken(),
     manager: await carrier.token('MANAGER'),
     operator: await carrier.token('OPERATOR'),
+    carrierToken: carrier.token,
   };
 }
 
