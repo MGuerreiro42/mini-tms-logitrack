@@ -24,6 +24,7 @@ describe('ShipmentsService', () => {
   const shipmentCreate = vi.fn();
   const shipmentFindMany = vi.fn();
   const shipmentFindFirst = vi.fn();
+  const shipmentFindUnique = vi.fn();
   const shipmentCount = vi.fn();
   const shipmentGroupBy = vi.fn();
   const shipmentUpdateManyAndReturn = vi.fn();
@@ -123,6 +124,7 @@ describe('ShipmentsService', () => {
     shipmentCreate.mockReset();
     shipmentFindMany.mockReset();
     shipmentFindFirst.mockReset();
+    shipmentFindUnique.mockReset();
     shipmentCount.mockReset();
     shipmentGroupBy.mockReset();
     shipmentUpdateManyAndReturn.mockReset();
@@ -160,6 +162,7 @@ describe('ShipmentsService', () => {
               create: shipmentCreate,
               findMany: shipmentFindMany,
               findFirst: shipmentFindFirst,
+              findUnique: shipmentFindUnique,
               findUniqueOrThrow: shipmentFindUniqueOrThrow,
               count: shipmentCount,
               groupBy: shipmentGroupBy,
@@ -1141,10 +1144,15 @@ describe('ShipmentsService', () => {
       recordedAt: new Date(Date.now() + offsetMs),
     });
 
+    // The status re-read after the write.
+    const stillIn = (status: string) =>
+      shipmentFindUnique.mockResolvedValue({ ...inTransit, status });
+
     it('stores the position and broadcasts it when it is the newest', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(inTransit);
       saveIfNewer.mockResolvedValue(true);
+      stillIn('IN_TRANSIT');
       const dto = ping();
 
       await expect(
@@ -1163,6 +1171,39 @@ describe('ShipmentsService', () => {
       });
     });
 
+    it('broadcasts with the status read after the write', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('OUT_FOR_DELIVERY');
+
+      await shipmentsService.reportPosition(
+        'user-operator',
+        'shipment-1',
+        ping(),
+      );
+
+      expect(emit).toHaveBeenCalledWith(
+        VEHICLE_POSITION_REPORTED,
+        expect.objectContaining({
+          status: 'OUT_FOR_DELIVERY',
+          publiclyVisible: false,
+        }),
+      );
+    });
+
+    it('stays quiet when the shipment left the road during the write', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue(inTransit);
+      saveIfNewer.mockResolvedValue(true);
+      stillIn('DELIVERED');
+
+      await expect(
+        shipmentsService.reportPosition('user-operator', 'shipment-1', ping()),
+      ).resolves.toEqual({ applied: true });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
     it('accepts an older ping without broadcasting it', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierManager);
       shipmentFindFirst.mockResolvedValue(inTransit);
@@ -1178,6 +1219,7 @@ describe('ShipmentsService', () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindFirst.mockResolvedValue(inTransit);
       saveIfNewer.mockResolvedValue(true);
+      stillIn('IN_TRANSIT');
       const { heading: _, ...withoutHeading } = ping();
 
       await shipmentsService.reportPosition(

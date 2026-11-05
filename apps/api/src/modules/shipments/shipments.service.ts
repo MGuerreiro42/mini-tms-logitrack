@@ -653,17 +653,24 @@ export class ShipmentsService {
       shipment.id,
       position,
     );
-    if (applied) {
+    if (!applied) return { applied };
+
+    // A status change can land between the check and the write: the fresh status decides the broadcast.
+    const current = await this.prisma.shipment.findUnique({
+      where: { id: shipment.id },
+      select: { status: true, addressZipCode: true, addressNumber: true },
+    });
+    if (current && ROAD_STAGES.includes(current.status)) {
       const event: VehiclePositionReportedEvent = {
         shipmentId: shipment.id,
         carrierId: shipment.carrierId,
         sellerId: shipment.sellerId,
         trackingCode: shipment.trackingCode,
-        status: shipment.status,
+        status: current.status,
         ...position,
         publiclyVisible: isPublicPosition(
-          findRoute(shipment),
-          shipment.status,
+          findRoute(current),
+          current.status,
           position,
         ),
       };
