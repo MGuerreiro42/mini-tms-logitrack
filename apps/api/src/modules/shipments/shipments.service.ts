@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -108,6 +109,8 @@ const LATE_CANDIDATES: ShipmentStatus[] = [
 
 @Injectable()
 export class ShipmentsService {
+  private readonly logger = new Logger(ShipmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
@@ -679,9 +682,21 @@ export class ShipmentsService {
     return {
       route: findRoute(shipment),
       lastPosition: ROAD_STAGES.includes(shipment.status)
-        ? await this.vehiclePositions.latest(shipment.id)
+        ? await this.latestPosition(shipment.id)
         : null,
     };
+  }
+
+  // Best effort: with Redis down the detail and the tracking page still render, without the vehicle.
+  private async latestPosition(shipmentId: string) {
+    try {
+      return await this.vehiclePositions.latest(shipmentId);
+    } catch (error) {
+      this.logger.warn(
+        `Could not read the position of shipment ${shipmentId}: ${String(error)}`,
+      );
+      return null;
+    }
   }
 
   private assertOwnerOrManager(

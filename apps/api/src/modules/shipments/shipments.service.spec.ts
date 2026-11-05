@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -488,6 +489,29 @@ describe('ShipmentsService', () => {
 
       expect(latest).toHaveBeenCalledWith('shipment-1');
       expect(result.lastPosition).toBe(position);
+    });
+
+    it('still answers, without a position, when Redis is down', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindFirst.mockResolvedValue({
+        ...shipmentWithRelations,
+        status: 'IN_TRANSIT',
+      });
+      latest.mockRejectedValue(new Error('Connection is closed.'));
+
+      const result = await shipmentsService.findOneForSeller(
+        'user-1',
+        'shipment-1',
+      );
+
+      expect(result.lastPosition).toBeNull();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Connection is closed.'),
+      );
+      warn.mockRestore();
     });
 
     it('throws NotFoundException when the shipment belongs to another seller (same as not existing)', async () => {
