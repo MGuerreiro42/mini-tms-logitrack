@@ -1,18 +1,30 @@
 const DESKTOP_WIDTH = 1280;
 
 let width = DESKTOP_WIDTH;
+let reducedMotion = false;
 const listeners = new Set<() => void>();
+
+function notify() {
+  for (const listener of listeners) listener();
+}
 
 export function setViewportWidth(next: number) {
   width = next;
-  for (const listener of listeners) listener();
+  notify();
+}
+
+export function setReducedMotion(next: boolean) {
+  reducedMotion = next;
+  notify();
 }
 
 export function resetViewport() {
   width = DESKTOP_WIDTH;
+  reducedMotion = false;
 }
 
 function matches(query: string): boolean {
+  if (/prefers-reduced-motion:\s*reduce/.test(query)) return reducedMotion;
   const min = /min-width:\s*(\d+)px/.exec(query);
   const max = /max-width:\s*(\d+)px/.exec(query);
   if (!min && !max) return false;
