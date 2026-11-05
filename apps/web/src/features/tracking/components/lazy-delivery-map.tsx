@@ -1,9 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useId, useState } from 'react';
+import { useId, useState, useSyncExternalStore } from 'react';
 import { useNow } from '@/hooks/use-now';
 import { formatDuration } from '@/lib/format-duration';
+import { subscribeNever } from '@/lib/subscribe-never';
 import { isNewer } from '../lib/vehicle-motion';
 import type { DeliveryMapProps, LastPosition } from '../types';
 import type { DeliveryCanvasProps } from './delivery-map';
@@ -30,10 +31,14 @@ function useLatestPosition(position: LastPosition | null) {
   return position && seen;
 }
 
-function signalText(age: number | null, expectsVehicle: boolean) {
-  if (age === null)
+function signalText(
+  hasPosition: boolean,
+  age: number | null,
+  expectsVehicle: boolean,
+) {
+  if (!hasPosition)
     return expectsVehicle ? "Waiting for the vehicle's signal" : null;
-  if (age <= STALE_CAPTION_S) return null;
+  if (age === null || age <= STALE_CAPTION_S) return null;
   return `Last signal ${age < 60 ? `${age} s` : formatDuration(age / 3600)} ago`;
 }
 
@@ -42,14 +47,21 @@ export function LazyDeliveryMap(props: DeliveryMapProps) {
   const captionId = useId();
   const now = useNow(5000);
   const latest = useLatestPosition(props.position);
-  const age = latest
-    ? Math.max(0, Math.floor((now.getTime() - latest.receivedAt) / 1000))
-    : null;
+  // The age reads the client clock, so the server and hydration renders leave it out.
+  const mounted = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+  const age =
+    mounted && latest
+      ? Math.max(0, Math.floor((now.getTime() - latest.receivedAt) / 1000))
+      : null;
   // The public link never shows the vehicle out for delivery, so it isn't waiting for one.
   const expectsVehicle =
     props.stage === 'IN_TRANSIT' ||
     (props.stage === 'OUT_FOR_DELIVERY' && !props.area);
-  const signal = signalText(age, expectsVehicle);
+  const signal = signalText(latest !== null, age, expectsVehicle);
 
   return (
     <figure aria-labelledby={captionId} className="flex flex-col gap-2.5">

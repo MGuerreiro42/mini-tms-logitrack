@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import type { DeliveryMapProps, LastPosition } from '../types';
 import type { DeliveryCanvasProps } from './delivery-map';
 import { LazyDeliveryMap } from './lazy-delivery-map';
@@ -112,6 +113,17 @@ describe('LazyDeliveryMap', () => {
 
       act(() => vi.advanceTimersByTime(60_000));
       expect(figure()).toHaveTextContent('Last signal 2 min ago');
+    });
+
+    it('leaves the age out of the server render so hydration matches', async () => {
+      vi.setSystemTime(T0 + 21_000);
+
+      expect(renderToString(<LazyDeliveryMap {...props()} />)).not.toContain(
+        'Last signal',
+      );
+      render(<LazyDeliveryMap {...props()} />);
+      await canvas();
+      expect(figure()).toHaveTextContent('Last signal 21 s ago');
     });
 
     it('counts a ping from when it arrived, not from a skewed device clock', async () => {
