@@ -198,6 +198,17 @@ The public demo operates itself while someone is watching, and is restored to th
 - **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes and bulk-recreates the demo sellers' shipments in one batched transaction (four statements, ids generated in the service), then emits `demo:reset`, on which the web refetches.
 - **Off unless asked.** `ConditionalModule` loads the simulator only with `DEMO_SIMULATOR=true`; elsewhere no queue, worker or route exists.
 
+### Live map ([spec 03](./specs/03-live-map.md))
+
+Shipments on the road show a vehicle moving along a real street route, fed the way a driver's phone would feed it.
+
+- **Ingested like GPS.** `POST /shipments/:id/positions` takes `{ lat, lng, heading?, recordedAt }` from the owning operator or the carrier manager, only in `IN_TRANSIT` or `OUT_FOR_DELIVERY`, limited to 120 per minute per user. `recordedAt` must be at most 10 minutes old and 5 s ahead of the server clock: a buffered ping that old no longer describes the vehicle, and one further ahead would outrank every honest ping until then.
+- **Latest-only state in Redis.** One hash per shipment, written by a Lua set-if-newer keyed on `recordedAt`, so a resent older ping is accepted (`202 { applied: false }`) but never moves the vehicle back; it expires 10 minutes after the last ping. No history is kept, and Postgres is not touched.
+- **Fan-out like status changes.** An applied ping emits `VEHICLE_POSITION_REPORTED`; `TrackingListener` sends `tracking:position` through the Redis adapter, so any instance can ingest and every instance delivers.
+- **The last mile stays private.** The public link sees the route only up to the destination city (cut at the route's `splitIndex`), the city center rounded to 2 decimals, and the vehicle only while `IN_TRANSIT` and at least 1.5 km from the destination; never in `OUT_FOR_DELIVERY`. Seller and carrier details get the full route, the geocoded address and every position.
+- **Static routes.** One street route per demo address from a hub in Cajamar, built once by `scripts/build-demo-routes.ts` (Nominatim geocoding, OSRM routing, Douglas–Peucker down to 300 points) and committed as JSON; nothing calls those services at runtime. The script refuses a split point inside the 1.5 km radius. Addresses outside the demo have no map.
+- **The simulator plays the driver.** A `drive` job every 2 s, gated on viewers like the tick, reports each demo road-stage shipment's point at `clamp((now − stageStartedAt) / stageDuration)` (4 min in transit, 2 min out for delivery) through the same `reportPosition` as the endpoint, as the owner. The tick only ends a road stage once the vehicle has arrived, earliest arrival first.
+
 ### Public API ([spec 02](./specs/02-public-api-webhooks.md))
 
 Sellers integrate their own systems through `/v1`, authenticated by an API key instead of a session.
@@ -425,6 +436,7 @@ Mirrors the sellers flow, with one structural difference: a carrier's "owner" is
 - **No outbox** — a deliberate trade-off: the event is emitted in-process after the transaction commits. A crash between commit and emit loses that push, never the data, and clients refetch over REST on every (re)connect. An outbox table with a relay is the upgrade path if pushes ever need a delivery guarantee.
 - **Horizontal scaling** — a Redis adapter (`@socket.io/redis-adapter`) sits behind the gateway so `.emit()` calls propagate across every API instance subscribed to the same channel, not just the instance that handled the request.
 - **Public tracking** — anyone with a `trackingCode` can look up a shipment's current status and event timeline with no login, without exposing the seller's full address or internal notes.
+- **Vehicle positions** — `tracking:position` goes to the shipment, seller and carrier rooms with `{ shipmentId, trackingCode, status, lat, lng, heading, recordedAt }`, and to the public tracking room with only `{ trackingCode, lat, lng, heading, recordedAt }`, while `IN_TRANSIT` and outside the 1.5 km last mile (§ 5, Live map).
 - **Concurrency** — claim, status update and cancel each write through an `updateManyAndReturn` conditioned on the state they validated, plus the `TrackingEvent`, in one transaction; `0` rows matched is a `409`. An e2e test fires two concurrent claims and expects exactly one `200`; another races a cancel against a claim and checks the timeline stays coherent (the cancel always lands, since `ACCEPTED` is still cancellable; the claim is `200` or `409` depending on who wrote first).
 
 ## 16. Dashboards, Carrier Performance, and Global Monitoring
