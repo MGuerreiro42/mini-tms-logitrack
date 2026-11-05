@@ -1,5 +1,6 @@
 import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
+import { STAGE_DURATION_MS } from './simulator.constants';
 
 export const DEMO_STATE = 'SP';
 export const DEMO_PASSWORD = 'demo12345';
@@ -251,10 +252,16 @@ function planEvents(
   const scale = !terminal && totalMs > available ? available / totalMs : 1;
 
   let at = createdAt;
-  return path.map((status, index) => {
+  const events = path.map((status, index) => {
     if (index > 0) at += gaps[index - 1] * MS_PER_HOUR * scale;
     return { status, at: new Date(at) };
   });
+  // A road stage is driven live (spec 03): start the vehicle somewhere along it, not at its end.
+  const stageMs = STAGE_DURATION_MS[plan.status];
+  if (stageMs) {
+    events[events.length - 1].at = new Date(now - random.between(0, stageMs));
+  }
+  return events;
 }
 
 const demoTrackingCode = (index: number) =>

@@ -1,7 +1,9 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ShipmentStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { pointAt, segmentFor } from '../shipments/route-geometry';
+import { findRoute } from '../shipments/routes';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { TrackingPresence } from '../tracking/tracking-presence';
 import { DEMO_SELLERS } from './demo-dataset';
@@ -161,22 +163,26 @@ describe('SimulatorService', () => {
     expect(updateStatus).not.toHaveBeenCalled();
   });
 
-  it('advances the shipment that arrived first', async () => {
+  it('ends every arrived road stage and moves the longest-waiting other shipment', async () => {
     findMany.mockResolvedValueOnce([
-      { ...owned(ShipmentStatus.OUT_FOR_DELIVERY, 3 * MINUTE), id: 'late' },
-      { ...owned(ShipmentStatus.IN_TRANSIT, 10 * MINUTE), id: 'early' },
+      { ...owned(ShipmentStatus.OUT_FOR_DELIVERY, MINUTE), id: 'driving' },
+      { ...owned(ShipmentStatus.IN_TRANSIT, 5 * MINUTE), id: 'arrived-1' },
+      {
+        ...owned(ShipmentStatus.OUT_FOR_DELIVERY, 3 * MINUTE),
+        id: 'arrived-2',
+      },
       { ...owned(ShipmentStatus.COLLECTED, 5 * MINUTE), id: 'collected' },
+      { ...owned(ShipmentStatus.ACCEPTED, 8 * MINUTE), id: 'accepted' },
     ]);
     findFirst.mockResolvedValueOnce(null);
 
     await simulator.tick();
 
-    expect(updateStatus).toHaveBeenCalledOnce();
-    expect(updateStatus).toHaveBeenCalledWith(
-      'operator-user-1',
-      'early',
-      expect.objectContaining({ status: ShipmentStatus.OUT_FOR_DELIVERY }),
-    );
+    expect(updateStatus.mock.calls.map(([, id]) => id)).toEqual([
+      'arrived-1',
+      'arrived-2',
+      'accepted',
+    ]);
   });
 
   it('claims the oldest pending shipment for an operator', async () => {
@@ -290,10 +296,14 @@ describe('SimulatorService', () => {
       await simulator.drive();
       await simulator.drive();
 
+      const route = findRoute(onTheRoad(ShipmentStatus.OUT_FOR_DELIVERY, 0));
+      if (!route) throw new Error('missing route');
+      const segment = segmentFor(route, ShipmentStatus.OUT_FOR_DELIVERY);
       const [start, halfway] = reportPosition.mock.calls.map(
-        ([, , position]) => position,
+        ([, , { recordedAt: _, ...point }]) => point,
       );
-      expect(halfway).not.toEqual(start);
+      expect(start).toEqual(pointAt(segment, 0));
+      expect(halfway).toEqual(pointAt(segment, 0.5));
     });
 
     it('skips a shipment whose address has no route', async () => {
@@ -304,6 +314,23 @@ describe('SimulatorService', () => {
       await simulator.drive();
 
       expect(reportPosition).not.toHaveBeenCalled();
+    });
+
+    it('logs any other failure and keeps driving the others', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      findMany.mockResolvedValue([
+        onTheRoad(ShipmentStatus.IN_TRANSIT, 0),
+        { ...onTheRoad(ShipmentStatus.IN_TRANSIT, 0), id: 'shipment-2' },
+      ]);
+      reportPosition.mockRejectedValueOnce(new Error('Connection is closed.'));
+
+      await simulator.drive();
+
+      expect(reportPosition).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('shipment-1'));
+      warn.mockRestore();
     });
 
     it('keeps driving the others when a status changed under it', async () => {

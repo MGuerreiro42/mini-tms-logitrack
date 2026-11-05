@@ -52,7 +52,7 @@ interface StagedShipment {
 const stageStartedAt = (shipment: StagedShipment) =>
   shipment.trackingEvents[0]?.createdAt.getTime() ?? 0;
 
-// Stages without a duration are ready as soon as they start.
+// When the vehicle reaches the end of its road stage.
 const readyAt = (shipment: StagedShipment) =>
   stageStartedAt(shipment) + (STAGE_DURATION_MS[shipment.status] ?? 0);
 
@@ -79,7 +79,7 @@ export class SimulatorService {
     const tenant = await this.watchedTenant();
     if (!tenant) return;
 
-    await this.attempt(() => this.advanceOne(tenant));
+    await this.advanceReady(tenant);
     await this.attempt(() => this.claimOne(tenant));
     if (this.random() < CREATE_CHANCE) {
       await this.attempt(() => this.createOne(tenant));
@@ -116,12 +116,16 @@ export class SimulatorService {
         segmentFor(route, shipment.status),
         stageProgress(shipment, now),
       );
-      await this.attempt(() =>
-        this.shipmentsService.reportPosition(userId, shipment.id, {
+      try {
+        await this.shipmentsService.reportPosition(userId, shipment.id, {
           ...position,
           recordedAt: new Date(now),
-        }),
-      );
+        });
+      } catch (error) {
+        // One failing shipment must not park every vehicle behind it; a lost race stays silent.
+        if (error instanceof ConflictException) continue;
+        this.logger.warn(`Could not drive shipment ${shipment.id}: ${error}`);
+      }
     }
   }
 
@@ -133,8 +137,9 @@ export class SimulatorService {
     return tenant;
   }
 
-  // A road stage only ends when the vehicle arrives; the first to arrive goes first.
-  private async advanceOne(tenant: LoadedDemoTenant): Promise<void> {
+  // Every vehicle that has arrived ends its road stage, so none waits parked at the end of its
+  // segment; off the road, the shipment that has waited longest moves one step.
+  private async advanceReady(tenant: LoadedDemoTenant): Promise<void> {
     const candidates = await this.prisma.shipment.findMany({
       where: {
         ...demoShipmentsWhere(tenant),
@@ -149,17 +154,26 @@ export class SimulatorService {
       },
     });
     const now = Date.now();
-    const [shipment] = candidates
-      .filter((candidate) => readyAt(candidate) <= now)
-      .sort((a, b) => readyAt(a) - readyAt(b));
-    if (!shipment?.owner) return;
-
-    const status = this.nextStatus(shipment.status);
-    await this.shipmentsService.updateStatus(
-      shipment.owner.userId,
-      shipment.id,
-      { status, note: STATUS_NOTES[status] },
+    const arrived = candidates.filter(
+      (candidate) =>
+        ROAD_STAGES.includes(candidate.status) && readyAt(candidate) <= now,
     );
+    const [longestWaiting] = candidates
+      .filter((candidate) => !ROAD_STAGES.includes(candidate.status))
+      .sort((a, b) => stageStartedAt(a) - stageStartedAt(b));
+
+    for (const shipment of [...arrived, longestWaiting]) {
+      if (shipment?.owner) {
+        const { userId } = shipment.owner;
+        const status = this.nextStatus(shipment.status);
+        await this.attempt(() =>
+          this.shipmentsService.updateStatus(userId, shipment.id, {
+            status,
+            note: STATUS_NOTES[status],
+          }),
+        );
+      }
+    }
   }
 
   private async claimOne(tenant: LoadedDemoTenant): Promise<void> {
