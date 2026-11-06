@@ -32,6 +32,7 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 
 **Everyone**
 - Public tracking page per shipment, live over WebSocket
+- Live delivery map: the vehicle moves along the street route; seller and carrier see it to the door, the public link only up to the destination city ([spec](./specs/03-live-map.md))
 - `⌘K` command menu (pages and tracking codes), light and dark themes, full mobile layout
 
 ## Screenshots

@@ -56,6 +56,8 @@ export async function generateMetadata({
   return {
     title: trackingTitle(tracking),
     description: `Shipment ${tracking.trackingCode} is ${status.toLowerCase()} (${tracking.addressCity}/${tracking.addressState}).`,
+    // The map fetches third-party tiles; the tracking code in the URL stays out of their logs.
+    referrer: 'no-referrer',
   };
 }
 

@@ -4,10 +4,11 @@ import { HttpResponse, http } from 'msw';
 import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
+import { mapProps } from '@/test/delivery-map-stub';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { renderWithQueryClient } from '@/test/render';
-import type { CarrierShipment } from '../types';
+import type { QueueShipmentDetail } from '../types';
 import { CarrierShipmentDetail } from './carrier-shipment-detail';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -15,9 +16,14 @@ vi.mock('@/services/websocket-client', async (importOriginal) => ({
   getSocket: vi.fn(),
 }));
 
+vi.mock(
+  '@/features/tracking/components/lazy-delivery-map',
+  () => import('@/test/delivery-map-stub'),
+);
+
 const API_URL = 'http://localhost:3333';
 
-const unclaimedShipment: CarrierShipment = {
+const unclaimedShipment: QueueShipmentDetail = {
   id: 'shipment-1',
   trackingCode: 'TMS-AAA111',
   status: 'PENDING',
@@ -38,16 +44,18 @@ const unclaimedShipment: CarrierShipment = {
   createdAt: '2026-01-01T00:00:00.000Z',
   dueAt: '2026-01-06T00:00:00.000Z',
   trackingEvents: [],
+  map: null,
+  lastPosition: null,
 };
 
-const claimedByOperator: CarrierShipment = {
+const claimedByOperator: QueueShipmentDetail = {
   ...unclaimedShipment,
   status: 'ACCEPTED',
   ownerId: 'carrier-user-1',
   ownerEmail: 'operator@example.com',
 };
 
-function mockDetail(shipment: CarrierShipment) {
+function mockDetail(shipment: QueueShipmentDetail) {
   server.use(
     http.get(`${API_URL}/shipments/queue/shipment-1`, () =>
       HttpResponse.json(shipment),
@@ -434,5 +442,53 @@ describe('CarrierShipmentDetail', () => {
     renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
 
     expect(await screen.findByText('Shipment not found.')).toBeInTheDocument();
+  });
+
+  describe('live map', () => {
+    const map: QueueShipmentDetail['map'] = {
+      route: [
+        [-46.9, -23.3],
+        [-46.7, -23.5],
+        [-46.65, -23.56],
+      ],
+      splitIndex: 1,
+      destination: [-46.65, -23.56],
+    };
+
+    beforeEach(() => {
+      setSession({
+        token: 't',
+        role: 'CARRIER_OPERATOR',
+        userId: 'user-1',
+        email: 'operator@example.com',
+      });
+    });
+
+    it('passes the route to the door below the next step', async () => {
+      mockDetail({ ...claimedByOperator, status: 'IN_TRANSIT', map });
+      renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+      const element = await screen.findByTestId('delivery-map');
+      expect(mapProps(element)).toMatchObject({
+        route: map?.route,
+        splitIndex: 1,
+        destination: [-46.65, -23.56],
+        stage: 'IN_TRANSIT',
+        position: null,
+      });
+      const nextStep = screen.getByRole('region', { name: 'Next step' });
+      expect(
+        nextStep.compareDocumentPosition(element) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('shows no map before the shipment is on the road', async () => {
+      mockDetail({ ...claimedByOperator, status: 'COLLECTED', map });
+      renderWithQueryClient(<CarrierShipmentDetail id="shipment-1" />);
+
+      await screen.findByRole('region', { name: 'Next step' });
+      expect(screen.queryByTestId('delivery-map')).toBeNull();
+    });
   });
 });

@@ -10,9 +10,11 @@ import type {
   ListAdminShipmentsQuery,
   ListQueueQuery,
   ListShipmentsQuery,
+  QueueShipmentDetail,
   Shipment,
   ShipmentActivity,
   ShipmentAttention,
+  ShipmentDetail,
   ShipmentStatusCounts,
   SlaSummaryItem,
   UpdateShipmentStatusInput,
@@ -53,8 +55,11 @@ export function listShipments(
   );
 }
 
-export function getShipment(id: string, token: string): Promise<Shipment> {
-  return apiClient<Shipment>(`/shipments/${id}`, undefined, token);
+export function getShipment(
+  id: string,
+  token: string,
+): Promise<ShipmentDetail> {
+  return apiClient<ShipmentDetail>(`/shipments/${id}`, undefined, token);
 }
 
 export function getShipmentStatusCounts(
@@ -135,8 +140,12 @@ export function getAdminShipmentStatusCounts(
 export function getQueueShipment(
   id: string,
   token: string,
-): Promise<CarrierShipment> {
-  return apiClient<CarrierShipment>(`/shipments/queue/${id}`, undefined, token);
+): Promise<QueueShipmentDetail> {
+  return apiClient<QueueShipmentDetail>(
+    `/shipments/queue/${id}`,
+    undefined,
+    token,
+  );
 }
 
 export function claimShipment(
