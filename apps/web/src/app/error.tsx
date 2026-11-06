@@ -9,10 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/routes';
 
-export default function RootError({
-  error,
-  unstable_retry,
-}: SegmentErrorProps) {
+export default function RootError({ error, retry }: SegmentErrorProps) {
   const { title, description } = useErrorCopy(
     error,
     'This page stopped on an unexpected error. Try again or head back home.',
@@ -24,7 +21,7 @@ export default function RootError({
       description={description}
       actions={
         <>
-          <Button variant="strong" onClick={() => unstable_retry()}>
+          <Button variant="strong" onClick={() => retry()}>
             Try again
           </Button>
           <Button asChild variant="link">

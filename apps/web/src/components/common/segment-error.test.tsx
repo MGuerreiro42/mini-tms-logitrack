@@ -22,7 +22,7 @@ describe('SegmentError', () => {
 
   it('retries the segment when asked', async () => {
     const retry = vi.fn();
-    render(<SegmentError error={new Error('boom')} unstable_retry={retry} />);
+    render(<SegmentError error={new Error('boom')} retry={retry} />);
 
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -31,14 +31,14 @@ describe('SegmentError', () => {
 
   it('logs the error and shows its digest as a support reference', async () => {
     const error = Object.assign(new Error('boom'), { digest: '4051723' });
-    render(<SegmentError error={error} unstable_retry={vi.fn()} />);
+    render(<SegmentError error={error} retry={vi.fn()} />);
 
     expect(console.error).toHaveBeenCalledWith(error);
     expect(await screen.findByText('Reference: 4051723')).toBeInTheDocument();
   });
 
   it('shows no reference for an error without a digest', async () => {
-    render(<SegmentError error={new Error('boom')} unstable_retry={vi.fn()} />);
+    render(<SegmentError error={new Error('boom')} retry={vi.fn()} />);
 
     await screen.findByText('Something went wrong');
     expect(screen.getByRole('alert')).not.toHaveTextContent('Reference');
@@ -53,7 +53,7 @@ describe('SegmentError', () => {
   ])('says the service is unavailable when the API %s', async (_, setup) => {
     setup();
     const retry = vi.fn();
-    render(<SegmentError error={new Error('boom')} unstable_retry={retry} />);
+    render(<SegmentError error={new Error('boom')} retry={retry} />);
 
     expect(
       await screen.findByText("We can't reach the Mini TMS service right now"),
@@ -64,7 +64,7 @@ describe('SegmentError', () => {
   });
 
   it('shows neither message while the probe is running', () => {
-    render(<SegmentError error={new Error('boom')} unstable_retry={vi.fn()} />);
+    render(<SegmentError error={new Error('boom')} retry={vi.fn()} />);
 
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
