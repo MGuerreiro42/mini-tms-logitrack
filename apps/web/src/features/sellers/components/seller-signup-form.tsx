@@ -12,6 +12,7 @@ const LABELS = {
 export function SellerSignupForm() {
   return (
     <CompanySignupForm
+      taxId="cpfOrCnpj"
       labels={LABELS}
       submitLabel="Create account and continue"
       signup={useSellerSignupMutation()}
