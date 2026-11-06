@@ -203,10 +203,23 @@ export class SimulatorService {
     });
     if (active >= ACTIVE_SHIPMENT_CAP) return;
 
-    await this.shipmentsService.create(this.pick(tenant.sellerUserIds), {
-      ...toAddressFields(this.pick(DEMO_ADDRESSES)),
-      modalityId: this.pick(Object.values(tenant.modalities)).id,
-      carrierId: tenant.carrierId,
+    const sellerUserId = this.pick(tenant.sellerUserIds);
+    const address = toAddressFields(this.pick(DEMO_ADDRESSES));
+    const modalityId = this.pick(Object.values(tenant.modalities)).id;
+    // Demo carriers only: a real carrier covering the address must not receive simulated orders.
+    const carriers = (
+      await this.shipmentsService.findEligibleCarriers(
+        address.addressState,
+        address.addressCity,
+        modalityId,
+      )
+    ).filter(({ id }) => id in tenant.claimUserIds);
+    if (carriers.length === 0) return;
+
+    await this.shipmentsService.create(sellerUserId, {
+      ...address,
+      modalityId,
+      carrierId: this.pick(carriers).id,
     });
   }
 

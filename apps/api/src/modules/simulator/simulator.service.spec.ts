@@ -60,6 +60,7 @@ describe('SimulatorService', () => {
   const updateStatus = vi.fn();
   const claim = vi.fn();
   const create = vi.fn();
+  const findEligibleCarriers = vi.fn();
   const reportPosition = vi.fn();
   const random = vi.fn();
 
@@ -85,7 +86,13 @@ describe('SimulatorService', () => {
         },
         {
           provide: ShipmentsService,
-          useValue: { updateStatus, claim, create, reportPosition },
+          useValue: {
+            updateStatus,
+            claim,
+            create,
+            findEligibleCarriers,
+            reportPosition,
+          },
         },
         { provide: TrackingPresence, useValue: { hasViewers } },
         { provide: DemoTenantService, useValue: { load } },
@@ -235,21 +242,43 @@ describe('SimulatorService', () => {
     await expect(simulator.tick()).rejects.toThrow(BadRequestException);
   });
 
-  it('creates a shipment for a demo seller on some ticks', async () => {
+  it('creates a shipment for a demo seller with an eligible demo carrier on some ticks', async () => {
     givenShipments(null);
-    random.mockReturnValue(0.1);
+    random.mockReturnValue(0.9);
+    random.mockReturnValueOnce(0.1);
     count.mockResolvedValue(3);
+    findEligibleCarriers.mockResolvedValue([
+      { id: 'carrier-1' },
+      { id: 'real-carrier' },
+      { id: 'carrier-2' },
+    ]);
 
     await simulator.tick();
 
+    expect(findEligibleCarriers).toHaveBeenCalledWith(
+      'SP',
+      expect.any(String),
+      'express',
+    );
     expect(create).toHaveBeenCalledWith(
-      'seller-user-1',
+      'seller-user-2',
       expect.objectContaining({
-        carrierId: 'carrier-1',
-        modalityId: 'standard',
+        carrierId: 'carrier-2',
+        modalityId: 'express',
         addressState: 'SP',
       }),
     );
+  });
+
+  it('creates nothing when no demo carrier serves the address and modality', async () => {
+    givenShipments(null);
+    random.mockReturnValue(0.1);
+    count.mockResolvedValue(3);
+    findEligibleCarriers.mockResolvedValue([{ id: 'real-carrier' }]);
+
+    await simulator.tick();
+
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('stops creating once the demo has enough shipments in flight', async () => {
