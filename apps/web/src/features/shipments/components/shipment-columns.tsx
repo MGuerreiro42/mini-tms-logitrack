@@ -19,8 +19,13 @@ export function withSla<
   return rows.map((row) => ({ ...row, sla: slaState({ ...row, now }) }));
 }
 
-export function lateRowClassName(row: { sla: SlaState }): string | undefined {
-  return row.sla.tone === 'late' ? 'bg-late-row' : undefined;
+// The tint asks for action; a delivery that arrived late is history, so only its cell says so.
+export function lateRowClassName(
+  row: WithSla<Pick<Shipment, 'status'>>,
+): string | undefined {
+  return row.sla.tone === 'late' && row.status !== 'DELIVERED'
+    ? 'bg-late-row'
+    : undefined;
 }
 
 export const slaColumn: Column<{ sla: SlaState }> = {
