@@ -14,6 +14,7 @@ import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
+import { formatCep } from '@/lib/br-documents';
 import { formatDate, formatDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
@@ -103,7 +104,9 @@ function ShipmentDetailView({
                 {shipment.addressComplement &&
                   ` · ${shipment.addressComplement}`}{' '}
                 · {shipment.addressNeighborhood}, {place} ·{' '}
-                <span className="font-mono">{shipment.addressZipCode}</span>
+                <span className="font-mono">
+                  {formatCep(shipment.addressZipCode)}
+                </span>
               </dd>
               <dt className="text-muted-foreground">Carrier</dt>
               <dd className="font-semibold">{shipment.carrierName}</dd>
