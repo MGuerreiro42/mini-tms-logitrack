@@ -1,5 +1,6 @@
 import { request } from 'node:https';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import {
   type Prisma,
@@ -38,6 +39,8 @@ function describeError(error: unknown): string {
   },
 })
 export class WebhookDeliveryProcessor extends WorkerHost {
+  private readonly logger = new Logger(WebhookDeliveryProcessor.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly inbox: WebhookInboxService,
@@ -47,8 +50,13 @@ export class WebhookDeliveryProcessor extends WorkerHost {
   }
 
   // Nest closes workers after disposing the socket adapter; a delivery finishing then emits into a closed Redis.
-  onModuleDestroy(): Promise<void> {
-    return this.worker.close();
+  async onModuleDestroy(): Promise<void> {
+    try {
+      await this.worker.close();
+    } catch (error) {
+      // Never initialized, or Redis already gone: nothing left to drain, and shutdown goes on.
+      this.logger.warn(`Could not close the webhook worker: ${String(error)}`);
+    }
   }
 
   async process(job: Job<DeliverJobData>): Promise<void> {
