@@ -96,6 +96,10 @@ export interface AdminShipment extends CarrierShipment {
   carrierName: string;
 }
 
+export interface AdminShipmentDetail extends AdminShipment {
+  trackingEvents: TrackingEvent[];
+}
+
 export interface AdminStatusCountsQuery {
   carrierId?: string;
   sellerId?: string;

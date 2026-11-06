@@ -5,6 +5,7 @@ import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import { setViewportWidth } from '@/test/viewport';
 import { AdminMonitoringTable } from './admin-monitoring-table';
@@ -67,6 +68,41 @@ describe('AdminMonitoringTable', () => {
     expect(requestedUrls).toEqual([
       `${API_URL}/admin/shipments?page=1&limit=20`,
     ]);
+  });
+
+  it('links each row to the admin detail, carrying the current filters', async () => {
+    resetNavigation('/admin/monitoring?status=PENDING');
+    server.use(
+      http.get(`${API_URL}/admin/shipments`, () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 'shipment-1',
+              trackingCode: 'TMS-AAA111',
+              status: 'PENDING',
+              modalityName: 'Standard',
+              sellerCompanyName: 'Example Store',
+              carrierCompanyName: 'Fast Carrier',
+              addressCity: 'São Paulo',
+              addressState: 'SP',
+              ownerEmail: null,
+              ownerId: null,
+              dueAt: null,
+              deliveredAt: null,
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+          meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+    );
+    renderWithQueryClient(
+      <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'TMS-AAA111' }),
+    ).toHaveAttribute('href', '/admin/shipments/shipment-1?status=PENDING');
   });
 
   it('filters by status from the toolbar menu', async () => {
