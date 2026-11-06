@@ -2,11 +2,11 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ROLE_HOME, setSession } from '@/lib/session';
+import { safeNext, setSession } from '@/lib/session';
 import { login } from '../api';
 import type { LoginInput } from '../types';
 
-export function useLoginMutation() {
+export function useLoginMutation(next?: string) {
   const router = useRouter();
 
   return useMutation({
@@ -19,7 +19,7 @@ export function useLoginMutation() {
         userId: user.id,
         email: user.email,
       });
-      router.push(ROLE_HOME[user.role]);
+      router.push(safeNext(next, user.role));
     },
   });
 }

@@ -65,6 +65,31 @@ describe('LoginForm', () => {
     });
   });
 
+  it.each([
+    ['/carrier/queue/abc?tab=events', '/carrier/queue/abc?tab=events'],
+    ['https://evil.example', '/carrier/queue'],
+    ['/admin', '/carrier/queue'],
+  ])('lands on next=%s when the role may open it', async (next, target) => {
+    server.use(
+      http.post(`${API_URL}/auth/login`, () =>
+        HttpResponse.json({
+          accessToken: 'signed.jwt.token',
+          user: {
+            id: 'user-2',
+            email: 'carrier@demo.minitms.dev',
+            role: 'CARRIER_MANAGER',
+          },
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginForm showDemoAccounts next={next} />);
+
+    await user.click(screen.getByRole('button', { name: 'Carrier' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith(target));
+  });
+
   it('surfaces the backend error message verbatim on invalid credentials', async () => {
     server.use(
       http.post(
