@@ -14,6 +14,8 @@ export interface NavItem {
   name: string;
   shortName?: string;
   href: string;
+  // Other route roots this item owns, e.g. Monitoring owns /admin/shipments.
+  owns?: string[];
 }
 
 const MAX_TABS = 4;
@@ -21,12 +23,16 @@ const MAX_TABS = 4;
 function useActiveHref(items: NavItem[]): string | undefined {
   const pathname = usePathname();
 
+  const matches = (root: string) =>
+    pathname === root || pathname.startsWith(`${root}/`);
   // Longest match wins, otherwise the section root (/seller) is active on every nested route.
   return items
-    .filter(
-      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    .flatMap((item) =>
+      [item.href, ...(item.owns ?? [])]
+        .filter(matches)
+        .map((root) => ({ href: item.href, length: root.length })),
     )
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    .sort((a, b) => b.length - a.length)[0]?.href;
 }
 
 export function NavList({
