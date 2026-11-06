@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-import { toUpperTrimmed } from '../../../shared/transforms/normalize';
+import { IsCep, IsUf } from '../../../shared/validation/br-validators';
 
 export class CreateShipmentDto {
   @ApiProperty({ example: 'Av. Paulista' })
@@ -29,15 +28,15 @@ export class CreateShipmentDto {
   @IsNotEmpty()
   addressCity: string;
 
-  @ApiProperty({ example: 'SP' })
-  @Transform(toUpperTrimmed)
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ example: 'SP', description: 'One of the 27 UFs, any case' })
+  @IsUf()
   addressState: string;
 
-  @ApiProperty({ example: '01310-100' })
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({
+    example: '01310-100',
+    description: '8 digits, with or without the hyphen; stored as digits only',
+  })
+  @IsCep()
   addressZipCode: string;
 
   @ApiProperty({

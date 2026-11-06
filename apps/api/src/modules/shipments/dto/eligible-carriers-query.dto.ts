@@ -1,13 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
-import { toUpperTrimmed } from '../../../shared/transforms/normalize';
+import { IsUf } from '../../../shared/validation/br-validators';
 
 export class EligibleCarriersQueryDto {
-  @ApiProperty({ example: 'SP' })
-  @Transform(toUpperTrimmed)
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({ example: 'SP', description: 'One of the 27 UFs, any case' })
+  @IsUf()
   state: string;
 
   @ApiProperty({
