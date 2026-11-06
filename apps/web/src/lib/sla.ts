@@ -21,17 +21,32 @@ function span(minutes: number, round: (value: number) => number): string {
   return `${round(hours / HOURS_PER_DAY)} d`;
 }
 
+function deliveredVerdict(
+  dueAt: string,
+  deliveredAt: string | null | undefined,
+): SlaState {
+  if (!deliveredAt) return { label: 'Delivered', tone: 'muted' };
+  const msLate = new Date(deliveredAt).getTime() - new Date(dueAt).getTime();
+  if (msLate <= 0) return { label: 'On time', tone: 'muted' };
+  return {
+    label: `Late by ${span(Math.ceil(msLate / MINUTE_MS), Math.ceil)}`,
+    tone: 'late',
+  };
+}
+
 export function slaState({
   dueAt,
+  deliveredAt,
   status,
   now = new Date(),
 }: {
   dueAt: string | null | undefined;
+  deliveredAt?: string | null;
   status: ShipmentStatus;
   now?: Date;
 }): SlaState {
   if (!dueAt || CLOSED.includes(status)) return { label: '—', tone: 'muted' };
-  if (status === 'DELIVERED') return { label: 'Delivered', tone: 'muted' };
+  if (status === 'DELIVERED') return deliveredVerdict(dueAt, deliveredAt);
 
   const msLeft = new Date(dueAt).getTime() - now.getTime();
   if (msLeft < 0) {

@@ -12,14 +12,10 @@ type ShipmentRow = Pick<
 
 export type WithSla<T> = T & { sla: SlaState };
 
-export function withSla<T extends Pick<Shipment, 'dueAt' | 'status'>>(
-  rows: T[],
-  now: Date,
-): WithSla<T>[] {
-  return rows.map((row) => ({
-    ...row,
-    sla: slaState({ dueAt: row.dueAt, status: row.status, now }),
-  }));
+export function withSla<
+  T extends Pick<Shipment, 'dueAt' | 'deliveredAt' | 'status'>,
+>(rows: T[], now: Date): WithSla<T>[] {
+  return rows.map((row) => ({ ...row, sla: slaState({ ...row, now }) }));
 }
 
 export function lateRowClassName(row: { sla: SlaState }): string | undefined {

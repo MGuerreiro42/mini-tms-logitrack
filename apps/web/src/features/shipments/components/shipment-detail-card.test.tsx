@@ -41,6 +41,7 @@ const pendingShipment: ShipmentDetail = {
   addressZipCode: '01310-100',
   createdAt: '2026-01-01T00:00:00.000Z',
   dueAt: '2026-01-06T00:00:00.000Z',
+  deliveredAt: null,
   trackingEvents: [],
   map: null,
   lastPosition: null,
