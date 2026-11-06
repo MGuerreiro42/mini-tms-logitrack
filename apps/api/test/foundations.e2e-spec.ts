@@ -1,6 +1,9 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import request from 'supertest';
-import { isCnpj } from '../src/shared/validation/br-validators';
+import { cityKey } from '../src/shared/transforms/normalize';
+import { BR_STATES, isCnpj } from '../src/shared/validation/br-validators';
 import {
   adminToken,
   createShipment,
@@ -12,6 +15,18 @@ import {
 } from './support/e2e-app';
 
 const HOUR_MS = 3_600_000;
+
+// The migration's own backfill statement, so the test breaks if it drifts from cityKey().
+const CITY_KEY_BACKFILL =
+  /UPDATE "CarrierCoverageArea"[\s\S]*?WHERE "city" IS NOT NULL/.exec(
+    readFileSync(
+      join(
+        __dirname,
+        '../prisma/migrations/20261106064829_phase0_foundations/migration.sql',
+      ),
+      'utf8',
+    ),
+  )?.[0];
 
 const randomCnpj = () => {
   const base = Array.from({ length: 12 }, () => randomInt(10)).join('');
@@ -109,6 +124,43 @@ describe('Foundations (e2e)', () => {
   });
 
   describe('coverage matching', () => {
+    it('backfills the same city key in SQL as cityKey() computes', async () => {
+      const cities = [
+        'São Paulo',
+        'Sa\u0303o Paulo',
+        '\tNiterói\n',
+        ' RIBEIRÃO PRETO ',
+        '\u00a0Ribeira\u0303o Preto',
+        'São José dos Campos',
+        'Itaú de Minas',
+        'Açailândia',
+        'MOGI DAS CRUZES',
+      ];
+      const { id: carrierId } = await ctx.prisma.carrier.create({
+        data: {
+          companyName: 'Key Check',
+          document: randomCnpj(),
+          coverageAreas: {
+            // One state each: equal keys within a state would collide on the unique index.
+            create: cities.map((city, i) => ({ state: BR_STATES[i], city })),
+          },
+        },
+      });
+
+      await ctx.prisma.$executeRawUnsafe(
+        `${CITY_KEY_BACKFILL} AND "carrierId" = $1`,
+        carrierId,
+      );
+
+      const rows = await ctx.prisma.carrierCoverageArea.findMany({
+        where: { carrierId },
+      });
+      expect(rows).toHaveLength(cities.length);
+      for (const row of rows) {
+        expect(row.cityKey).toBe(cityKey(row.city as string));
+      }
+    });
+
     it('matches a city however its accents and case are typed', async () => {
       const carrier = await createTenants(ctx);
       const saved = await as(carrier.manager)

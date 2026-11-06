@@ -41,10 +41,11 @@ DROP INDEX "CarrierCoverageArea_state_city_idx";
 -- AlterTable
 ALTER TABLE "CarrierCoverageArea" ADD COLUMN     "cityKey" TEXT;
 
--- Same key as cityKey() in src/shared/transforms/normalize.ts, for the Portuguese accented letters
+-- Same key as cityKey() in src/shared/transforms/normalize.ts, for the Portuguese accented letters:
+-- NFC first so decomposed accents become the precomposed letters translate() knows
 UPDATE "CarrierCoverageArea"
 SET "cityKey" = translate(
-  lower(btrim("city")),
+  lower(regexp_replace(normalize("city", NFC), '^[\s ﻿]+|[\s ﻿]+$', '', 'g')),
   'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',
   'aaaaaeeeeiiiiooooouuuucnaaaaaeeeeiiiiooooouuuucn'
 )
