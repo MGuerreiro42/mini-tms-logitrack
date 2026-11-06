@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CarrierRole, type Prisma } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import {
@@ -32,6 +32,8 @@ const byMemberEmail = (ids: string[]) =>
 
 @Injectable()
 export class DemoTenantService {
+  private readonly logger = new Logger(DemoTenantService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // Null when the seed ran without SEED_DEMO: the simulator never creates demo accounts itself.
@@ -54,8 +56,17 @@ export class DemoTenantService {
     );
     const sellers = sellerUsers.map((user) => user?.seller);
     const carrierUsers = memberUsers.map((user) => user?.carrierUser);
-    const extraManagers = DEMO_EXTRA_CARRIERS.map(
-      ({ manager }) => userByEmail.get(manager.email)?.carrierUser,
+    // A missing extra carrier only drops out of the simulation; the core tenant and the reset go on.
+    const extraManagers = DEMO_EXTRA_CARRIERS.flatMap(
+      ({ companyName, manager }) => {
+        const carrierUser = userByEmail.get(manager.email)?.carrierUser;
+        if (!carrierUser) {
+          this.logger.error(
+            `Demo carrier ${companyName} not found; run the seed with SEED_DEMO=true`,
+          );
+        }
+        return carrierUser ? [carrierUser] : [];
+      },
     );
     const demoModalities = DEMO_MODALITY_CODES.map((code) =>
       modalityByCode.get(code),
@@ -64,7 +75,6 @@ export class DemoTenantService {
       !isComplete(sellerUsers) ||
       !isComplete(sellers) ||
       !isComplete(carrierUsers) ||
-      !isComplete(extraManagers) ||
       !isComplete(demoModalities)
     ) {
       return null;
