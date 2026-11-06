@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useNow } from '@/hooks/use-now';
+import { formatCep } from '@/lib/br-documents';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
 import { nextExpectedStatus } from '@/lib/shipment-progress';
@@ -122,7 +123,11 @@ export function ShipmentAddressRows({ address }: { address: ShipmentAddress }) {
         label="City"
         value={`${address.addressCity}/${address.addressState}`}
       />
-      <DetailRow label="Zip code" value={address.addressZipCode} mono />
+      <DetailRow
+        label="Zip code"
+        value={formatCep(address.addressZipCode)}
+        mono
+      />
     </>
   );
 }
