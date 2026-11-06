@@ -49,7 +49,12 @@ import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { isPublicPosition } from './route-geometry';
-import { findRoute, type RoutableShipment, routeSellerInclude } from './routes';
+import {
+  findRoute,
+  type RoutableShipment,
+  routeSellerInclude,
+  routeSellerSelect,
+} from './routes';
 import {
   adminShipmentDetailInclude,
   adminShipmentInclude,
@@ -144,7 +149,7 @@ export class ShipmentsService {
         trackingEvents: { orderBy: { createdAt: 'asc' } },
         carrier: { select: { companyName: true } },
         seller: {
-          select: { companyName: true, ...routeSellerInclude.seller.select },
+          select: { companyName: true, ...routeSellerSelect },
         },
       },
     });
