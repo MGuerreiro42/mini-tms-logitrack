@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { endSession } from '@/lib/end-session';
 import { HTTP_STATUS } from '@/lib/http-status';
-import { SESSION_EXPIRED_PATH } from '@/lib/session';
+import { sessionExpiredPath } from '@/lib/session';
 import { hasStatus, isClientError } from '@/services/api-client';
 
 declare module '@tanstack/react-query' {
@@ -22,7 +22,8 @@ declare module '@tanstack/react-query' {
 let browserQueryClient: QueryClient | undefined;
 
 function forceReLogin() {
-  endSession(getQueryClient(), SESSION_EXPIRED_PATH);
+  const { pathname, search } = window.location;
+  endSession(getQueryClient(), sessionExpiredPath(`${pathname}${search}`));
 }
 
 function isExpiredSession(error: unknown): boolean {

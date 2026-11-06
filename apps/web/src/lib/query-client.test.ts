@@ -70,7 +70,7 @@ describe('global 401 handling', () => {
       .catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1');
+    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1&next=%2F');
     expect(client.getQueryData(['stale'])).toBeUndefined();
   });
 
@@ -128,7 +128,7 @@ describe('global 401 handling', () => {
     await mutation.execute(undefined).catch(() => {});
 
     expect(document.cookie).not.toContain('tms_session=signed');
-    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1');
+    expect(hardNavigate).toHaveBeenCalledWith('/login?expired=1&next=%2F');
   });
 
   it('does NOT clear the session on a 403 mutation error (a legitimate ownership rejection, not a broken session)', async () => {
