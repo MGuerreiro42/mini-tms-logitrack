@@ -90,6 +90,9 @@ export function PublicTrackingDetails({
           {tracking.addressCity}, {tracking.addressState} ·{' '}
           {tracking.modalityName}
         </p>
+        <p className="text-[15px] text-muted-foreground">
+          From {tracking.sellerName} · carried by {tracking.carrierName}
+        </p>
       </div>
       {tracking.map && stage && (
         <LazyDeliveryMap
