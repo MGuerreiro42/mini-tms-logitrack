@@ -10,7 +10,7 @@ import { ROUTES } from '@/lib/routes';
 
 export interface SegmentErrorProps {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }
 
 function ErrorReference({ digest }: { digest?: string }) {
@@ -51,7 +51,7 @@ export function useErrorCopy(
   return copy[useApiHealth()];
 }
 
-export function SegmentError({ error, unstable_retry }: SegmentErrorProps) {
+export function SegmentError({ error, retry }: SegmentErrorProps) {
   const { title, description } = useErrorCopy(
     error,
     "This page couldn't be loaded. Nothing was changed.",
@@ -63,7 +63,7 @@ export function SegmentError({ error, unstable_retry }: SegmentErrorProps) {
       description={description}
       actions={
         <>
-          <Button variant="strong" onClick={() => unstable_retry()}>
+          <Button variant="strong" onClick={() => retry()}>
             Try again
           </Button>
           <Button asChild variant="link">
