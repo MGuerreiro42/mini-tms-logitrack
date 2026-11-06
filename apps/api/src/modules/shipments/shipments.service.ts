@@ -142,7 +142,10 @@ export class ShipmentsService {
       include: {
         modality: { select: { name: true } },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
-        ...routeSellerInclude,
+        carrier: { select: { companyName: true } },
+        seller: {
+          select: { companyName: true, ...routeSellerInclude.seller.select },
+        },
       },
     });
     if (!shipment) {
@@ -155,6 +158,8 @@ export class ShipmentsService {
       addressCity: shipment.addressCity,
       addressState: shipment.addressState,
       modalityName: shipment.modality.name,
+      sellerName: shipment.seller.companyName,
+      carrierName: shipment.carrier.companyName,
       events: shipment.trackingEvents.map((event) => ({
         status: event.status,
         createdAt: event.createdAt,
