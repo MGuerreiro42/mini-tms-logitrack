@@ -16,6 +16,8 @@ export const shipmentKeys = {
     [...shipmentKeys.all, 'queue', 'detail', id] as const,
   adminList: (query: ListAdminShipmentsQuery) =>
     [...shipmentKeys.all, 'admin', 'list', query] as const,
+  adminDetail: (id: string) =>
+    [...shipmentKeys.all, 'admin', 'detail', id] as const,
   adminStatusCounts: (query: AdminStatusCountsQuery) =>
     [...shipmentKeys.all, 'admin', 'status-counts', query] as const,
   statusCounts: () => [...shipmentKeys.all, 'status-counts'] as const,
