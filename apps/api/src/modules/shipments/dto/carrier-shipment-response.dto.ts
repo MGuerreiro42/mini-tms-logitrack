@@ -52,9 +52,17 @@ export class CarrierShipmentResponseDto extends ShipmentAddressDto {
   @ApiProperty({
     type: Date,
     nullable: true,
-    description: 'createdAt + modality slaHours; null when no SLA is tracked',
+    description:
+      'createdAt + modality slaHours, fixed at creation; null when no SLA is tracked',
   })
   dueAt: Date | null;
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description: 'When the shipment reached DELIVERED; null until then',
+  })
+  deliveredAt: Date | null;
 }
 
 export class CarrierShipmentDetailResponseDto extends IntersectionType(
