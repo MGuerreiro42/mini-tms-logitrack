@@ -7,6 +7,7 @@ import {
 } from '@/components/common/live-indicator';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { TextLink } from '@/components/common/text-link';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { useChangeSignal } from '@/hooks/use-change-signal';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
@@ -56,9 +57,10 @@ export function PublicTrackingDetails({
           <span className="text-[13px] text-muted-foreground">
             Tracking code
           </span>
-          <span className="truncate font-mono text-lg font-medium sm:text-[22px]">
-            {tracking.trackingCode}
-          </span>
+          <TrackingCode
+            code={tracking.trackingCode}
+            className="truncate text-lg font-medium sm:text-[22px]"
+          />
         </div>
         <LiveIndicator
           live={live}

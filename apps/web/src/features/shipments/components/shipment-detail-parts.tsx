@@ -7,6 +7,7 @@ import {
 } from '@/components/common/live-indicator';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { SlaCell } from '@/components/common/sla-cell';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
@@ -35,11 +36,11 @@ export function ShipmentTitle({
   return (
     <div className="flex flex-col gap-3">
       <Breadcrumb parent={back}>
-        <span className="font-mono">{shipment.trackingCode}</span>
+        <TrackingCode code={shipment.trackingCode} />
       </Breadcrumb>
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
-        <h1 className="font-mono text-2xl font-medium tracking-tight md:text-3xl">
-          {shipment.trackingCode}
+        <h1 className="text-2xl font-medium tracking-tight md:text-3xl">
+          <TrackingCode code={shipment.trackingCode} />
         </h1>
         <ShipmentStatusBadge status={shipment.status} />
         {meta && <span className="text-sm text-muted-foreground">{meta}</span>}
@@ -92,7 +93,7 @@ export function ShipmentHeaderCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
-          {shipment.trackingCode}
+          <TrackingCode code={shipment.trackingCode} />
           <ShipmentStatusBadge status={shipment.status} />
           <LiveIndicator live={live} className="ml-auto" />
         </CardTitle>

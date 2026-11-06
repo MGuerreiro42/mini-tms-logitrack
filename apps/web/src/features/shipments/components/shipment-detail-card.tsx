@@ -11,6 +11,7 @@ import { Panel } from '@/components/common/panel';
 import { PinnedAction } from '@/components/common/pinned-action';
 import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
@@ -56,14 +57,15 @@ function ShipmentDetailView({
   return (
     <div className="space-y-5">
       <Breadcrumb parent={{ href: ROUTES.sellerShipments, label: 'Shipments' }}>
-        <span className="font-mono">{shipment.trackingCode}</span>
+        <TrackingCode code={shipment.trackingCode} />
       </Breadcrumb>
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3.5">
-            <span className="font-mono font-medium">
-              {shipment.trackingCode}
-            </span>
+            <TrackingCode
+              code={shipment.trackingCode}
+              className="font-medium"
+            />
             <ShipmentStatusBadge status={shipment.status} />
           </span>
         }

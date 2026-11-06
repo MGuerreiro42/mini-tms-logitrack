@@ -1,5 +1,6 @@
 import type { Column } from '@/components/common/paginated-table';
 import { SlaCell } from '@/components/common/sla-cell';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import { type SlaState, slaState } from '@/lib/sla';
@@ -32,9 +33,7 @@ export const shipmentColumns = {
   trackingCode: {
     header: 'Tracking code',
     card: 'title',
-    cell: (s) => (
-      <span className="font-mono text-[13px]">{s.trackingCode}</span>
-    ),
+    cell: (s) => <TrackingCode code={s.trackingCode} className="text-[13px]" />,
   },
   status: {
     header: 'Status',

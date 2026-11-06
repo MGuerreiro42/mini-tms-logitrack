@@ -2,6 +2,7 @@
 
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { type FocusEvent, useState } from 'react';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { Button } from '@/components/ui/button';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useNow } from '@/hooks/use-now';
@@ -111,7 +112,7 @@ function ActivityLine({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-sm">
-          <span className="font-mono text-[13px]">{event.trackingCode}</span>{' '}
+          <TrackingCode code={event.trackingCode} className="text-[13px]" />{' '}
           <span className="font-semibold">
             {SHIPMENT_STATUS_LABEL[event.status]}
           </span>
