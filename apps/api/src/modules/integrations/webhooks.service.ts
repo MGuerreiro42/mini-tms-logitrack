@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
@@ -24,7 +23,7 @@ import {
   toWebhookDeliveryResponseDto,
   toWebhookEndpointResponseDto,
 } from './webhook.mappers';
-import { ALL_EVENTS, WebhookDispatcher } from './webhook-dispatcher';
+import { WebhookDispatcher } from './webhook-dispatcher';
 import { WebhookInboxService } from './webhook-inbox.service';
 import { generateWebhookSecret } from './webhook-signature';
 
@@ -161,19 +160,12 @@ export class WebhooksService {
       }),
       this.prisma.apiKey.deleteMany({ where: { sellerId: { in: sellerIds } } }),
       // Fresh inbox id and secret: the demo password is public, so yesterday's visitors knew both.
-      ...endpoints.map((endpoint) => {
-        const inboxId = randomUUID();
-        return this.prisma.webhookEndpoint.update({
+      ...endpoints.map((endpoint) =>
+        this.prisma.webhookEndpoint.update({
           where: { id: endpoint.id },
-          data: {
-            inboxId,
-            url: this.inbox.urlFor(inboxId),
-            events: ALL_EVENTS,
-            active: true,
-            secret: generateWebhookSecret(),
-          },
-        });
-      }),
+          data: { ...this.inbox.freshEndpoint(), active: true },
+        }),
+      ),
     ]);
   }
 

@@ -35,7 +35,13 @@ describe('WebhookDispatcher', () => {
     },
     webhookDelivery: { create: vi.fn() },
   };
-  const inbox = { urlFor: vi.fn((id: string) => `http://inbox/${id}`) };
+  const fresh = {
+    inboxId: 'inbox-new',
+    url: 'http://inbox/inbox-new',
+    events: ['SHIPMENT_CREATED', 'SHIPMENT_STATUS_CHANGED'],
+    secret: 'whsec_new',
+  };
+  const inbox = { freshEndpoint: vi.fn(() => fresh) };
   const queue = { add: vi.fn() };
 
   beforeEach(async () => {
@@ -67,11 +73,7 @@ describe('WebhookDispatcher', () => {
     await dispatcher.handleShipmentUpdated(shipmentCreated);
 
     expect(prisma.webhookEndpoint.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        sellerId: 'seller-1',
-        url: expect.stringMatching(/^http:\/\/inbox\//),
-        events: ['SHIPMENT_CREATED', 'SHIPMENT_STATUS_CHANGED'],
-      }),
+      data: { sellerId: 'seller-1', ...fresh },
     });
     expect(prisma.webhookDelivery.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

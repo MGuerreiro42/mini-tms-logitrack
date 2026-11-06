@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -28,14 +27,11 @@ import {
   MAX_ATTEMPTS,
   WEBHOOKS_QUEUE,
 } from './webhook-queue';
-import { generateWebhookSecret } from './webhook-signature';
 
 export const WEBHOOK_EVENT_TYPE: Record<WebhookEvent, string> = {
   SHIPMENT_CREATED: 'shipment.created',
   SHIPMENT_STATUS_CHANGED: 'shipment.status_changed',
 };
-
-export const ALL_EVENTS = Object.values(WebhookEvent);
 
 @Injectable()
 export class WebhookDispatcher {
@@ -75,16 +71,9 @@ export class WebhookDispatcher {
     });
     if (existing) return existing;
 
-    const inboxId = randomUUID();
     try {
       return await this.prisma.webhookEndpoint.create({
-        data: {
-          sellerId,
-          inboxId,
-          url: this.inbox.urlFor(inboxId),
-          events: ALL_EVENTS,
-          secret: generateWebhookSecret(),
-        },
+        data: { sellerId, ...this.inbox.freshEndpoint() },
       });
     } catch (error) {
       // A concurrent first event or visit created it first.

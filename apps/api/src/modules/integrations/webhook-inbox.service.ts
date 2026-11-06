@@ -3,6 +3,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Redis } from 'ioredis';
+import { WebhookEvent } from '../../../generated/prisma/client';
 import type { EnvConfig } from '../../shared/config/env.validation';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
@@ -14,7 +15,7 @@ import {
   WEBHOOK_INBOX_RECEIVED,
   type WebhookInboxReceivedEvent,
 } from './webhook-events';
-import { verifyWebhook } from './webhook-signature';
+import { generateWebhookSecret, verifyWebhook } from './webhook-signature';
 
 export const WEBHOOK_INBOX_PATH = 'webhook-inbox';
 const KEPT_REQUESTS = 50;
@@ -38,6 +39,17 @@ export class WebhookInboxService {
   urlFor(inboxId: string): string {
     const origin = this.configService.get('PUBLIC_API_URL', { infer: true });
     return new URL(`/${WEBHOOK_INBOX_PATH}/${inboxId}`, origin).href;
+  }
+
+  // How every endpoint starts, and how a demo reset leaves it: its own fresh inbox, every event, a new secret.
+  freshEndpoint() {
+    const inboxId = randomUUID();
+    return {
+      inboxId,
+      url: this.urlFor(inboxId),
+      events: Object.values(WebhookEvent),
+      secret: generateWebhookSecret(),
+    };
   }
 
   // By path, not full URL: endpoints saved under an earlier PUBLIC_API_URL still reach their inbox.
