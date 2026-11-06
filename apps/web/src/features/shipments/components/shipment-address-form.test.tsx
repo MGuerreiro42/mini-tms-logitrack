@@ -53,6 +53,24 @@ describe('ShipmentAddressForm', () => {
     expect(screen.getByText('Pick a modality')).toBeInTheDocument();
   });
 
+  it('masks the zip code and rejects one without 8 digits', async () => {
+    const user = userEvent.setup();
+    const onNext = vi.fn();
+    render(<ShipmentAddressForm modalities={standard} onNext={onNext} />);
+    const zip = screen.getByLabelText('Zip code');
+
+    await user.type(zip, 'abc0131010');
+    await user.click(
+      screen.getByRole('button', { name: /see eligible carriers/i }),
+    );
+
+    expect(zip).toHaveValue('01310-10');
+    expect(
+      await screen.findByText('Enter an 8-digit zip code'),
+    ).toBeInTheDocument();
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
   it('calls onNext with the form values and the chosen modality', async () => {
     const user = userEvent.setup();
     const onNext = vi.fn();
@@ -67,7 +85,7 @@ describe('ShipmentAddressForm', () => {
     await waitFor(() =>
       expect(onNext).toHaveBeenCalledWith(
         expect.objectContaining({
-          addressZipCode: '01310-100',
+          addressZipCode: '01310100',
           addressState: 'SP',
           addressCity: 'São Paulo',
           addressStreet: 'Av. Paulista',
