@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -6,9 +7,11 @@ import {
   type Prisma,
   type WebhookDelivery,
   WebhookDeliveryStatus,
+  type WebhookEndpoint,
   WebhookEvent,
 } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import {
   SHIPMENT_UPDATED,
   type ShipmentUpdatedEvent,
@@ -18,23 +21,28 @@ import {
   WEBHOOK_DELIVERY_UPDATED,
   type WebhookDeliveryUpdatedEvent,
 } from './webhook-events';
+import { WebhookInboxService } from './webhook-inbox.service';
 import {
   DELIVER_JOB,
   type DeliverJobData,
   MAX_ATTEMPTS,
   WEBHOOKS_QUEUE,
 } from './webhook-queue';
+import { generateWebhookSecret } from './webhook-signature';
 
 export const WEBHOOK_EVENT_TYPE: Record<WebhookEvent, string> = {
   SHIPMENT_CREATED: 'shipment.created',
   SHIPMENT_STATUS_CHANGED: 'shipment.status_changed',
 };
 
+export const ALL_EVENTS = Object.values(WebhookEvent);
+
 @Injectable()
 export class WebhookDispatcher {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly inbox: WebhookInboxService,
     @InjectQueue(WEBHOOKS_QUEUE) private readonly queue: Queue<DeliverJobData>,
   ) {}
 
@@ -44,11 +52,8 @@ export class WebhookDispatcher {
       event.previousStatus === null
         ? WebhookEvent.SHIPMENT_CREATED
         : WebhookEvent.SHIPMENT_STATUS_CHANGED;
-    const endpoint = await this.prisma.webhookEndpoint.findUnique({
-      where: { sellerId: event.sellerId },
-      select: { id: true, active: true, events: true },
-    });
-    if (!endpoint?.active || !endpoint.events.includes(type)) return;
+    const endpoint = await this.findOrCreateEndpoint(event.sellerId);
+    if (!endpoint.active || !endpoint.events.includes(type)) return;
 
     await this.dispatch(endpoint.id, event.sellerId, type, {
       type: WEBHOOK_EVENT_TYPE[type],
@@ -60,6 +65,34 @@ export class WebhookDispatcher {
         previousStatus: event.previousStatus,
       },
     });
+  }
+
+  // Every seller gets an active endpoint on their own test inbox, so deliveries show up at once.
+  // An existing one is returned as is: a seller who disabled it keeps it disabled.
+  async findOrCreateEndpoint(sellerId: string): Promise<WebhookEndpoint> {
+    const existing = await this.prisma.webhookEndpoint.findUnique({
+      where: { sellerId },
+    });
+    if (existing) return existing;
+
+    const inboxId = randomUUID();
+    try {
+      return await this.prisma.webhookEndpoint.create({
+        data: {
+          sellerId,
+          inboxId,
+          url: this.inbox.urlFor(inboxId),
+          events: ALL_EVENTS,
+          secret: generateWebhookSecret(),
+        },
+      });
+    } catch (error) {
+      // A concurrent first event or visit created it first.
+      if (!uniqueViolationTarget(error)) throw error;
+      return this.prisma.webhookEndpoint.findUniqueOrThrow({
+        where: { sellerId },
+      });
+    }
   }
 
   async dispatch(

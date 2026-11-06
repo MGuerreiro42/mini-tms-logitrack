@@ -46,6 +46,11 @@ export class WebhookDeliveryProcessor extends WorkerHost {
     super();
   }
 
+  // Nest closes workers after disposing the socket adapter; a delivery finishing then emits into a closed Redis.
+  onModuleDestroy(): Promise<void> {
+    return this.worker.close();
+  }
+
   async process(job: Job<DeliverJobData>): Promise<void> {
     const delivery = await this.prisma.webhookDelivery.findUnique({
       where: { id: job.data.deliveryId },
