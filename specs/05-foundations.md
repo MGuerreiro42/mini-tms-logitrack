@@ -2,7 +2,7 @@
 
 **Feature**: `foundations` — `ShipmentsModule`, `SellersModule`, `CarriersModule`, `IntegrationsModule`, `SimulatorModule` (seed) and `apps/web` (shared lib, auth, error boundaries, shipments and tracking features)
 **Created**: 2026-11-06
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §10 (data model), §11 (auth), §14 (shipments, matching normalization), §15 (tracking), §16 (dashboards, monitoring); `SCREENS.md` (Public Tracking, Shipment Detail, Global Monitoring); `FLOW.md` Frame 23; `.claude/research/ux-briefs.md` §1, §2.4, §9 step 1, §10
 
 ## Summary
@@ -301,3 +301,4 @@ Input borders are visible against cards in both themes, tracking codes never bre
 | Date | Change |
 |------|--------|
 | 2026-11-06 | Spec created from the UX briefs (§1, §9 step 1, §10) and the PO reports; every item verified against `main`. `SCREENS.md` amended for the public sender line and failure-reason visibility |
+| 2026-11-06 | Implemented: PR A (API, FR-001–FR-017) and PR B (web, FR-018–FR-029); `DESIGN.md` §9, §10 and §14 updated (FR-030) |
