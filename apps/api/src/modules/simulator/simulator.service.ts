@@ -184,12 +184,12 @@ export class SimulatorService {
         ownerId: null,
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true },
+      select: { id: true, carrierId: true },
     });
     if (!shipment) return;
 
     await this.shipmentsService.claim(
-      this.pick(tenant.operatorUserIds),
+      this.pick(tenant.claimUserIds[shipment.carrierId]),
       shipment.id,
     );
   }

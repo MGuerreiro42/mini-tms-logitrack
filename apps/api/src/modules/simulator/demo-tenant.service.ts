@@ -4,25 +4,31 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import {
   DEMO_CARRIER_MEMBERS,
   DEMO_EMAILS,
+  DEMO_EXTRA_CARRIERS,
   DEMO_MODALITY_CODES,
   DEMO_SELLERS,
   type DemoTenant,
 } from './demo-dataset';
 
 export interface LoadedDemoTenant extends DemoTenant {
-  sellerUserIds: string[];
-  operatorUserIds: string[];
+  // Every demo carrier, with the users the simulator claims its shipments as.
+  claimUserIds: Record<string, string[]>;
 }
 
 const isComplete = <T>(items: (T | null | undefined)[]): items is T[] =>
   items.every((item) => item != null);
 
 export const demoShipmentsWhere = (
-  tenant: DemoTenant,
+  tenant: LoadedDemoTenant,
 ): Prisma.ShipmentWhereInput => ({
   sellerId: { in: [...tenant.sellerIds] },
-  carrierId: tenant.carrierId,
+  carrierId: { in: Object.keys(tenant.claimUserIds) },
 });
+
+const byMemberEmail = (ids: string[]) =>
+  Object.fromEntries(
+    DEMO_CARRIER_MEMBERS.map(({ email }, index) => [email, ids[index]]),
+  ) as DemoTenant['carrierUserIds'];
 
 @Injectable()
 export class DemoTenantService {
@@ -48,6 +54,9 @@ export class DemoTenantService {
     );
     const sellers = sellerUsers.map((user) => user?.seller);
     const carrierUsers = memberUsers.map((user) => user?.carrierUser);
+    const extraManagers = DEMO_EXTRA_CARRIERS.map(
+      ({ manager }) => userByEmail.get(manager.email)?.carrierUser,
+    );
     const demoModalities = DEMO_MODALITY_CODES.map((code) =>
       modalityByCode.get(code),
     );
@@ -55,25 +64,28 @@ export class DemoTenantService {
       !isComplete(sellerUsers) ||
       !isComplete(sellers) ||
       !isComplete(carrierUsers) ||
+      !isComplete(extraManagers) ||
       !isComplete(demoModalities)
     ) {
       return null;
     }
 
     const [standard, full, express] = demoModalities;
+    const carrierId = carrierUsers[0].carrierId;
     return {
       sellerIds: sellers.map((seller) => seller.id),
       sellerUserIds: sellerUsers.map((user) => user.id),
-      carrierId: carrierUsers[0].carrierId,
-      carrierUserIds: Object.fromEntries(
-        DEMO_CARRIER_MEMBERS.map(({ email }, index) => [
-          email,
-          carrierUsers[index].id,
-        ]),
-      ) as DemoTenant['carrierUserIds'],
-      operatorUserIds: carrierUsers
-        .filter((carrierUser) => carrierUser.role === CarrierRole.OPERATOR)
-        .map((carrierUser) => carrierUser.userId),
+      carrierId,
+      carrierUserIds: byMemberEmail(carrierUsers.map(({ id }) => id)),
+      memberUserIds: byMemberEmail(carrierUsers.map(({ userId }) => userId)),
+      claimUserIds: {
+        [carrierId]: carrierUsers
+          .filter((carrierUser) => carrierUser.role === CarrierRole.OPERATOR)
+          .map((carrierUser) => carrierUser.userId),
+        ...Object.fromEntries(
+          extraManagers.map((manager) => [manager.carrierId, [manager.userId]]),
+        ),
+      },
       modalities: { STANDARD: standard, FULL: full, EXPRESS: express },
     };
   }

@@ -1,5 +1,6 @@
 import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
+import { computeDueAt } from '../shipments/shipment-due-at';
 import { STAGE_DURATION_MS } from './simulator.constants';
 
 export const DEMO_STATE = 'SP';
@@ -8,11 +9,13 @@ export const DEMO_PASSWORD = 'demo12345';
 export const DEMO_SELLERS = [
   {
     email: 'seller@demo.minitms.dev',
+    name: 'Lucas Pereira',
     companyName: 'Loja Demo',
     document: '12345678000100',
   },
   {
     email: 'seller2@demo.minitms.dev',
+    name: 'Marina Costa',
     companyName: 'Casa & Cia Demo',
     document: '23456789000111',
   },
@@ -24,10 +27,37 @@ export const DEMO_CARRIER = {
 } as const;
 
 export const DEMO_CARRIER_MEMBERS = [
-  { email: 'carrier@demo.minitms.dev', role: 'MANAGER' },
-  { email: 'operator1@demo.minitms.dev', role: 'OPERATOR' },
-  { email: 'operator2@demo.minitms.dev', role: 'OPERATOR' },
+  { email: 'carrier@demo.minitms.dev', name: 'Carlos Mendes', role: 'MANAGER' },
+  { email: 'operator1@demo.minitms.dev', name: 'Ana Souza', role: 'OPERATOR' },
+  { email: 'operator2@demo.minitms.dev', name: 'Bruno Lima', role: 'OPERATOR' },
 ] as const;
+
+export const DEMO_MODALITY_CODES = ['STANDARD', 'FULL', 'EXPRESS'] as const;
+type DemoModalityCode = (typeof DEMO_MODALITY_CODES)[number];
+
+// So the carrier choice at shipment creation is a real one; null cities cover the whole state.
+export const DEMO_EXTRA_CARRIERS: readonly {
+  companyName: string;
+  document: string;
+  manager: { email: string; name: string };
+  cities: readonly string[] | null;
+  modalityCodes: readonly DemoModalityCode[];
+}[] = [
+  {
+    companyName: 'Rápido Paulista',
+    document: '11222333000181',
+    manager: { email: 'rapido@demo.minitms.dev', name: 'Rafael Alves' },
+    cities: ['São Paulo', 'Guarulhos', 'Campinas', 'Santos'],
+    modalityCodes: ['EXPRESS', 'FULL'],
+  },
+  {
+    companyName: 'EconoLog',
+    document: '44555666000181',
+    manager: { email: 'econolog@demo.minitms.dev', name: 'Juliana Rocha' },
+    cities: null,
+    modalityCodes: ['STANDARD', 'FULL'],
+  },
+];
 
 export const DEMO_ADDRESSES = [
   {
@@ -35,56 +65,56 @@ export const DEMO_ADDRESSES = [
     number: '1000',
     neighborhood: 'Bela Vista',
     city: 'São Paulo',
-    zipCode: '01310-100',
+    zipCode: '01310100',
   },
   {
     street: 'Rua Augusta',
     number: '2340',
     neighborhood: 'Jardins',
     city: 'São Paulo',
-    zipCode: '01412-000',
+    zipCode: '01412000',
   },
   {
     street: 'Av. Brasil',
     number: '455',
     neighborhood: 'Jardim Guanabara',
     city: 'Campinas',
-    zipCode: '13070-178',
+    zipCode: '13070178',
   },
   {
     street: 'Rua XV de Novembro',
     number: '88',
     neighborhood: 'Centro',
     city: 'Santos',
-    zipCode: '11010-150',
+    zipCode: '11010150',
   },
   {
     street: 'Av. Itavuvu',
     number: '1200',
     neighborhood: 'Vila Olímpia',
     city: 'Sorocaba',
-    zipCode: '18078-005',
+    zipCode: '18078005',
   },
   {
     street: 'Rua General Osório',
     number: '310',
     neighborhood: 'Centro',
     city: 'Ribeirão Preto',
-    zipCode: '14010-000',
+    zipCode: '14010000',
   },
   {
     street: 'Av. São João',
     number: '760',
     neighborhood: 'Jardim Esplanada',
     city: 'São José dos Campos',
-    zipCode: '12242-000',
+    zipCode: '12242000',
   },
   {
     street: 'Rua Dom Pedro II',
     number: '57',
     neighborhood: 'Centro',
     city: 'Guarulhos',
-    zipCode: '07011-000',
+    zipCode: '07011000',
   },
 ] as const;
 
@@ -97,6 +127,7 @@ export const STATUS_NOTES: Partial<Record<ShipmentStatus, string>> = {
 export const DEMO_EMAILS = [
   ...DEMO_SELLERS.map((seller) => seller.email),
   ...DEMO_CARRIER_MEMBERS.map((member) => member.email),
+  ...DEMO_EXTRA_CARRIERS.map((carrier) => carrier.manager.email),
 ];
 
 type DemoAddress = (typeof DEMO_ADDRESSES)[number];
@@ -110,16 +141,16 @@ export const toAddressFields = (address: DemoAddress) => ({
   addressZipCode: address.zipCode,
 });
 
-export const DEMO_MODALITY_CODES = ['STANDARD', 'FULL', 'EXPRESS'] as const;
 export const DEMO_TRACKING_PREFIX = 'TMS-DE';
 
 type DemoMemberEmail = (typeof DEMO_CARRIER_MEMBERS)[number]['email'];
-type DemoModalityCode = (typeof DEMO_MODALITY_CODES)[number];
 
 export interface DemoTenant {
   sellerIds: readonly string[];
+  sellerUserIds: readonly string[];
   carrierId: string;
   carrierUserIds: Record<DemoMemberEmail, string>;
+  memberUserIds: Record<DemoMemberEmail, string>;
   modalities: Record<DemoModalityCode, { id: string; slaHours: number | null }>;
 }
 
@@ -282,7 +313,7 @@ export function buildDemoShipments(
   const random = new SeededRandom();
 
   return PLANS.map((plan, index) => {
-    const sellerId = tenant.sellerIds[index % 3 === 2 ? 1 : 0];
+    const sellerIndex = index % 3 === 2 ? 1 : 0;
     const modality = tenant.modalities[random.pick(MODALITY_POOL)];
     const address = random.pick(DEMO_ADDRESSES);
     const events = planEvents(
@@ -291,25 +322,33 @@ export function buildDemoShipments(
       modality.slaHours ?? DEFAULT_SLA_HOURS,
       now,
     );
-    const ownerId = events.some((e) => e.status === ACCEPTED)
-      ? tenant.carrierUserIds[random.pick(OWNER_POOL)]
+    const owner = events.some((e) => e.status === ACCEPTED)
+      ? random.pick(OWNER_POOL)
       : null;
+    const createdAt = events[0].at;
 
     return {
       shipment: {
         trackingCode: demoTrackingCode(index),
-        sellerId,
+        sellerId: tenant.sellerIds[sellerIndex],
         carrierId: tenant.carrierId,
         modalityId: modality.id,
-        ownerId,
+        ownerId: owner && tenant.carrierUserIds[owner],
         status: plan.status,
         ...toAddressFields(address),
-        createdAt: events[0].at,
+        createdAt,
         updatedAt: events[events.length - 1].at,
+        dueAt: computeDueAt(createdAt, modality.slaHours),
+        deliveredAt: events.find((e) => e.status === DELIVERED)?.at ?? null,
       },
       events: events.map((event) => ({
         status: event.status,
         note: STATUS_NOTES[event.status] ?? null,
+        // The seller opens and cancels; every carrier step is the owner's.
+        actorId:
+          event.status === PENDING || event.status === CANCELLED || !owner
+            ? tenant.sellerUserIds[sellerIndex]
+            : tenant.memberUserIds[owner],
         createdAt: event.at,
       })),
     };

@@ -23,7 +23,15 @@ const tenant: LoadedDemoTenant = {
     'operator1@demo.minitms.dev': 'operator-1',
     'operator2@demo.minitms.dev': 'operator-2',
   },
-  operatorUserIds: ['operator-user-1', 'operator-user-2'],
+  memberUserIds: {
+    'carrier@demo.minitms.dev': 'manager-user',
+    'operator1@demo.minitms.dev': 'operator-user-1',
+    'operator2@demo.minitms.dev': 'operator-user-2',
+  },
+  claimUserIds: {
+    'carrier-1': ['operator-user-1', 'operator-user-2'],
+    'carrier-2': ['extra-manager-user'],
+  },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
     FULL: { id: 'full', slaHours: 48 },
@@ -186,15 +194,33 @@ describe('SimulatorService', () => {
   });
 
   it('claims the oldest pending shipment for an operator', async () => {
-    givenShipments(null, { id: 'pending-1' });
+    givenShipments(null, { id: 'pending-1', carrierId: 'carrier-1' });
 
     await simulator.tick();
 
     expect(claim).toHaveBeenCalledWith('operator-user-2', 'pending-1');
   });
 
+  it("claims another demo carrier's shipment as that carrier's user", async () => {
+    givenShipments(null, { id: 'pending-2', carrierId: 'carrier-2' });
+
+    await simulator.tick();
+
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          carrierId: { in: ['carrier-1', 'carrier-2'] },
+        }),
+      }),
+    );
+    expect(claim).toHaveBeenCalledWith('extra-manager-user', 'pending-2');
+  });
+
   it('keeps going when a visitor wins the race for a shipment', async () => {
-    givenShipments(owned(ShipmentStatus.COLLECTED), { id: 'pending-1' });
+    givenShipments(owned(ShipmentStatus.COLLECTED), {
+      id: 'pending-1',
+      carrierId: 'carrier-1',
+    });
     updateStatus.mockRejectedValue(new ConflictException());
 
     await simulator.tick();
