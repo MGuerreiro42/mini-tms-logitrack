@@ -39,9 +39,9 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - **Role:** public, no login
 - **Goal:** track a shipment via `Shipment.trackingCode`, without exposing sensitive seller data.
-- **Data:** current `status` (friendly label for `ShipmentStatus`), `addressCity`/`addressState` (not the full address), `TrackingEvent` timeline (status + `createdAt`, without the internal `note`).
+- **Data:** current `status` (friendly label for `ShipmentStatus`), `addressCity`/`addressState` (not the full address), the sender line "From `Seller.companyName` · carried by `Carrier.companyName`", `TrackingEvent` timeline (status + `createdAt`, without the internal `note`).
 - **Actions:** search by code.
-- **States:** code not found → clear message; no events yet (`PENDING` with no history) → "awaiting confirmation" state.
+- **States:** code not found → clear message; no events yet (`PENDING` with no history) → "awaiting confirmation" state; `FAILED_DELIVERY` → "Delivery attempt failed · the carrier will try again", never the failure reason (the reason is the internal `note`).
 - **Navigation:** standalone screen, no menu — can be opened directly from a shared link.
 
 ---
@@ -97,7 +97,7 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - **Role:** Seller (owner of the shipment via `sellerId`)
 - **Goal:** track a specific shipment in real time.
-- **Data:** every `Shipment` field + full `TrackingEvent` timeline (status, `note`, `createdAt`) + public tracking link to share.
+- **Data:** every `Shipment` field + full `TrackingEvent` timeline (status, `note`, `createdAt`) + public tracking link to share. A `FAILED_DELIVERY` event shows its failure reason (the event `note`) to the seller.
 - **Actions:** copy tracking link; (cancel, only if `status` still allows it — `PENDING`/`ACCEPTED`, see the rule in §10).
 - **States:** status updates arrive via WebSocket in real time (see DESIGN.md §5) — the screen should reflect the change without a reload.
 - **Navigation:** back to Shipments List.
