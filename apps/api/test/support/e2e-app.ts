@@ -73,6 +73,10 @@ async function login(ctx: E2eContext, email: string): Promise<string> {
   return res.body.accessToken;
 }
 
+export async function adminToken(ctx: E2eContext): Promise<string> {
+  return login(ctx, (await createUser(ctx, 'ADMIN')).email);
+}
+
 export async function createCarrier(
   ctx: E2eContext,
   modalityId: string,

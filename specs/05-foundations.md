@@ -277,6 +277,7 @@ Input borders are visible against cards in both themes, tracking codes never bre
 - A city combobox for coverage and addresses; per-carrier simulator profiles and the wizard scorecard.
 - Reattempt after a failed delivery and failure reason codes; the public "the carrier will try again" copy (SCREENS.md amendment) is implemented with reattempt, since `FAILED_DELIVERY` only leads to `RETURNED` today.
 - Auto-retry with countdown on the unavailable page; a dedicated `/unavailable` route or HTTP 503.
+- The alphanumeric CNPJ format (Receita Federal, 2026): tax IDs are digits only and a CNPJ with letters is rejected for now.
 
 ## Assumptions and Dependencies
 

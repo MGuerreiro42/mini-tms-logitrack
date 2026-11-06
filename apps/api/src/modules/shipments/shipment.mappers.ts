@@ -4,7 +4,10 @@ import type {
   ShipmentStatus,
   TrackingEvent,
 } from '../../../generated/prisma/client';
-import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
+import type {
+  AdminShipmentDetailResponseDto,
+  AdminShipmentResponseDto,
+} from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -19,15 +22,17 @@ import type {
 import type { TrackingEventDto } from './dto/tracking-event.dto';
 import { isPublicPosition, publicRoute } from './route-geometry';
 import { type DemoRoute, routeSellerInclude } from './routes';
-import { computeDueAt } from './shipment-due-at';
 import type { VehiclePosition } from './vehicle-positions';
 
 const timeline = {
-  trackingEvents: { orderBy: { createdAt: 'asc' } },
+  trackingEvents: {
+    orderBy: { createdAt: 'asc' },
+    include: { actor: { select: { name: true } } },
+  },
 } satisfies Prisma.ShipmentInclude;
 
 const modality = {
-  modality: { select: { name: true, slaHours: true } },
+  modality: { select: { name: true } },
 } satisfies Prisma.ShipmentInclude;
 
 export const sellerShipmentInclude = {
@@ -57,6 +62,11 @@ export const adminShipmentInclude = {
   carrier: { select: { companyName: true } },
 } satisfies Prisma.ShipmentInclude;
 
+export const adminShipmentDetailInclude = {
+  ...adminShipmentInclude,
+  ...timeline,
+} satisfies Prisma.ShipmentInclude;
+
 type ShipmentWith<I extends Prisma.ShipmentInclude> =
   Prisma.ShipmentGetPayload<{
     include: I;
@@ -77,11 +87,14 @@ export const pickAddress = (source: AddressSource): ShipmentAddressDto => ({
 });
 
 const toTrackingEventDto = (
-  event: Pick<TrackingEvent, 'id' | 'status' | 'note' | 'createdAt'>,
+  event: Pick<TrackingEvent, 'id' | 'status' | 'note' | 'createdAt'> & {
+    actor: { name: string | null } | null;
+  },
 ): TrackingEventDto => ({
   id: event.id,
   status: event.status,
   note: event.note,
+  actorName: event.actor?.name ?? null,
   createdAt: event.createdAt,
 });
 
@@ -110,7 +123,8 @@ export const toShipmentResponseDto = (
   modalityName: shipment.modality.name,
   ...pickAddress(shipment),
   createdAt: shipment.createdAt,
-  dueAt: computeDueAt(shipment.createdAt, shipment.modality.slaHours),
+  dueAt: shipment.dueAt,
+  deliveredAt: shipment.deliveredAt,
 });
 
 export interface LiveMap {
@@ -166,7 +180,8 @@ export const toCarrierShipmentResponseDto = (
   ownerEmail: shipment.owner?.user.email ?? null,
   ...pickAddress(shipment),
   createdAt: shipment.createdAt,
-  dueAt: computeDueAt(shipment.createdAt, shipment.modality.slaHours),
+  dueAt: shipment.dueAt,
+  deliveredAt: shipment.deliveredAt,
 });
 
 export const toCarrierShipmentDetailResponseDto = (
@@ -183,4 +198,11 @@ export const toAdminShipmentResponseDto = (
 ): AdminShipmentResponseDto => ({
   ...toCarrierShipmentResponseDto(shipment),
   carrierCompanyName: shipment.carrier.companyName,
+});
+
+export const toAdminShipmentDetailResponseDto = (
+  shipment: ShipmentWith<typeof adminShipmentDetailInclude>,
+): AdminShipmentDetailResponseDto => ({
+  ...toAdminShipmentResponseDto(shipment),
+  trackingEvents: shipment.trackingEvents.map(toTrackingEventDto),
 });
