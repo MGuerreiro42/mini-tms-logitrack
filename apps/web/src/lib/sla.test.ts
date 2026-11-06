@@ -32,7 +32,28 @@ describe('slaState', () => {
     ).toBe('—');
   });
 
-  it('just says delivered once delivered', () => {
+  it.each([
+    [-1, 'On time', 'muted'],
+    [0, 'On time', 'muted'],
+    [0.5, 'Late by 1 min', 'late'],
+    [8 * 60, 'Late by 8 h', 'late'],
+    [8 * 60 + 1, 'Late by 9 h', 'late'],
+    [72 * 60, 'Late by 3 d', 'late'],
+  ] as const)(
+    'reads a delivery %s min after the due date as %s',
+    (minutes, label, tone) => {
+      const dueAt = minutesFromNow(-24 * 60);
+      const deliveredAt = new Date(
+        new Date(dueAt).getTime() + minutes * 60_000,
+      ).toISOString();
+
+      expect(
+        slaState({ dueAt, deliveredAt, status: 'DELIVERED', now }),
+      ).toEqual({ label, tone });
+    },
+  );
+
+  it('just says delivered when the delivery time is unknown', () => {
     expect(
       slaState({ dueAt: minutesFromNow(-300), status: 'DELIVERED', now }),
     ).toEqual({ label: 'Delivered', tone: 'muted' });

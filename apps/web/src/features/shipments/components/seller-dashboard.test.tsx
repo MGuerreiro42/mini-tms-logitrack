@@ -27,6 +27,7 @@ function shipment(
     trackingCode: `TMS-${id.toUpperCase()}`,
     status,
     dueAt: new Date(Date.now() + dueInHours * HOUR_MS).toISOString(),
+    deliveredAt: null,
     carrierId: 'carrier-1',
     carrierName: 'Fast Carrier',
     modalityId: 'modality-1',

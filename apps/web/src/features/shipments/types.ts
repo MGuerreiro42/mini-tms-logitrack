@@ -52,6 +52,7 @@ export interface ShipmentBase extends ShipmentAddress {
   modalityName: string;
   createdAt: string;
   dueAt: string | null;
+  deliveredAt: string | null;
   trackingEvents?: TrackingEvent[];
 }
 
