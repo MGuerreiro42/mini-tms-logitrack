@@ -13,14 +13,14 @@ export class ApiError extends Error {
   }
 }
 
-const RATE_LIMITED_FALLBACK = 'Too many requests. Wait a moment and try again.';
+const RATE_LIMITED = 'Too many attempts. Wait a minute and try again.';
 
+// A 429 body is the throttler's own wording ("ThrottlerException: …"), never copy for a person.
 function errorMessage(res: Response, body: { message?: unknown } | null) {
+  if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) return RATE_LIMITED;
   if (Array.isArray(body?.message)) return body.message.join(', ');
   if (typeof body?.message === 'string') return body.message;
-  return res.status === HTTP_STATUS.TOO_MANY_REQUESTS
-    ? RATE_LIMITED_FALLBACK
-    : res.statusText;
+  return res.statusText;
 }
 
 export function hasStatus(error: unknown, status: number): error is ApiError {
