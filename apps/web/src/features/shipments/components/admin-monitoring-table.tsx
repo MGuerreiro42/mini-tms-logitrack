@@ -2,11 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { type RefObject, useEffect, useRef } from 'react';
-import {
-  type FilterChoice,
-  FilterMenu,
-  FilterToolbar,
-} from '@/components/common/filter-toolbar';
+import type { FilterChoice } from '@/components/common/filter-toolbar';
 import {
   LiveIndicator,
   OfflineBanner,
@@ -17,12 +13,11 @@ import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
   statusFilterOptions,
-  statusFilterValues,
 } from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
-import { ALL } from '@/lib/filters';
+import { ALL, FREE_TEXT } from '@/lib/filters';
 import type { LiveConnection } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
@@ -31,9 +26,10 @@ import type { ShipmentStatus } from '@/types/status';
 import {
   useAdminShipmentStatusCounts,
   useAdminShipments,
+  useAdminShipmentViewCounts,
 } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { AdminShipment } from '../types';
+import type { AdminShipment, ListView } from '../types';
 import {
   partyColumns,
   riskRowClassName,
@@ -42,10 +38,11 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
-
-const STATUS_VALUES = statusFilterValues(
-  statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES),
-);
+import {
+  listScope,
+  type ShipmentListMenu,
+  ShipmentListToolbar,
+} from './shipment-list-toolbar';
 
 const SLA_REFRESH_MS = 60_000;
 const UPDATES_WINDOW_MS = 60_000;
@@ -65,33 +62,65 @@ export function AdminMonitoringTable({
 }: AdminMonitoringTableProps) {
   const carrierChoices = withAny(carrierOptions);
   const sellerChoices = withAny(sellerOptions);
-  const { filters, isFiltered, setFilter, clearFilters, setPage, params } =
-    useFilteredPagination(
-      {
-        status: ALL as StatusFilter<ShipmentStatus>,
-        carrierId: ALL as string,
-        sellerId: ALL as string,
-      },
-      {
-        status: STATUS_VALUES,
-        carrierId: carrierChoices.map((choice) => choice.value),
-        sellerId: sellerChoices.map((choice) => choice.value),
-      },
-    );
+  const list = useFilteredPagination(
+    {
+      view: 'active' as ListView | typeof ALL,
+      status: ALL as StatusFilter<ShipmentStatus>,
+      q: '',
+      carrierId: ALL as string,
+      sellerId: ALL as string,
+    },
+    {
+      view: [ALL, 'active', 'exceptions'],
+      status: [ALL, ...SHIPMENT_STATUSES],
+      q: FREE_TEXT,
+      carrierId: carrierChoices.map((choice) => choice.value),
+      sellerId: sellerChoices.map((choice) => choice.value),
+    },
+    { viewKeys: ['view', 'status'] },
+  );
+  const { params } = list;
+  const menus: ShipmentListMenu<typeof list.filters>[] = [
+    { key: 'carrierId', label: 'Carrier', options: carrierChoices },
+    { key: 'sellerId', label: 'Seller', options: sellerChoices },
+  ];
 
   const recordUpdate = useRef<() => void>(undefined);
   const live = useShipmentTracking({
     subscribeToMonitoring: true,
     onEvent: () => recordUpdate.current?.(),
   });
-  const query = useAdminShipments(params, live.status);
-  const counts = useAdminShipmentStatusCounts(
-    { carrierId: params.carrierId, sellerId: params.sellerId },
+  const scope = { carrierId: params.carrierId, sellerId: params.sellerId };
+  const statusCounts = useAdminShipmentStatusCounts(scope, live.status).data;
+  const viewCounts = useAdminShipmentViewCounts(scope, live.status).data;
+  const [all, ...statusTabs] = statusFilterOptions(
+    SHIPMENT_STATUS,
+    SHIPMENT_STATUSES,
+    { counts: statusCounts },
+  );
+  const tabs = [
+    { ...all, key: 'view' as const },
+    {
+      key: 'view' as const,
+      label: 'Active',
+      value: 'active',
+      count: viewCounts?.active,
+    },
+    {
+      key: 'view' as const,
+      label: 'Exceptions',
+      value: 'exceptions',
+      count: viewCounts?.exceptions,
+    },
+    ...statusTabs,
+  ];
+  const { isFiltered, view } = listScope(list, tabs);
+  const query = useAdminShipments(
+    { ...params, view: view as ListView | undefined },
     live.status,
   );
   const now = useNow(SLA_REFRESH_MS);
   const search = useSearchParams().toString();
-  const total = query.data?.meta.total;
 
   return (
     <div className="flex flex-col gap-5">
@@ -101,31 +130,13 @@ export function AdminMonitoringTable({
         action={<RecentUpdates live={live} recordRef={recordUpdate} />}
       />
       <OfflineBanner status={live.status} />
-      <FilterToolbar
-        onClear={isFiltered ? clearFilters : undefined}
-        summary={total !== undefined && plural(total, 'shipment')}
-      >
-        <FilterMenu
-          label="Status"
-          value={filters.status}
-          options={statusFilterOptions(SHIPMENT_STATUS, SHIPMENT_STATUSES, {
-            counts: counts.data,
-          })}
-          onChange={(value) => setFilter('status', value)}
-        />
-        <FilterMenu
-          label="Carrier"
-          value={filters.carrierId}
-          options={carrierChoices}
-          onChange={(value) => setFilter('carrierId', value)}
-        />
-        <FilterMenu
-          label="Seller"
-          value={filters.sellerId}
-          options={sellerChoices}
-          onChange={(value) => setFilter('sellerId', value)}
-        />
-      </FilterToolbar>
+      <ShipmentListToolbar
+        list={list}
+        tabs={tabs}
+        menus={menus}
+        placeholder="Code, city or seller"
+        total={query.data?.meta.total}
+      />
 
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
@@ -136,7 +147,7 @@ export function AdminMonitoringTable({
           <PaginatedTable<WithSla<AdminShipment>>
             data={withSla(result.data, now)}
             meta={result.meta}
-            onPageChange={setPage}
+            onPageChange={list.setPage}
             getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
@@ -144,9 +155,7 @@ export function AdminMonitoringTable({
               `${ROUTES.adminShipment(s.id)}${search && `?${search}`}`
             }
             emptyMessage={
-              isFiltered
-                ? 'No shipments match these filters.'
-                : 'No shipments on the platform yet.'
+              isFiltered ? 'No shipments match.' : 'No shipments in this view.'
             }
             columns={[
               shipmentColumns.trackingCode,
