@@ -138,6 +138,15 @@ describe('List views and search (e2e)', () => {
     ).resolves.toBe(2);
   });
 
+  it.each(['%', '_', '\\'])(
+    'reads %s as a character, not a pattern',
+    async (q) => {
+      await expect(totalOf(tenants.sellerA, '/shipments', { q })).resolves.toBe(
+        0,
+      );
+    },
+  );
+
   it('rejects a view of another role, an unknown view and a long search', async () => {
     await get(tenants.sellerA, '/shipments', { view: 'mine' }).expect(400);
     await get(admin, '/admin/shipments', { view: 'bogus' }).expect(400);

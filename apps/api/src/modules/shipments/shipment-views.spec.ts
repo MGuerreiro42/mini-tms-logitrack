@@ -6,14 +6,19 @@ describe('shipment views', () => {
     expect(parts.some((part) => 'addressZipCode' in part)).toBe(false);
   });
 
-  it('never widens "mine" past the caller', () => {
-    const where = listWhere(
-      {},
-      { view: 'mine' },
-      { now: new Date(), carrierUserId: null, includeSeller: true },
-    );
-    expect(where.AND).toContainEqual(
-      expect.objectContaining({ ownerId: null }),
-    );
+  it('refuses "mine" without a carrier user', () => {
+    expect(() =>
+      listWhere(
+        {},
+        { view: 'mine' },
+        { now: new Date(), carrierUserId: null, includeSeller: true },
+      ),
+    ).toThrow();
+  });
+
+  it('escapes LIKE wildcards in the search', () => {
+    expect(searchWhere('50%_a\\', { includeSeller: false }).OR?.[0]).toEqual({
+      trackingCode: { contains: '50\\%\\_a\\\\', mode: 'insensitive' },
+    });
   });
 });
