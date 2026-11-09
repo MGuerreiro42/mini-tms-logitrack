@@ -146,8 +146,21 @@ export interface ListShipmentsQuery extends PaginationQuery {
   q?: string;
 }
 
+export const CARRIER_VIEWS = [
+  'mine',
+  'unclaimed',
+  'to_pick_up',
+  'on_the_road',
+  'exceptions',
+  'done',
+] as const;
+
+export type CarrierView = (typeof CARRIER_VIEWS)[number];
+
 export interface ListQueueQuery extends PaginationQuery {
   status?: ShipmentStatus;
+  view?: CarrierView;
+  q?: string;
 }
 
 export const TRACKING_NOTE_MAX_LENGTH = 500;

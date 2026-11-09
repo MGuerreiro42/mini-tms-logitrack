@@ -7,22 +7,20 @@ import {
 import { PageHeader } from '@/components/common/page-header';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import {
-  type StatusFilter,
-  statusFilterOptions,
-  statusFilterValues,
-  ViewTabs,
-} from '@/components/common/view-tabs';
+import type { StatusFilter } from '@/components/common/view-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
-import { ALL } from '@/lib/filters';
-import { SHIPMENT_STATUS } from '@/lib/status-colors';
+import { ALL, FREE_TEXT } from '@/lib/filters';
+import { SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
+import { useQueueViewCounts } from '../hooks/use-view-counts';
 import {
+  CARRIER_VIEWS,
   type CarrierShipment,
+  type CarrierView,
   isClaimable,
   type ShipmentStatus,
 } from '../types';
@@ -34,42 +32,67 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
+import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
 
-const STATUS_OPTIONS = statusFilterOptions(SHIPMENT_STATUS, [
-  'PENDING',
-  'ACCEPTED',
-  'IN_TRANSIT',
-  'CANCELLED',
-]);
-const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
+const VIEW_LABELS: Record<CarrierView, string> = {
+  mine: 'Mine',
+  unclaimed: 'Unclaimed',
+  to_pick_up: 'To pick up',
+  on_the_road: 'On the road',
+  exceptions: 'Exceptions',
+  done: 'Done',
+};
 
 const SLA_REFRESH_MS = 60_000;
 
-export function CarrierQueueTable() {
-  const { filters, defaults, setFilters, setPage, params } =
-    useFilteredPagination(
-      { status: ALL as StatusFilter<ShipmentStatus> },
-      { status: STATUS_VALUES },
-    );
+export function CarrierQueueTable({
+  defaultView,
+}: {
+  defaultView: CarrierView;
+}) {
+  const list = useFilteredPagination(
+    {
+      view: defaultView,
+      status: ALL as StatusFilter<ShipmentStatus>,
+      q: '',
+    },
+    {
+      view: CARRIER_VIEWS,
+      status: [ALL, ...SHIPMENT_STATUSES],
+      q: FREE_TEXT,
+    },
+    { viewKeys: ['view', 'status'] },
+  );
+  const counts = useQueueViewCounts().data;
+  const tabs = CARRIER_VIEWS.map((view) => ({
+    key: 'view' as const,
+    label: VIEW_LABELS[view],
+    value: view,
+    count: counts?.[view],
+  }));
+  const { isFiltered, view } = listScope(list, tabs);
 
   const live = useShipmentTracking({ subscribeToQueue: true });
-  const query = useShipmentQueue(params, live.status);
+  const query = useShipmentQueue(
+    { ...list.params, view: view as CarrierView | undefined },
+    live.status,
+  );
   const now = useNow(SLA_REFRESH_MS);
   const claim = useClaimShipment();
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Shipment queue"
+        title="Queue"
         description="Shared across your company. Claim an unowned shipment to work on it."
         action={<LiveIndicator live={live} />}
       />
       <OfflineBanner status={live.status} />
-      <ViewTabs
-        options={STATUS_OPTIONS}
-        filters={filters}
-        defaults={defaults}
-        onChange={setFilters}
+      <ShipmentListToolbar
+        list={list}
+        tabs={tabs}
+        placeholder="Code, city or seller"
+        total={query.data?.meta.total}
       />
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
@@ -80,19 +103,22 @@ export function CarrierQueueTable() {
           <PaginatedTable<WithSla<CarrierShipment>>
             data={withSla(result.data, now)}
             meta={result.meta}
-            onPageChange={setPage}
+            onPageChange={list.setPage}
             getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
-            emptyMessage="No shipments in the queue."
+            emptyMessage={
+              isFiltered ? 'No shipments match.' : 'No shipments in this view.'
+            }
             columns={[
               shipmentColumns.trackingCode,
               shipmentColumns.status,
               partyColumns.seller,
               shipmentColumns.destination,
               slaColumn,
-              partyColumns.owner,
+              // Every row of Mine is the caller's own (decision 10.3).
+              ...(view === 'mine' ? [] : [partyColumns.owner]),
               {
                 id: 'actions',
                 header: '',
