@@ -15,6 +15,8 @@ import { SHIPMENT_UPDATED, VEHICLE_POSITION_REPORTED } from './shipment-events';
 import { ShipmentsService } from './shipments.service';
 import { VehiclePositions } from './vehicle-positions';
 
+const page = { page: 1, limit: 20 };
+
 describe('ShipmentsService', () => {
   let shipmentsService: ShipmentsService;
   const sellerFindUnique = vi.fn();
@@ -338,10 +340,13 @@ describe('ShipmentsService', () => {
       shipmentFindMany.mockResolvedValue([shipmentWithRelations]);
       shipmentCount.mockResolvedValue(1);
 
-      const result = await shipmentsService.findAllForSeller('user-1');
+      const result = await shipmentsService.findAllForSeller('user-1', page);
 
       expect(shipmentFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { sellerId: 'seller-1' } }),
+        expect.objectContaining({
+          where: { AND: [{ sellerId: 'seller-1' }] },
+          orderBy: [{ createdAt: 'desc' }],
+        }),
       );
       expect(result.meta.total).toBe(1);
       expect(result.data[0].id).toBe('shipment-1');
@@ -811,10 +816,15 @@ describe('ShipmentsService', () => {
       shipmentFindMany.mockResolvedValue([carrierShipment]);
       shipmentCount.mockResolvedValue(1);
 
-      const result = await shipmentsService.findAllForCarrier('user-operator');
+      const result = await shipmentsService.findAllForCarrier(
+        'user-operator',
+        page,
+      );
 
       expect(shipmentFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { carrierId: 'carrier-1' } }),
+        expect.objectContaining({
+          where: { AND: [{ carrierId: 'carrier-1' }] },
+        }),
       );
       expect(result.data[0].sellerCompanyName).toBe('Acme Store');
       expect(result.data[0].ownerEmail).toBe('operator@example.com');
@@ -824,14 +834,17 @@ describe('ShipmentsService', () => {
       carrierUserFindUnique.mockResolvedValue(null);
 
       await expect(
-        shipmentsService.findAllForCarrier('stranger'),
+        shipmentsService.findAllForCarrier('stranger', page),
       ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('carrier approval', () => {
     const operations = [
-      ['findAllForCarrier', () => shipmentsService.findAllForCarrier('u')],
+      [
+        'findAllForCarrier',
+        () => shipmentsService.findAllForCarrier('u', page),
+      ],
       [
         'findOneForCarrier',
         () => shipmentsService.findOneForCarrier('u', 'shipment-1'),
@@ -871,10 +884,10 @@ describe('ShipmentsService', () => {
       ]);
       shipmentCount.mockResolvedValue(1);
 
-      const result = await shipmentsService.findAllForAdmin();
+      const result = await shipmentsService.findAllForAdmin(page);
 
       expect(shipmentFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: {} }),
+        expect.objectContaining({ where: { AND: [{}] } }),
       );
       expect(result.data[0].carrierCompanyName).toBe('Fast Freight');
       expect(result.data[0].sellerCompanyName).toBe('Acme Store');
@@ -884,20 +897,21 @@ describe('ShipmentsService', () => {
       shipmentFindMany.mockResolvedValue([]);
       shipmentCount.mockResolvedValue(0);
 
-      await shipmentsService.findAllForAdmin(
-        'DELIVERED',
-        'carrier-1',
-        'seller-1',
-        2,
-        10,
-      );
+      await shipmentsService.findAllForAdmin({
+        status: 'DELIVERED',
+        carrierId: 'carrier-1',
+        sellerId: 'seller-1',
+        page: 2,
+        limit: 10,
+      });
 
       expect(shipmentFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            status: 'DELIVERED',
-            carrierId: 'carrier-1',
-            sellerId: 'seller-1',
+            AND: [
+              { carrierId: 'carrier-1', sellerId: 'seller-1' },
+              { status: 'DELIVERED' },
+            ],
           },
           skip: 10,
           take: 10,

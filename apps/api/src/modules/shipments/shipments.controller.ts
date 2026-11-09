@@ -27,7 +27,7 @@ import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { EligibleCarrierResponseDto } from './dto/eligible-carrier-response.dto';
 import { EligibleCarriersQueryDto } from './dto/eligible-carriers-query.dto';
 import { ListQueueQueryDto } from './dto/list-queue-query.dto';
-import { ListShipmentsQueryDto } from './dto/list-shipments-query.dto';
+import { ListSellerShipmentsQueryDto } from './dto/list-seller-shipments-query.dto';
 import {
   ReportPositionDto,
   ReportPositionResponseDto,
@@ -85,26 +85,21 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "List the authenticated seller's own shipments, optionally filtered by status — paginated (default 20/page, max 100)",
+      "List the authenticated seller's own shipments, filterable by status, view and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
   })
   @ApiPaginatedResponse(ShipmentResponseDto)
   @Auth(GlobalRole.SELLER)
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() query: ListShipmentsQueryDto,
+    @Query() query: ListSellerShipmentsQueryDto,
   ) {
-    return this.shipmentsService.findAllForSeller(
-      user.id,
-      query.status,
-      query.page,
-      query.limit,
-    );
+    return this.shipmentsService.findAllForSeller(user.id, query);
   }
 
   @ApiOperation({
     summary:
-      "List the authenticated carrier's shared shipment queue, optionally filtered by status — paginated (default 20/page, max 100)",
+      "List the authenticated carrier's shared shipment queue, filterable by status, view and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
   })
   @ApiPaginatedResponse(CarrierShipmentResponseDto)
   @ApiResponse({
@@ -117,12 +112,7 @@ export class ShipmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListQueueQueryDto,
   ) {
-    return this.shipmentsService.findAllForCarrier(
-      user.id,
-      query.status,
-      query.page,
-      query.limit,
-    );
+    return this.shipmentsService.findAllForCarrier(user.id, query);
   }
 
   @ApiOperation({
