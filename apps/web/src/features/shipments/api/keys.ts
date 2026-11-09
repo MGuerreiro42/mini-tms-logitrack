@@ -22,6 +22,7 @@ export const shipmentKeys = {
     [...shipmentKeys.all, 'admin', 'status-counts', query] as const,
   statusCounts: () => [...shipmentKeys.all, 'status-counts'] as const,
   viewCounts: () => [...shipmentKeys.all, 'view-counts'] as const,
+  queueViewCounts: () => [...shipmentKeys.all, 'queue', 'view-counts'] as const,
   attention: () => [...shipmentKeys.all, 'attention'] as const,
   activity: () => [...shipmentKeys.all, 'activity'] as const,
   slaSummary: () => [...shipmentKeys.all, 'sla-summary'] as const,

@@ -5,6 +5,7 @@ import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import { setViewportWidth } from '@/test/viewport';
 import { CarrierQueueTable } from './carrier-queue-table';
@@ -41,16 +42,31 @@ const ownedShipment = {
 describe('CarrierQueueTable', () => {
   let requestedUrls: string[] = [];
 
-  beforeEach(() => {
-    requestedUrls = [];
-    vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
+  const signIn = (role: 'CARRIER_OPERATOR' | 'CARRIER_MANAGER') =>
     setSession({
       token: 'signed.jwt.token',
-      role: 'CARRIER_OPERATOR',
+      role,
       userId: 'user-1',
       email: 'operator@example.com',
     });
+
+  beforeEach(() => {
+    requestedUrls = [];
+    // On the road keeps the Owner column, which Mine hides.
+    resetNavigation('/carrier/queue?view=on_the_road');
+    vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
+    signIn('CARRIER_OPERATOR');
     server.use(
+      http.get(`${API_URL}/shipments/queue/view-counts`, () =>
+        HttpResponse.json({
+          mine: 1,
+          unclaimed: 1,
+          to_pick_up: 0,
+          on_the_road: 2,
+          exceptions: 0,
+          done: 3,
+        }),
+      ),
       http.get(`${API_URL}/shipments/queue`, ({ request }) => {
         requestedUrls.push(request.url);
         return HttpResponse.json({
@@ -142,16 +158,36 @@ describe('CarrierQueueTable', () => {
     );
   });
 
-  it('switching the status tab refetches with the new filter and resets to page 1', async () => {
-    const user = userEvent.setup();
+  it.each([
+    ['CARRIER_OPERATOR', 'Mine, 1', 'mine'],
+    ['CARRIER_MANAGER', 'Unclaimed, 1', 'unclaimed'],
+  ] as const)('lands a %s on %s', async (role, tab, view) => {
+    resetNavigation('/carrier/queue');
+    signIn(role);
     renderWithQueryClient(<CarrierQueueTable />);
-    await screen.findByText('Example Store');
 
-    await user.click(screen.getByRole('tab', { name: 'Accepted' }));
-
-    await waitFor(() =>
-      expect(requestedUrls.at(-1)).toContain('status=ACCEPTED'),
+    expect(await screen.findByRole('tab', { name: tab })).toHaveAttribute(
+      'aria-selected',
+      'true',
     );
+    await waitFor(() => expect(requestedUrls.at(-1)).toContain(`view=${view}`));
+    // Mine is all the caller's own, so it has no Owner column.
+    expect(
+      screen.queryAllByRole('columnheader', { name: 'Owner' }),
+    ).toHaveLength(view === 'mine' ? 0 : 1);
+  });
+
+  it('reads an old ?status= link as a filter with no tab selected', async () => {
+    resetNavigation('/carrier/queue?status=ACCEPTED');
+    renderWithQueryClient(<CarrierQueueTable />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Remove Status: Accepted' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('tab', { selected: true })).toBeNull();
+    const url = new URL(requestedUrls.at(-1) as string);
+    expect(url.searchParams.get('status')).toBe('ACCEPTED');
+    expect(url.searchParams.get('view')).toBeNull();
   });
 
   it('keeps Claim, seller and owner on mobile cards', async () => {
