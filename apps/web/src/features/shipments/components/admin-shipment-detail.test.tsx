@@ -88,5 +88,9 @@ describe('AdminShipmentDetail', () => {
     renderWithQueryClient(<AdminShipmentDetail id="missing" />);
 
     expect(await screen.findByText('Shipment not found.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Monitoring' })).toHaveAttribute(
+      'href',
+      '/admin/monitoring',
+    );
   });
 });

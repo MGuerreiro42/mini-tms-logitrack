@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Breadcrumb } from '@/components/common/breadcrumb';
 import { DetailRow } from '@/components/common/detail-row';
 import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
@@ -21,40 +22,45 @@ import {
 export function AdminShipmentDetail({ id }: { id: string }) {
   const live = useShipmentTracking({ subscribeToMonitoring: true });
   const query = useAdminShipment(id, live.status);
+  // The monitoring row passes its filters along, so the way back lands on the same page.
+  const filters = useSearchParams().toString();
+  const back = {
+    href: filters
+      ? `${ROUTES.adminMonitoring}?${filters}`
+      : ROUTES.adminMonitoring,
+    label: 'Monitoring',
+  };
 
   return (
-    <QueryState
-      query={query}
-      errorMessage="Couldn't load this shipment."
-      notFoundMessage="Shipment not found."
-    >
-      {(shipment) => <AdminShipmentView shipment={shipment} live={live} />}
-    </QueryState>
+    <div className="flex flex-col gap-5">
+      {query.data === undefined && (
+        <Breadcrumb parent={back}>Shipment</Breadcrumb>
+      )}
+      <QueryState
+        query={query}
+        errorMessage="Couldn't load this shipment."
+        notFoundMessage="Shipment not found."
+      >
+        {(shipment) => (
+          <AdminShipmentView shipment={shipment} live={live} back={back} />
+        )}
+      </QueryState>
+    </div>
   );
 }
 
 function AdminShipmentView({
   shipment,
   live,
+  back,
 }: {
   shipment: Detail;
   live: LiveConnection;
+  back: { href: string; label: string };
 }) {
-  // The monitoring row passes its filters along, so the way back lands on the same page.
-  const filters = useSearchParams().toString();
-
   return (
     <div className="flex flex-col gap-5">
-      <ShipmentTitle
-        shipment={shipment}
-        live={live}
-        back={{
-          href: filters
-            ? `${ROUTES.adminMonitoring}?${filters}`
-            : ROUTES.adminMonitoring,
-          label: 'Monitoring',
-        }}
-      >
+      <ShipmentTitle shipment={shipment} live={live} back={back}>
         <ShipmentDueLine shipment={shipment} />
       </ShipmentTitle>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
