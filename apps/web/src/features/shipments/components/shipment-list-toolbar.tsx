@@ -116,8 +116,12 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
     <>
       <ViewTabs
         options={tabs}
-        // Under a stray status no tab is selected, and picking one drops the status.
-        filters={strayStatus ? { ...filters, view: '' } : filters}
+        // A status overrides the view: its own tab is selected, a stray one selects none.
+        filters={
+          filters.status === defaults.status
+            ? filters
+            : { ...filters, view: strayStatus ? '' : defaults.view }
+        }
         defaults={defaults}
         onChange={(changes) =>
           setFilters({ ...changes, status: changes.status ?? defaults.status })

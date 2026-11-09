@@ -15,7 +15,7 @@ import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import { useSellerViewCounts } from '../hooks/use-view-counts';
-import type { SellerView, Shipment, ShipmentStatus } from '../types';
+import type { ListView, Shipment, ShipmentStatus } from '../types';
 import {
   partyColumns,
   riskRowClassName,
@@ -27,7 +27,7 @@ import {
 import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
 
 type SellerFilters = {
-  view: SellerView | typeof ALL;
+  view: ListView | typeof ALL;
   status: StatusFilter<ShipmentStatus>;
   q: string;
 };
@@ -87,7 +87,7 @@ export function ShipmentsTable() {
   const { isFiltered, view } = listScope(list, tabs);
   const query = useShipmentsList({
     ...list.params,
-    view: view as SellerView | undefined,
+    view: view as ListView | undefined,
   });
   const inView = list.filters.view !== ALL || list.filters.status !== ALL;
 

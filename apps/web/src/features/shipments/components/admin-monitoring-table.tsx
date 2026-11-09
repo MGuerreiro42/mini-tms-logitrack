@@ -29,7 +29,7 @@ import {
   useAdminShipmentViewCounts,
 } from '../hooks/use-admin-shipments';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
-import type { AdminShipment, SellerView } from '../types';
+import type { AdminShipment, ListView } from '../types';
 import {
   partyColumns,
   riskRowClassName,
@@ -64,7 +64,7 @@ export function AdminMonitoringTable({
   const sellerChoices = withAny(sellerOptions);
   const list = useFilteredPagination(
     {
-      view: 'active' as SellerView | typeof ALL,
+      view: 'active' as ListView | typeof ALL,
       status: ALL as StatusFilter<ShipmentStatus>,
       q: '',
       carrierId: ALL as string,
@@ -116,7 +116,7 @@ export function AdminMonitoringTable({
   ];
   const { isFiltered, view } = listScope(list, tabs);
   const query = useAdminShipments(
-    { ...params, view: view as SellerView | undefined },
+    { ...params, view: view as ListView | undefined },
     live.status,
   );
   const now = useNow(SLA_REFRESH_MS);

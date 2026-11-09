@@ -110,7 +110,7 @@ export interface ListAdminShipmentsQuery
   extends PaginationQuery,
     AdminStatusCountsQuery {
   status?: ShipmentStatus;
-  view?: SellerView;
+  view?: ListView;
   q?: string;
 }
 
@@ -137,14 +137,15 @@ export interface EligibleCarrier {
   companyName: string;
 }
 
-export type SellerView = 'active' | 'exceptions';
+// The seller and admin views (the carrier has its own).
+export type ListView = 'active' | 'exceptions';
 
-// The API also counts done, which no seller tab shows.
-export type SellerViewCounts = Record<SellerView | 'done', number>;
+// The API also counts done, which no tab shows.
+export type ViewCounts = Record<ListView | 'done', number>;
 
 export interface ListShipmentsQuery extends PaginationQuery {
   status?: ShipmentStatus;
-  view?: SellerView;
+  view?: ListView;
   q?: string;
 }
 
