@@ -116,7 +116,11 @@ describe('ShipmentsController', () => {
       limit: 10,
     });
 
-    expect(findAllForSeller).toHaveBeenCalledWith('user-1', 'PENDING', 2, 10);
+    expect(findAllForSeller).toHaveBeenCalledWith('user-1', {
+      status: 'PENDING',
+      page: 2,
+      limit: 10,
+    });
     expect(result).toEqual({ data: [], meta: {} });
   });
 
@@ -148,7 +152,11 @@ describe('ShipmentsController', () => {
       limit: 10,
     });
 
-    expect(findAllForCarrier).toHaveBeenCalledWith('user-2', 'PENDING', 2, 10);
+    expect(findAllForCarrier).toHaveBeenCalledWith('user-2', {
+      status: 'PENDING',
+      page: 2,
+      limit: 10,
+    });
     expect(result).toEqual({ data: [], meta: {} });
   });
 
