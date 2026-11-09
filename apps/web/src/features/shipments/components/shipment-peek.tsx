@@ -13,11 +13,16 @@ import { TrackingTimeline } from '@/features/tracking/components/tracking-timeli
 import { useAppOrigin } from '@/hooks/use-app-origin';
 import { useNow } from '@/hooks/use-now';
 import type { Peek } from '@/hooks/use-peek';
+import type { LiveStatus } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
+import { useAdminShipment } from '../hooks/use-admin-shipments';
+import { useClaimShipment } from '../hooks/use-claim-shipment';
+import { useQueueShipment } from '../hooks/use-queue-shipment';
 import { useShipment } from '../hooks/use-shipment';
-import type { ShipmentBase } from '../types';
+import { isClaimable, type ShipmentBase } from '../types';
+import { OwnerChip } from './owner-chip';
 
 const SLA_REFRESH_MS = 60_000;
 const EVENTS_SHOWN = 3;
@@ -121,6 +126,85 @@ export function SellerShipmentPeek({ id }: { id: string }) {
             <CopyField
               value={`${origin}${publicTrackingPath(shipment.trackingCode)}`}
               label="Copy tracking link"
+              copiedMessage="Link copied"
+              failedMessage="Couldn't copy the link"
+            />
+          }
+        />
+      )}
+    </QueryState>
+  );
+}
+
+export function CarrierShipmentPeek({
+  id,
+  liveStatus,
+}: {
+  id: string;
+  liveStatus: LiveStatus;
+}) {
+  const query = useQueueShipment(id, liveStatus);
+  const claim = useClaimShipment();
+
+  return (
+    <QueryState
+      query={query}
+      errorMessage="Couldn't load this shipment."
+      notFoundMessage="Shipment not found"
+    >
+      {(shipment) => (
+        <ShipmentPeekBody
+          shipment={shipment}
+          href={`/carrier/queue/${shipment.id}`}
+          details={[
+            ['Seller', shipment.sellerCompanyName],
+            ['Owner', <OwnerChip key="owner" shipment={shipment} />],
+          ]}
+          actions={
+            isClaimable(shipment) && (
+              <Button
+                disabled={claim.isPending}
+                onClick={() => claim.mutate(shipment.id)}
+              >
+                Claim
+              </Button>
+            )
+          }
+        />
+      )}
+    </QueryState>
+  );
+}
+
+export function AdminShipmentPeek({
+  id,
+  liveStatus,
+}: {
+  id: string;
+  liveStatus: LiveStatus;
+}) {
+  const query = useAdminShipment(id, liveStatus);
+  const origin = useAppOrigin();
+
+  return (
+    <QueryState
+      query={query}
+      errorMessage="Couldn't load this shipment."
+      notFoundMessage="Shipment not found"
+    >
+      {(shipment) => (
+        <ShipmentPeekBody
+          shipment={shipment}
+          href={ROUTES.adminShipment(shipment.id)}
+          details={[
+            ['Seller', shipment.sellerCompanyName],
+            ['Carrier', shipment.carrierName],
+            ['Owner', <OwnerChip key="owner" shipment={shipment} />],
+          ]}
+          actions={
+            <CopyField
+              value={`${origin}${ROUTES.adminShipment(shipment.id)}`}
+              label="Copy link"
               copiedMessage="Link copied"
               failedMessage="Couldn't copy the link"
             />

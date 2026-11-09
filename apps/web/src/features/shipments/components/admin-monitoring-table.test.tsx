@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
@@ -137,6 +137,37 @@ describe('AdminMonitoringTable', () => {
     expect(requestedUrls.at(-1)).toBe(
       `${API_URL}/admin/shipments?status=CANCELLED&page=1&limit=20`,
     );
+  });
+
+  it('peeks with seller, carrier and a copyable admin link', async () => {
+    server.use(
+      http.get(`${API_URL}/admin/shipments/shipment-1`, () =>
+        HttpResponse.json({
+          id: 'shipment-1',
+          trackingCode: 'TMS-AAA111',
+          status: 'PENDING',
+          sellerCompanyName: 'Example Store',
+          carrierCompanyName: 'Fast Carrier',
+          addressCity: 'Campinas',
+          addressState: 'SP',
+          ownerEmail: null,
+          trackingEvents: [],
+        }),
+      ),
+    );
+    resetNavigation('/admin/monitoring?peek=shipment-1');
+    renderWithQueryClient(
+      <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
+    );
+
+    const sheet = await screen.findByRole('dialog', {
+      name: 'Shipment preview',
+    });
+    expect(await within(sheet).findByText('Fast Carrier')).toBeVisible();
+    expect(within(sheet).getByText('Unclaimed')).toBeVisible();
+    expect(
+      within(sheet).getByRole('button', { name: 'Copy link' }),
+    ).toBeVisible();
   });
 
   it('counts live updates from the last minute next to the indicator', async () => {

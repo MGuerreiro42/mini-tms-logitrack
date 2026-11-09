@@ -16,6 +16,7 @@ import {
 } from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
+import { usePeek } from '@/hooks/use-peek';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import type { LiveConnection } from '@/lib/live-status';
@@ -43,6 +44,7 @@ import {
   type ShipmentListMenu,
   ShipmentListToolbar,
 } from './shipment-list-toolbar';
+import { AdminShipmentPeek, ListPeek } from './shipment-peek';
 
 const SLA_REFRESH_MS = 60_000;
 const UPDATES_WINDOW_MS = 60_000;
@@ -121,6 +123,8 @@ export function AdminMonitoringTable({
   );
   const now = useNow(SLA_REFRESH_MS);
   const search = useSearchParams().toString();
+  const rows = query.data?.data ?? [];
+  const peek = usePeek(rows.map((s) => s.id));
 
   return (
     <div className="flex flex-col gap-5">
@@ -154,6 +158,8 @@ export function AdminMonitoringTable({
             getRowHref={(s) =>
               `${ROUTES.adminShipment(s.id)}${search && `?${search}`}`
             }
+            onRowClick={(s) => peek.open(s.id)}
+            selectedKey={peek.peekId}
             emptyMessage={
               isFiltered ? 'No shipments match.' : 'No shipments in this view.'
             }
@@ -170,6 +176,9 @@ export function AdminMonitoringTable({
           />
         )}
       </QueryState>
+      <ListPeek peek={peek} rows={rows} hrefFor={ROUTES.adminShipment}>
+        {(id) => <AdminShipmentPeek id={id} liveStatus={live.status} />}
+      </ListPeek>
     </div>
   );
 }
