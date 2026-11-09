@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import type {
@@ -17,6 +18,7 @@ import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import { useSellerViewCounts } from '../hooks/use-view-counts';
 import type { ListView, Shipment, ShipmentStatus } from '../types';
+import { BulkActionBar } from './bulk-action-bar';
 import {
   partyColumns,
   riskRowClassName,
@@ -38,6 +40,7 @@ const DEFAULT_FILTERS: SellerFilters = { view: ALL, status: ALL, q: '' };
 const VIEW_KEYS: (keyof SellerFilters)[] = ['view', 'status'];
 
 const SLA_REFRESH_MS = 60_000;
+const NO_KEYS: ReadonlySet<string> = new Set();
 
 export function ShipmentsTable() {
   const list = useFilteredPagination(
@@ -94,6 +97,15 @@ export function ShipmentsTable() {
   const inView = list.filters.view !== ALL || list.filters.status !== ALL;
   const rows = query.data?.data ?? [];
   const peek = usePeek(rows.map((shipment) => shipment.id));
+  // Selection belongs to one page of one view: any other list clears it.
+  const scope = JSON.stringify(list.params);
+  const [selection, setSelection] = useState({
+    scope,
+    keys: new Set<string>(),
+  });
+  const selectedKeys = selection.scope === scope ? selection.keys : NO_KEYS;
+  const select = (keys: Set<string>) => setSelection({ scope, keys });
+  const selected = rows.filter((shipment) => selectedKeys.has(shipment.id));
 
   return (
     <div className="space-y-4">
@@ -102,6 +114,14 @@ export function ShipmentsTable() {
         tabs={tabs}
         placeholder="Code, city or zip"
         total={query.data?.meta.total}
+        replacement={
+          selected.length > 0 ? (
+            <BulkActionBar
+              selected={selected}
+              onClear={() => select(new Set())}
+            />
+          ) : undefined
+        }
       />
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
@@ -118,6 +138,11 @@ export function ShipmentsTable() {
             getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}
             onRowClick={(shipment) => peek.open(shipment.id)}
             selectedKey={peek.peekId}
+            selection={{
+              keys: selectedKeys,
+              onChange: select,
+              getLabel: (shipment) => shipment.trackingCode,
+            }}
             emptyMessage={
               isFiltered
                 ? 'No shipments match.'
