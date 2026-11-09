@@ -42,6 +42,10 @@ import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-re
 import { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import { TrackingNoteDto } from './dto/tracking-note.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import {
+  CarrierViewCountsResponseDto,
+  SellerViewCountsResponseDto,
+} from './dto/view-counts-response.dto';
 import { ShipmentsService } from './shipments.service';
 
 @ApiTags('shipments')
@@ -99,6 +103,18 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
+      "Count the authenticated seller's own shipments per list view (active, exceptions, done) — ignores q",
+  })
+  @ApiResponse({ status: 200, type: SellerViewCountsResponseDto })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @Auth(GlobalRole.SELLER)
+  @Get('view-counts')
+  viewCounts(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.viewCountsForSeller(user.id);
+  }
+
+  @ApiOperation({
+    summary:
       "List the authenticated carrier's shared shipment queue, filterable by status, view and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
   })
   @ApiPaginatedResponse(CarrierShipmentResponseDto)
@@ -113,6 +129,21 @@ export class ShipmentsController {
     @Query() query: ListQueueQueryDto,
   ) {
     return this.shipmentsService.findAllForCarrier(user.id, query);
+  }
+
+  @ApiOperation({
+    summary:
+      "Count the authenticated carrier's queue per view (mine, unclaimed, to_pick_up, on_the_road, exceptions, done) — ignores q",
+  })
+  @ApiResponse({ status: 200, type: CarrierViewCountsResponseDto })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a carrier user, or the carrier is not approved',
+  })
+  @Auth(...CARRIER_ROLES)
+  @Get('queue/view-counts')
+  queueViewCounts(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.viewCountsForCarrier(user.id);
   }
 
   @ApiOperation({

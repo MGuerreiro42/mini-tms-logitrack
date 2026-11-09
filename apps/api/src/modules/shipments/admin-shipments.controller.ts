@@ -10,6 +10,7 @@ import {
 import { AdminStatusCountsQueryDto } from './dto/admin-status-counts-query.dto';
 import { ListAdminShipmentsQueryDto } from './dto/list-admin-shipments-query.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
+import { AdminViewCountsResponseDto } from './dto/view-counts-response.dto';
 import { ShipmentsService } from './shipments.service';
 
 @ApiTags('admin')
@@ -37,6 +38,20 @@ export class AdminShipmentsController {
   @Get('shipments/status-counts')
   countsByStatus(@Query() query: AdminStatusCountsQueryDto) {
     return this.shipmentsService.countsByStatusForAdmin(
+      query.carrierId,
+      query.sellerId,
+    );
+  }
+
+  @ApiOperation({
+    summary:
+      'Count every shipment platform-wide per list view (active, exceptions, done), optionally for one carrierId/sellerId — admin only',
+  })
+  @ApiResponse({ status: 200, type: AdminViewCountsResponseDto })
+  @Auth(GlobalRole.ADMIN)
+  @Get('shipments/view-counts')
+  viewCounts(@Query() query: AdminStatusCountsQueryDto) {
+    return this.shipmentsService.viewCountsForAdmin(
       query.carrierId,
       query.sellerId,
     );

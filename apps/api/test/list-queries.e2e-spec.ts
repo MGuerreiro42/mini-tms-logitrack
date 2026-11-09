@@ -81,20 +81,26 @@ describe('List views and search (e2e)', () => {
       },
     ],
     ['admin', '/admin/shipments', { active: 6, exceptions: 2, done: 1 }],
-  ])('narrows the %s list to each view', async (role, path, expected) => {
-    const token = {
-      seller: tenants.sellerA,
-      carrier: tenants.operator,
-      admin,
-    }[role] as string;
-    const scope = role === 'admin' ? { carrierId: tenants.carrierId } : {};
+  ])(
+    'gives the %s list a count per view equal to its total',
+    async (role, path, expected) => {
+      const token = {
+        seller: tenants.sellerA,
+        carrier: tenants.operator,
+        admin,
+      }[role] as string;
+      const scope = role === 'admin' ? { carrierId: tenants.carrierId } : {};
 
-    for (const [view, count] of Object.entries(expected)) {
-      await expect(totalOf(token, path, { ...scope, view })).resolves.toBe(
-        count,
-      );
-    }
-  });
+      const counts = await get(token, `${path}/view-counts`, scope).expect(200);
+
+      expect(counts.body).toEqual(expected);
+      for (const [view, count] of Object.entries(expected)) {
+        await expect(totalOf(token, path, { ...scope, view })).resolves.toBe(
+          count,
+        );
+      }
+    },
+  );
 
   it('orders an open view by due time, undated last', async () => {
     const { body } = await get(tenants.manager, '/shipments/queue', {
