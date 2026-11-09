@@ -143,6 +143,7 @@ function RowTable<T>({
   const pageKeys = data.map(getRowKey);
   const allSelected =
     pageKeys.length > 0 && pageKeys.every((key) => selection?.keys.has(key));
+  const someSelected = pageKeys.some((key) => selection?.keys.has(key));
   const toggle = (key: string, on: boolean) => {
     if (!selection) return;
     const next = new Set(selection.keys);
@@ -162,6 +163,10 @@ function RowTable<T>({
                   type="checkbox"
                   aria-label="Select all on this page"
                   checked={allSelected}
+                  ref={(input) => {
+                    if (input)
+                      input.indeterminate = someSelected && !allSelected;
+                  }}
                   onChange={(event) =>
                     selection.onChange(
                       new Set(event.target.checked ? pageKeys : []),
@@ -215,16 +220,19 @@ function RowTable<T>({
               )}
             >
               {selection && (
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${selection.getLabel(row)}`}
-                    checked={selection.keys.has(getRowKey(row))}
-                    onChange={(event) =>
-                      toggle(getRowKey(row), event.target.checked)
-                    }
-                    className="relative z-10 size-4 accent-primary"
-                  />
+                <TableCell className="p-0">
+                  {/* The label fills the cell, so a click on its padding toggles instead of peeking. */}
+                  <label className="relative z-10 flex h-full cursor-pointer items-center px-2 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${selection.getLabel(row)}`}
+                      checked={selection.keys.has(getRowKey(row))}
+                      onChange={(event) =>
+                        toggle(getRowKey(row), event.target.checked)
+                      }
+                      className="size-4 accent-primary"
+                    />
+                  </label>
                 </TableCell>
               )}
               {columns.map((col, index) => (
