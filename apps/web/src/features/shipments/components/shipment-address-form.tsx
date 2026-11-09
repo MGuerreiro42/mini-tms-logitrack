@@ -18,7 +18,7 @@ const schema = z.object({
   addressNumber: z.string().min(1, 'Required'),
   addressComplement: z.string().optional(),
   addressNeighborhood: z.string().min(1, 'Required'),
-  addressCity: z.string().min(1, 'Required'),
+  addressCity: z.string().trim().min(1, 'Required'),
   addressState: z.enum(BR_STATES, 'Required'),
   addressZipCode: z
     .string()

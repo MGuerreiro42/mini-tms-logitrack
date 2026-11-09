@@ -71,6 +71,23 @@ describe('ShipmentAddressForm', () => {
     expect(onNext).not.toHaveBeenCalled();
   });
 
+  it('rejects a blank city', async () => {
+    const user = userEvent.setup();
+    render(<ShipmentAddressForm modalities={standard} onNext={vi.fn()} />);
+
+    await user.type(screen.getByLabelText('City'), '   ');
+    await user.click(
+      screen.getByRole('button', { name: /see eligible carriers/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('City')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      ),
+    );
+  });
+
   it('calls onNext with the form values and the chosen modality', async () => {
     const user = userEvent.setup();
     const onNext = vi.fn();
