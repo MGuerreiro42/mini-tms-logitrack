@@ -53,6 +53,12 @@ interface PaginatedTableProps<T> {
   // Desktop only: the row body opens a preview and only the first cell links to the page.
   onRowClick?: (row: T) => void;
   selectedKey?: string;
+  // Desktop only: a leading checkbox per row, labelled "Select <label>".
+  selection?: {
+    keys: ReadonlySet<string>;
+    onChange: (keys: Set<string>) => void;
+    getLabel: (row: T) => string;
+  };
 }
 
 type RowsProps<T> = Omit<PaginatedTableProps<T>, 'meta' | 'onPageChange'> & {
@@ -131,14 +137,45 @@ function RowTable<T>({
   isEmpty,
   onRowClick,
   selectedKey,
+  selection,
 }: RowsProps<T>) {
   const density = useDensity();
+  const pageKeys = data.map(getRowKey);
+  const allSelected =
+    pageKeys.length > 0 && pageKeys.every((key) => selection?.keys.has(key));
+  const someSelected = pageKeys.some((key) => selection?.keys.has(key));
+  const toggle = (key: string, on: boolean) => {
+    if (!selection) return;
+    const next = new Set(selection.keys);
+    if (on) next.add(key);
+    else next.delete(key);
+    selection.onChange(next);
+  };
 
   return (
     <Card data-density={density} className="gap-0 py-0">
       <Table>
         <TableHeader>
           <TableRow>
+            {selection && (
+              <TableHead className="w-10">
+                <input
+                  type="checkbox"
+                  aria-label="Select all on this page"
+                  checked={allSelected}
+                  ref={(input) => {
+                    if (input)
+                      input.indeterminate = someSelected && !allSelected;
+                  }}
+                  onChange={(event) =>
+                    selection.onChange(
+                      new Set(event.target.checked ? pageKeys : []),
+                    )
+                  }
+                  className="relative z-10 size-4 accent-primary"
+                />
+              </TableHead>
+            )}
             {columns.map((col) => (
               <TableHead key={columnKey(col)} className={cellClassName(col)}>
                 {col.header}
@@ -150,7 +187,7 @@ function RowTable<T>({
           {isEmpty && (
             <TableRow>
               <TableCell
-                colSpan={columns.length}
+                colSpan={columns.length + (selection ? 1 : 0)}
                 className="py-8 text-center text-muted-foreground"
               >
                 {emptyMessage}
@@ -182,6 +219,22 @@ function RowTable<T>({
                 getRowClassName?.(row),
               )}
             >
+              {selection && (
+                <TableCell className="p-0">
+                  {/* The label fills the cell, so a click on its padding toggles instead of peeking. */}
+                  <label className="relative z-10 flex h-full cursor-pointer items-center px-2 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${selection.getLabel(row)}`}
+                      checked={selection.keys.has(getRowKey(row))}
+                      onChange={(event) =>
+                        toggle(getRowKey(row), event.target.checked)
+                      }
+                      className="size-4 accent-primary"
+                    />
+                  </label>
+                </TableCell>
+              )}
               {columns.map((col, index) => (
                 <TableCell key={columnKey(col)} className={cellClassName(col)}>
                   {getRowHref && index === 0 ? (
