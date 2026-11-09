@@ -11,7 +11,6 @@ import type { StatusFilter } from '@/components/common/view-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
-import { useSession } from '@/hooks/use-session';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -46,12 +45,14 @@ const VIEW_LABELS: Record<CarrierView, string> = {
 
 const SLA_REFRESH_MS = 60_000;
 
-export function CarrierQueueTable() {
-  // A manager dispatches from Unclaimed; an operator works from Mine (po-carrier Q2).
-  const isManager = useSession()?.role === 'CARRIER_MANAGER';
+export function CarrierQueueTable({
+  defaultView,
+}: {
+  defaultView: CarrierView;
+}) {
   const list = useFilteredPagination(
     {
-      view: isManager ? 'unclaimed' : ('mine' as CarrierView),
+      view: defaultView,
       status: ALL as StatusFilter<ShipmentStatus>,
       q: '',
     },
