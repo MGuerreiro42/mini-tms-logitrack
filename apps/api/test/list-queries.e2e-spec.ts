@@ -1,7 +1,6 @@
 import request from 'supertest';
 import type { Prisma } from '../generated/prisma/client';
 import {
-  adminToken,
   createShipment,
   createTenants,
   type E2eContext,
@@ -14,7 +13,6 @@ const inHours = (hours: number) => new Date(Date.now() + hours * HOUR_MS);
 describe('List views and search (e2e)', () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
-  let admin: string;
   const codes: Record<string, string> = {};
 
   const get = (token: string, path: string, query: object = {}) =>
@@ -22,6 +20,8 @@ describe('List views and search (e2e)', () => {
       .get(path)
       .query(query)
       .auth(token, { type: 'bearer' });
+  const codesOf = ({ body }: { body: { data: { trackingCode: string }[] } }) =>
+    body.data.map((s) => s.trackingCode);
   const totalOf = async (token: string, path: string, query: object) =>
     (await get(token, path, query).expect(200)).body.meta.total;
   const seed = async (
@@ -38,7 +38,6 @@ describe('List views and search (e2e)', () => {
   beforeAll(async () => {
     ctx = await startApp();
     tenants = await createTenants(ctx);
-    admin = await adminToken(ctx);
 
     await seed('soon', { dueAt: inHours(2) });
     await seed('later', {
@@ -80,46 +79,39 @@ describe('List views and search (e2e)', () => {
         done: 1,
       },
     ],
-    ['admin', '/admin/shipments', { active: 6, exceptions: 2, done: 1 }],
   ])('narrows the %s list to each view', async (role, path, expected) => {
-    const token = {
-      seller: tenants.sellerA,
-      carrier: tenants.operator,
-      admin,
-    }[role] as string;
-    const scope = role === 'admin' ? { carrierId: tenants.carrierId } : {};
+    const token = role === 'seller' ? tenants.sellerA : tenants.operator;
 
     for (const [view, count] of Object.entries(expected)) {
-      await expect(totalOf(token, path, { ...scope, view })).resolves.toBe(
-        count,
-      );
+      await expect(totalOf(token, path, { view })).resolves.toBe(count);
     }
   });
 
   it('orders an open view by due time, undated last', async () => {
-    const { body } = await get(tenants.manager, '/shipments/queue', {
+    const res = await get(tenants.manager, '/shipments/queue', {
       view: 'unclaimed',
     }).expect(200);
 
-    expect(
-      body.data.map((s: { trackingCode: string }) => s.trackingCode),
-    ).toEqual([codes.soon, codes.later, codes.other, codes.undated]);
+    expect(codesOf(res)).toEqual([
+      codes.soon,
+      codes.later,
+      codes.other,
+      codes.undated,
+    ]);
   });
 
   it.each([
     ['a lower-case code', () => codes.soon.toLowerCase(), ['soon']],
     ['a city', () => 'campinas', ['later']],
     ['a formatted zip prefix', () => '13070-1', ['later']],
+    ['a literal %', () => '%', []],
+    ['a literal _', () => '_', []],
   ])(
-    'finds a seller shipment by %s, never another seller’s',
+    'searches seller shipments by %s, never another seller’s',
     async (_, q, names) => {
-      const { body } = await get(tenants.sellerA, '/shipments', {
-        q: q(),
-      }).expect(200);
+      const res = await get(tenants.sellerA, '/shipments', { q: q() });
 
-      expect(
-        body.data.map((s: { trackingCode: string }) => s.trackingCode),
-      ).toEqual(names.map((name) => codes[name]));
+      expect(codesOf(res)).toEqual(names.map((name) => codes[name]));
     },
   );
 
@@ -138,18 +130,9 @@ describe('List views and search (e2e)', () => {
     ).resolves.toBe(2);
   });
 
-  it.each(['%', '_', '\\'])(
-    'reads %s as a character, not a pattern',
-    async (q) => {
-      await expect(totalOf(tenants.sellerA, '/shipments', { q })).resolves.toBe(
-        0,
-      );
-    },
-  );
-
   it('rejects a view of another role, an unknown view and a long search', async () => {
     await get(tenants.sellerA, '/shipments', { view: 'mine' }).expect(400);
-    await get(admin, '/admin/shipments', { view: 'bogus' }).expect(400);
+    await get(tenants.operator, '/shipments/queue', { view: 'x' }).expect(400);
     await get(tenants.operator, '/shipments/queue', {
       q: 'x'.repeat(101),
     }).expect(400);

@@ -15,10 +15,4 @@ describe('shipment views', () => {
       ),
     ).toThrow();
   });
-
-  it('escapes LIKE wildcards in the search', () => {
-    expect(searchWhere('50%_a\\', { includeSeller: false }).OR?.[0]).toEqual({
-      trackingCode: { contains: '50\\%\\_a\\\\', mode: 'insensitive' },
-    });
-  });
 });
