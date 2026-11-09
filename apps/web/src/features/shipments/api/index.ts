@@ -12,6 +12,7 @@ import type {
   ListQueueQuery,
   ListShipmentsQuery,
   QueueShipmentDetail,
+  SellerViewCounts,
   Shipment,
   ShipmentActivity,
   ShipmentAttention,
@@ -68,6 +69,16 @@ export function getShipmentStatusCounts(
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
     '/shipments/status-counts',
+    undefined,
+    token,
+  );
+}
+
+export function getShipmentViewCounts(
+  token: string,
+): Promise<SellerViewCounts> {
+  return apiClient<SellerViewCounts>(
+    '/shipments/view-counts',
     undefined,
     token,
   );
