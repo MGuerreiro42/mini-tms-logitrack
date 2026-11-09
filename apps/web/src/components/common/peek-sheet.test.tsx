@@ -58,11 +58,16 @@ describe('PeekSheet', () => {
 
     press('k');
     expect(currentUrl()).toBe('/s?view=active&peek=a');
+    // Back to back, before the URL catches up.
+    vi.mocked(router.replace)
+      .mockImplementationOnce(() => {})
+      .mockImplementationOnce(() => {});
     press('j');
     press('J');
-    expect(currentUrl()).toBe('/s?view=active&peek=c');
-    press('j');
-    expect(currentUrl()).toBe('/s?view=active&peek=c');
+    expect(router.replace).toHaveBeenLastCalledWith('/s?view=active&peek=c', {
+      scroll: false,
+    });
+    expect(currentUrl()).toBe('/s?view=active&peek=a');
   });
 
   it('ignores J/K while typing, opens the page on Enter and closes on Esc back to the row', () => {
