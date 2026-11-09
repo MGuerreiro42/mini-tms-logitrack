@@ -175,6 +175,17 @@ export function getAdminShipmentStatusCounts(
   );
 }
 
+export function getAdminShipmentViewCounts(
+  query: AdminStatusCountsQuery,
+  token: string,
+): Promise<SellerViewCounts> {
+  return apiClient<SellerViewCounts>(
+    `/admin/shipments/view-counts${toQueryString({ ...query })}`,
+    undefined,
+    token,
+  );
+}
+
 export function getQueueShipment(
   id: string,
   token: string,

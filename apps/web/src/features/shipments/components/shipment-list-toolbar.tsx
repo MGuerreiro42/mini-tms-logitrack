@@ -35,7 +35,7 @@ export interface ShipmentListMenu<F> {
 
 type Tabs = ViewTabOption<'view' | 'status'>[];
 
-// A status with no tab of its own (an old ?status= link) is a filter that replaces the view.
+// Any status replaces the view; one without a tab (an old ?status= link) is also a filter.
 export function listScope<F extends ShipmentListFilters>(
   { filters, defaults, isFiltered }: ShipmentListControls<F>,
   tabs: Tabs,
@@ -48,7 +48,10 @@ export function listScope<F extends ShipmentListFilters>(
   return {
     strayStatus,
     isFiltered: isFiltered || strayStatus !== undefined,
-    view: strayStatus || filters.view === ALL ? undefined : filters.view,
+    view:
+      filters.status !== defaults.status || filters.view === ALL
+        ? undefined
+        : filters.view,
   };
 }
 

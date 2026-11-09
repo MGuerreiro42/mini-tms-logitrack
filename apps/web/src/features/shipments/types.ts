@@ -110,6 +110,8 @@ export interface ListAdminShipmentsQuery
   extends PaginationQuery,
     AdminStatusCountsQuery {
   status?: ShipmentStatus;
+  view?: SellerView;
+  q?: string;
 }
 
 export interface CreateShipmentInput {
