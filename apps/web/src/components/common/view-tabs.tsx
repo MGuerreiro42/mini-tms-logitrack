@@ -6,7 +6,7 @@ import { sumRecord } from '@/lib/sum-record';
 
 export type StatusFilter<S extends string> = S | typeof ALL;
 
-// key is the URL param the tab writes; its siblings' keys go back to ALL.
+// key is the URL param the tab writes; its siblings' keys go back to their defaults.
 export interface ViewTabOption<K extends string = string> {
   key: K;
   label: string;
@@ -53,6 +53,8 @@ export function statusFilterValues<S extends string>(
 interface ViewTabsProps<F extends Record<string, string>> {
   options: ViewTabOption<keyof F & string>[];
   filters: F;
+  // The filters' cleared state, from useFilteredPagination.
+  defaults: F;
   onChange: (changes: Partial<F>) => void;
 }
 
@@ -61,13 +63,17 @@ const idOf = ({ key, value }: ViewTabOption) => `${key}:${value}`;
 export function ViewTabs<F extends Record<string, string>>({
   options,
   filters,
+  defaults,
   onChange,
 }: ViewTabsProps<F>) {
   const keys = [...new Set(options.map((option) => option.key))];
-  // Selecting a tab resets the other keys, so a tab is on only when they are all at ALL.
+  // Selecting a tab clears the other keys, so a tab is on only when they are all cleared.
   const changesFor = (option: ViewTabOption) =>
     Object.fromEntries(
-      keys.map((key) => [key, key === option.key ? option.value : ALL]),
+      keys.map((key) => [
+        key,
+        key === option.key ? option.value : defaults[key],
+      ]),
     ) as Partial<F>;
   const selected = options.find((option) =>
     keys.every((key) => filters[key] === changesFor(option)[key]),

@@ -112,6 +112,7 @@ export function useFilteredPagination<F extends Record<string, string>>(
 
   return {
     filters,
+    defaults: defaultFilters,
     isFiltered: filterKeys.some((key) => filters[key] !== defaultFilters[key]),
     setFilter,
     setFilters,
