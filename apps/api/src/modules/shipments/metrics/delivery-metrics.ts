@@ -1,0 +1,134 @@
+import { ShipmentStatus } from '../../../../generated/prisma/client';
+import {
+  hoursBetween,
+  percentage,
+  percentile,
+} from '../../../shared/stats/stats';
+
+// One shipment created in the window, with what its history tells (see metric-rows.ts).
+export interface MetricRow {
+  createdAt: Date;
+  status: ShipmentStatus;
+  dueAt: Date | null;
+  deliveredAt: Date | null;
+  modality: { code: string; name: string };
+  acceptedAt: Date | null;
+  everFailed: boolean;
+  stages: { status: ShipmentStatus; hours: number }[];
+}
+
+export interface Rate {
+  n: number;
+  count: number;
+  // Null at n = 0: no sample is not a 0 % rate.
+  rate: number | null;
+}
+
+export const TREND_BUCKETS = 12;
+
+// The status a shipment sits in during each happy-path stage, in lifecycle order.
+export const STAGE_STATUSES = [
+  ShipmentStatus.PENDING,
+  ShipmentStatus.ACCEPTED,
+  ShipmentStatus.COLLECTED,
+  ShipmentStatus.IN_TRANSIT,
+  ShipmentStatus.OUT_FOR_DELIVERY,
+] as const;
+
+const rate = (count: number, n: number): Rate => ({
+  n,
+  count,
+  rate: n > 0 ? percentage(count, n) : null,
+});
+
+// The on-time rule of spec 05: delivered no later than dueAt; no dueAt, no sample.
+export const isOnTimeSample = (row: MetricRow): boolean =>
+  row.status === ShipmentStatus.DELIVERED &&
+  row.dueAt !== null &&
+  row.deliveredAt !== null;
+
+export function onTime(rows: MetricRow[]): Rate {
+  const sampled = rows.filter(isOnTimeSample);
+  const count = sampled.filter(
+    (row) => (row.deliveredAt as Date) <= (row.dueAt as Date),
+  ).length;
+  return rate(count, sampled.length);
+}
+
+function trend(rows: MetricRow[], since: Date, now: Date): (number | null)[] {
+  const span = now.getTime() - since.getTime();
+  const buckets: MetricRow[][] = Array.from(
+    { length: TREND_BUCKETS },
+    () => [],
+  );
+  for (const row of rows) {
+    const offset = row.createdAt.getTime() - since.getTime();
+    if (offset < 0 || offset > span) continue;
+    // createdAt = now belongs to the last bucket, not a 13th.
+    const index = Math.min(
+      Math.floor((offset / span) * TREND_BUCKETS),
+      TREND_BUCKETS - 1,
+    );
+    buckets[index].push(row);
+  }
+  return buckets.map((bucket) => onTime(bucket).rate);
+}
+
+const minutesBetween = (from: Date, to: Date) => hoursBetween(from, to) * 60;
+
+export function deliveryMetrics(
+  rows: MetricRow[],
+  { since, now }: { since: Date; now: Date },
+) {
+  const delivered = rows.filter(
+    (row) => row.status === ShipmentStatus.DELIVERED && row.deliveredAt,
+  );
+  const outcomes = rows.filter(
+    (row) => row.status === ShipmentStatus.DELIVERED || row.everFailed,
+  );
+  const claimMinutes = rows.flatMap((row) =>
+    row.acceptedAt ? [minutesBetween(row.createdAt, row.acceptedAt)] : [],
+  );
+  const deliveryHours = delivered.map((row) =>
+    hoursBetween(row.createdAt, row.deliveredAt as Date),
+  );
+  const first = rate(
+    outcomes.filter((row) => !row.everFailed).length,
+    outcomes.length,
+  );
+
+  return {
+    shipments: rows.length,
+    delivered: delivered.length,
+    onTime: { ...onTime(rows), trend: trend(rows, since, now) },
+    medianDelivery: {
+      hours: percentile(deliveryHours, 50),
+      n: deliveryHours.length,
+    },
+    firstAttempt: {
+      rate: first.rate,
+      n: first.n,
+      failed: first.n - first.count,
+      returned: outcomes.filter((row) => row.status === ShipmentStatus.RETURNED)
+        .length,
+    },
+    claim: {
+      p50Minutes: percentile(claimMinutes, 50),
+      p90Minutes: percentile(claimMinutes, 90),
+      n: claimMinutes.length,
+    },
+    stages: STAGE_STATUSES.map((status) => {
+      const hours = rows.flatMap((row) =>
+        row.stages.filter((s) => s.status === status).map((s) => s.hours),
+      );
+      return {
+        status,
+        p50Hours: percentile(hours, 50),
+        p90Hours: percentile(hours, 90),
+        n: hours.length,
+      };
+    }),
+  };
+}
+
+export type DeliveryMetrics = ReturnType<typeof deliveryMetrics>;
