@@ -85,4 +85,20 @@ describe('ShipmentsTable', () => {
     expect(currentUrl()).toBe('/seller/shipments?view=active');
     expect(screen.getByRole('searchbox')).toHaveValue('');
   });
+
+  it('treats a status without a tab as a removable filter', async () => {
+    resetNavigation('/seller/shipments?status=IN_TRANSIT&q=campinas');
+    const user = userEvent.setup();
+    renderWithQueryClient(<ShipmentsTable />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Remove Status: In transit' }),
+    ).toBeVisible();
+    expect(await screen.findByText('No shipments match.')).toBeVisible();
+    expect(screen.queryByRole('tab', { selected: true })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(currentUrl()).toBe('/seller/shipments');
+  });
 });

@@ -134,9 +134,10 @@ export interface EligibleCarrier {
   companyName: string;
 }
 
-export type SellerView = 'active' | 'exceptions' | 'done';
+export type SellerView = 'active' | 'exceptions';
 
-export type SellerViewCounts = Record<SellerView, number>;
+// The API also counts done, which no seller tab shows.
+export type SellerViewCounts = Record<SellerView | 'done', number>;
 
 export interface ListShipmentsQuery extends PaginationQuery {
   status?: ShipmentStatus;

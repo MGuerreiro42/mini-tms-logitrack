@@ -1,6 +1,6 @@
 'use client';
 
-import { FilterChips } from '@/components/common/filter-chips';
+import { type FilterChip, FilterChips } from '@/components/common/filter-chips';
 import { FilterToolbar } from '@/components/common/filter-toolbar';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
@@ -14,7 +14,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
-import { SHIPMENT_STATUSES } from '@/lib/status-colors';
+import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
@@ -44,10 +44,9 @@ export function ShipmentsTable() {
   const {
     filters,
     defaults,
-    isFiltered,
+    isFiltered: isSearching,
     setFilter,
     setFilters,
-    clearFilters,
     setPage,
     params,
   } = useFilteredPagination(
@@ -65,7 +64,6 @@ export function ShipmentsTable() {
   const viewCounts = useSellerViewCounts().data;
   const now = useNow(SLA_REFRESH_MS);
   const total = query.data?.meta.total;
-  const inView = filters.view !== ALL || filters.status !== ALL;
 
   const tabs: ViewTabOption<'view' | 'status'>[] = [
     {
@@ -99,6 +97,34 @@ export function ShipmentsTable() {
       count: statusCounts?.CANCELLED,
     },
   ];
+  // A status link with no tab of its own (?status=IN_TRANSIT) is a filter, not a view.
+  const strayStatus =
+    filters.status !== ALL &&
+    !tabs.some((tab) => tab.key === 'status' && tab.value === filters.status)
+      ? filters.status
+      : undefined;
+  const isFiltered = isSearching || strayStatus !== undefined;
+  const inView = filters.view !== ALL || filters.status !== ALL;
+  const chips: FilterChip[] = [
+    ...(strayStatus
+      ? [
+          {
+            id: 'status',
+            label: `Status: ${SHIPMENT_STATUS[strayStatus].label}`,
+            onRemove: () => setFilter('status', ALL),
+          },
+        ]
+      : []),
+    ...(filters.q
+      ? [
+          {
+            id: 'q',
+            label: `Search: ${filters.q}`,
+            onRemove: () => setFilter('q', ''),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="space-y-4">
@@ -109,7 +135,11 @@ export function ShipmentsTable() {
         onChange={setFilters}
       />
       <FilterToolbar
-        onClear={isFiltered ? clearFilters : undefined}
+        onClear={
+          isFiltered
+            ? () => setFilters({ q: '', ...(strayStatus && { status: ALL }) })
+            : undefined
+        }
         summary={
           total !== undefined && `${total} shipment${total === 1 ? '' : 's'}`
         }
@@ -120,19 +150,7 @@ export function ShipmentsTable() {
           placeholder="Code, city or zip"
         />
       </FilterToolbar>
-      <FilterChips
-        chips={
-          filters.q
-            ? [
-                {
-                  id: 'q',
-                  label: `Search: ${filters.q}`,
-                  onRemove: () => setFilter('q', ''),
-                },
-              ]
-            : []
-        }
-      />
+      <FilterChips chips={chips} />
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
         query={query}
