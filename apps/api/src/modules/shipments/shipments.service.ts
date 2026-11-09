@@ -612,6 +612,13 @@ export class ShipmentsService {
     shipmentId: string,
   ): Promise<CarrierShipmentResponseDto> {
     const carrierUser = await this.findCarrierUserOrThrow(userId);
+    return this.claimAs(carrierUser, shipmentId);
+  }
+
+  private async claimAs(
+    carrierUser: Pick<CarrierUser, 'id' | 'carrierId' | 'userId'>,
+    shipmentId: string,
+  ): Promise<CarrierShipmentResponseDto> {
     const shipment = await this.findCarrierShipmentOrThrow(
       carrierUser.carrierId,
       shipmentId,
@@ -631,7 +638,7 @@ export class ShipmentsService {
       from: ShipmentStatus.PENDING,
       expected: { carrierId: carrierUser.carrierId, ownerId: null },
       to: ShipmentStatus.ACCEPTED,
-      actorId: userId,
+      actorId: carrierUser.userId,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
       include: carrierShipmentInclude,
@@ -657,12 +664,17 @@ export class ShipmentsService {
     });
     for (const { id } of candidates) {
       try {
-        return await this.claim(userId, id);
+        return await this.claimAs(carrierUser, id);
       } catch (error) {
         if (!(error instanceof ConflictException)) throw error;
       }
     }
-    throw new ConflictException('No shipment is waiting to be claimed');
+    // A full batch lost means more may be waiting behind it; fewer means the queue is empty.
+    throw new ConflictException(
+      candidates.length === CLAIM_NEXT_TRIES
+        ? 'Others claimed these first, try again'
+        : 'No shipment is waiting to be claimed',
+    );
   }
 
   async updateStatus(

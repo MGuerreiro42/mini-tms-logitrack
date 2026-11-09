@@ -192,16 +192,27 @@ describe('CarrierQueueTable', () => {
   });
 
   it.each([
-    [200, 'Claimed TMS-AAA111', true],
-    [409, 'Nothing left to claim', false],
+    [200, '', 'Claimed TMS-AAA111', true],
+    [
+      409,
+      'No shipment is waiting to be claimed',
+      'Nothing left to claim',
+      false,
+    ],
+    [
+      409,
+      'Others claimed these first, try again',
+      'Others claimed these first, try again',
+      false,
+    ],
   ] as const)(
-    'claims next and reports a %s',
-    async (status, message, opens) => {
+    'claims next and reports a %s %s',
+    async (status, serverMessage, message, opens) => {
       server.use(
         http.post(`${API_URL}/shipments/queue/claim-next`, () =>
           status === 200
             ? HttpResponse.json(unownedShipment)
-            : HttpResponse.json({ message: 'No shipment' }, { status }),
+            : HttpResponse.json({ message: serverMessage }, { status }),
         ),
       );
       const user = userEvent.setup();

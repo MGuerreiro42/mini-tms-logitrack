@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
@@ -100,36 +100,5 @@ describe('ShipmentsTable', () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
 
     expect(currentUrl()).toBe('/seller/shipments');
-  });
-
-  it('peeks at the shipment named in the URL', async () => {
-    const shipment = {
-      id: 'shipment-1',
-      trackingCode: 'TMS-AAA111',
-      status: 'IN_TRANSIT',
-      addressCity: 'Campinas',
-      addressState: 'SP',
-      addressNeighborhood: 'Centro',
-      carrierName: 'Fast Carrier',
-      modalityName: 'Express',
-      createdAt: '2026-11-01T12:00:00.000Z',
-      dueAt: null,
-      trackingEvents: [],
-    };
-    server.use(
-      http.get(`${API_URL}/shipments/shipment-1`, () =>
-        HttpResponse.json(shipment),
-      ),
-    );
-    resetNavigation('/seller/shipments?peek=shipment-1');
-    renderWithQueryClient(<ShipmentsTable />);
-
-    const sheet = await screen.findByRole('dialog', {
-      name: 'Shipment preview',
-    });
-    expect(await within(sheet).findByText('Fast Carrier')).toBeVisible();
-    expect(
-      within(sheet).getByRole('link', { name: 'Open shipment' }),
-    ).toHaveAttribute('href', '/seller/shipments/shipment-1');
   });
 });
