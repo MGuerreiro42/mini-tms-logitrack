@@ -100,7 +100,6 @@ import {
   SELLER_VIEWS,
   type ShipmentView,
   type ViewContext,
-  viewWhere,
 } from './shipment-views';
 import { generateTrackingCode } from './tracking-code';
 import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
@@ -309,12 +308,10 @@ export class ShipmentsService {
     scope: Prisma.ShipmentWhereInput,
     carrierUserId: string | null,
   ): Promise<Record<V, number>> {
-    const ctx = { now: new Date(), carrierUserId };
+    const ctx = { now: new Date(), carrierUserId, includeSeller: false };
     const counts = await Promise.all(
       views.map((view) =>
-        this.prisma.shipment.count({
-          where: { AND: [scope, viewWhere(view, ctx)] },
-        }),
+        this.prisma.shipment.count({ where: listWhere(scope, { view }, ctx) }),
       ),
     );
     return Object.fromEntries(

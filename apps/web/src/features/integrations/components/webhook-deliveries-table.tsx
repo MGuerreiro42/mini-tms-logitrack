@@ -46,7 +46,7 @@ export function WebhookDeliveriesTable({
 }: {
   liveStatus: LiveStatus;
 }) {
-  const { filters, isFiltered, setFilters, setPage, params } =
+  const { filters, defaults, isFiltered, setFilters, setPage, params } =
     useFilteredPagination(
       { status: ALL as StatusFilter<WebhookDeliveryStatus> },
       { status: STATUS_VALUES },
@@ -65,6 +65,7 @@ export function WebhookDeliveriesTable({
         <ViewTabs
           options={STATUS_OPTIONS}
           filters={filters}
+          defaults={defaults}
           onChange={setFilters}
         />
       </div>

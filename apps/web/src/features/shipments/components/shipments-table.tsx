@@ -21,8 +21,8 @@ import { useShipmentsList } from '../hooks/use-shipments-list';
 import { useSellerViewCounts } from '../hooks/use-view-counts';
 import type { SellerView, Shipment, ShipmentStatus } from '../types';
 import {
-  lateRowClassName,
   partyColumns,
+  riskRowClassName,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -43,6 +43,7 @@ const SLA_REFRESH_MS = 60_000;
 export function ShipmentsTable() {
   const {
     filters,
+    defaults,
     isFiltered,
     setFilter,
     setFilters,
@@ -101,7 +102,12 @@ export function ShipmentsTable() {
 
   return (
     <div className="space-y-4">
-      <ViewTabs options={tabs} filters={filters} onChange={setFilters} />
+      <ViewTabs
+        options={tabs}
+        filters={filters}
+        defaults={defaults}
+        onChange={setFilters}
+      />
       <FilterToolbar
         onClear={isFiltered ? clearFilters : undefined}
         summary={
@@ -137,7 +143,7 @@ export function ShipmentsTable() {
             data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
-            getRowClassName={lateRowClassName}
+            getRowClassName={riskRowClassName}
             getRowKey={(shipment) => shipment.id}
             getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}
             emptyMessage={

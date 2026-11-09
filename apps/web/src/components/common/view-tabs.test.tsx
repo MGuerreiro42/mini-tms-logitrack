@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
-import { statusFilterOptions, ViewTabs } from './view-tabs';
+import { statusFilterOptions, type ViewTabOption, ViewTabs } from './view-tabs';
 
 describe('statusFilterOptions', () => {
   it('labels each status from its metadata and places All first', () => {
@@ -32,12 +32,17 @@ const SELLER_TABS = [
 ] as const;
 
 describe('ViewTabs', () => {
-  const renderTabs = (filters: Record<'view' | 'status', string>) => {
+  const renderTabs = (
+    filters: Record<'view' | 'status', string>,
+    defaults = { view: 'ALL', status: 'ALL' },
+    options: ViewTabOption<'view' | 'status'>[] = [...SELLER_TABS],
+  ) => {
     const onChange = vi.fn();
     render(
       <ViewTabs
-        options={[...SELLER_TABS]}
+        options={options}
         filters={filters}
+        defaults={defaults}
         onChange={onChange}
       />,
     );
@@ -66,6 +71,28 @@ describe('ViewTabs', () => {
     expect(onChange).toHaveBeenCalledWith({
       view: 'exceptions',
       status: 'ALL',
+    });
+  });
+
+  it('clears a sibling key to its own default, not to ALL', async () => {
+    const onChange = renderTabs(
+      { view: 'mine', status: 'ALL' },
+      { view: 'mine', status: 'ALL' },
+      [
+        { key: 'view', label: 'Mine', value: 'mine' },
+        { key: 'status', label: 'Cancelled', value: 'CANCELLED' },
+      ],
+    );
+
+    expect(screen.getByRole('tab', { name: 'Mine' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await userEvent.click(screen.getByRole('tab', { name: 'Cancelled' }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      view: 'mine',
+      status: 'CANCELLED',
     });
   });
 

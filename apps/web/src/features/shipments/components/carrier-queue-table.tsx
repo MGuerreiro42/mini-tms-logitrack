@@ -27,8 +27,8 @@ import {
   type ShipmentStatus,
 } from '../types';
 import {
-  lateRowClassName,
   partyColumns,
+  riskRowClassName,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -46,10 +46,11 @@ const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 const SLA_REFRESH_MS = 60_000;
 
 export function CarrierQueueTable() {
-  const { filters, setFilters, setPage, params } = useFilteredPagination(
-    { status: ALL as StatusFilter<ShipmentStatus> },
-    { status: STATUS_VALUES },
-  );
+  const { filters, defaults, setFilters, setPage, params } =
+    useFilteredPagination(
+      { status: ALL as StatusFilter<ShipmentStatus> },
+      { status: STATUS_VALUES },
+    );
 
   const live = useShipmentTracking({ subscribeToQueue: true });
   const query = useShipmentQueue(params, live.status);
@@ -67,6 +68,7 @@ export function CarrierQueueTable() {
       <ViewTabs
         options={STATUS_OPTIONS}
         filters={filters}
+        defaults={defaults}
         onChange={setFilters}
       />
       <QueryState
@@ -79,7 +81,7 @@ export function CarrierQueueTable() {
             data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
-            getRowClassName={lateRowClassName}
+            getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
