@@ -28,6 +28,10 @@ describe('PaginatedTable', () => {
       />,
     );
 
+    vi.spyOn(window, 'getSelection').mockReturnValueOnce({
+      toString: () => 'TMS',
+    } as Selection);
+    await userEvent.click(screen.getAllByText('body')[1]);
     await userEvent.click(screen.getAllByText('body')[0]);
     await userEvent.click(screen.getByRole('link', { name: 'Second' }));
 
@@ -37,7 +41,7 @@ describe('PaginatedTable', () => {
     });
     expect(
       screen.getByRole('link', { name: 'Second' }).closest('tr'),
-    ).toHaveAttribute('aria-selected', 'true');
+    ).toHaveAttribute('aria-current', 'true');
   });
 
   it('shows the empty message when there is no data', () => {
