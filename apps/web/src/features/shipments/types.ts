@@ -134,8 +134,14 @@ export interface EligibleCarrier {
   companyName: string;
 }
 
+export type SellerView = 'active' | 'exceptions' | 'done';
+
+export type SellerViewCounts = Record<SellerView, number>;
+
 export interface ListShipmentsQuery extends PaginationQuery {
   status?: ShipmentStatus;
+  view?: SellerView;
+  q?: string;
 }
 
 export interface ListQueueQuery extends PaginationQuery {
