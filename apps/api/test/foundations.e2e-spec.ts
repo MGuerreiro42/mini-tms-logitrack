@@ -84,6 +84,29 @@ describe('Foundations (e2e)', () => {
       ).resolves.toMatchObject({ addressZipCode: '01310100' });
     });
 
+    it('rejects a blank city and stores a padded one trimmed', async () => {
+      await as(tenants.sellerA)
+        .get('/shipments/eligible-carriers')
+        .query({ state: 'SP', city: '   ', modalityId: tenants.modalityId })
+        .expect(400);
+      await as(tenants.sellerA)
+        .post('/shipments')
+        .send({ ...shipmentBody(tenants), addressCity: '   ' })
+        .expect(400);
+      await as(tenants.manager)
+        .put('/carriers/me/coverage-areas')
+        .send({ areas: [{ state: 'SP', city: ' ' }] })
+        .expect(400);
+
+      const { body } = await as(tenants.sellerA)
+        .post('/shipments')
+        .send({ ...shipmentBody(tenants), addressCity: '  SÃO PAULO ' })
+        .expect(201);
+      await expect(
+        ctx.prisma.shipment.findUniqueOrThrow({ where: { id: body.id } }),
+      ).resolves.toMatchObject({ addressCity: 'SÃO PAULO' });
+    });
+
     it('rejects an unknown UF in the preview, creation and coverage', async () => {
       await as(tenants.sellerA)
         .get('/shipments/eligible-carriers')

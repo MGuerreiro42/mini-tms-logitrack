@@ -1,4 +1,10 @@
-import { cityKey, toDigits, toLowerTrimmed, toUpperTrimmed } from './normalize';
+import {
+  cityKey,
+  toDigits,
+  toLowerTrimmed,
+  toTrimmed,
+  toUpperTrimmed,
+} from './normalize';
 
 describe('toLowerTrimmed', () => {
   it('lowercases and trims a string', () => {
@@ -23,6 +29,16 @@ describe('toUpperTrimmed', () => {
     expect(toUpperTrimmed({ value: undefined })).toBeUndefined();
     expect(toUpperTrimmed({ value: null })).toBeNull();
     expect(toUpperTrimmed({ value: 42 })).toBe(42);
+  });
+});
+
+describe('toTrimmed', () => {
+  it('trims a string and keeps its case', () => {
+    expect(toTrimmed({ value: '  SÃO Paulo \t' })).toBe('SÃO Paulo');
+  });
+
+  it('returns non-string values untouched', () => {
+    expect(toTrimmed({ value: undefined })).toBeUndefined();
   });
 });
 

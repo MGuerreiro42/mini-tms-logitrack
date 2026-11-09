@@ -1,3 +1,7 @@
+export function toTrimmed({ value }: { value: unknown }): unknown {
+  return typeof value === 'string' ? value.trim() : value;
+}
+
 export function toLowerTrimmed({ value }: { value: unknown }): unknown {
   return typeof value === 'string' ? value.trim().toLowerCase() : value;
 }

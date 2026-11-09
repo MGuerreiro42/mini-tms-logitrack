@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { toTrimmed } from '../../../shared/transforms/normalize';
 import { IsUf } from '../../../shared/validation/br-validators';
 
 export class CoverageAreaInputDto {
@@ -12,6 +14,7 @@ export class CoverageAreaInputDto {
     description: 'Omit/null to cover the entire state',
   })
   @IsOptional()
+  @Transform(toTrimmed)
   @IsString()
   @IsNotEmpty()
   city?: string;

@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { toTrimmed } from '../../../shared/transforms/normalize';
 import { IsCep, IsUf } from '../../../shared/validation/br-validators';
 
 export class CreateShipmentDto {
@@ -24,6 +26,7 @@ export class CreateShipmentDto {
   addressNeighborhood: string;
 
   @ApiProperty({ example: 'São Paulo' })
+  @Transform(toTrimmed)
   @IsString()
   @IsNotEmpty()
   addressCity: string;

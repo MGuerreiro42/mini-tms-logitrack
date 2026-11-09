@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { toTrimmed } from '../../../shared/transforms/normalize';
 import { IsUf } from '../../../shared/validation/br-validators';
 
 export class EligibleCarriersQueryDto {
@@ -12,6 +14,7 @@ export class EligibleCarriersQueryDto {
     description:
       'Required — mirrors Shipment.addressCity, which is never optional on the real record',
   })
+  @Transform(toTrimmed)
   @IsString()
   @IsNotEmpty()
   city: string;
