@@ -46,10 +46,12 @@ describe('Claim next (e2e)', () => {
     const res = await claimNext(tenants.operator).expect(200);
 
     expect(res.body).toMatchObject({ id: urgent, status: 'ACCEPTED' });
+    await claimNext(tenants.operator).expect(200);
   });
 
   it('never gives two parallel calls the same shipment', async () => {
     await unclaimedDueIn(10);
+    await unclaimedDueIn(20);
 
     const responses = await Promise.all([
       claimNext(tenants.operator),

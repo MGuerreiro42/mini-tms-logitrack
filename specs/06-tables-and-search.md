@@ -115,7 +115,7 @@ A seller ticks rows and a bulk bar replaces the toolbar: "3 selected · Copy tra
 
 **Why this priority**: cancelling or sharing a batch takes one action per shipment today (po-seller L7; prototype `SellerShipmentsBulk`).
 
-**Independent test**: select one `PENDING` and two `IN_TRANSIT` shipments, read "2 can't be cancelled: they are already with the carrier", confirm, and see the pending one cancelled and the selection cleared.
+**Independent test**: select one `PENDING` and two `IN_TRANSIT` shipments, read "2 can't be cancelled at this stage", confirm, and see the pending one cancelled and the selection cleared.
 
 **Acceptance scenarios**:
 
@@ -192,15 +192,15 @@ On the seller and admin overviews, the count tiles are links to the table filter
 
 ### Peek sheet (web)
 
-- **FR-020**: `PaginatedTable` MUST accept `onRowClick` and `selectedKey`; when `onRowClick` is set and the viewport is 768 px or wider, the stretched row link is limited to the code cell, a click on the rest of the row calls `onRowClick`, and the selected row carries `aria-selected` and the selected background.
-- **FR-021**: A `PeekSheet` MUST render as a floating panel (440 px, right, below the header, no scrim, `role="dialog"`, `aria-modal="false"`, labelled "<code> preview"), driven by `?peek=<id>`. On open, focus moves to its close button; `Esc` or close removes `peek` and returns focus to the row's code link; `J`/`K` (only while the sheet is open and focus is not in a text input) select the next/previous row of the current page; `Enter` on the sheet opens the full page. Keyboard users who do not use the peek reach the same data through the code link.
+- **FR-020**: `PaginatedTable` MUST accept `onRowClick` and `selectedKey`; when `onRowClick` is set and the viewport is 768 px or wider, the stretched row link is limited to the code cell, a click on the rest of the row calls `onRowClick`, and the selected row carries `aria-current="true"` and the selected background; a click that ends a text selection, or lands on a control, does not open the peek.
+- **FR-021**: A `PeekSheet` MUST render as a floating panel (440 px, right, below the header, no scrim, `role="dialog"`, `aria-modal="false"`, labelled "<code> preview"), driven by `?peek=<id>`. On open, focus moves to the sheet itself (`tabIndex=-1`); `Esc` (unless typing in a field outside the sheet) or the close button removes `peek` (stepping back over the history entry it pushed) and returns focus to the row's code link, or the table's first link when that row is gone; any filter or page change drops `peek`; `J`/`K` (only while the sheet is open and focus is not in a text input) select the next/previous row of the current page; `Enter` on the sheet opens the full page, while its buttons and links keep their own Enter; each move is announced politely ("<code> preview"). Keyboard users who do not use the peek reach the same data through the code link.
 - **FR-022**: Peek content MUST come from the existing detail hooks (`useShipment`, `useQueueShipment`, `useAdminShipment`): header (code, `ShipmentStatusBadge`, `RiskBadge`), destination, carrier and modality (seller) or seller and owner chip (carrier, admin), the last three timeline events, and actions: seller "Copy tracking link"; carrier "Claim" when claimable; admin "Copy link"; all "Open shipment". It reuses `QueryState` for loading, error and not found.
 - **FR-023**: Seller Shipments, Carrier Queue and Admin Monitoring MUST wire the peek.
 
 ### Seller bulk bar (web)
 
-- **FR-024**: `PaginatedTable` MUST accept an optional selection (`selectedKeys`, `onSelectionChange`) rendering a leading checkbox column (native checkboxes labelled "Select <code>", plus a header "Select all on this page"); cards below 768 px do not show it.
-- **FR-025**: With one or more rows selected, Seller Shipments MUST replace the toolbar with a `BulkActionBar`: "<n> selected", "Copy tracking links" (absolute public tracking URLs from `publicTrackingPath`, newline-separated), "Cancel <k>…" (only when `k > 0` cancellable rows, `isCancellableBySeller`) and a clear button. The cancel confirmation (`ConfirmDialog`) states how many cannot be cancelled and why ("already with the carrier"), then calls `PATCH /shipments/:id/cancel` for each cancellable id, at most 4 at a time, and reports the outcome in one toast. Export selected is out of scope.
+- **FR-024**: `PaginatedTable` MUST accept an optional `selection: { keys, onChange, getLabel }` rendering a leading checkbox column (native checkboxes labelled "Select <code>", plus a header "Select all on this page"); cards below 768 px do not show it.
+- **FR-025**: With one or more rows selected, Seller Shipments MUST replace the toolbar with a `BulkActionBar`: "<n> selected", "Copy tracking links" (absolute public tracking URLs from `publicTrackingPath`, newline-separated), "Cancel <k>…" (only when `k > 0` cancellable rows, `isCancellableBySeller`) and a clear button. The cancel confirmation (`ConfirmDialog`) states how many cannot be cancelled ("<n> can't be cancelled at this stage") and that the carrier is told, freezing the selection it confirms, then calls `PATCH /shipments/:id/cancel` for each cancellable id, at most 4 at a time, and reports the outcome in one toast (failed codes truncated, "TMS-1, TMS-2 and 5 more"); failed rows stay selected for a retry, and clearing returns focus to "Select all on this page". Export selected is out of scope.
 
 ### KPI links (web)
 

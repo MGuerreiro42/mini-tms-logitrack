@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import type { PaginationMeta } from '@/types/pagination';
 
 const MOBILE_QUERY = '(max-width: 767px)';
+// Clicks on these keep their own meaning instead of opening the row's peek.
+const ROW_CONTROLS = 'a, button, input, label, select, textarea';
 
 export type CardSlot = 'title' | 'badge' | 'place' | 'meta' | 'action';
 
@@ -74,6 +76,8 @@ export function PaginatedTable<T>({
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const asCards = isMobile && rows.columns.some((column) => column.card);
   const Rows = asCards ? RowCards : RowTable;
+  // No peek below 768 px: a tap opens the page.
+  const onRowClick = isMobile ? undefined : rows.onRowClick;
   const flashes = useRowFlashes(rows.data, rows.getRowKey, rows.getRowVersion);
   const getRowClassName = (row: T) =>
     cn(
@@ -89,6 +93,7 @@ export function PaginatedTable<T>({
     <div className="space-y-3">
       <Rows
         {...rows}
+        onRowClick={onRowClick}
         getRowClassName={getRowClassName}
         isEmpty={rows.data.length === 0 && !isPastTheEnd}
       />
@@ -138,6 +143,7 @@ function RowTable<T>({
   const pageKeys = data.map(getRowKey);
   const allSelected =
     pageKeys.length > 0 && pageKeys.every((key) => selection?.keys.has(key));
+  const someSelected = pageKeys.some((key) => selection?.keys.has(key));
   const toggle = (key: string, on: boolean) => {
     if (!selection) return;
     const next = new Set(selection.keys);
@@ -157,6 +163,10 @@ function RowTable<T>({
                   type="checkbox"
                   aria-label="Select all on this page"
                   checked={allSelected}
+                  ref={(input) => {
+                    if (input)
+                      input.indeterminate = someSelected && !allSelected;
+                  }}
                   onChange={(event) =>
                     selection.onChange(
                       new Set(event.target.checked ? pageKeys : []),
@@ -188,33 +198,41 @@ function RowTable<T>({
             <TableRow
               key={getRowKey(row)}
               data-row-key={getRowKey(row)}
-              aria-selected={
-                onRowClick ? getRowKey(row) === selectedKey : undefined
+              aria-current={
+                onRowClick && getRowKey(row) === selectedKey
+                  ? 'true'
+                  : undefined
               }
               onClick={
                 onRowClick &&
                 ((event) => {
                   const target = event.target as Element;
-                  if (!target.closest('a, button, input')) onRowClick(row);
+                  // Selecting text to copy it is not a request to peek.
+                  if (window.getSelection()?.toString()) return;
+                  if (target.closest(ROW_CONTROLS)) return;
+                  onRowClick(row);
                 })
               }
               className={cn(
                 getRowHref && 'relative',
-                onRowClick && 'cursor-pointer aria-selected:bg-selected',
+                onRowClick && 'cursor-pointer aria-[current=true]:bg-selected',
                 getRowClassName?.(row),
               )}
             >
               {selection && (
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${selection.getLabel(row)}`}
-                    checked={selection.keys.has(getRowKey(row))}
-                    onChange={(event) =>
-                      toggle(getRowKey(row), event.target.checked)
-                    }
-                    className="relative z-10 size-4 accent-primary"
-                  />
+                <TableCell className="p-0">
+                  {/* The label fills the cell, so a click on its padding toggles instead of peeking. */}
+                  <label className="relative z-10 flex h-full cursor-pointer items-center px-2 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${selection.getLabel(row)}`}
+                      checked={selection.keys.has(getRowKey(row))}
+                      onChange={(event) =>
+                        toggle(getRowKey(row), event.target.checked)
+                      }
+                      className="size-4 accent-primary"
+                    />
+                  </label>
                 </TableCell>
               )}
               {columns.map((col, index) => (

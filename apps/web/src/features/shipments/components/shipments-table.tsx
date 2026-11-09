@@ -118,7 +118,17 @@ export function ShipmentsTable() {
           selected.length > 0 ? (
             <BulkActionBar
               selected={selected}
-              onClear={() => select(new Set())}
+              onDone={(keep) => {
+                select(new Set(keep));
+                // The bar is gone with the selection; focus returns to where selecting starts.
+                if (keep.length === 0) {
+                  document
+                    .querySelector<HTMLElement>(
+                      'input[aria-label="Select all on this page"]',
+                    )
+                    ?.focus();
+                }
+              }}
             />
           ) : undefined
         }

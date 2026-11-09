@@ -1,6 +1,7 @@
 'use client';
 
 import { XIcon } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -12,14 +13,19 @@ import { isCancellableBySeller, type Shipment } from '../types';
 
 interface BulkActionBarProps {
   selected: Pick<Shipment, 'id' | 'trackingCode' | 'status'>[];
-  onClear: () => void;
+  // The ids still selected after an action; empty clears the selection.
+  onDone: (keep: string[]) => void;
 }
 
-export function BulkActionBar({ selected, onClear }: BulkActionBarProps) {
+export function BulkActionBar({ selected, onDone }: BulkActionBarProps) {
   const origin = useAppOrigin();
   const bulkCancel = useBulkCancel();
   const cancellable = selected.filter((s) => isCancellableBySeller(s.status));
-  const skipped = selected.length - cancellable.length;
+  // Frozen when the dialog opens, so a live update can't change what is being confirmed.
+  const [confirming, setConfirming] = useState({
+    cancellable,
+    skipped: 0,
+  });
 
   async function copyLinks() {
     const links = selected.map(
@@ -38,7 +44,9 @@ export function BulkActionBar({ selected, onClear }: BulkActionBarProps) {
       aria-label="Bulk actions"
       className="flex min-h-10 flex-wrap items-center gap-2.5 rounded-lg bg-selected px-3 py-1.5"
     >
-      <span className="text-sm font-semibold">{selected.length} selected</span>
+      <span role="status" className="text-sm font-semibold">
+        {selected.length} selected
+      </span>
       <Button variant="secondary" size="sm" onClick={copyLinks}>
         Copy tracking links
       </Button>
@@ -49,19 +57,28 @@ export function BulkActionBar({ selected, onClear }: BulkActionBarProps) {
               Cancel {cancellable.length}…
             </Button>
           }
-          title={`Cancel ${plural(cancellable.length, 'shipment')}?`}
-          description={
-            skipped > 0
-              ? `${skipped} can't be cancelled: they are already with the carrier.`
-              : 'The carrier is told and the shipments leave its queue.'
-          }
-          confirmLabel={`Cancel ${plural(cancellable.length, 'shipment')}`}
+          onOpenChange={(open) => {
+            if (open) {
+              setConfirming({
+                cancellable,
+                skipped: selected.length - cancellable.length,
+              });
+            }
+          }}
+          title={`Cancel ${plural(confirming.cancellable.length, 'shipment')}?`}
+          description={[
+            confirming.skipped > 0 &&
+              `${confirming.skipped} can't be cancelled at this stage.`,
+            'The carrier is told and the shipments leave its queue.',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          confirmLabel={`Cancel ${plural(confirming.cancellable.length, 'shipment')}`}
           dismissLabel="Keep them"
           variant="destructive"
-          onConfirm={async () => {
-            await bulkCancel(cancellable);
-            onClear();
-          }}
+          onConfirm={async () =>
+            onDone(await bulkCancel(confirming.cancellable))
+          }
         />
       )}
       <Button
@@ -69,7 +86,7 @@ export function BulkActionBar({ selected, onClear }: BulkActionBarProps) {
         size="icon-sm"
         aria-label="Clear selection"
         className="ml-auto"
-        onClick={onClear}
+        onClick={() => onDone([])}
       >
         <XIcon aria-hidden />
       </Button>

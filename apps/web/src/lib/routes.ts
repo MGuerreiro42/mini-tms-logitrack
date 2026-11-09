@@ -13,6 +13,7 @@ export const ROUTES = {
   sellerModalities: '/seller/modalities',
   sellerIntegrations: '/seller/integrations',
   sellerProfile: '/seller/profile',
+  carrierShipment: (id: string) => `/carrier/queue/${id}`,
   adminMonitoring: '/admin/monitoring',
   adminShipment: (id: string) => `/admin/shipments/${id}`,
 } as const;

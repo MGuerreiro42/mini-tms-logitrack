@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
-const PEEK_PARAM = 'peek';
+export const PEEK_PARAM = 'peek';
 
 export interface Peek {
   peekId: string | undefined;
@@ -21,6 +21,8 @@ export function usePeek(keys: string[]): Peek {
   const peekId = searchParams.get(PEEK_PARAM) ?? undefined;
   // The URL lags behind a fast J J, so steps count from the last row asked for.
   const target = useRef(peekId);
+  // Whether this hook pushed the peek's history entry, so closing can step back over it.
+  const pushed = useRef(false);
   useEffect(() => {
     target.current = peekId;
   }, [peekId]);
@@ -46,13 +48,22 @@ export function usePeek(keys: string[]): Peek {
 
   return {
     peekId,
-    open: (id) => go(id, peekId ? 'replace' : 'push'),
+    open: (id) => {
+      if (!peekId) pushed.current = true;
+      go(id, peekId ? 'replace' : 'push');
+    },
     close: () => {
-      go(undefined, 'replace');
+      if (pushed.current) {
+        pushed.current = false;
+        target.current = undefined;
+        router.back();
+      } else go(undefined, 'replace');
       if (!peekId) return;
-      document
-        .querySelector<HTMLElement>(`[data-row-key="${CSS.escape(peekId)}"] a`)
-        ?.focus();
+      // The row may have left the page (a link, a live update): then the table's first link.
+      const row = document.querySelector<HTMLElement>(
+        `[data-row-key="${CSS.escape(peekId)}"] a`,
+      );
+      (row ?? document.querySelector<HTMLElement>('[data-row-key] a'))?.focus();
     },
     next: () => step(1),
     prev: () => step(-1),

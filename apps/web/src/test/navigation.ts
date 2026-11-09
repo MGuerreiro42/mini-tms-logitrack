@@ -4,11 +4,28 @@ import { vi } from 'vitest';
 const ORIGIN = 'http://localhost';
 
 let url = new URL('/', ORIGIN);
+let history: URL[] = [];
 const listeners = new Set<() => void>();
+
+function notify() {
+  for (const listener of listeners) listener();
+}
 
 function navigate(href: string) {
   url = new URL(href, url);
-  for (const listener of listeners) listener();
+  notify();
+}
+
+function pushTo(href: string) {
+  history.push(url);
+  navigate(href);
+}
+
+function back() {
+  const previous = history.pop();
+  if (!previous) return;
+  url = previous;
+  notify();
 }
 
 function subscribe(listener: () => void) {
@@ -17,15 +34,18 @@ function subscribe(listener: () => void) {
 }
 
 export const router = {
-  push: vi.fn(navigate),
+  push: vi.fn(pushTo),
   replace: vi.fn(navigate),
+  back: vi.fn(back),
   refresh: vi.fn(),
 };
 
 export function resetNavigation(href = '/') {
   url = new URL(href, ORIGIN);
+  history = [];
   vi.mocked(router.push).mockClear();
   vi.mocked(router.replace).mockClear();
+  vi.mocked(router.back).mockClear();
   vi.mocked(router.refresh).mockClear();
 }
 

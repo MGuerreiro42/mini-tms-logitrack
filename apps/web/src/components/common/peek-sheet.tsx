@@ -23,25 +23,26 @@ export function PeekSheet({ peek, label, href, children }: PeekSheetProps) {
   const router = useRouter();
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const sheetRef = useRef<HTMLElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (isDesktop) closeRef.current?.focus();
+    if (isDesktop) sheetRef.current?.focus();
   }, [isDesktop]);
 
   const onKey = useEffectEvent((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey) return;
     if (event.altKey) return;
-    if (event.key === 'Escape') return peek.close();
     const target = event.target as Element;
-    if (isTyping(target)) return;
+    const typing = isTyping(target);
+    // Esc in a field outside the sheet belongs to that field (e.g. clearing a search).
+    if (event.key === 'Escape') {
+      if (!typing || sheetRef.current?.contains(target)) peek.close();
+      return;
+    }
+    if (typing) return;
     if (event.key === 'j' || event.key === 'J') return peek.next();
     if (event.key === 'k' || event.key === 'K') return peek.prev();
-    // Enter on the sheet itself or its close button opens the page; other controls keep theirs.
-    if (
-      event.key === 'Enter' &&
-      (target === sheetRef.current || target === closeRef.current)
-    ) {
+    // Enter opens the page only from the sheet itself; its buttons and links keep their own.
+    if (event.key === 'Enter' && target === sheetRef.current) {
       event.preventDefault();
       router.push(href);
     }
@@ -61,7 +62,7 @@ export function PeekSheet({ peek, label, href, children }: PeekSheetProps) {
       aria-modal="false"
       aria-label={label}
       tabIndex={-1}
-      className="fixed top-20 right-6 bottom-6 z-30 flex w-110 flex-col overflow-hidden rounded-xl bg-card shadow-panel outline-none"
+      className="fixed top-20 right-6 bottom-6 z-30 flex w-110 flex-col overflow-hidden rounded-xl bg-card shadow-panel outline-ring focus-visible:outline-2"
     >
       <div className="flex items-center justify-between gap-3 border-b px-5 py-2.5">
         <p className="text-xs text-muted-foreground">
@@ -71,7 +72,6 @@ export function PeekSheet({ peek, label, href, children }: PeekSheetProps) {
           <kbd className="font-mono">Esc</kbd> close
         </p>
         <Button
-          ref={closeRef}
           variant="ghost"
           size="icon-sm"
           aria-label="Close preview"
@@ -80,6 +80,9 @@ export function PeekSheet({ peek, label, href, children }: PeekSheetProps) {
           <XIcon aria-hidden />
         </Button>
       </div>
+      <p className="sr-only" aria-live="polite">
+        {label}
+      </p>
       <div className="flex-1 overflow-y-auto p-5">{children}</div>
     </aside>
   );
