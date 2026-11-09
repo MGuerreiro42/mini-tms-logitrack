@@ -25,12 +25,18 @@ describe('slaState', () => {
     ).toEqual({ label, tone });
   });
 
-  it('has nothing to show without a due date or for closed shipments', () => {
+  it('has nothing to show without a due date', () => {
     expect(slaState({ dueAt: null, status: 'PENDING', now }).label).toBe('—');
-    expect(
-      slaState({ dueAt: minutesFromNow(-300), status: 'CANCELLED', now }).label,
-    ).toBe('—');
   });
+
+  it.each(['CANCELLED', 'RETURNED', 'FAILED_DELIVERY'] as const)(
+    'stops counting down once %s',
+    (status) => {
+      expect(
+        slaState({ dueAt: minutesFromNow(2 * 24 * 60), status, now }),
+      ).toEqual({ label: '—', tone: 'muted' });
+    },
+  );
 
   it.each([
     [-1, 'On time', 'muted'],

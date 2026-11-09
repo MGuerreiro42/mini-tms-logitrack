@@ -12,7 +12,12 @@ const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
 const SOON_HOURS = 6;
 const HOURS_SHOWN_BELOW = 48;
-const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED'];
+const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED', 'FAILED_DELIVERY'];
+
+// Closed shipments neither count down nor get a verdict; a delivery gets one.
+export function hasSlaVerdict(status: ShipmentStatus): boolean {
+  return !CLOSED.includes(status);
+}
 
 function span(minutes: number, round: (value: number) => number): string {
   if (minutes < MINUTES_PER_HOUR) return `${Math.max(1, minutes)} min`;
@@ -45,7 +50,7 @@ export function slaState({
   status: ShipmentStatus;
   now?: Date;
 }): SlaState {
-  if (!dueAt || CLOSED.includes(status)) return { label: '—', tone: 'muted' };
+  if (!dueAt || !hasSlaVerdict(status)) return { label: '—', tone: 'muted' };
   if (status === 'DELIVERED') return deliveredVerdict(dueAt, deliveredAt);
 
   const msLeft = new Date(dueAt).getTime() - now.getTime();
