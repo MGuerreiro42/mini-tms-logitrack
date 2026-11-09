@@ -1,9 +1,9 @@
 import type { Column } from '@/components/common/paginated-table';
-import { SlaCell } from '@/components/common/sla-cell';
+import { RiskBadge } from '@/components/common/risk-badge';
 import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
-import { type SlaState, slaState } from '@/lib/sla';
+import { type SlaKind, type SlaState, slaState } from '@/lib/sla';
 import { type CarrierShipment, ownerLabel, type Shipment } from '../types';
 
 type ShipmentRow = Pick<
@@ -14,24 +14,27 @@ type ShipmentRow = Pick<
 export type WithSla<T> = T & { sla: SlaState };
 
 export function withSla<
-  T extends Pick<Shipment, 'dueAt' | 'deliveredAt' | 'status'>,
+  T extends Pick<Shipment, 'dueAt' | 'deliveredAt' | 'createdAt' | 'status'>,
 >(rows: T[], now: Date): WithSla<T>[] {
   return rows.map((row) => ({ ...row, sla: slaState({ ...row, now }) }));
 }
 
-// The tint asks for action; a delivery that arrived late is history, so only its cell says so.
-export function lateRowClassName(
-  row: WithSla<Pick<Shipment, 'status'>>,
-): string | undefined {
-  return row.sla.tone === 'late' && row.status !== 'DELIVERED'
-    ? 'bg-late-row'
-    : undefined;
+// Only late rows get a tint, so a page of due-soon rows does not turn orange; they get a bar.
+const RISK_ROW_CLASS: Partial<Record<SlaKind, string>> = {
+  late: 'bg-late-row',
+  // On the first cell, not the row: a row pseudo-element would become a table cell.
+  dueSoon:
+    '[&>td:first-child]:shadow-[inset_3px_0_0_var(--color-notice-foreground)] [li&]:border-l-3 [li&]:border-notice-foreground',
+};
+
+export function riskRowClassName(row: { sla: SlaState }): string | undefined {
+  return RISK_ROW_CLASS[row.sla.kind];
 }
 
 export const slaColumn: Column<{ sla: SlaState }> = {
   header: 'SLA',
   card: 'meta',
-  cell: (s) => <SlaCell state={s.sla} />,
+  cell: (s) => <RiskBadge state={s.sla} />,
 };
 
 export const shipmentColumns = {

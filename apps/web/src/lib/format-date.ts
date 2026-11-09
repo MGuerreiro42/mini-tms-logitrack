@@ -5,6 +5,7 @@ const TIME_ZONE = 'America/Sao_Paulo';
 // Assembled from parts with a fixed locale, zone and 24h clock: ICU separators differ between Node and browsers and would break hydration.
 const formatter = new Intl.DateTimeFormat('en-US', {
   timeZone: TIME_ZONE,
+  weekday: 'short',
   year: 'numeric',
   month: 'short',
   day: 'numeric',
@@ -30,6 +31,16 @@ export function formatDate(iso: string): string {
 export function formatShortDateTime(iso: string): string {
   const { month, day, hour, minute } = partsOf(iso);
   return `${month} ${day}, ${hour}:${minute}`;
+}
+
+export function formatWeekdayTime(iso: string): string {
+  const { weekday, hour, minute } = partsOf(iso);
+  return `${weekday} ${hour}:${minute}`;
+}
+
+export function formatMonthDay(iso: string): string {
+  const { month, day } = partsOf(iso);
+  return `${month} ${day}`;
 }
 
 export function formatDateTime(iso: string): string {

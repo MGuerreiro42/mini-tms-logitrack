@@ -1,67 +1,110 @@
 import { slaState } from './sla';
 
+// Wed Oct 14, 09:00 in São Paulo.
 const now = new Date('2026-10-14T12:00:00.000Z');
+const HOUR = 60;
 const minutesFromNow = (minutes: number) =>
   new Date(now.getTime() + minutes * 60_000).toISOString();
+const open = (minutesLeft: number, windowHours = 72) => ({
+  dueAt: minutesFromNow(minutesLeft),
+  createdAt: minutesFromNow(minutesLeft - windowHours * HOUR),
+  status: 'IN_TRANSIT' as const,
+  now,
+});
 
 describe('slaState', () => {
   it.each([
-    [46 * 60, 'Due in 46 h', 'muted'],
-    [72 * 60, 'Due in 3 d', 'muted'],
-    [48 * 60, 'Due in 2 d', 'muted'],
-    [48 * 60 - 1, 'Due in 47 h', 'muted'],
-    [6 * 60, 'Due in 6 h', 'muted'],
-    [6 * 60 - 1, 'Due in 5 h', 'soon'],
-    [60, 'Due in 1 h', 'soon'],
-    [59.5, 'Due in 59 min', 'soon'],
-    [0.2, 'Due in 1 min', 'soon'],
-    [-60, '1 h late', 'late'],
-    [-61, '2 h late', 'late'],
-    [-0.5, '1 min late', 'late'],
-    [-47 * 60 - 1, '2 d late', 'late'],
-  ] as const)('reads %s min from now as %s', (minutes, label, tone) => {
-    expect(
-      slaState({ dueAt: minutesFromNow(minutes), status: 'IN_TRANSIT', now }),
-    ).toEqual({ label, tone });
-  });
-
-  it('has nothing to show without a due date', () => {
-    expect(slaState({ dueAt: null, status: 'PENDING', now }).label).toBe('—');
-  });
-
-  it.each(['CANCELLED', 'RETURNED', 'FAILED_DELIVERY'] as const)(
-    'stops counting down once %s',
-    (status) => {
-      expect(
-        slaState({ dueAt: minutesFromNow(2 * 24 * 60), status, now }),
-      ).toEqual({ label: '—', tone: 'muted' });
+    [18 * HOUR, 72, 'Due in 18 h'],
+    [6 * HOUR, 24, 'Due in 6 h'],
+    [6 * HOUR - 1, 24, 'Due in 5 h'],
+    [59.5, 24, 'Due in 59 min'],
+    [0.2, 24, 'Due in 1 min'],
+  ] as const)(
+    'reads %s min left of a %s h window as due soon: %s',
+    (minutes, window, label) => {
+      expect(slaState(open(minutes, window))).toEqual({
+        kind: 'dueSoon',
+        label,
+        tone: 'caution',
+      });
     },
   );
 
   it.each([
-    [-1, 'On time', 'muted'],
-    [0, 'On time', 'muted'],
-    [0.5, 'Late by 1 min', 'late'],
-    [8 * 60, 'Late by 8 h', 'late'],
-    [8 * 60 + 1, 'Late by 9 h', 'late'],
-    [72 * 60, 'Late by 3 d', 'late'],
+    [18 * HOUR + 1, 72, 'Due Thu 03:01', 'in 18 h'],
+    [6 * HOUR + 1, 24, 'Due Wed 15:01', 'in 6 h'],
+    [46 * HOUR, 72, 'Due Fri 07:00', 'in 46 h'],
+    [8 * 24 * HOUR, 30 * 24, 'Due Oct 22', 'in 8 d'],
+    [6 * 24 * HOUR - 1, 10 * 24, 'Due Tue 08:59', 'in 5 d'],
+    [6 * 24 * HOUR, 10 * 24, 'Due Oct 20', 'in 6 d'],
+  ] as const)(
+    'reads %s min left of a %s h window as on track: %s',
+    (minutes, window, label, title) => {
+      expect(slaState(open(minutes, window))).toEqual({
+        kind: 'onTrack',
+        label,
+        tone: 'neutral',
+        title,
+      });
+    },
+  );
+
+  it.each([
+    [-60, 'Late 1 h'],
+    [-61, 'Late 2 h'],
+    [-0.5, 'Late 1 min'],
+    [-47 * HOUR - 1, 'Late 2 d'],
+  ] as const)('reads %s min past due as %s', (minutes, label) => {
+    expect(slaState(open(minutes))).toEqual({
+      kind: 'late',
+      label,
+      tone: 'critical',
+    });
+  });
+
+  it('has nothing to show without a due date or once cancelled', () => {
+    expect(slaState({ ...open(60), dueAt: null })).toMatchObject({
+      kind: 'none',
+      label: '—',
+    });
+    expect(slaState({ ...open(-60), status: 'CANCELLED' }).kind).toBe('none');
+  });
+
+  it.each([
+    ['FAILED_DELIVERY', 'Failed'],
+    ['RETURNED', 'Returned'],
+  ] as const)('reads %s as %s, with or without a due date', (status, label) => {
+    const expected = { kind: 'failed', label, tone: 'critical' };
+    expect(slaState({ ...open(60), status })).toEqual(expected);
+    expect(slaState({ ...open(60), dueAt: null, status })).toEqual(expected);
+  });
+
+  it.each([
+    [-1, 'onTime', 'On time', 'positive'],
+    [0, 'onTime', 'On time', 'positive'],
+    [0.5, 'deliveredLate', 'Late by 1 min', 'mutedCritical'],
+    [8 * HOUR, 'deliveredLate', 'Late by 8 h', 'mutedCritical'],
+    [8 * HOUR + 1, 'deliveredLate', 'Late by 9 h', 'mutedCritical'],
+    [72 * HOUR, 'deliveredLate', 'Late by 3 d', 'mutedCritical'],
   ] as const)(
     'reads a delivery %s min after the due date as %s',
-    (minutes, label, tone) => {
-      const dueAt = minutesFromNow(-24 * 60);
+    (minutes, kind, label, tone) => {
+      const dueAt = minutesFromNow(-24 * HOUR);
       const deliveredAt = new Date(
         new Date(dueAt).getTime() + minutes * 60_000,
       ).toISOString();
 
       expect(
-        slaState({ dueAt, deliveredAt, status: 'DELIVERED', now }),
-      ).toEqual({ label, tone });
+        slaState({ ...open(0), dueAt, deliveredAt, status: 'DELIVERED' }),
+      ).toEqual({ kind, label, tone });
     },
   );
 
   it('just says delivered when the delivery time is unknown', () => {
-    expect(
-      slaState({ dueAt: minutesFromNow(-300), status: 'DELIVERED', now }),
-    ).toEqual({ label: 'Delivered', tone: 'muted' });
+    expect(slaState({ ...open(-300), status: 'DELIVERED' })).toEqual({
+      kind: 'none',
+      label: 'Delivered',
+      tone: 'neutral',
+    });
   });
 });
