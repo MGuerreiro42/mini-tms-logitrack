@@ -234,7 +234,11 @@ describe('CarrierQueueTable', () => {
     let claimed: string | undefined;
     server.use(
       http.get(`${API_URL}/shipments/queue/shipment-1`, () =>
-        HttpResponse.json({ ...unownedShipment, trackingEvents: [] }),
+        HttpResponse.json({
+          ...unownedShipment,
+          ...(claimed && { status: 'ACCEPTED', ownerId: 'carrier-user-1' }),
+          trackingEvents: [],
+        }),
       ),
       http.patch(`${API_URL}/shipments/:id/claim`, ({ params }) => {
         claimed = params.id as string;
@@ -253,6 +257,9 @@ describe('CarrierQueueTable', () => {
     );
 
     await waitFor(() => expect(claimed).toBe('shipment-1'));
+    await waitFor(() =>
+      expect(within(sheet).queryByRole('button', { name: 'Claim' })).toBeNull(),
+    );
   });
 
   it('reads an old ?status= link as a filter with no tab selected', async () => {

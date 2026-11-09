@@ -126,6 +126,8 @@ export function AdminMonitoringTable({
   const carried = new URLSearchParams(useSearchParams().toString());
   carried.delete('peek');
   const search = carried.toString();
+  const detailHref = (id: string) =>
+    `${ROUTES.adminShipment(id)}${search && `?${search}`}`;
   const rows = query.data?.data ?? [];
   const peek = usePeek(rows.map((s) => s.id));
 
@@ -158,9 +160,7 @@ export function AdminMonitoringTable({
             getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
-            getRowHref={(s) =>
-              `${ROUTES.adminShipment(s.id)}${search && `?${search}`}`
-            }
+            getRowHref={(s) => detailHref(s.id)}
             onRowClick={(s) => peek.open(s.id)}
             selectedKey={peek.peekId}
             emptyMessage={
@@ -179,8 +179,14 @@ export function AdminMonitoringTable({
           />
         )}
       </QueryState>
-      <ListPeek peek={peek} rows={rows} hrefFor={ROUTES.adminShipment}>
-        {(id) => <AdminShipmentPeek id={id} liveStatus={live.status} />}
+      <ListPeek peek={peek} rows={rows} hrefFor={detailHref}>
+        {(id) => (
+          <AdminShipmentPeek
+            id={id}
+            href={detailHref(id)}
+            liveStatus={live.status}
+          />
+        )}
       </ListPeek>
     </div>
   );
