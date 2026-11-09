@@ -8,14 +8,16 @@ import {
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { HTTP_STATUS } from '@/lib/http-status';
-import { toastApiError } from '@/lib/toast-api-error';
+import { apiErrorMessage, toastApiError } from '@/lib/toast-api-error';
 import { hasStatus } from '@/services/api-client';
 
 interface ApiMutationOptions<TInput, TData> {
   mutationFn: (input: TInput, token: string) => Promise<TData>;
-  successMessage: string;
+  successMessage: string | ((data: TData) => string);
   invalidates: QueryKey;
   surface?: ErrorSurface;
+  // Rewrites the server's 409 text when the screen has a plainer one.
+  conflictMessage?: (serverMessage: string) => string;
 }
 
 export type ErrorSurface = 'toast' | 'inline';
@@ -26,6 +28,7 @@ export function useApiMutation<TInput = void, TData = unknown>({
   successMessage,
   invalidates,
   surface = 'toast',
+  conflictMessage,
 }: ApiMutationOptions<TInput, TData>) {
   const { token } = useAuthToken();
   const queryClient = useQueryClient();
@@ -34,14 +37,21 @@ export function useApiMutation<TInput = void, TData = unknown>({
 
   return useMutation({
     mutationFn: (input: TInput) => mutationFn(input, token),
-    onSuccess: () => {
-      toast.success(successMessage);
+    onSuccess: (data) => {
+      toast.success(
+        typeof successMessage === 'function'
+          ? successMessage(data)
+          : successMessage,
+      );
       return refresh();
     },
     onError: (error) => {
       const isConflict = hasStatus(error, HTTP_STATUS.CONFLICT);
       if (isConflict) refresh();
-      if (surface === 'toast') toastApiError(error);
+      if (surface !== 'toast') return;
+      if (isConflict && conflictMessage) {
+        toast.error(conflictMessage(apiErrorMessage(error)));
+      } else toastApiError(error);
     },
   });
 }
