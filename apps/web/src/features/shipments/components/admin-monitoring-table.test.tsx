@@ -125,6 +125,20 @@ describe('AdminMonitoringTable', () => {
     );
   });
 
+  it('selects the status tab of a link that also names a view', async () => {
+    resetNavigation('/admin/monitoring?view=exceptions&status=CANCELLED');
+    renderWithQueryClient(
+      <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
+    );
+
+    expect(
+      await screen.findByRole('tab', { name: 'Cancelled, 1' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(requestedUrls.at(-1)).toBe(
+      `${API_URL}/admin/shipments?status=CANCELLED&page=1&limit=20`,
+    );
+  });
+
   it('counts live updates from the last minute next to the indicator', async () => {
     const socket = makeFakeSocket();
     socket.connected = true;
