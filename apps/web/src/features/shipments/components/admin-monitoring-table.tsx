@@ -16,6 +16,7 @@ import {
 } from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
+import { usePeek } from '@/hooks/use-peek';
 import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import type { LiveConnection } from '@/lib/live-status';
@@ -43,6 +44,7 @@ import {
   type ShipmentListMenu,
   ShipmentListToolbar,
 } from './shipment-list-toolbar';
+import { AdminShipmentPeek, ListPeek } from './shipment-peek';
 
 const SLA_REFRESH_MS = 60_000;
 const UPDATES_WINDOW_MS = 60_000;
@@ -120,7 +122,14 @@ export function AdminMonitoringTable({
     live.status,
   );
   const now = useNow(SLA_REFRESH_MS);
-  const search = useSearchParams().toString();
+  // The detail breadcrumb keeps the list's filters, but not its open peek.
+  const carried = new URLSearchParams(useSearchParams().toString());
+  carried.delete('peek');
+  const search = carried.toString();
+  const detailHref = (id: string) =>
+    `${ROUTES.adminShipment(id)}${search && `?${search}`}`;
+  const rows = query.data?.data ?? [];
+  const peek = usePeek(rows.map((s) => s.id));
 
   return (
     <div className="flex flex-col gap-5">
@@ -151,9 +160,9 @@ export function AdminMonitoringTable({
             getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
-            getRowHref={(s) =>
-              `${ROUTES.adminShipment(s.id)}${search && `?${search}`}`
-            }
+            getRowHref={(s) => detailHref(s.id)}
+            onRowClick={(s) => peek.open(s.id)}
+            selectedKey={peek.peekId}
             emptyMessage={
               isFiltered ? 'No shipments match.' : 'No shipments in this view.'
             }
@@ -170,6 +179,15 @@ export function AdminMonitoringTable({
           />
         )}
       </QueryState>
+      <ListPeek peek={peek} rows={rows} hrefFor={detailHref}>
+        {(id) => (
+          <AdminShipmentPeek
+            id={id}
+            href={detailHref(id)}
+            liveStatus={live.status}
+          />
+        )}
+      </ListPeek>
     </div>
   );
 }

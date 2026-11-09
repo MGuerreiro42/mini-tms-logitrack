@@ -230,6 +230,38 @@ describe('CarrierQueueTable', () => {
     },
   );
 
+  it('peeks at a row and claims it from the sheet', async () => {
+    let claimed: string | undefined;
+    server.use(
+      http.get(`${API_URL}/shipments/queue/shipment-1`, () =>
+        HttpResponse.json({
+          ...unownedShipment,
+          ...(claimed && { status: 'ACCEPTED', ownerId: 'carrier-user-1' }),
+          trackingEvents: [],
+        }),
+      ),
+      http.patch(`${API_URL}/shipments/:id/claim`, ({ params }) => {
+        claimed = params.id as string;
+        return HttpResponse.json(unownedShipment);
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
+
+    await user.click(await screen.findByText('Example Store'));
+    const sheet = await screen.findByRole('dialog', {
+      name: 'TMS-AAA111 preview',
+    });
+    await user.click(
+      await within(sheet).findByRole('button', { name: 'Claim' }),
+    );
+
+    await waitFor(() => expect(claimed).toBe('shipment-1'));
+    await waitFor(() =>
+      expect(within(sheet).queryByRole('button', { name: 'Claim' })).toBeNull(),
+    );
+  });
+
   it('reads an old ?status= link as a filter with no tab selected', async () => {
     resetNavigation('/carrier/queue?status=ACCEPTED');
     renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);

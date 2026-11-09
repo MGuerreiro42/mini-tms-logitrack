@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useApiMutation } from '@/hooks/use-api-mutation';
+import { ROUTES } from '@/lib/routes';
 import { claimNextShipment } from '../api';
 import { shipmentKeys } from '../api/keys';
 import type { CarrierShipment } from '../types';
@@ -15,7 +16,7 @@ export function useClaimNext() {
     // Navigates as soon as the claim lands, without waiting for the refetch.
     mutationFn: async (_, token) => {
       const shipment = await claimNextShipment(token);
-      router.push(`/carrier/queue/${shipment.id}`);
+      router.push(ROUTES.carrierShipment(shipment.id));
       return shipment;
     },
     successMessage: (shipment) => `Claimed ${shipment.trackingCode}`,

@@ -11,7 +11,9 @@ import type { StatusFilter } from '@/components/common/view-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
+import { usePeek } from '@/hooks/use-peek';
 import { ALL, FREE_TEXT } from '@/lib/filters';
+import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { useClaimNext } from '../hooks/use-claim-next';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
@@ -34,6 +36,7 @@ import {
   withSla,
 } from './shipment-columns';
 import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
+import { CarrierShipmentPeek, ListPeek } from './shipment-peek';
 
 const VIEW_LABELS: Record<CarrierView, string> = {
   mine: 'Mine',
@@ -80,6 +83,8 @@ export function CarrierQueueTable({
   );
   const now = useNow(SLA_REFRESH_MS);
   const claim = useClaimShipment();
+  const rows = query.data?.data ?? [];
+  const peek = usePeek(rows.map((s) => s.id));
   const next = useClaimNext();
 
   return (
@@ -119,7 +124,9 @@ export function CarrierQueueTable({
             getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
-            getRowHref={(s) => `/carrier/queue/${s.id}`}
+            getRowHref={(s) => ROUTES.carrierShipment(s.id)}
+            onRowClick={(s) => peek.open(s.id)}
+            selectedKey={peek.peekId}
             emptyMessage={
               isFiltered ? 'No shipments match.' : 'No shipments in this view.'
             }
@@ -153,6 +160,9 @@ export function CarrierQueueTable({
           />
         )}
       </QueryState>
+      <ListPeek peek={peek} rows={rows} hrefFor={ROUTES.carrierShipment}>
+        {(id) => <CarrierShipmentPeek id={id} liveStatus={live.status} />}
+      </ListPeek>
     </div>
   );
 }
