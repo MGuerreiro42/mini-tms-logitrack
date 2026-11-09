@@ -24,10 +24,7 @@ describe('SellerSignupForm', () => {
 
   async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText('Company name'), 'Example Store');
-    await user.type(
-      screen.getByLabelText('Tax ID (CNPJ/CPF)'),
-      '12345678000199',
-    );
+    await user.type(screen.getByLabelText('Tax ID (CNPJ/CPF)'), '52998224725');
     await user.type(screen.getByLabelText('Email'), 'seller@example.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
   }
@@ -45,14 +42,33 @@ describe('SellerSignupForm', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('signs up and redirects to /status (no session set on signup)', async () => {
+  it('masks the tax ID and rejects wrong check digits before calling the API', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<SellerSignupForm />);
+    const taxId = screen.getByLabelText('Tax ID (CNPJ/CPF)');
+
+    await user.type(taxId, '11a222333000182');
+    await user.click(
+      screen.getByRole('button', { name: /create account and continue/i }),
+    );
+
+    expect(taxId).toHaveValue('11.222.333/0001-82');
+    expect(
+      await screen.findByText('Enter a valid CPF or CNPJ'),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('signs up with digits only and redirects to /status (no session set on signup)', async () => {
+    let body: unknown;
     server.use(
-      http.post(`${API_URL}/sellers`, () =>
-        HttpResponse.json(
+      http.post(`${API_URL}/sellers`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(
           { id: 'seller-1', status: 'PENDING' },
           { status: 201 },
-        ),
-      ),
+        );
+      }),
     );
     const user = userEvent.setup();
     renderWithQueryClient(<SellerSignupForm />);
@@ -63,6 +79,7 @@ describe('SellerSignupForm', () => {
     );
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/status'));
+    expect(body).toMatchObject({ document: '52998224725' });
   });
 
   it('surfaces the backend conflict message verbatim', async () => {

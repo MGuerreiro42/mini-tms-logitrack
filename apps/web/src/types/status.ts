@@ -18,9 +18,11 @@ export interface TimelineEvent {
   status: ShipmentStatus;
   createdAt: string;
   note?: string | null;
+  actorName?: string | null;
 }
 
 export interface TrackingEvent extends TimelineEvent {
   id: string;
   note: string | null;
+  actorName: string | null;
 }

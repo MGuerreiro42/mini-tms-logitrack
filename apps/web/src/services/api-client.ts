@@ -13,14 +13,14 @@ export class ApiError extends Error {
   }
 }
 
-const RATE_LIMITED_FALLBACK = 'Too many requests. Wait a moment and try again.';
+const RATE_LIMITED = 'Too many attempts. Wait a minute and try again.';
 
+// A 429 body is the throttler's own wording ("ThrottlerException: …"), never copy for a person.
 function errorMessage(res: Response, body: { message?: unknown } | null) {
+  if (res.status === HTTP_STATUS.TOO_MANY_REQUESTS) return RATE_LIMITED;
   if (Array.isArray(body?.message)) return body.message.join(', ');
   if (typeof body?.message === 'string') return body.message;
-  return res.status === HTTP_STATUS.TOO_MANY_REQUESTS
-    ? RATE_LIMITED_FALLBACK
-    : res.statusText;
+  return res.statusText;
 }
 
 export function hasStatus(error: unknown, status: number): error is ApiError {
@@ -31,6 +31,17 @@ export function isClientError(error: unknown): error is ApiError {
   return (
     error instanceof ApiError &&
     error.statusCode < HTTP_STATUS.INTERNAL_SERVER_ERROR
+  );
+}
+
+// fetch rejects with a TypeError when the server can't be reached, and AbortSignal.timeout with a
+// TimeoutError; a 5xx means it answered but can't serve.
+export function isServiceUnavailable(error: unknown): boolean {
+  return (
+    error instanceof TypeError ||
+    (error instanceof DOMException && error.name === 'TimeoutError') ||
+    (error instanceof ApiError &&
+      error.statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR)
   );
 }
 

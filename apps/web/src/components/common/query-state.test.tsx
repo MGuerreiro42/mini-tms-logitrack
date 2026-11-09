@@ -42,8 +42,19 @@ describe('QueryState', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    ['unreachable', new TypeError('Failed to fetch')],
+    ['answering 5xx', new ApiError(503, 'Service Unavailable')],
+  ])('says the service is unavailable when it is %s', (_, error) => {
+    renderState({ error });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "We can't reach the Mini TMS service right now",
+    );
+  });
+
   it('shows an error with a working retry button', async () => {
-    const source = renderState({ error: new ApiError(500, 'Server error') });
+    const source = renderState({ error: new ApiError(409, 'Conflict') });
 
     expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load");
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));

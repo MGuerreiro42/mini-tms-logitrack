@@ -52,6 +52,7 @@ export interface ShipmentBase extends ShipmentAddress {
   modalityName: string;
   createdAt: string;
   dueAt: string | null;
+  deliveredAt: string | null;
   trackingEvents?: TrackingEvent[];
 }
 
@@ -93,6 +94,10 @@ export interface AdminShipmentResponse extends CarrierShipment {
 
 export interface AdminShipment extends CarrierShipment {
   carrierName: string;
+}
+
+export interface AdminShipmentDetail extends AdminShipment {
+  trackingEvents: TrackingEvent[];
 }
 
 export interface AdminStatusCountsQuery {

@@ -6,9 +6,16 @@ import { formatDuration } from '@/lib/format-duration';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
 import type { StageDuration } from '../types';
 
+const NBSP = '\u00a0';
+
+// The axis wraps on spaces; only the one after the arrow may break ("Collected →" / "In transit").
+function unbreakable(label: string): string {
+  return label.replaceAll(' ', NBSP);
+}
+
 export function StageDurationChart({ data }: { data: StageDuration[] }) {
   const rows = data.map((stage) => ({
-    label: `${SHIPMENT_STATUS[stage.fromStatus].label} → ${SHIPMENT_STATUS[stage.toStatus].label}`,
+    label: `${unbreakable(SHIPMENT_STATUS[stage.fromStatus].label)}${NBSP}→ ${unbreakable(SHIPMENT_STATUS[stage.toStatus].label)}`,
     avgHours: stage.avgHours ?? 0,
     hasData: stage.avgHours !== null,
     display:

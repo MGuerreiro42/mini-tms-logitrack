@@ -11,10 +11,12 @@ import { Panel } from '@/components/common/panel';
 import { PinnedAction } from '@/components/common/pinned-action';
 import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
-import { formatDate, formatDateTime } from '@/lib/format-date';
+import { formatCep } from '@/lib/br-documents';
+import { formatDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
@@ -23,6 +25,7 @@ import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import { isCancellableBySeller, type ShipmentDetail } from '../types';
 import { CancelShipmentAction } from './cancel-shipment-action';
+import { ShipmentDueLine } from './shipment-detail-parts';
 import { ShipmentMapPanel } from './shipment-map-panel';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
@@ -55,21 +58,21 @@ function ShipmentDetailView({
   return (
     <div className="space-y-5">
       <Breadcrumb parent={{ href: ROUTES.sellerShipments, label: 'Shipments' }}>
-        <span className="font-mono">{shipment.trackingCode}</span>
+        <TrackingCode code={shipment.trackingCode} />
       </Breadcrumb>
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3.5">
-            <span className="font-mono font-medium">
-              {shipment.trackingCode}
-            </span>
+            <TrackingCode
+              code={shipment.trackingCode}
+              className="font-medium"
+            />
             <ShipmentStatusBadge status={shipment.status} />
           </span>
         }
         description={
           <>
-            {shipment.modalityName} to {place}
-            {shipment.dueAt && ` · due ${formatDate(shipment.dueAt)}`}
+            {place} · <ShipmentDueLine shipment={shipment} />
           </>
         }
         action={
@@ -103,7 +106,9 @@ function ShipmentDetailView({
                 {shipment.addressComplement &&
                   ` · ${shipment.addressComplement}`}{' '}
                 · {shipment.addressNeighborhood}, {place} ·{' '}
-                <span className="font-mono">{shipment.addressZipCode}</span>
+                <span className="font-mono">
+                  {formatCep(shipment.addressZipCode)}
+                </span>
               </dd>
               <dt className="text-muted-foreground">Carrier</dt>
               <dd className="font-semibold">{shipment.carrierName}</dd>

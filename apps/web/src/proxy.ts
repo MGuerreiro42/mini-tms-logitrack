@@ -4,11 +4,12 @@ import { ROUTES } from '@/lib/routes';
 import {
   canEnterSegment,
   forbiddenPath,
+  NEXT_PARAM,
   parseSessionCookie,
-  ROLE_HOME,
   SESSION_COOKIE,
   SESSION_EXPIRED_PARAM,
   type Session,
+  safeNext,
 } from '@/lib/session';
 
 // Explicit, so Back after logout can't restore a role page even if it stops rendering dynamically.
@@ -25,7 +26,12 @@ function login(request: NextRequest, session: Session | null) {
     return response;
   }
   return session
-    ? NextResponse.redirect(new URL(ROLE_HOME[session.role], request.url))
+    ? NextResponse.redirect(
+        new URL(
+          safeNext(request.nextUrl.searchParams.get(NEXT_PARAM), session.role),
+          request.url,
+        ),
+      )
     : NextResponse.next();
 }
 
@@ -41,7 +47,12 @@ export function proxy(request: NextRequest) {
   }
 
   if (!session) {
-    return NextResponse.redirect(new URL(ROUTES.login, request.url));
+    const loginUrl = new URL(ROUTES.login, request.url);
+    loginUrl.searchParams.set(
+      NEXT_PARAM,
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+    return NextResponse.redirect(loginUrl);
   }
 
   if (!canEnterSegment(session.role, segment)) {

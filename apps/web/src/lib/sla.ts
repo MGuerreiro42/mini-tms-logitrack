@@ -12,7 +12,12 @@ const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
 const SOON_HOURS = 6;
 const HOURS_SHOWN_BELOW = 48;
-const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED'];
+const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED', 'FAILED_DELIVERY'];
+
+// Closed shipments neither count down nor get a verdict; a delivery gets one.
+export function hasSlaVerdict(status: ShipmentStatus): boolean {
+  return !CLOSED.includes(status);
+}
 
 function span(minutes: number, round: (value: number) => number): string {
   if (minutes < MINUTES_PER_HOUR) return `${Math.max(1, minutes)} min`;
@@ -21,17 +26,32 @@ function span(minutes: number, round: (value: number) => number): string {
   return `${round(hours / HOURS_PER_DAY)} d`;
 }
 
+function deliveredVerdict(
+  dueAt: string,
+  deliveredAt: string | null | undefined,
+): SlaState {
+  if (!deliveredAt) return { label: 'Delivered', tone: 'muted' };
+  const msLate = new Date(deliveredAt).getTime() - new Date(dueAt).getTime();
+  if (msLate <= 0) return { label: 'On time', tone: 'muted' };
+  return {
+    label: `Late by ${span(Math.ceil(msLate / MINUTE_MS), Math.ceil)}`,
+    tone: 'late',
+  };
+}
+
 export function slaState({
   dueAt,
+  deliveredAt,
   status,
   now = new Date(),
 }: {
   dueAt: string | null | undefined;
+  deliveredAt?: string | null;
   status: ShipmentStatus;
   now?: Date;
 }): SlaState {
-  if (!dueAt || CLOSED.includes(status)) return { label: '—', tone: 'muted' };
-  if (status === 'DELIVERED') return { label: 'Delivered', tone: 'muted' };
+  if (!dueAt || !hasSlaVerdict(status)) return { label: '—', tone: 'muted' };
+  if (status === 'DELIVERED') return deliveredVerdict(dueAt, deliveredAt);
 
   const msLeft = new Date(dueAt).getTime() - now.getTime();
   if (msLeft < 0) {

@@ -7,6 +7,7 @@ import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
@@ -155,9 +156,10 @@ function AttentionPanel({
             <li key={shipment.id}>
               <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
                 <span className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-3.5">
-                  <span className="shrink-0 font-mono text-[13px] md:w-42">
-                    {shipment.trackingCode}
-                  </span>
+                  <TrackingCode
+                    code={shipment.trackingCode}
+                    className="shrink-0 text-[13px] md:w-42"
+                  />
                   <AttentionReason shipment={shipment} now={now} />
                 </span>
                 <ShipmentStatusBadge status={shipment.status} />

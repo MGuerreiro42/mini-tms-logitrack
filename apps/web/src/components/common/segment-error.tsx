@@ -1,17 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { ErrorState } from '@/components/common/feedback-state';
+import type { ReactNode } from 'react';
+import {
+  ErrorState,
+  SERVICE_UNAVAILABLE,
+} from '@/components/common/feedback-state';
 import { Button } from '@/components/ui/button';
+import { type ApiHealth, useApiHealth } from '@/hooks/use-api-health';
 import { useLoggedError } from '@/hooks/use-logged-error';
 import { ROUTES } from '@/lib/routes';
 
 export interface SegmentErrorProps {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }
 
-export function ErrorReference({ digest }: { digest?: string }) {
+function ErrorReference({ digest }: { digest?: string }) {
   if (!digest) return null;
 
   return (
@@ -19,21 +24,46 @@ export function ErrorReference({ digest }: { digest?: string }) {
   );
 }
 
-export function SegmentError({ error, unstable_retry }: SegmentErrorProps) {
+interface ErrorCopy {
+  title: string;
+  description?: ReactNode;
+}
+
+// While the probe runs a neutral line shows, so the generic copy never flashes before "unavailable".
+export function useErrorCopy(
+  error: SegmentErrorProps['error'],
+  generic: string,
+): ErrorCopy {
+  const copy: Record<ApiHealth, ErrorCopy> = {
+    checking: { title: 'Checking the connection…' },
+    down: SERVICE_UNAVAILABLE,
+    up: {
+      title: 'Something went wrong',
+      description: (
+        <>
+          {generic}
+          <ErrorReference digest={error.digest} />
+        </>
+      ),
+    },
+  };
+  return copy[useApiHealth()];
+}
+
+export function SegmentError({ error, retry }: SegmentErrorProps) {
   useLoggedError(error);
+  const { title, description } = useErrorCopy(
+    error,
+    "This page couldn't be loaded. Nothing was changed.",
+  );
 
   return (
     <ErrorState
-      title="Something went wrong"
-      description={
-        <>
-          This page couldn't be loaded. Nothing was changed.
-          <ErrorReference digest={error.digest} />
-        </>
-      }
+      title={title}
+      description={description}
       actions={
         <>
-          <Button variant="strong" onClick={() => unstable_retry()}>
+          <Button variant="strong" onClick={() => retry()}>
             Try again
           </Button>
           <Button asChild variant="link">

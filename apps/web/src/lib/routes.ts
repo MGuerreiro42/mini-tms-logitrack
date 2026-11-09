@@ -13,4 +13,6 @@ export const ROUTES = {
   sellerModalities: '/seller/modalities',
   sellerIntegrations: '/seller/integrations',
   sellerProfile: '/seller/profile',
+  adminMonitoring: '/admin/monitoring',
+  adminShipment: (id: string) => `/admin/shipments/${id}`,
 } as const;

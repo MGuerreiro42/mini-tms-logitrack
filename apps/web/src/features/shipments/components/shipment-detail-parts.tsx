@@ -7,14 +7,15 @@ import {
 } from '@/components/common/live-indicator';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { SlaCell } from '@/components/common/sla-cell';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useNow } from '@/hooks/use-now';
+import { formatCep } from '@/lib/br-documents';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
-import { nextExpectedStatus } from '@/lib/shipment-progress';
-import { slaState } from '@/lib/sla';
+import { hasSlaVerdict, slaState } from '@/lib/sla';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';
 
@@ -34,11 +35,11 @@ export function ShipmentTitle({
   return (
     <div className="flex flex-col gap-3">
       <Breadcrumb parent={back}>
-        <span className="font-mono">{shipment.trackingCode}</span>
+        <TrackingCode code={shipment.trackingCode} />
       </Breadcrumb>
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
-        <h1 className="font-mono text-2xl font-medium tracking-tight md:text-3xl">
-          {shipment.trackingCode}
+        <h1 className="text-2xl font-medium tracking-tight md:text-3xl">
+          <TrackingCode code={shipment.trackingCode} />
         </h1>
         <ShipmentStatusBadge status={shipment.status} />
         {meta && <span className="text-sm text-muted-foreground">{meta}</span>}
@@ -57,13 +58,16 @@ const SLA_REFRESH_MS = 60_000;
 export function ShipmentDueLine({
   shipment,
 }: {
-  shipment: Pick<ShipmentBase, 'modalityName' | 'dueAt' | 'status'>;
+  shipment: Pick<
+    ShipmentBase,
+    'modalityName' | 'dueAt' | 'deliveredAt' | 'status'
+  >;
 }) {
   const now = useNow(SLA_REFRESH_MS);
-  const { modalityName, dueAt, status } = shipment;
+  const { modalityName, dueAt, deliveredAt, status } = shipment;
 
   if (!dueAt) return <>{modalityName} · No SLA</>;
-  if (!nextExpectedStatus(status)) {
+  if (!hasSlaVerdict(status)) {
     return (
       <>
         {modalityName} · Due {formatShortDateTime(dueAt)}
@@ -72,7 +76,8 @@ export function ShipmentDueLine({
   }
   return (
     <>
-      {modalityName} · <SlaCell state={slaState({ dueAt, status, now })} /> ·{' '}
+      {modalityName} ·{' '}
+      <SlaCell state={slaState({ dueAt, deliveredAt, status, now })} /> ·{' '}
       {formatShortDateTime(dueAt)}
     </>
   );
@@ -91,7 +96,7 @@ export function ShipmentHeaderCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
-          {shipment.trackingCode}
+          <TrackingCode code={shipment.trackingCode} />
           <ShipmentStatusBadge status={shipment.status} />
           <LiveIndicator live={live} className="ml-auto" />
         </CardTitle>
@@ -122,7 +127,11 @@ export function ShipmentAddressRows({ address }: { address: ShipmentAddress }) {
         label="City"
         value={`${address.addressCity}/${address.addressState}`}
       />
-      <DetailRow label="Zip code" value={address.addressZipCode} mono />
+      <DetailRow
+        label="Zip code"
+        value={formatCep(address.addressZipCode)}
+        mono
+      />
     </>
   );
 }

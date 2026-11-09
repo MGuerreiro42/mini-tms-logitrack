@@ -1,6 +1,11 @@
 import { HttpResponse, http } from 'msw';
 import { server } from '@/test/msw/server';
-import { ApiError, apiClient, toQueryString } from './api-client';
+import {
+  ApiError,
+  apiClient,
+  isServiceUnavailable,
+  toQueryString,
+} from './api-client';
 
 const API_URL = 'http://localhost:3333';
 
@@ -89,13 +94,13 @@ describe('apiClient', () => {
     });
   });
 
-  it('keeps the API message on a 429', async () => {
+  it('replaces the throttler wording on a 429 with copy for a person', async () => {
     server.use(
       http.post(`${API_URL}/auth/login`, () =>
         HttpResponse.json(
           {
             statusCode: 429,
-            message: 'Too many attempts. Try again in a minute.',
+            message: 'ThrottlerException: Too Many Requests',
           },
           { status: 429 },
         ),
@@ -106,7 +111,7 @@ describe('apiClient', () => {
       apiClient('/auth/login', { method: 'POST' }),
     ).rejects.toMatchObject({
       statusCode: 429,
-      message: 'Too many attempts. Try again in a minute.',
+      message: 'Too many attempts. Wait a minute and try again.',
     });
   });
 
@@ -121,7 +126,7 @@ describe('apiClient', () => {
     await expect(
       apiClient('/auth/login', { method: 'POST' }),
     ).rejects.toMatchObject({
-      message: 'Too many requests. Wait a moment and try again.',
+      message: 'Too many attempts. Wait a minute and try again.',
     });
   });
 
@@ -134,6 +139,18 @@ describe('apiClient', () => {
     );
 
     await expect(apiClient('/sellers/me')).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('isServiceUnavailable', () => {
+  it.each([
+    ['a network failure', new TypeError('Failed to fetch'), true],
+    ['a timeout', new DOMException('timed out', 'TimeoutError'), true],
+    ['a 5xx', new ApiError(503, 'Service Unavailable'), true],
+    ['a 4xx', new ApiError(429, 'Too many'), false],
+    ['any other error', new Error('boom'), false],
+  ])('reads %s as %s', (_, error, unavailable) => {
+    expect(isServiceUnavailable(error)).toBe(unavailable);
   });
 });
 

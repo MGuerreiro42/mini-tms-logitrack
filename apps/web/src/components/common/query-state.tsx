@@ -1,13 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { EmptyState, ErrorState } from '@/components/common/feedback-state';
+import {
+  EmptyState,
+  ErrorState,
+  SERVICE_UNAVAILABLE,
+} from '@/components/common/feedback-state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HTTP_STATUS } from '@/lib/http-status';
 import { cn } from '@/lib/utils';
-import { ApiError } from '@/services/api-client';
+import { ApiError, isServiceUnavailable } from '@/services/api-client';
 import type { QuerySource } from '@/types/query';
 
 const FORBIDDEN_MESSAGE = "You don't have access to this.";
@@ -44,12 +48,13 @@ export function QueryState<T>({
     );
   }
 
+  // The title keeps naming what failed, so one broken panel still reads apart from its neighbours.
   return (
     <ErrorState
       title={errorMessage}
       description={
-        query.error instanceof TypeError
-          ? "The server couldn't be reached. Check your connection."
+        isServiceUnavailable(query.error)
+          ? `${SERVICE_UNAVAILABLE.title}. ${SERVICE_UNAVAILABLE.description}`
           : "The server couldn't finish the request."
       }
       actions={

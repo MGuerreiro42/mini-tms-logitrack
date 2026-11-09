@@ -2,11 +2,14 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { FormField } from '@/components/common/form-field';
+import { UfSelect } from '@/components/common/uf-select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { formatCep, isCep, toDigits, withMask } from '@/lib/br-documents';
+import { BR_STATES } from '@/lib/br-states';
 import { ROUTES } from '@/lib/routes';
 import type { ModalityOption } from '../types';
 
@@ -15,9 +18,12 @@ const schema = z.object({
   addressNumber: z.string().min(1, 'Required'),
   addressComplement: z.string().optional(),
   addressNeighborhood: z.string().min(1, 'Required'),
-  addressCity: z.string().min(1, 'Required'),
-  addressState: z.string().min(1, 'Required'),
-  addressZipCode: z.string().min(1, 'Required'),
+  addressCity: z.string().trim().min(1, 'Required'),
+  addressState: z.enum(BR_STATES, 'Required'),
+  addressZipCode: z
+    .string()
+    .min(1, 'Required')
+    .refine(isCep, 'Enter an 8-digit zip code'),
   modalityId: z.string().min(1, 'Pick a modality'),
 });
 
@@ -35,21 +41,33 @@ export function ShipmentAddressForm({
   onNext,
 }: ShipmentAddressFormProps) {
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<AddressFormValues>({
     resolver: zodResolver(schema),
     // '' rather than undefined so zod reports 'Pick a modality' instead of a type error.
-    defaultValues: { modalityId: '', ...defaultValues },
+    defaultValues: {
+      modalityId: '',
+      ...defaultValues,
+      addressZipCode: formatCep(defaultValues?.addressZipCode ?? ''),
+    },
   });
 
   function submit(values: AddressFormValues) {
     const modality = modalities.find((m) => m.id === values.modalityId);
-    if (modality) onNext(values, modality);
+    if (modality) {
+      onNext(
+        { ...values, addressZipCode: toDigits(values.addressZipCode) },
+        modality,
+      );
+    }
   }
 
-  const field = (name: Exclude<keyof AddressFormValues, 'modalityId'>) => ({
+  const field = (
+    name: Exclude<keyof AddressFormValues, 'modalityId' | 'addressState'>,
+  ) => ({
     id: name,
     error: errors[name]?.message,
     ...register(name),
@@ -60,12 +78,29 @@ export function ShipmentAddressForm({
       <form className="flex flex-col gap-5" onSubmit={handleSubmit(submit)}>
         <h2 className="text-base font-semibold">Destination address</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField label="Zip code" {...field('addressZipCode')} />
           <FormField
+            label="Zip code"
+            inputMode="numeric"
+            placeholder="00000-000"
+            {...withMask(field('addressZipCode'), formatCep)}
+          />
+          <FormField
+            id="addressState"
             label="State (UF)"
-            maxLength={2}
-            className="uppercase"
-            {...field('addressState')}
+            error={errors.addressState?.message}
+            control={(wiring) => (
+              <Controller
+                control={control}
+                name="addressState"
+                render={({ field: select }) => (
+                  <UfSelect
+                    {...wiring}
+                    {...select}
+                    placeholder="Pick a state"
+                  />
+                )}
+              />
+            )}
           />
           <div className="md:col-span-2">
             <FormField label="City" {...field('addressCity')} />

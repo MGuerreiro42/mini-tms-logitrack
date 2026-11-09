@@ -53,6 +53,30 @@ describe('NavList', () => {
     );
   });
 
+  it('marks an item active on a route root it owns', () => {
+    vi.mocked(usePathname).mockReturnValue('/admin/shipments/abc');
+    render(
+      <NavList
+        items={[
+          { name: 'Overview', href: '/admin' },
+          {
+            name: 'Monitoring',
+            href: '/admin/monitoring',
+            owns: ['/admin/shipments'],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: /monitoring/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: /overview/i })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
   it('marks nothing active when the pathname matches no item', () => {
     vi.mocked(usePathname).mockReturnValue('/admin');
     render(<NavList items={items} />);
