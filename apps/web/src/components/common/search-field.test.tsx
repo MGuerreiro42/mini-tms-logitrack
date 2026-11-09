@@ -38,6 +38,46 @@ describe('SearchField', () => {
     expect(input).toHaveValue('13070');
   });
 
+  it('keeps typing when the URL echoes what it just wrote', () => {
+    const { onChange, input, view } = setup();
+
+    fireEvent.change(input, { target: { value: 'camp' } });
+    act(() => vi.advanceTimersByTime(300));
+    fireEvent.change(input, { target: { value: 'campi' } });
+    view.rerender(
+      <SearchField value="camp" onChange={onChange} placeholder="Code" />,
+    );
+
+    expect(input).toHaveValue('campi');
+    act(() => vi.advanceTimersByTime(300));
+    expect(onChange).toHaveBeenLastCalledWith('campi');
+  });
+
+  it('writes at once on Enter', () => {
+    const { onChange, input } = setup();
+
+    fireEvent.change(input, { target: { value: 'TMS-DE' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('TMS-DE');
+    act(() => vi.advanceTimersByTime(300));
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it('leaves "/" alone with a modifier or inside a dialog', () => {
+    const { input } = setup();
+    const dialog = document.body.appendChild(document.createElement('div'));
+    dialog.setAttribute('role', 'dialog');
+    const button = dialog.appendChild(document.createElement('button'));
+
+    fireEvent.keyDown(window, { key: '/', ctrlKey: true });
+    expect(input).not.toHaveFocus();
+    button.focus();
+    fireEvent.keyDown(button, { key: '/' });
+    expect(button).toHaveFocus();
+    dialog.remove();
+  });
+
   it('focuses on "/" unless another field is being typed in', () => {
     const { input } = setup();
 
