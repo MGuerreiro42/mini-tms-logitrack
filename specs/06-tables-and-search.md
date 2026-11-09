@@ -23,7 +23,7 @@ A seller, an operator and an admin read the same phrase for a shipment's SLA pos
 
 1. **Given** an open shipment whose due time has passed, **when** its row renders, **then** it reads "Late <span>" with the critical tone and icon, and the row keeps the late tint.
 2. **Given** an open shipment with less time left than the due-soon threshold (FR-002), **when** it renders, **then** it reads "Due in <span>" with the caution tone and icon, and the row shows a 3 px caution bar on its leading edge instead of a tint.
-3. **Given** an open shipment with more time left than the threshold, **when** it renders, **then** it reads "Due <weekday> <HH:mm>" (or "Due <Mon D>" when 7 days away or more) in the neutral tone, with the remaining span in its `title`.
+3. **Given** an open shipment with more time left than the threshold, **when** it renders, **then** it reads "Due <weekday> <HH:mm>" (or "Due <Mon D>" when 6 days away or more, so a weekday never names next week) in the neutral tone, with the remaining span in its `title`.
 4. **Given** a `FAILED_DELIVERY` or `RETURNED` shipment, **when** it renders, **then** it reads "Failed" or "Returned" with the critical tone.
 
 ---

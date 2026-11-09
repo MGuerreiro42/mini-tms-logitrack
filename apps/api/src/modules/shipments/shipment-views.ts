@@ -25,7 +25,7 @@ export type ShipmentView = (typeof CARRIER_VIEWS)[number] | 'active';
 
 export interface ViewContext {
   now: Date;
-  // Null outside the carrier lists, so "mine" can never widen to every owner.
+  // Null outside the carrier lists, where "mine" has no meaning.
   carrierUserId: string | null;
 }
 
@@ -42,10 +42,12 @@ const VIEW_WHERE: Record<
     ],
   }),
   done: () => ({ status: { in: TERMINAL_STATUSES } }),
-  mine: ({ carrierUserId }) => ({
-    ownerId: carrierUserId,
-    status: { notIn: TERMINAL_STATUSES },
-  }),
+  mine: ({ carrierUserId }) => {
+    // A null owner would match every unclaimed shipment instead of none.
+    if (!carrierUserId)
+      throw new Error('"mine" needs the caller\'s carrier user');
+    return { ownerId: carrierUserId, status: { notIn: TERMINAL_STATUSES } };
+  },
   unclaimed: () => ({ status: ShipmentStatus.PENDING, ownerId: null }),
   to_pick_up: () => ({
     status: { in: [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED] },
@@ -65,7 +67,9 @@ export function searchWhere(
   q: string,
   { includeSeller }: { includeSeller: boolean },
 ): Prisma.ShipmentWhereInput {
-  const contains = { contains: q, mode: 'insensitive' } as const;
+  // Prisma sends contains as a raw LIKE pattern: a typed % or _ must match only itself.
+  const pattern = q.replace(/[\\%_]/g, '\\$&');
+  const contains = { contains: pattern, mode: 'insensitive' } as const;
   const digits = q.replace(/\D/g, '');
   return {
     OR: [
