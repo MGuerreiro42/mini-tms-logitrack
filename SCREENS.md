@@ -89,8 +89,9 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Role:** Seller
 - **Goal:** list/filter the seller's own `Shipment` records.
 - **Data:** `trackingCode`, `status` (badge/pill, one per `ShipmentStatus` state), `addressCity`/`addressState`, assigned carrier, `createdAt`.
-- **Actions:** filter by status; open detail.
-- **States:** empty (no shipments yet).
+- **Views:** tabs All · Active · Exceptions · Delivered · Cancelled with live counts; open views sort by due time. An old `?status=` link with no tab of its own is a removable filter.
+- **Actions:** search by code, city or zip (`/` focuses it); remove filter chips; peek at a row without leaving the list (desktop, `?peek=<id>`, `J`/`K`/`Enter`/`Esc`); select rows to copy their tracking links or cancel the cancellable ones (at most 4 requests at a time, one summary toast); open detail.
+- **States:** empty (no shipments yet), empty view, no match ("No shipments match.").
 - **Navigation →** Shipment Detail.
 
 ### Shipment Detail (Seller view)
@@ -137,7 +138,9 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - **Role:** `CARRIER_MANAGER` and `CARRIER_OPERATOR` (same screen, actions vary)
 - **Goal:** queue of `Shipment` records assigned to the `Carrier` — **every operator sees everything** (shared queue, DESIGN.md §3).
-- **Data:** per row — `trackingCode`, `status`, `addressCity`, modality, `owner` (owning `CarrierUser`'s name, or "no owner").
+- **Data:** per row — `trackingCode`, `status`, `addressCity`, modality, `owner` as a chip ("Ana S.", "You", or "Unclaimed").
+- **Views:** Mine · Unclaimed · To pick up · On the road · Exceptions · Done with live counts; operators land on Mine, managers on Unclaimed; Mine hides the Owner column; open views sort by due time. Search by code, city or seller; peek at a row (desktop), with Claim in the peek.
+- **Claim next:** the header button "Claim next · <Unclaimed count>" claims the most urgent unclaimed shipment and opens it; it is disabled at 0.
 - **Actions — depend on who owns it (`ownerId`):**
   - no owner → any operator can **claim it** (`self-assign`, sets `ownerId`);
   - the owner is the logged-in user → can **update status** (advances the `ShipmentStatus`, writes a new `TrackingEvent`);
@@ -211,7 +214,8 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Role:** Admin
 - **Goal:** real-time view of every `Shipment` on the platform — the screen that consumes the WebSocket + Redis pub/sub pipeline described end-to-end in §5.
 - **Data:** every shipment, with `status`, carrier, seller, `addressCity`/`addressState`, updated live as `TrackingEvent`s are created across any carrier.
-- **Actions:** filter by status/carrier/seller; open detail.
+- **Views:** All · Active · Exceptions and one tab per status, counts narrowed by the Carrier and Seller menus; lands on Active.
+- **Actions:** search by code, city or seller; filter by carrier/seller (shown as removable chips); peek at a row (desktop) with a copyable admin link; open detail.
 - **States:** the most natural place to visually highlight the granularity of `ShipmentStatus`'s 9 states (§10) — worth a clearly visible per-state filter, not just a flat list.
 
 ---
