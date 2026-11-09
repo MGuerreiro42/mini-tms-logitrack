@@ -22,8 +22,9 @@ export function withSla<
 // Only late rows get a tint, so a page of due-soon rows does not turn orange; they get a bar.
 const RISK_ROW_CLASS: Partial<Record<SlaKind, string>> = {
   late: 'bg-late-row',
+  // On the first cell, not the row: a row pseudo-element would become a table cell.
   dueSoon:
-    'relative before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-l-[inherit] before:bg-notice-foreground',
+    '[&>td:first-child]:shadow-[inset_3px_0_0_var(--color-notice-foreground)] [li&]:border-l-3 [li&]:border-notice-foreground',
 };
 
 export function lateRowClassName(row: { sla: SlaState }): string | undefined {
