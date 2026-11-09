@@ -27,7 +27,7 @@ const RISK_ROW_CLASS: Partial<Record<SlaKind, string>> = {
     '[&>td:first-child]:shadow-[inset_3px_0_0_var(--color-notice-foreground)] [li&]:border-l-3 [li&]:border-notice-foreground',
 };
 
-export function lateRowClassName(row: { sla: SlaState }): string | undefined {
+export function riskRowClassName(row: { sla: SlaState }): string | undefined {
   return RISK_ROW_CLASS[row.sla.kind];
 }
 

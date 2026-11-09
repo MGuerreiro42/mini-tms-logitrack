@@ -35,6 +35,8 @@ describe('slaState', () => {
     [6 * HOUR + 1, 24, 'Due Wed 15:01', 'in 6 h'],
     [46 * HOUR, 72, 'Due Fri 07:00', 'in 46 h'],
     [8 * 24 * HOUR, 30 * 24, 'Due Oct 22', 'in 8 d'],
+    [6 * 24 * HOUR - 1, 10 * 24, 'Due Tue 08:59', 'in 5 d'],
+    [6 * 24 * HOUR, 10 * 24, 'Due Oct 20', 'in 6 d'],
   ] as const)(
     'reads %s min left of a %s h window as on track: %s',
     (minutes, window, label, title) => {
