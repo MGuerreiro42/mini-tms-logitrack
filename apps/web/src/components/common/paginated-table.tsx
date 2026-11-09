@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import type { PaginationMeta } from '@/types/pagination';
 
 const MOBILE_QUERY = '(max-width: 767px)';
+// Clicks on these keep their own meaning instead of opening the row's peek.
+const ROW_CONTROLS = 'a, button, input, label, select, textarea';
 
 export type CardSlot = 'title' | 'badge' | 'place' | 'meta' | 'action';
 
@@ -74,6 +76,8 @@ export function PaginatedTable<T>({
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const asCards = isMobile && rows.columns.some((column) => column.card);
   const Rows = asCards ? RowCards : RowTable;
+  // No peek below 768 px: a tap opens the page.
+  const onRowClick = isMobile ? undefined : rows.onRowClick;
   const flashes = useRowFlashes(rows.data, rows.getRowKey, rows.getRowVersion);
   const getRowClassName = (row: T) =>
     cn(
@@ -89,6 +93,7 @@ export function PaginatedTable<T>({
     <div className="space-y-3">
       <Rows
         {...rows}
+        onRowClick={onRowClick}
         getRowClassName={getRowClassName}
         isEmpty={rows.data.length === 0 && !isPastTheEnd}
       />
@@ -188,19 +193,24 @@ function RowTable<T>({
             <TableRow
               key={getRowKey(row)}
               data-row-key={getRowKey(row)}
-              aria-selected={
-                onRowClick ? getRowKey(row) === selectedKey : undefined
+              aria-current={
+                onRowClick && getRowKey(row) === selectedKey
+                  ? 'true'
+                  : undefined
               }
               onClick={
                 onRowClick &&
                 ((event) => {
                   const target = event.target as Element;
-                  if (!target.closest('a, button, input')) onRowClick(row);
+                  // Selecting text to copy it is not a request to peek.
+                  if (window.getSelection()?.toString()) return;
+                  if (target.closest(ROW_CONTROLS)) return;
+                  onRowClick(row);
                 })
               }
               className={cn(
                 getRowHref && 'relative',
-                onRowClick && 'cursor-pointer aria-selected:bg-selected',
+                onRowClick && 'cursor-pointer aria-[current=true]:bg-selected',
                 getRowClassName?.(row),
               )}
             >
