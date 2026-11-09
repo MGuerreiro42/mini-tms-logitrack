@@ -296,6 +296,8 @@ describe('Foundations (e2e)', () => {
         sellerCompanyName: 'E2E Seller',
         carrierCompanyName: 'E2E Carrier',
         ownerEmail: expect.stringMatching(/@e2e\.test$/),
+        // The operator was named by the actor-name test above.
+        ownerName: 'Ana Souza',
         trackingEvents: [
           { status: 'PENDING', actorName: null },
           { status: 'ACCEPTED' },
