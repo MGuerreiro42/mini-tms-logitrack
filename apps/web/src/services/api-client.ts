@@ -34,6 +34,17 @@ export function isClientError(error: unknown): error is ApiError {
   );
 }
 
+// fetch rejects with a TypeError when the server can't be reached, and AbortSignal.timeout with a
+// TimeoutError; a 5xx means it answered but can't serve.
+export function isServiceUnavailable(error: unknown): boolean {
+  return (
+    error instanceof TypeError ||
+    (error instanceof DOMException && error.name === 'TimeoutError') ||
+    (error instanceof ApiError &&
+      error.statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR)
+  );
+}
+
 export async function apiClient<T>(
   path: string,
   init?: RequestInit,

@@ -1,6 +1,11 @@
 import { HttpResponse, http } from 'msw';
 import { server } from '@/test/msw/server';
-import { ApiError, apiClient, toQueryString } from './api-client';
+import {
+  ApiError,
+  apiClient,
+  isServiceUnavailable,
+  toQueryString,
+} from './api-client';
 
 const API_URL = 'http://localhost:3333';
 
@@ -134,6 +139,18 @@ describe('apiClient', () => {
     );
 
     await expect(apiClient('/sellers/me')).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('isServiceUnavailable', () => {
+  it.each([
+    ['a network failure', new TypeError('Failed to fetch'), true],
+    ['a timeout', new DOMException('timed out', 'TimeoutError'), true],
+    ['a 5xx', new ApiError(503, 'Service Unavailable'), true],
+    ['a 4xx', new ApiError(429, 'Too many'), false],
+    ['any other error', new Error('boom'), false],
+  ])('reads %s as %s', (_, error, unavailable) => {
+    expect(isServiceUnavailable(error)).toBe(unavailable);
   });
 });
 

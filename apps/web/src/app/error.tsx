@@ -7,9 +7,11 @@ import {
   useErrorCopy,
 } from '@/components/common/segment-error';
 import { Button } from '@/components/ui/button';
+import { useLoggedError } from '@/hooks/use-logged-error';
 import { ROUTES } from '@/lib/routes';
 
 export default function RootError({ error, retry }: SegmentErrorProps) {
+  useLoggedError(error);
   const { title, description } = useErrorCopy(
     error,
     'This page stopped on an unexpected error. Try again or head back home.',

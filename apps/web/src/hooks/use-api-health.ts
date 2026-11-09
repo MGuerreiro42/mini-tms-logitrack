@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { API_URL } from '@/lib/api-url';
+import { apiClient, isServiceUnavailable } from '@/services/api-client';
 
 export type ApiHealth = 'checking' | 'up' | 'down';
 
@@ -12,13 +12,13 @@ export function useApiHealth(): ApiHealth {
 
   useEffect(() => {
     let active = true;
-    fetch(`${API_URL}/health`, {
+    apiClient('/health', {
       cache: 'no-store',
       signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
     })
       .then(
-        (response): ApiHealth => (response.ok ? 'up' : 'down'),
-        (): ApiHealth => 'down',
+        (): ApiHealth => 'up',
+        (error): ApiHealth => (isServiceUnavailable(error) ? 'down' : 'up'),
       )
       .then((result) => {
         if (active) setHealth(result);

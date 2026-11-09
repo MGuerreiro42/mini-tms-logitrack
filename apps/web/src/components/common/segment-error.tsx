@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ErrorState } from '@/components/common/feedback-state';
+import {
+  ErrorState,
+  SERVICE_UNAVAILABLE,
+} from '@/components/common/feedback-state';
 import { Button } from '@/components/ui/button';
 import { type ApiHealth, useApiHealth } from '@/hooks/use-api-health';
 import { useLoggedError } from '@/hooks/use-logged-error';
@@ -22,22 +25,18 @@ function ErrorReference({ digest }: { digest?: string }) {
 }
 
 interface ErrorCopy {
-  title?: string;
+  title: string;
   description?: ReactNode;
 }
 
-// While the probe runs neither message shows, so the generic one never flashes before "unavailable".
+// While the probe runs a neutral line shows, so the generic copy never flashes before "unavailable".
 export function useErrorCopy(
   error: SegmentErrorProps['error'],
   generic: string,
 ): ErrorCopy {
-  useLoggedError(error);
   const copy: Record<ApiHealth, ErrorCopy> = {
-    checking: {},
-    down: {
-      title: "We can't reach the Mini TMS service right now",
-      description: 'Your data is safe; try again in a moment.',
-    },
+    checking: { title: 'Checking the connection…' },
+    down: SERVICE_UNAVAILABLE,
     up: {
       title: 'Something went wrong',
       description: (
@@ -52,6 +51,7 @@ export function useErrorCopy(
 }
 
 export function SegmentError({ error, retry }: SegmentErrorProps) {
+  useLoggedError(error);
   const { title, description } = useErrorCopy(
     error,
     "This page couldn't be loaded. Nothing was changed.",

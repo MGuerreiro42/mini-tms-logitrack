@@ -44,6 +44,13 @@ describe('SegmentError', () => {
     expect(screen.getByRole('alert')).not.toHaveTextContent('Reference');
   });
 
+  it('keeps the generic error when the API answers 4xx, e.g. rate limited', async () => {
+    healthAnswers(429);
+    render(<SegmentError error={new Error('boom')} retry={vi.fn()} />);
+
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument();
+  });
+
   it.each([
     ['answers 5xx', () => healthAnswers(503)],
     [
@@ -63,9 +70,12 @@ describe('SegmentError', () => {
     expect(retry).toHaveBeenCalled();
   });
 
-  it('shows neither message while the probe is running', () => {
+  it('says it is checking while the probe is running', () => {
     render(<SegmentError error={new Error('boom')} retry={vi.fn()} />);
 
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Checking the connection…',
+    );
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
