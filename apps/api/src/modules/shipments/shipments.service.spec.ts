@@ -954,23 +954,41 @@ describe('ShipmentsService', () => {
   });
 
   describe('claimNext', () => {
-    it('moves on to the next candidate when one is lost, and stops at 409', async () => {
+    // claimAs is private; the spy stands in for the conditional write it wraps.
+    const spyClaimAs = () =>
+      vi.spyOn(
+        shipmentsService as unknown as { claimAs: () => Promise<unknown> },
+        'claimAs',
+      );
+
+    it('moves on to the next candidate when one is lost, resolving the caller once', async () => {
       carrierUserFindUnique.mockResolvedValue(carrierOperator);
       shipmentFindMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
-      const claim = vi
-        .spyOn(shipmentsService, 'claim')
+      const claimAs = spyClaimAs()
         .mockRejectedValueOnce(new ConflictException())
-        .mockResolvedValueOnce(carrierShipment as never);
+        .mockResolvedValueOnce(carrierShipment);
 
       await expect(shipmentsService.claimNext('u')).resolves.toBe(
         carrierShipment,
       );
-      expect(claim.mock.calls.map(([, id]) => id)).toEqual(['a', 'b']);
+      expect(claimAs.mock.calls.map((call) => (call as unknown[])[1])).toEqual([
+        'a',
+        'b',
+      ]);
+      expect(carrierUserFindUnique).toHaveBeenCalledOnce();
+    });
 
-      claim.mockRejectedValue(new ConflictException());
-      await expect(shipmentsService.claimNext('u')).rejects.toThrow(
-        'No shipment is waiting to be claimed',
+    it.each([
+      [3, 'Others claimed these first, try again'],
+      [2, 'No shipment is waiting to be claimed'],
+    ])('with %i candidates all lost answers %s', async (count, message) => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindMany.mockResolvedValue(
+        Array.from({ length: count }, (_, i) => ({ id: `s-${i}` })),
       );
+      spyClaimAs().mockRejectedValue(new ConflictException());
+
+      await expect(shipmentsService.claimNext('u')).rejects.toThrow(message);
     });
   });
 
