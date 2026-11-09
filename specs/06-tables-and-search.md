@@ -2,7 +2,7 @@
 
 **Feature**: `tables-and-search` — `ShipmentsModule` (list queries, view counts, claim next, owner names) and `apps/web` (shared list toolbar, risk badge, owner chip, peek sheet, seller bulk bar, KPI links)
 **Created**: 2026-11-09
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §9 (URL state, live updates), §15 (carrier queue), §16 (dashboards, monitoring); `SCREENS.md` (Shipments List, Dashboard / Shared Queue, Global Monitoring); `FLOW.md` Frame 23; `.claude/research/ux-briefs.md` §0.3, §0.6, §2.2–§2.5, §3.2, §4.1, §5.2, §8.3, §9 steps 2 and 4, §10.2–§10.3; prototypes `SellerShipments`, `SellerShipmentsBulk`, `Main` (carrier Queue), `Monitoring` and `Components` in the approved design canvas
 
 ## Summary
@@ -303,4 +303,5 @@ PRs 1, 2 and 4 have no dependency on each other and can be opened in parallel; 1
 
 | Date | Change |
 |------|--------|
+| 2026-11-10 | Implemented as 14 stacked PRs from #99 (the 12 planned; PR 2 and PR 3 each split in two to stay under ~500 lines). Deviations: a zip prefix matches only a zip-shaped `q`; `?peek=` lives outside `useFilteredPagination` (it must not reset the page); a search does not close an open peek; any status replaces the view, so a status tab and its link agree |
 | 2026-11-09 | Spec created from the UX briefs (§2.2–§2.5, §3.2, §4.1, §5.2, §9 steps 2 and 4, §10), the PO reports and the approved prototypes; every item verified against `feat/foundations-web`. Manager reassign split out |
