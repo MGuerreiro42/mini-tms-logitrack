@@ -4,13 +4,9 @@ import { SearchIcon, XIcon } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { isTyping } from '@/lib/is-typing';
 
 const SEARCH_DEBOUNCE_MS = 300;
-
-const isTyping = (element: Element | null) =>
-  element instanceof HTMLElement &&
-  (element.isContentEditable ||
-    ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName));
 
 interface SearchFieldProps {
   value: string;
