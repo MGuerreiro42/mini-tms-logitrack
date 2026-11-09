@@ -1,23 +1,46 @@
 import type { ShipmentStatus } from '@/types/status';
+import { formatMonthDay, formatWeekdayTime } from './format-date';
 
-export type SlaTone = 'muted' | 'soon' | 'late';
+export type SlaKind =
+  | 'onTrack'
+  | 'dueSoon'
+  | 'late'
+  | 'onTime'
+  | 'deliveredLate'
+  | 'failed'
+  | 'none';
+
+export type SlaTone =
+  | 'neutral'
+  | 'caution'
+  | 'critical'
+  | 'positive'
+  | 'mutedCritical';
 
 export interface SlaState {
+  kind: SlaKind;
   label: string;
   tone: SlaTone;
+  title?: string;
 }
 
 const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
-const SOON_HOURS = 6;
 const HOURS_SHOWN_BELOW = 48;
-const CLOSED: ShipmentStatus[] = ['CANCELLED', 'RETURNED', 'FAILED_DELIVERY'];
-
-// Closed shipments neither count down nor get a verdict; a delivery gets one.
-export function hasSlaVerdict(status: ShipmentStatus): boolean {
-  return !CLOSED.includes(status);
-}
+const DUE_SOON_MIN_MS = 6 * HOUR_MS;
+const DUE_SOON_SHARE = 0.25;
+const WEEKDAY_SHOWN_BELOW_MS = 7 * HOURS_PER_DAY * HOUR_MS;
+// The API's LATE_CANDIDATES: the statuses an SLA still runs for.
+const OPEN: ShipmentStatus[] = [
+  'PENDING',
+  'ACCEPTED',
+  'COLLECTED',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+];
+const NONE: SlaState = { kind: 'none', label: '—', tone: 'neutral' };
 
 function span(minutes: number, round: (value: number) => number): string {
   if (minutes < MINUTES_PER_HOUR) return `${Math.max(1, minutes)} min`;
@@ -30,38 +53,62 @@ function deliveredVerdict(
   dueAt: string,
   deliveredAt: string | null | undefined,
 ): SlaState {
-  if (!deliveredAt) return { label: 'Delivered', tone: 'muted' };
+  if (!deliveredAt)
+    return { kind: 'none', label: 'Delivered', tone: 'neutral' };
   const msLate = new Date(deliveredAt).getTime() - new Date(dueAt).getTime();
-  if (msLate <= 0) return { label: 'On time', tone: 'muted' };
+  if (msLate <= 0)
+    return { kind: 'onTime', label: 'On time', tone: 'positive' };
   return {
+    kind: 'deliveredLate',
     label: `Late by ${span(Math.ceil(msLate / MINUTE_MS), Math.ceil)}`,
-    tone: 'late',
+    tone: 'mutedCritical',
+  };
+}
+
+function openVerdict(dueAt: string, createdAt: string, now: Date): SlaState {
+  const due = new Date(dueAt).getTime();
+  const msLeft = due - now.getTime();
+  if (msLeft < 0) {
+    const late = span(Math.ceil(-msLeft / MINUTE_MS), Math.ceil);
+    return { kind: 'late', label: `Late ${late}`, tone: 'critical' };
+  }
+
+  const left = span(Math.floor(msLeft / MINUTE_MS), Math.floor);
+  const slaWindow = due - new Date(createdAt).getTime();
+  if (msLeft <= Math.max(DUE_SOON_SHARE * slaWindow, DUE_SOON_MIN_MS)) {
+    return { kind: 'dueSoon', label: `Due in ${left}`, tone: 'caution' };
+  }
+  const when =
+    msLeft < WEEKDAY_SHOWN_BELOW_MS
+      ? formatWeekdayTime(dueAt)
+      : formatMonthDay(dueAt);
+  return {
+    kind: 'onTrack',
+    label: `Due ${when}`,
+    tone: 'neutral',
+    title: `in ${left}`,
   };
 }
 
 export function slaState({
   dueAt,
   deliveredAt,
+  createdAt,
   status,
   now = new Date(),
 }: {
   dueAt: string | null | undefined;
   deliveredAt?: string | null;
+  createdAt: string;
   status: ShipmentStatus;
   now?: Date;
 }): SlaState {
-  if (!dueAt || !hasSlaVerdict(status)) return { label: '—', tone: 'muted' };
+  if (status === 'FAILED_DELIVERY')
+    return { kind: 'failed', label: 'Failed', tone: 'critical' };
+  if (status === 'RETURNED')
+    return { kind: 'failed', label: 'Returned', tone: 'critical' };
+  if (!dueAt) return NONE;
   if (status === 'DELIVERED') return deliveredVerdict(dueAt, deliveredAt);
-
-  const msLeft = new Date(dueAt).getTime() - now.getTime();
-  if (msLeft < 0) {
-    const late = Math.ceil(-msLeft / MINUTE_MS);
-    return { label: `${span(late, Math.ceil)} late`, tone: 'late' };
-  }
-
-  const left = Math.floor(msLeft / MINUTE_MS);
-  return {
-    label: `Due in ${span(left, Math.floor)}`,
-    tone: left < SOON_HOURS * MINUTES_PER_HOUR ? 'soon' : 'muted',
-  };
+  if (!OPEN.includes(status)) return NONE;
+  return openVerdict(dueAt, createdAt, now);
 }

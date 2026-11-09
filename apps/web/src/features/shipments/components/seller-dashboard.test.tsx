@@ -118,7 +118,7 @@ describe('SellerDashboard', () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent('Delivery attempt failed');
     expect(items[1]).toHaveTextContent('Past its SLA');
-    expect(items[1]).toHaveTextContent(/\d h late/);
+    expect(items[1]).toHaveTextContent(/Late \d h/);
     expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
 
     expect(screen.getByText('80.0%')).toBeInTheDocument();
