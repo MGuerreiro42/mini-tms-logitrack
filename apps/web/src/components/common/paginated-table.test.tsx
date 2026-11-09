@@ -12,6 +12,34 @@ interface Row {
 const columns: Column<Row>[] = [{ header: 'Name', cell: (row) => row.name }];
 
 describe('PaginatedTable', () => {
+  it('opens a preview from the row body but keeps the code a link', async () => {
+    const onRowClick = vi.fn();
+    render(
+      <PaginatedTable<Row>
+        columns={[...columns, { header: 'Note', cell: () => 'body' }]}
+        data={[
+          { id: '1', name: 'First' },
+          { id: '2', name: 'Second' },
+        ]}
+        getRowKey={(row) => row.id}
+        getRowHref={(row) => `/rows/${row.id}`}
+        onRowClick={onRowClick}
+        selectedKey="2"
+      />,
+    );
+
+    await userEvent.click(screen.getAllByText('body')[0]);
+    await userEvent.click(screen.getByRole('link', { name: 'Second' }));
+
+    expect(onRowClick).toHaveBeenCalledExactlyOnceWith({
+      id: '1',
+      name: 'First',
+    });
+    expect(
+      screen.getByRole('link', { name: 'Second' }).closest('tr'),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows the empty message when there is no data', () => {
     render(
       <PaginatedTable<Row>

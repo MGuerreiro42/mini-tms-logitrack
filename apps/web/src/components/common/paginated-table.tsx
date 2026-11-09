@@ -48,6 +48,9 @@ interface PaginatedTableProps<T> {
   getRowKey: (row: T) => string;
   // What makes a row "changed" for the live highlight, e.g. its status.
   getRowVersion?: (row: T) => string;
+  // Desktop only: the row body opens a preview and only the first cell links to the page.
+  onRowClick?: (row: T) => void;
+  selectedKey?: string;
 }
 
 type RowsProps<T> = Omit<PaginatedTableProps<T>, 'meta' | 'onPageChange'> & {
@@ -121,6 +124,8 @@ function RowTable<T>({
   emptyMessage = 'Nothing here yet.',
   getRowKey,
   isEmpty,
+  onRowClick,
+  selectedKey,
 }: RowsProps<T>) {
   const density = useDensity();
 
@@ -150,12 +155,29 @@ function RowTable<T>({
           {data.map((row) => (
             <TableRow
               key={getRowKey(row)}
-              className={cn(getRowHref && 'relative', getRowClassName?.(row))}
+              data-row-key={getRowKey(row)}
+              aria-selected={
+                onRowClick ? getRowKey(row) === selectedKey : undefined
+              }
+              onClick={
+                onRowClick &&
+                ((event) => {
+                  const target = event.target as Element;
+                  if (!target.closest('a, button, input')) onRowClick(row);
+                })
+              }
+              className={cn(
+                getRowHref && 'relative',
+                onRowClick && 'cursor-pointer aria-selected:bg-selected',
+                getRowClassName?.(row),
+              )}
             >
               {columns.map((col, index) => (
                 <TableCell key={columnKey(col)} className={cellClassName(col)}>
                   {getRowHref && index === 0 ? (
-                    <RowLink href={getRowHref(row)}>{col.cell(row)}</RowLink>
+                    <RowLink href={getRowHref(row)} stretched={!onRowClick}>
+                      {col.cell(row)}
+                    </RowLink>
                   ) : (
                     col.cell(row)
                   )}
@@ -271,14 +293,20 @@ function cellClassName<T>(column: Column<T>): string | undefined {
 function RowLink({
   href,
   children,
+  stretched = true,
 }: {
   href: string;
   children: React.ReactNode;
+  stretched?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+      className={
+        stretched
+          ? 'outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset'
+          : 'rounded-xs outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring'
+      }
     >
       {children}
     </Link>
