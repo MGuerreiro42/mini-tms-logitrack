@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 
 const PEEK_PARAM = 'peek';
 
@@ -18,10 +19,16 @@ export function usePeek(keys: string[]): Peek {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const peekId = searchParams.get(PEEK_PARAM) ?? undefined;
+  // The URL lags behind a fast J J, so steps count from the last row asked for.
+  const target = useRef(peekId);
+  useEffect(() => {
+    target.current = peekId;
+  }, [peekId]);
 
   // Opening pushes so Back closes the peek; moving and closing replace.
   function go(id: string | undefined, mode: 'push' | 'replace') {
     const next = new URLSearchParams(searchParams.toString());
+    target.current = id;
     if (id) next.set(PEEK_PARAM, id);
     else next.delete(PEEK_PARAM);
     const search = next.toString();
@@ -32,7 +39,7 @@ export function usePeek(keys: string[]): Peek {
 
   // Paging is not crossed: J on the last row of the page does nothing.
   function step(delta: number) {
-    const index = peekId ? keys.indexOf(peekId) : -1;
+    const index = target.current ? keys.indexOf(target.current) : -1;
     const id = index >= 0 ? keys[index + delta] : undefined;
     if (id) go(id, 'replace');
   }
