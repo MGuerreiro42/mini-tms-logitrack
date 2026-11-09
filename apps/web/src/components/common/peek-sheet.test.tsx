@@ -46,15 +46,14 @@ const press = (key: string, target: Element = document.body) =>
 describe('PeekSheet', () => {
   beforeEach(() => resetNavigation('/s?view=active'));
 
-  it('opens with a push, focuses its close button and moves with J/K inside the page', () => {
+  it('opens with a push, focuses the sheet and moves with J/K inside the page', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Peek a' }));
 
     expect(router.push).toHaveBeenCalledWith('/s?view=active&peek=a', {
       scroll: false,
     });
-    expect(screen.getByRole('dialog', { name: 'a preview' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Close preview' })).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: 'a preview' })).toHaveFocus();
 
     press('k');
     expect(currentUrl()).toBe('/s?view=active&peek=a');
@@ -70,6 +69,21 @@ describe('PeekSheet', () => {
     expect(currentUrl()).toBe('/s?view=active&peek=a');
   });
 
+  it('announces the row J moves to and closes back over its own history entry', () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Peek a' }));
+    press('j');
+
+    expect(
+      screen.getByText('b preview', { selector: '[aria-live]' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+
+    expect(router.back).toHaveBeenCalledOnce();
+    expect(currentUrl()).toBe('/s?view=active');
+    expect(screen.getByRole('link', { name: 'b' })).toHaveFocus();
+  });
+
   it('ignores J/K while typing, opens the page on Enter and closes on Esc back to the row', () => {
     resetNavigation('/s?peek=b');
     render(<Harness />);
@@ -77,11 +91,16 @@ describe('PeekSheet', () => {
     press('j', screen.getByRole('textbox', { name: 'Search' }));
     expect(currentUrl()).toBe('/s?peek=b');
 
-    vi.mocked(router.push).mockImplementationOnce(() => {});
     press('Enter', screen.getByRole('button', { name: 'Close preview' }));
+    expect(router.push).not.toHaveBeenCalled();
+    vi.mocked(router.push).mockImplementationOnce(() => {});
+    press('Enter', screen.getByRole('dialog'));
     expect(router.push).toHaveBeenCalledWith('/full');
 
+    press('Escape', screen.getByRole('textbox', { name: 'Search' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
     press('Escape');
+    expect(router.back).not.toHaveBeenCalled();
     expect(currentUrl()).toBe('/s');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('link', { name: 'b' })).toHaveFocus();
