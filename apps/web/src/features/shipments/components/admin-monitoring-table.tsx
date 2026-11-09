@@ -122,7 +122,10 @@ export function AdminMonitoringTable({
     live.status,
   );
   const now = useNow(SLA_REFRESH_MS);
-  const search = useSearchParams().toString();
+  // The detail breadcrumb keeps the list's filters, but not its open peek.
+  const carried = new URLSearchParams(useSearchParams().toString());
+  carried.delete('peek');
+  const search = carried.toString();
   const rows = query.data?.data ?? [];
   const peek = usePeek(rows.map((s) => s.id));
 
