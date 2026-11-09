@@ -16,7 +16,7 @@ import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
 import { formatCep } from '@/lib/br-documents';
-import { formatDate, formatDateTime } from '@/lib/format-date';
+import { formatDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
 import { publicTrackingPath } from '@/lib/public-tracking-path';
 import { ROUTES } from '@/lib/routes';
@@ -25,6 +25,7 @@ import { useShipment } from '../hooks/use-shipment';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import { isCancellableBySeller, type ShipmentDetail } from '../types';
 import { CancelShipmentAction } from './cancel-shipment-action';
+import { ShipmentDueLine } from './shipment-detail-parts';
 import { ShipmentMapPanel } from './shipment-map-panel';
 
 export function ShipmentDetailCard({ id }: { id: string }) {
@@ -71,8 +72,7 @@ function ShipmentDetailView({
         }
         description={
           <>
-            {shipment.modalityName} to {place}
-            {shipment.dueAt && ` · due ${formatDate(shipment.dueAt)}`}
+            {place} · <ShipmentDueLine shipment={shipment} />
           </>
         }
         action={

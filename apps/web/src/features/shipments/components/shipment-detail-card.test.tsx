@@ -93,6 +93,21 @@ describe('ShipmentDetailCard', () => {
     );
   });
 
+  it('reads a late delivery in the header', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/shipment-1`, () =>
+        HttpResponse.json({
+          ...pendingShipment,
+          status: 'DELIVERED',
+          deliveredAt: '2026-01-06T08:00:00.000Z',
+        }),
+      ),
+    );
+    renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+    expect(await screen.findByText('Late by 8 h')).toBeInTheDocument();
+  });
+
   it('stops polling a shipment that does not exist', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let requests = 0;

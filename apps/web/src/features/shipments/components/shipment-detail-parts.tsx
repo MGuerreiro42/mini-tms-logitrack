@@ -15,8 +15,7 @@ import { useNow } from '@/hooks/use-now';
 import { formatCep } from '@/lib/br-documents';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
-import { nextExpectedStatus } from '@/lib/shipment-progress';
-import { slaState } from '@/lib/sla';
+import { hasSlaVerdict, slaState } from '@/lib/sla';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';
 
@@ -59,13 +58,16 @@ const SLA_REFRESH_MS = 60_000;
 export function ShipmentDueLine({
   shipment,
 }: {
-  shipment: Pick<ShipmentBase, 'modalityName' | 'dueAt' | 'status'>;
+  shipment: Pick<
+    ShipmentBase,
+    'modalityName' | 'dueAt' | 'deliveredAt' | 'status'
+  >;
 }) {
   const now = useNow(SLA_REFRESH_MS);
-  const { modalityName, dueAt, status } = shipment;
+  const { modalityName, dueAt, deliveredAt, status } = shipment;
 
   if (!dueAt) return <>{modalityName} · No SLA</>;
-  if (!nextExpectedStatus(status)) {
+  if (!hasSlaVerdict(status)) {
     return (
       <>
         {modalityName} · Due {formatShortDateTime(dueAt)}
@@ -74,7 +76,8 @@ export function ShipmentDueLine({
   }
   return (
     <>
-      {modalityName} · <SlaCell state={slaState({ dueAt, status, now })} /> ·{' '}
+      {modalityName} ·{' '}
+      <SlaCell state={slaState({ dueAt, deliveredAt, status, now })} /> ·{' '}
       {formatShortDateTime(dueAt)}
     </>
   );
