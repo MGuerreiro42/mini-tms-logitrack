@@ -20,7 +20,7 @@ export class AdminShipmentsController {
 
   @ApiOperation({
     summary:
-      'List every shipment platform-wide, filterable by status/carrierId/sellerId — no ownership scoping, admin only',
+      'List every shipment platform-wide, filterable by status/carrierId/sellerId/view/q — no ownership scoping, admin only',
   })
   @ApiPaginatedResponse(AdminShipmentResponseDto)
   @Auth(GlobalRole.ADMIN)

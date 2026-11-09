@@ -1,6 +1,7 @@
 import request from 'supertest';
 import type { Prisma } from '../generated/prisma/client';
 import {
+  adminToken,
   createShipment,
   createTenants,
   type E2eContext,
@@ -13,6 +14,7 @@ const inHours = (hours: number) => new Date(Date.now() + hours * HOUR_MS);
 describe('List views and search (e2e)', () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
+  let admin: string;
   const codes: Record<string, string> = {};
 
   const get = (token: string, path: string, query: object = {}) =>
@@ -38,6 +40,7 @@ describe('List views and search (e2e)', () => {
   beforeAll(async () => {
     ctx = await startApp();
     tenants = await createTenants(ctx);
+    admin = await adminToken(ctx);
 
     await seed('soon', { dueAt: inHours(2) });
     await seed('later', {
@@ -79,16 +82,24 @@ describe('List views and search (e2e)', () => {
         done: 1,
       },
     ],
+    ['admin', '/admin/shipments', { active: 6, exceptions: 2, done: 1 }],
   ])(
     'gives the %s list a count per view equal to its total',
     async (role, path, expected) => {
-      const token = role === 'seller' ? tenants.sellerA : tenants.operator;
+      const token = {
+        seller: tenants.sellerA,
+        carrier: tenants.operator,
+        admin,
+      }[role] as string;
+      const scope = role === 'admin' ? { carrierId: tenants.carrierId } : {};
 
-      const counts = await get(token, `${path}/view-counts`).expect(200);
+      const counts = await get(token, `${path}/view-counts`, scope).expect(200);
 
       expect(counts.body).toEqual(expected);
       for (const [view, count] of Object.entries(expected)) {
-        await expect(totalOf(token, path, { view })).resolves.toBe(count);
+        await expect(totalOf(token, path, { ...scope, view })).resolves.toBe(
+          count,
+        );
       }
     },
   );
@@ -138,7 +149,7 @@ describe('List views and search (e2e)', () => {
 
   it('rejects a view of another role, an unknown view and a long search', async () => {
     await get(tenants.sellerA, '/shipments', { view: 'mine' }).expect(400);
-    await get(tenants.operator, '/shipments/queue', { view: 'x' }).expect(400);
+    await get(admin, '/admin/shipments', { view: 'bogus' }).expect(400);
     await get(tenants.operator, '/shipments/queue', {
       q: 'x'.repeat(101),
     }).expect(400);
