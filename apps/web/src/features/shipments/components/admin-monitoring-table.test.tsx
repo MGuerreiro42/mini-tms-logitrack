@@ -78,7 +78,7 @@ describe('AdminMonitoringTable', () => {
   });
 
   it('links each row to the admin detail, carrying the current filters', async () => {
-    resetNavigation('/admin/monitoring?status=PENDING');
+    resetNavigation('/admin/monitoring?status=PENDING&peek=other');
     server.use(
       http.get(`${API_URL}/admin/shipments`, () =>
         HttpResponse.json({
