@@ -21,7 +21,11 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { countByStatus, createdSince } from '../../shared/stats/stats';
+import {
+  countByStatus,
+  createdSince,
+  type StatsWindow,
+} from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type {
   AdminShipmentDetailResponseDto,
@@ -100,6 +104,7 @@ import {
   SELLER_VIEWS,
   type ShipmentView,
   type ViewContext,
+  windowWhere,
 } from './shipment-views';
 import { generateTrackingCode } from './tracking-code';
 import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
@@ -129,9 +134,19 @@ const POSITION_MAX_LEAD_MS = 5_000;
 const adminScope = (
   carrierId?: string,
   sellerId?: string,
+  window?: StatsWindow,
 ): Prisma.ShipmentWhereInput => ({
   ...(carrierId ? { carrierId } : {}),
   ...(sellerId ? { sellerId } : {}),
+  ...windowWhere(window, new Date()),
+});
+
+const sellerScope = (
+  sellerId: string,
+  window?: StatsWindow,
+): Prisma.ShipmentWhereInput => ({
+  sellerId,
+  ...windowWhere(window, new Date()),
 });
 
 type ListQuery = ListFilters & { page: number; limit: number };
@@ -280,9 +295,10 @@ export class ShipmentsService {
 
   async viewCountsForSeller(
     userId: string,
+    window?: StatsWindow,
   ): Promise<SellerViewCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    return this.countViews(SELLER_VIEWS, { sellerId: seller.id }, null);
+    return this.countViews(SELLER_VIEWS, sellerScope(seller.id, window), null);
   }
 
   async viewCountsForCarrier(
@@ -299,8 +315,13 @@ export class ShipmentsService {
   viewCountsForAdmin(
     carrierId?: string,
     sellerId?: string,
+    window?: StatsWindow,
   ): Promise<AdminViewCountsResponseDto> {
-    return this.countViews(ADMIN_VIEWS, adminScope(carrierId, sellerId), null);
+    return this.countViews(
+      ADMIN_VIEWS,
+      adminScope(carrierId, sellerId, window),
+      null,
+    );
   }
 
   // One count per view: at most six small queries, throttled by the client's invalidation.
@@ -322,16 +343,18 @@ export class ShipmentsService {
 
   async countsByStatusForSeller(
     userId: string,
+    window?: StatsWindow,
   ): Promise<ShipmentStatusCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    return this.countByStatus({ sellerId: seller.id });
+    return this.countByStatus(sellerScope(seller.id, window));
   }
 
   countsByStatusForAdmin(
     carrierId?: string,
     sellerId?: string,
+    window?: StatsWindow,
   ): Promise<ShipmentStatusCountsResponseDto> {
-    return this.countByStatus(adminScope(carrierId, sellerId));
+    return this.countByStatus(adminScope(carrierId, sellerId, window));
   }
 
   private async countByStatus(

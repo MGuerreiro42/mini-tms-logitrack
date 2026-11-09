@@ -20,7 +20,7 @@ export class AdminShipmentsController {
 
   @ApiOperation({
     summary:
-      'List every shipment platform-wide, filterable by status/carrierId/sellerId/view/q — no ownership scoping, admin only',
+      'List every shipment platform-wide, filterable by status/carrierId/sellerId/view/window/q — no ownership scoping, admin only',
   })
   @ApiPaginatedResponse(AdminShipmentResponseDto)
   @Auth(GlobalRole.ADMIN)
@@ -31,7 +31,7 @@ export class AdminShipmentsController {
 
   @ApiOperation({
     summary:
-      'Count every shipment platform-wide by ShipmentStatus, optionally for one carrierId/sellerId — admin only',
+      'Count every shipment platform-wide by ShipmentStatus, optionally for one carrierId/sellerId and window — admin only',
   })
   @ApiResponse({ status: 200, type: ShipmentStatusCountsResponseDto })
   @Auth(GlobalRole.ADMIN)
@@ -40,12 +40,13 @@ export class AdminShipmentsController {
     return this.shipmentsService.countsByStatusForAdmin(
       query.carrierId,
       query.sellerId,
+      query.window,
     );
   }
 
   @ApiOperation({
     summary:
-      'Count every shipment platform-wide per list view (active, exceptions, done), optionally for one carrierId/sellerId — admin only',
+      'Count every shipment platform-wide per list view (active, late, exceptions, done), optionally for one carrierId/sellerId and window — admin only',
   })
   @ApiResponse({ status: 200, type: AdminViewCountsResponseDto })
   @Auth(GlobalRole.ADMIN)
@@ -54,6 +55,7 @@ export class AdminShipmentsController {
     return this.shipmentsService.viewCountsForAdmin(
       query.carrierId,
       query.sellerId,
+      query.window,
     );
   }
 
