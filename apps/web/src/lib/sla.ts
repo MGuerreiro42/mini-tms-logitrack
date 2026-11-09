@@ -31,7 +31,8 @@ const HOURS_PER_DAY = 24;
 const HOURS_SHOWN_BELOW = 48;
 const DUE_SOON_MIN_MS = 6 * HOUR_MS;
 const DUE_SOON_SHARE = 0.25;
-const WEEKDAY_SHOWN_BELOW_MS = 7 * HOURS_PER_DAY * HOUR_MS;
+// A weekday only well inside the coming week, so it never reads as today or next week.
+const WEEKDAY_SHOWN_BELOW_MS = 6 * HOURS_PER_DAY * HOUR_MS;
 // The API's LATE_CANDIDATES: the statuses an SLA still runs for.
 const OPEN: ShipmentStatus[] = [
   'PENDING',
