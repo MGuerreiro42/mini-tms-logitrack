@@ -17,8 +17,8 @@ import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import type { Shipment, ShipmentStatus } from '../types';
 import {
-  lateRowClassName,
   partyColumns,
+  riskRowClassName,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -70,7 +70,7 @@ export function ShipmentsTable() {
             data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
-            getRowClassName={lateRowClassName}
+            getRowClassName={riskRowClassName}
             getRowKey={(shipment) => shipment.id}
             getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}
             emptyMessage={
