@@ -626,18 +626,53 @@ describe('ShipmentsService', () => {
   });
 
   describe('slaSummaryForSeller', () => {
-    it('groups DELIVERED shipments by modality and computes on-time rate from the stored dates', async () => {
-      const dueAt = new Date('2026-01-02T00:00:00Z');
-      const deliveredAfter = (hours: number) => ({
-        dueAt,
-        deliveredAt: new Date(dueAt.getTime() + hours * 3_600_000),
-        modality: { code: 'EXPRESS', name: 'Express' },
-      });
+    const dueAt = new Date('2026-01-02T00:00:00Z');
+    let nextId = 0;
+    const delivered = (
+      hours: number | null,
+      code = 'EXPRESS',
+      extra: object = {},
+    ) => ({
+      id: `s-${nextId++}`,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      status: 'DELIVERED',
+      dueAt: hours === null ? null : dueAt,
+      deliveredAt: new Date(dueAt.getTime() + (hours ?? 0) * 3_600_000),
+      modality: { code, name: code.toLowerCase() },
+      ...extra,
+    });
+
+    // The implementation before the metrics core, kept to prove the move changed no output.
+    const legacySlaSummary = (shipments: ReturnType<typeof delivered>[]) => {
+      const byModality = new Map<
+        string,
+        { modalityName: string; deliveredCount: number; onTimeCount: number }
+      >();
+      for (const { dueAt, deliveredAt, modality } of shipments) {
+        if (!dueAt || !deliveredAt) continue;
+        const entry = byModality.get(modality.code) ?? {
+          modalityName: modality.name,
+          deliveredCount: 0,
+          onTimeCount: 0,
+        };
+        entry.deliveredCount += 1;
+        if (deliveredAt <= dueAt) entry.onTimeCount += 1;
+        byModality.set(modality.code, entry);
+      }
+      return Array.from(byModality.entries()).map(([modalityCode, entry]) => ({
+        modalityCode,
+        ...entry,
+        onTimeRate: (entry.onTimeCount / entry.deliveredCount) * 100,
+      }));
+    };
+
+    beforeEach(() => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
-      shipmentFindMany.mockResolvedValue([
-        deliveredAfter(-12),
-        deliveredAfter(6),
-      ]);
+      trackingEventFindMany.mockResolvedValue([]);
+    });
+
+    it('groups DELIVERED shipments by modality and computes on-time rate from the stored dates', async () => {
+      shipmentFindMany.mockResolvedValue([delivered(-12), delivered(6)]);
 
       const since = new Date('2025-12-01T00:00:00Z');
       const result = await shipmentsService.slaSummaryForSeller(
@@ -645,22 +680,19 @@ describe('ShipmentsService', () => {
         since,
       );
 
-      expect(shipmentFindMany).toHaveBeenCalledWith({
-        where: {
-          sellerId: 'seller-1',
-          status: 'DELIVERED',
-          createdAt: { gte: since },
-        },
-        select: {
-          dueAt: true,
-          deliveredAt: true,
-          modality: { select: { code: true, name: true } },
-        },
-      });
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            sellerId: 'seller-1',
+            status: 'DELIVERED',
+            createdAt: { gte: since },
+          },
+        }),
+      );
       expect(result).toEqual([
         {
           modalityCode: 'EXPRESS',
-          modalityName: 'Express',
+          modalityName: 'express',
           deliveredCount: 2,
           onTimeCount: 1,
           onTimeRate: 50,
@@ -669,18 +701,33 @@ describe('ShipmentsService', () => {
     });
 
     it('omits modalities with no slaHours configured', async () => {
-      sellerFindUnique.mockResolvedValue(approvedSeller);
-      shipmentFindMany.mockResolvedValue([
-        {
-          dueAt: null,
-          deliveredAt: new Date('2026-01-01T12:00:00Z'),
-          modality: { code: 'STANDARD', name: 'Standard' },
-        },
-      ]);
+      shipmentFindMany.mockResolvedValue([delivered(null, 'STANDARD')]);
 
       const result = await shipmentsService.slaSummaryForSeller('user-1');
 
       expect(result).toEqual([]);
+    });
+
+    it('returns what the implementation before the metrics core returned', async () => {
+      const rows = [
+        delivered(null, 'STANDARD'),
+        delivered(0, 'EXPRESS'),
+        delivered(3, 'STANDARD'),
+        delivered(-1, 'ECONOMY'),
+        delivered(5, 'EXPRESS', { deliveredAt: null }),
+        delivered(-4, 'STANDARD'),
+        delivered(0.01, 'EXPRESS'),
+      ];
+      shipmentFindMany.mockResolvedValue(rows);
+
+      const result = await shipmentsService.slaSummaryForSeller('user-1');
+
+      expect(result).toEqual(legacySlaSummary(rows));
+      expect(result.map((item) => item.modalityCode)).toEqual([
+        'EXPRESS',
+        'STANDARD',
+        'ECONOMY',
+      ]);
     });
 
     it('throws NotFoundException when the seller is not found', async () => {
