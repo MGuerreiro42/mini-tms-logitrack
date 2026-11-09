@@ -304,10 +304,12 @@ describe('Live map (e2e)', () => {
       expect(Object.keys(body).sort()).toEqual([
         'addressCity',
         'addressState',
+        'carrierName',
         'events',
         'lastPosition',
         'map',
         'modalityName',
+        'sellerName',
         'status',
         'trackingCode',
       ]);

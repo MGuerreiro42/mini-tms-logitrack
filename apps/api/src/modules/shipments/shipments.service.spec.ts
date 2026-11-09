@@ -33,7 +33,6 @@ describe('ShipmentsService', () => {
   const trackingEventCreate = vi.fn();
   const trackingEventFindMany = vi.fn();
   const transaction = vi.fn();
-  const queryRaw = vi.fn();
   const emit = vi.fn();
   const saveIfNewer = vi.fn();
   const latest = vi.fn();
@@ -44,12 +43,16 @@ describe('ShipmentsService', () => {
     addressNeighborhood: 'Bela Vista',
     addressCity: 'São Paulo',
     addressState: 'SP',
-    addressZipCode: '01310-100',
+    addressZipCode: '01310100',
     modalityId: 'modality-1',
     carrierId: 'carrier-1',
   };
 
-  const approvedSeller = { id: 'seller-1', status: 'APPROVED' };
+  const approvedSeller = {
+    id: 'seller-1',
+    userId: 'user-1',
+    status: 'APPROVED',
+  };
 
   // A demo seller at a demo address, so the shipment has a route.
   const demoSeller = { user: { email: DEMO_SELLERS[0].email } };
@@ -62,15 +65,17 @@ describe('ShipmentsService', () => {
     carrierId: 'carrier-1',
     carrier: { companyName: 'Fast Freight' },
     modalityId: 'modality-1',
-    modality: { name: 'Standard', slaHours: 72 },
+    modality: { name: 'Standard' },
     addressStreet: 'Av. Paulista',
     addressNumber: '1000',
     addressComplement: null,
     addressNeighborhood: 'Bela Vista',
     addressCity: 'São Paulo',
     addressState: 'SP',
-    addressZipCode: '01310-100',
+    addressZipCode: '01310100',
     createdAt: new Date('2026-01-01'),
+    dueAt: new Date('2026-01-04'),
+    deliveredAt: null,
     trackingEvents: [],
   };
 
@@ -103,15 +108,17 @@ describe('ShipmentsService', () => {
     ownerId: 'carrier-user-operator',
     owner: { user: { email: 'operator@example.com' } },
     modalityId: 'modality-1',
-    modality: { name: 'Standard', slaHours: null },
+    modality: { name: 'Standard' },
     addressStreet: 'Av. Paulista',
     addressNumber: '1000',
     addressComplement: null,
     addressNeighborhood: 'Bela Vista',
     addressCity: 'São Paulo',
     addressState: 'SP',
-    addressZipCode: '01310-100',
+    addressZipCode: '01310100',
     createdAt: new Date('2026-01-01'),
+    dueAt: null,
+    deliveredAt: null,
     trackingEvents: [],
   };
 
@@ -137,7 +144,6 @@ describe('ShipmentsService', () => {
     trackingEventCreate.mockReset();
     trackingEventFindMany.mockReset();
     transaction.mockReset();
-    queryRaw.mockReset();
     emit.mockReset();
     saveIfNewer.mockReset();
     latest.mockReset();
@@ -177,7 +183,6 @@ describe('ShipmentsService', () => {
               findMany: trackingEventFindMany,
             },
             $transaction: transaction,
-            $queryRaw: queryRaw,
           },
         },
         { provide: EventEmitter2, useValue: { emit } },
@@ -206,10 +211,7 @@ describe('ShipmentsService', () => {
           coverageAreas: {
             some: {
               state: 'SP',
-              OR: [
-                { city: null },
-                { city: { equals: 'São Paulo', mode: 'insensitive' } },
-              ],
+              OR: [{ cityKey: null }, { cityKey: 'sao paulo' }],
             },
           },
           modalities: { some: { modalityId: 'modality-1' } },
@@ -224,12 +226,15 @@ describe('ShipmentsService', () => {
   });
 
   describe('create', () => {
+    const enabledModality = {
+      sellerId: 'seller-1',
+      modalityId: 'modality-1',
+      modality: { slaHours: 24 },
+    };
+
     it('creates a shipment when seller is approved, modality enabled, and carrier matches', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
-      sellerModalityFindUnique.mockResolvedValue({
-        sellerId: 'seller-1',
-        modalityId: 'modality-1',
-      });
+      sellerModalityFindUnique.mockResolvedValue(enabledModality);
       carrierFindFirst.mockResolvedValue({ id: 'carrier-1' });
       shipmentCreate.mockResolvedValue(shipmentWithRelations);
 
@@ -245,16 +250,17 @@ describe('ShipmentsService', () => {
           }),
         }),
       );
+      const { data } = shipmentCreate.mock.calls[0][0];
+      expect(data.dueAt.getTime() - data.createdAt.getTime()).toBe(
+        24 * 3_600_000,
+      );
       expect(result.trackingCode).toBe('TMS-ABC123');
       expect(result.carrierName).toBe('Fast Freight');
     });
 
     it('records the initial PENDING tracking event and notifies the carrier queue', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
-      sellerModalityFindUnique.mockResolvedValue({
-        sellerId: 'seller-1',
-        modalityId: 'modality-1',
-      });
+      sellerModalityFindUnique.mockResolvedValue(enabledModality);
       carrierFindFirst.mockResolvedValue({ id: 'carrier-1' });
       shipmentCreate.mockResolvedValue(shipmentWithRelations);
 
@@ -263,7 +269,13 @@ describe('ShipmentsService', () => {
       expect(shipmentCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            trackingEvents: { create: { status: 'PENDING' } },
+            trackingEvents: {
+              create: {
+                status: 'PENDING',
+                actorId: 'user-1',
+                createdAt: expect.any(Date),
+              },
+            },
           }),
         }),
       );
@@ -348,12 +360,8 @@ describe('ShipmentsService', () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany
         .mockResolvedValueOnce([failed])
-        .mockResolvedValueOnce([late('late-2'), late('late-1')]);
-      shipmentCount.mockResolvedValue(1);
-      queryRaw.mockResolvedValue([
-        { id: 'late-1', total: 7 },
-        { id: 'late-2', total: 7 },
-      ]);
+        .mockResolvedValueOnce([late('late-1'), late('late-2')]);
+      shipmentCount.mockResolvedValueOnce(1).mockResolvedValueOnce(7);
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
@@ -367,7 +375,21 @@ describe('ShipmentsService', () => {
       expect(shipmentFindMany).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
-          where: { id: { in: ['late-1', 'late-2'] } },
+          where: {
+            sellerId: 'seller-1',
+            status: {
+              in: [
+                'PENDING',
+                'ACCEPTED',
+                'COLLECTED',
+                'IN_TRANSIT',
+                'OUT_FOR_DELIVERY',
+              ],
+            },
+            dueAt: { lt: expect.any(Date) },
+          },
+          orderBy: { dueAt: 'asc' },
+          take: 5,
         }),
       );
       expect(result.shipments.map((s) => s.id)).toEqual([
@@ -378,26 +400,27 @@ describe('ShipmentsService', () => {
       expect(result.counts).toEqual({ failed: 1, late: 7 });
     });
 
-    it('caps the list at 5 and skips the late lookup when failures fill it', async () => {
+    it('caps the list at 5, failures first, still counting the late ones', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
-      shipmentFindMany.mockResolvedValueOnce(
-        Array.from({ length: 5 }, (_, i) => ({ ...failed, id: `f-${i}` })),
-      );
-      shipmentCount.mockResolvedValue(8);
-      queryRaw.mockResolvedValue([{ id: 'late-1', total: 1 }]);
+      shipmentFindMany
+        .mockResolvedValueOnce(
+          Array.from({ length: 5 }, (_, i) => ({ ...failed, id: `f-${i}` })),
+        )
+        .mockResolvedValueOnce([late('late-1')]);
+      shipmentCount.mockResolvedValueOnce(8).mockResolvedValueOnce(1);
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
-      expect(shipmentFindMany).toHaveBeenCalledTimes(1);
-      expect(result.shipments).toHaveLength(5);
+      expect(result.shipments.map((s) => s.status)).toEqual(
+        Array(5).fill('FAILED_DELIVERY'),
+      );
       expect(result.counts).toEqual({ failed: 8, late: 1 });
     });
 
     it('reports zero late shipments when none are overdue', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
-      shipmentFindMany.mockResolvedValueOnce([]);
+      shipmentFindMany.mockResolvedValue([]);
       shipmentCount.mockResolvedValue(0);
-      queryRaw.mockResolvedValue([]);
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
@@ -598,20 +621,17 @@ describe('ShipmentsService', () => {
   });
 
   describe('slaSummaryForSeller', () => {
-    it('groups DELIVERED shipments by modality and computes on-time rate from createdAt to the DELIVERED event', async () => {
-      const slaHours = 24;
-      const createdAt = new Date('2026-01-01T00:00:00Z');
+    it('groups DELIVERED shipments by modality and computes on-time rate from the stored dates', async () => {
+      const dueAt = new Date('2026-01-02T00:00:00Z');
       const deliveredAfter = (hours: number) => ({
-        createdAt,
-        modality: { code: 'EXPRESS', name: 'Express', slaHours },
-        trackingEvents: [
-          { createdAt: new Date(createdAt.getTime() + hours * 3_600_000) },
-        ],
+        dueAt,
+        deliveredAt: new Date(dueAt.getTime() + hours * 3_600_000),
+        modality: { code: 'EXPRESS', name: 'Express' },
       });
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany.mockResolvedValue([
-        deliveredAfter(slaHours - 12),
-        deliveredAfter(slaHours + 6),
+        deliveredAfter(-12),
+        deliveredAfter(6),
       ]);
 
       const since = new Date('2025-12-01T00:00:00Z');
@@ -627,14 +647,9 @@ describe('ShipmentsService', () => {
           createdAt: { gte: since },
         },
         select: {
-          createdAt: true,
-          modality: { select: { code: true, name: true, slaHours: true } },
-          trackingEvents: {
-            where: { status: 'DELIVERED' },
-            select: { createdAt: true },
-            orderBy: { createdAt: 'asc' },
-            take: 1,
-          },
+          dueAt: true,
+          deliveredAt: true,
+          modality: { select: { code: true, name: true } },
         },
       });
       expect(result).toEqual([
@@ -652,9 +667,9 @@ describe('ShipmentsService', () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany.mockResolvedValue([
         {
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          modality: { code: 'STANDARD', name: 'Standard', slaHours: null },
-          trackingEvents: [{ createdAt: new Date('2026-01-01T12:00:00Z') }],
+          dueAt: null,
+          deliveredAt: new Date('2026-01-01T12:00:00Z'),
+          modality: { code: 'STANDARD', name: 'Standard' },
         },
       ]);
 
@@ -704,6 +719,8 @@ describe('ShipmentsService', () => {
           shipmentId: 'shipment-1',
           status: 'CANCELLED',
           note: 'Customer gave up',
+          actorId: 'user-1',
+          createdAt: expect.any(Date),
         },
       });
       expect(emit).toHaveBeenCalledWith(
@@ -948,11 +965,13 @@ describe('ShipmentsService', () => {
         },
         data: { ownerId: 'carrier-user-operator', status: 'ACCEPTED' },
       });
-      expect(trackingEventCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { shipmentId: 'shipment-1', status: 'ACCEPTED' },
+      expect(trackingEventCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          shipmentId: 'shipment-1',
+          status: 'ACCEPTED',
+          actorId: 'user-operator',
         }),
-      );
+      });
       expect(emit).toHaveBeenCalledWith(
         'shipment.updated',
         expect.objectContaining({
@@ -1060,6 +1079,28 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(result.status).toBe('COLLECTED');
+    });
+
+    it('stamps deliveredAt with the moment of the DELIVERED event', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindFirst.mockResolvedValue({
+        ...carrierShipment,
+        status: 'OUT_FOR_DELIVERY',
+      });
+      mockTransition({ ...carrierShipment, status: 'DELIVERED' });
+
+      await shipmentsService.updateStatus('user-operator', 'shipment-1', {
+        status: 'DELIVERED',
+      });
+
+      const [{ data: shipment }] = shipmentUpdateManyAndReturn.mock.calls[0];
+      const [{ data: event }] = trackingEventCreate.mock.calls[0];
+      expect(shipment.deliveredAt).toBeInstanceOf(Date);
+      expect(event).toMatchObject({
+        status: 'DELIVERED',
+        actorId: 'user-operator',
+        createdAt: shipment.deliveredAt,
+      });
     });
 
     it('allows the manager to advance a shipment they do not own', async () => {

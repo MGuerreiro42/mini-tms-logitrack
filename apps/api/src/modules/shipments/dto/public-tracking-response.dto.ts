@@ -10,7 +10,7 @@ class PublicTrackingEventDto {
   createdAt: Date;
 }
 
-// Public, unauthenticated shape: no street address, ids or seller/carrier identity.
+// Public, unauthenticated shape: no street address, ids, contacts or actors; company names only.
 export class PublicTrackingResponseDto extends PublicLiveMapDto {
   @ApiProperty()
   trackingCode: string;
@@ -26,6 +26,12 @@ export class PublicTrackingResponseDto extends PublicLiveMapDto {
 
   @ApiProperty()
   modalityName: string;
+
+  @ApiProperty({ description: "The seller's company name" })
+  sellerName: string;
+
+  @ApiProperty({ description: "The carrier's company name" })
+  carrierName: string;
 
   @ApiProperty({ type: [PublicTrackingEventDto] })
   events: PublicTrackingEventDto[];

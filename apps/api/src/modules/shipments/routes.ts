@@ -42,8 +42,12 @@ const ROUTES = new Map(
 const DEMO_SELLER_EMAILS: string[] = DEMO_SELLERS.map(({ email }) => email);
 
 // What findRoute needs to tell a demo shipment apart; works as an include or a select.
+export const routeSellerSelect = {
+  user: { select: { email: true } },
+} satisfies Prisma.SellerSelect;
+
 export const routeSellerInclude = {
-  seller: { select: { user: { select: { email: true } } } },
+  seller: { select: routeSellerSelect },
 } satisfies Prisma.ShipmentInclude;
 
 export type RoutableShipment = Pick<

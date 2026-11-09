@@ -713,13 +713,23 @@ describe('CarriersService', () => {
 
       const result = await carriersService.setCoverageAreas('user-1', [
         { state: 'SP' },
+        { state: 'SP', city: 'São Paulo' },
       ]);
 
       expect(carrierCoverageAreaDeleteMany).toHaveBeenCalledWith({
         where: { carrierId: 'carrier-1' },
       });
+      // Rows sharing a cityKey collapse on the unique index through skipDuplicates.
       expect(carrierCoverageAreaCreateMany).toHaveBeenCalledWith({
-        data: [{ carrierId: 'carrier-1', state: 'SP', city: null }],
+        data: [
+          { carrierId: 'carrier-1', state: 'SP', city: null, cityKey: null },
+          {
+            carrierId: 'carrier-1',
+            state: 'SP',
+            city: 'São Paulo',
+            cityKey: 'sao paulo',
+          },
+        ],
         skipDuplicates: true,
       });
       expect(result).toEqual([{ id: 'area-1', state: 'SP', city: null }]);
