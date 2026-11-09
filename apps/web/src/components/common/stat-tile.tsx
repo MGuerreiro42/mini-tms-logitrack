@@ -18,17 +18,10 @@ interface StatTileProps {
 
 export function StatTile({ label, value, note, problem, href }: StatTileProps) {
   const signal = useChangeSignal(value);
-  const Tile = href ? Link : 'div';
-
-  return (
-    <Tile
-      href={href as string}
-      className={cn(
-        'group relative isolate flex min-w-0 flex-col gap-2 rounded-xl bg-card px-5 py-4.5 shadow-panel',
-        href &&
-          'outline-none transition-colors hover:bg-selected focus-visible:ring-3 focus-visible:ring-ring/50',
-      )}
-    >
+  const tile =
+    'group relative isolate flex min-w-0 flex-col gap-2 rounded-xl bg-card px-5 py-4.5 shadow-panel';
+  const content = (
+    <>
       {signal > 0 && (
         <span
           key={signal}
@@ -63,6 +56,20 @@ export function StatTile({ label, value, note, problem, href }: StatTileProps) {
           {note}
         </p>
       )}
-    </Tile>
+    </>
+  );
+
+  if (!href) return <div className={tile}>{content}</div>;
+  return (
+    // An outline, not a ring: it survives forced-colors mode.
+    <Link
+      href={href}
+      className={cn(
+        tile,
+        'transition-colors outline-ring hover:bg-selected focus-visible:outline-2 focus-visible:outline-offset-2',
+      )}
+    >
+      {content}
+    </Link>
   );
 }
