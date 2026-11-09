@@ -85,11 +85,13 @@ function SellerDashboardView({
         <StatTile
           label="In progress"
           value={counts.inProgress}
+          href={`${ROUTES.sellerShipments}?view=active`}
           note={`${counts.pending} waiting for a carrier`}
         />
         <StatTile
           label="Delivered"
           value={counts.delivered}
+          href={`${ROUTES.sellerShipments}?status=DELIVERED`}
           note={`Of ${plural(counts.total, 'shipment')}`}
         />
         <StatTile
@@ -101,6 +103,7 @@ function SellerDashboardView({
         <StatTile
           label="Needs attention"
           value={attention.counts.failed + attention.counts.late}
+          href={`${ROUTES.sellerShipments}?view=exceptions`}
           note={`${attention.counts.failed} failed, ${attention.counts.late} late`}
         />
       </div>
