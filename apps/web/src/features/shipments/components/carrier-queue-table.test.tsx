@@ -67,7 +67,7 @@ describe('CarrierQueueTable', () => {
     await screen.findByText('Example Store');
     expect(screen.getByText('Another Store')).toBeInTheDocument();
     expect(screen.getByText('São Paulo/SP')).toBeInTheDocument();
-    expect(screen.getByText('operator@example.com')).toBeInTheDocument();
+    expect(screen.getByText('You')).toBeInTheDocument();
   });
 
   it('only shows a Claim button on the unowned row', async () => {
@@ -166,7 +166,7 @@ describe('CarrierQueueTable', () => {
     expect(
       within(unowned).getByRole('button', { name: /^Claim / }),
     ).toBeInTheDocument();
-    expect(owned).toHaveTextContent('Owner: operator@example.com');
+    expect(owned).toHaveTextContent(/Owner: O ?You/);
     expect(within(owned).queryByRole('button', { name: /^Claim / })).toBeNull();
   });
 });
