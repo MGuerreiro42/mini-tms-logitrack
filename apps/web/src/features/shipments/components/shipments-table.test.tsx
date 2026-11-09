@@ -162,6 +162,10 @@ describe('ShipmentsTable', () => {
         peak = Math.max(peak, ++inFlight);
         await new Promise((resolve) => setTimeout(resolve, 20));
         inFlight -= 1;
+        // Collected meanwhile: the existing endpoint's 409.
+        if (params.id === 's-6') {
+          return HttpResponse.json({ message: 'Collected' }, { status: 409 });
+        }
         cancelled.push(params.id as string);
         return HttpResponse.json({});
       }),
@@ -178,18 +182,29 @@ describe('ShipmentsTable', () => {
     await user.click(within(bar).getByRole('button', { name: 'Cancel 6…' }));
     expect(
       screen.getByText(
-        "2 can't be cancelled: they are already with the carrier.",
+        "2 can't be cancelled at this stage. The carrier is told and the shipments leave its queue.",
       ),
     ).toBeVisible();
     await user.click(
       screen.getByRole('button', { name: 'Cancel 6 shipments' }),
     );
 
-    await waitFor(() => expect(cancelled).toHaveLength(6));
+    await waitFor(() => expect(cancelled).toHaveLength(5));
     expect(peak).toBe(4);
     expect(cancelled).not.toContain('s-7');
-    await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Bulk actions' })).toBeNull(),
+    // The failed one stays selected for a retry; clearing returns focus to select-all.
+    const remaining = await screen.findByRole('region', {
+      name: 'Bulk actions',
+    });
+    await waitFor(() => expect(remaining).toHaveTextContent('1 selected'));
+    expect(
+      screen.getByRole('checkbox', { name: 'Select all on this page' }),
+    ).toHaveProperty('indeterminate', true);
+    await user.click(
+      within(remaining).getByRole('button', { name: 'Clear selection' }),
     );
+    expect(
+      screen.getByRole('checkbox', { name: 'Select all on this page' }),
+    ).toHaveFocus();
   });
 });
