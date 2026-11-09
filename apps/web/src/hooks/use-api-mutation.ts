@@ -8,7 +8,7 @@ import {
 import { toast } from 'sonner';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { HTTP_STATUS } from '@/lib/http-status';
-import { toastApiError } from '@/lib/toast-api-error';
+import { apiErrorMessage, toastApiError } from '@/lib/toast-api-error';
 import { hasStatus } from '@/services/api-client';
 
 interface ApiMutationOptions<TInput, TData> {
@@ -16,8 +16,8 @@ interface ApiMutationOptions<TInput, TData> {
   successMessage: string | ((data: TData) => string);
   invalidates: QueryKey;
   surface?: ErrorSurface;
-  // Replaces the server's 409 text when the screen has a plainer one.
-  conflictMessage?: string;
+  // Rewrites the server's 409 text when the screen has a plainer one.
+  conflictMessage?: (serverMessage: string) => string;
 }
 
 export type ErrorSurface = 'toast' | 'inline';
@@ -49,8 +49,9 @@ export function useApiMutation<TInput = void, TData = unknown>({
       const isConflict = hasStatus(error, HTTP_STATUS.CONFLICT);
       if (isConflict) refresh();
       if (surface !== 'toast') return;
-      if (isConflict && conflictMessage) toast.error(conflictMessage);
-      else toastApiError(error);
+      if (isConflict && conflictMessage) {
+        toast.error(conflictMessage(apiErrorMessage(error)));
+      } else toastApiError(error);
     },
   });
 }
