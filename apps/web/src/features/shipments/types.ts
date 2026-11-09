@@ -67,6 +67,7 @@ export interface CarrierShipment extends ShipmentBase {
   sellerEmail: string;
   ownerId: string | null;
   ownerEmail: string | null;
+  ownerName: string | null;
 }
 
 export interface ShipmentMap {
@@ -175,7 +176,9 @@ export function isCancellableBySeller(status: ShipmentStatus): boolean {
   return SELLER_CANCELLABLE.includes(status);
 }
 
-export function isClaimable(shipment: CarrierShipment): boolean {
+export function isClaimable(
+  shipment: Pick<CarrierShipment, 'status' | 'ownerId'>,
+): boolean {
   return shipment.status === 'PENDING' && !shipment.ownerId;
 }
 
