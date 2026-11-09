@@ -1,14 +1,17 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { toast } from 'sonner';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
-import { resetNavigation } from '@/test/navigation';
+import { resetNavigation, router } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import { setViewportWidth } from '@/test/viewport';
 import { CarrierQueueTable } from './carrier-queue-table';
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -87,7 +90,9 @@ describe('CarrierQueueTable', () => {
     renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Example Store');
 
-    expect(screen.getAllByRole('button', { name: /^Claim / })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Claim TMS/ })).toHaveLength(
+      1,
+    );
   });
 
   it('claiming a shipment calls the claim endpoint and does not navigate the row', async () => {
@@ -127,7 +132,9 @@ describe('CarrierQueueTable', () => {
     renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Third Store');
 
-    const [first, second] = screen.getAllByRole('button', { name: /^Claim / });
+    const [first, second] = screen.getAllByRole('button', {
+      name: /^Claim TMS/,
+    });
     await user.click(first);
 
     await waitFor(() => expect(first).toBeDisabled());
@@ -184,6 +191,34 @@ describe('CarrierQueueTable', () => {
     );
   });
 
+  it.each([
+    [200, 'Claimed TMS-AAA111', true],
+    [409, 'Nothing left to claim', false],
+  ] as const)(
+    'claims next and reports a %s',
+    async (status, message, opens) => {
+      server.use(
+        http.post(`${API_URL}/shipments/queue/claim-next`, () =>
+          status === 200
+            ? HttpResponse.json(unownedShipment)
+            : HttpResponse.json({ message: 'No shipment' }, { status }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Claim next · 1' }),
+      );
+
+      const toastFor = status === 200 ? toast.success : toast.error;
+      await waitFor(() => expect(toastFor).toHaveBeenCalledWith(message));
+      expect(router.push).toHaveBeenCalledTimes(opens ? 1 : 0);
+      if (opens)
+        expect(router.push).toHaveBeenCalledWith('/carrier/queue/shipment-1');
+    },
+  );
+
   it('reads an old ?status= link as a filter with no tab selected', async () => {
     resetNavigation('/carrier/queue?status=ACCEPTED');
     renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
@@ -207,9 +242,11 @@ describe('CarrierQueueTable', () => {
     expect(unowned).toHaveTextContent('Example Store');
     expect(unowned).toHaveTextContent('Owner: Unclaimed');
     expect(
-      within(unowned).getByRole('button', { name: /^Claim / }),
+      within(unowned).getByRole('button', { name: /^Claim TMS/ }),
     ).toBeInTheDocument();
     expect(owned).toHaveTextContent(/Owner: O ?You/);
-    expect(within(owned).queryByRole('button', { name: /^Claim / })).toBeNull();
+    expect(
+      within(owned).queryByRole('button', { name: /^Claim TMS/ }),
+    ).toBeNull();
   });
 });

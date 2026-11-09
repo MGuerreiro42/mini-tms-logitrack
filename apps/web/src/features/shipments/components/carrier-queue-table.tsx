@@ -13,6 +13,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
+import { useClaimNext } from '../hooks/use-claim-next';
 import { useClaimShipment } from '../hooks/use-claim-shipment';
 import { useShipmentQueue } from '../hooks/use-shipment-queue';
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
@@ -79,13 +80,24 @@ export function CarrierQueueTable({
   );
   const now = useNow(SLA_REFRESH_MS);
   const claim = useClaimShipment();
+  const next = useClaimNext();
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Queue"
         description="Shared across your company. Claim an unowned shipment to work on it."
-        action={<LiveIndicator live={live} />}
+        action={
+          <div className="flex items-center gap-4">
+            <LiveIndicator live={live} />
+            <Button
+              disabled={!counts?.unclaimed || next.isPending}
+              onClick={next.claimNext}
+            >
+              Claim next · {counts?.unclaimed ?? 0}
+            </Button>
+          </div>
+        }
       />
       <OfflineBanner status={live.status} />
       <ShipmentListToolbar
