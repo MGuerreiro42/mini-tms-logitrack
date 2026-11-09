@@ -5,16 +5,9 @@ import Link from 'next/link';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { FormField } from '@/components/common/form-field';
+import { UfSelect } from '@/components/common/uf-select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { formatCep, isCep, toDigits, withMask } from '@/lib/br-documents';
 import { BR_STATES } from '@/lib/br-states';
 import { ROUTES } from '@/lib/routes';
@@ -91,51 +84,24 @@ export function ShipmentAddressForm({
             placeholder="00000-000"
             {...withMask(field('addressZipCode'), formatCep)}
           />
-          <div className="space-y-1.5">
-            <Label htmlFor="addressState">State (UF)</Label>
-            <Controller
-              control={control}
-              name="addressState"
-              render={({ field: select, fieldState: { error } }) => (
-                <>
-                  <Select
-                    name={select.name}
-                    value={select.value ?? ''}
-                    onValueChange={select.onChange}
-                  >
-                    <SelectTrigger
-                      id="addressState"
-                      ref={select.ref}
-                      onBlur={select.onBlur}
-                      aria-invalid={Boolean(error)}
-                      aria-describedby={
-                        error ? 'addressState-error' : undefined
-                      }
-                      className="w-full"
-                    >
-                      <SelectValue placeholder="Pick a state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BR_STATES.map((uf) => (
-                        <SelectItem key={uf} value={uf}>
-                          {uf}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {error && (
-                    <p
-                      id="addressState-error"
-                      role="alert"
-                      className="text-sm text-destructive"
-                    >
-                      {error.message}
-                    </p>
-                  )}
-                </>
-              )}
-            />
-          </div>
+          <FormField
+            id="addressState"
+            label="State (UF)"
+            error={errors.addressState?.message}
+            control={(wiring) => (
+              <Controller
+                control={control}
+                name="addressState"
+                render={({ field: select }) => (
+                  <UfSelect
+                    {...wiring}
+                    {...select}
+                    placeholder="Pick a state"
+                  />
+                )}
+              />
+            )}
+          />
           <div className="md:col-span-2">
             <FormField label="City" {...field('addressCity')} />
           </div>
