@@ -4,10 +4,10 @@ import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
-  StatusFilterTabs,
   statusFilterOptions,
   statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+  ViewTabs,
+} from '@/components/common/view-tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
@@ -46,7 +46,7 @@ export function WebhookDeliveriesTable({
 }: {
   liveStatus: LiveStatus;
 }) {
-  const { filters, isFiltered, setFilter, setPage, params } =
+  const { filters, isFiltered, setFilters, setPage, params } =
     useFilteredPagination(
       { status: ALL as StatusFilter<WebhookDeliveryStatus> },
       { status: STATUS_VALUES },
@@ -62,10 +62,10 @@ export function WebhookDeliveriesTable({
         <h2 id="delivery-log-title" className="text-base font-semibold">
           Delivery log
         </h2>
-        <StatusFilterTabs
+        <ViewTabs
           options={STATUS_OPTIONS}
-          value={filters.status}
-          onChange={(value) => setFilter('status', value)}
+          filters={filters}
+          onChange={setFilters}
         />
       </div>
       <QueryState

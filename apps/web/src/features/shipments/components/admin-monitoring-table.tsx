@@ -18,7 +18,7 @@ import {
   type StatusFilter,
   statusFilterOptions,
   statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+} from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { useRecentCount } from '@/hooks/use-recent-count';
