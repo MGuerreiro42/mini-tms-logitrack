@@ -953,6 +953,27 @@ describe('ShipmentsService', () => {
     });
   });
 
+  describe('claimNext', () => {
+    it('moves on to the next candidate when one is lost, and stops at 409', async () => {
+      carrierUserFindUnique.mockResolvedValue(carrierOperator);
+      shipmentFindMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+      const claim = vi
+        .spyOn(shipmentsService, 'claim')
+        .mockRejectedValueOnce(new ConflictException())
+        .mockResolvedValueOnce(carrierShipment as never);
+
+      await expect(shipmentsService.claimNext('u')).resolves.toBe(
+        carrierShipment,
+      );
+      expect(claim.mock.calls.map(([, id]) => id)).toEqual(['a', 'b']);
+
+      claim.mockRejectedValue(new ConflictException());
+      await expect(shipmentsService.claimNext('u')).rejects.toThrow(
+        'No shipment is waiting to be claimed',
+      );
+    });
+  });
+
   describe('claim', () => {
     const pendingShipment = {
       ...carrierShipment,

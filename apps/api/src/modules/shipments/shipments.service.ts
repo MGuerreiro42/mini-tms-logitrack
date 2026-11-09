@@ -120,6 +120,7 @@ const eligibleCarrierWhere = (
 });
 
 const ATTENTION_LIMIT = 5;
+const CLAIM_NEXT_TRIES = 3;
 
 // Device clocks drift; anything further ahead would outrank every honest ping until then.
 const POSITION_MAX_LEAD_MS = 5_000;
@@ -636,6 +637,32 @@ export class ShipmentsService {
       include: carrierShipmentInclude,
     });
     return toCarrierShipmentResponseDto(updated);
+  }
+
+  // Up to CLAIM_NEXT_TRIES candidates, so a lost race moves on instead of failing at once.
+  async claimNext(userId: string): Promise<CarrierShipmentResponseDto> {
+    const carrierUser = await this.findCarrierUserOrThrow(userId);
+    const candidates = await this.prisma.shipment.findMany({
+      where: {
+        carrierId: carrierUser.carrierId,
+        status: ShipmentStatus.PENDING,
+        ownerId: null,
+      },
+      select: { id: true },
+      orderBy: [
+        { dueAt: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'asc' },
+      ],
+      take: CLAIM_NEXT_TRIES,
+    });
+    for (const { id } of candidates) {
+      try {
+        return await this.claim(userId, id);
+      } catch (error) {
+        if (!(error instanceof ConflictException)) throw error;
+      }
+    }
+    throw new ConflictException('No shipment is waiting to be claimed');
   }
 
   async updateStatus(
