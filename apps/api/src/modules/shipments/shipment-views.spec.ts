@@ -6,6 +6,24 @@ describe('shipment views', () => {
     expect(parts.some((part) => 'addressZipCode' in part)).toBe(false);
   });
 
+  it('adds the window as a createdAt lower bound', () => {
+    const now = new Date('2026-01-31T00:00:00Z');
+    expect(
+      listWhere(
+        { sellerId: 's' },
+        { window: '30d' },
+        { now, carrierUserId: null, includeSeller: false },
+      ),
+    ).toEqual({
+      AND: [
+        {
+          sellerId: 's',
+          createdAt: { gte: new Date('2026-01-01T00:00:00Z') },
+        },
+      ],
+    });
+  });
+
   it('refuses "mine" without a carrier user', () => {
     expect(() =>
       listWhere(

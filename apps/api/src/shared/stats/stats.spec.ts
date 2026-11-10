@@ -5,6 +5,7 @@ import {
   daysAgo,
   hoursBetween,
   percentage,
+  windowSince,
 } from './stats';
 
 describe('stats', () => {
@@ -42,6 +43,16 @@ describe('stats', () => {
       createdAt: { gte: new Date('2026-01-01T00:00:00Z') },
     });
     vi.useRealTimers();
+  });
+
+  it('windowSince prefers the named window over since', () => {
+    const now = new Date('2026-01-31T00:00:00Z');
+    const since = new Date('2026-01-01T00:00:00Z');
+    expect(windowSince({ window: '7d', since }, now)).toEqual(
+      new Date('2026-01-24T00:00:00Z'),
+    );
+    expect(windowSince({ since }, now)).toBe(since);
+    expect(windowSince({}, now)).toBeUndefined();
   });
 
   it('countByStatus fills every status with 0 and overlays the groups', () => {
