@@ -8,6 +8,7 @@ import {
 } from '@/components/common/charts/pipeline-bar';
 import { EmptyState } from '@/components/common/feedback-state';
 import { LiveIndicator } from '@/components/common/live-indicator';
+import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
@@ -26,12 +27,6 @@ import {
 } from '@/hooks/use-stats-window';
 import { formatDuration } from '@/lib/format-duration';
 import type { LiveConnection } from '@/lib/live-status';
-import {
-  hasEnoughData,
-  notEnoughNote,
-  ON_TIME_TARGET,
-  trendDirection,
-} from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
@@ -41,7 +36,7 @@ import {
   type SellerDashboardData,
   useSellerDashboard,
 } from '../hooks/use-seller-dashboard';
-import type { SellerMetrics, Shipment, ShipmentAttention } from '../types';
+import type { Shipment, ShipmentAttention } from '../types';
 import { ActivityFeed } from './activity-feed';
 import { PanelLink } from './panel-link';
 
@@ -233,32 +228,6 @@ function SellerDashboardView({
         </Panel>
       </div>
     </div>
-  );
-}
-
-function OnTimeTile({
-  onTime: { n, rate, trend },
-  scope,
-}: {
-  onTime: SellerMetrics['onTime'];
-  scope: string;
-}) {
-  const enough = hasEnoughData(n) && rate !== null;
-  return (
-    <StatTile
-      label="On time"
-      scope={scope}
-      value={enough ? `${rate.toFixed(1)}%` : '—'}
-      tone={enough && rate < ON_TIME_TARGET ? 'caution' : undefined}
-      sparkline={enough ? trend : undefined}
-      target={ON_TIME_TARGET}
-      note={
-        enough
-          ? `n=${n} · target ${ON_TIME_TARGET}%`
-          : notEnoughNote(n, 'deliveries')
-      }
-      definition={`Delivered by the due time ÷ deliveries with a due time, among shipments created in the last ${scope} (n=${n}). Shipments without an SLA are left out. Trend over the window: ${trendDirection(trend)}.`}
-    />
   );
 }
 
