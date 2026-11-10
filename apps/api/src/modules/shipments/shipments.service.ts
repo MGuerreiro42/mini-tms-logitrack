@@ -374,11 +374,15 @@ export class ShipmentsService {
   ): Promise<SlaSummaryItemResponseDto[]> {
     const seller = await this.findSellerOrThrow(userId);
 
-    const rows = await loadMetricRows(this.prisma, {
-      sellerId: seller.id,
-      status: ShipmentStatus.DELIVERED,
-      ...createdSince(since),
-    });
+    const rows = await loadMetricRows(
+      this.prisma,
+      {
+        sellerId: seller.id,
+        status: ShipmentStatus.DELIVERED,
+        ...createdSince(since),
+      },
+      { events: false },
+    );
 
     // Grouping only the samples keeps the modality order of the first on-time sample.
     const byModality = groupBy(
