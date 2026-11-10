@@ -1,27 +1,65 @@
 'use client';
 
-import { ArrowRightIcon } from 'lucide-react';
+import { ArrowRightIcon, InfoIcon } from 'lucide-react';
 import Link from 'next/link';
+import { Popover } from 'radix-ui';
 import type { ReactNode } from 'react';
+import { Sparkline } from '@/components/common/charts/sparkline';
 import { useChangeSignal } from '@/hooks/use-change-signal';
 import { cn } from '@/lib/utils';
+
+const TONE_CLASS = {
+  critical: 'text-destructive',
+  caution: 'text-notice-foreground',
+};
 
 interface StatTileProps {
   label: string;
   // A primitive, so a live change can be told apart from a re-render.
   value: string | number;
+  // "now" or the window ("30 d"), after the label.
+  scope?: string;
   note?: ReactNode;
-  problem?: boolean;
-  // The list filtered to exactly this number.
+  // Colours the value only, never the card; the label and note carry the meaning.
+  tone?: keyof typeof TONE_CLASS;
+  // The formula, n and window, behind an info button.
+  definition?: ReactNode;
+  sparkline?: (number | null)[];
+  target?: number;
+  // The list filtered to exactly this number, and what opening it does.
   href?: string;
+  linkLabel?: string;
 }
 
-export function StatTile({ label, value, note, problem, href }: StatTileProps) {
+export function StatTile({
+  label,
+  value,
+  scope,
+  note,
+  tone,
+  definition,
+  sparkline,
+  target,
+  href,
+  linkLabel,
+}: StatTileProps) {
   const signal = useChangeSignal(value);
-  const tile =
-    'group relative isolate flex min-w-0 flex-col gap-2 rounded-xl bg-card px-5 py-4.5 shadow-panel';
-  const content = (
+  const heading = (
     <>
+      {label}
+      {scope && <span className="text-muted-foreground/70"> · {scope}</span>}
+    </>
+  );
+
+  return (
+    <div
+      className={cn(
+        'group relative isolate flex min-w-0 flex-col gap-2 rounded-xl bg-card px-5 py-4.5 shadow-panel',
+        // An outline, not a ring: it survives forced-colors mode.
+        href &&
+          'transition-colors outline-ring has-[a:hover]:bg-selected has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2',
+      )}
+    >
       {signal > 0 && (
         <span
           key={signal}
@@ -29,47 +67,79 @@ export function StatTile({ label, value, note, problem, href }: StatTileProps) {
           className="pointer-events-none absolute inset-0 -z-10 animate-glow rounded-xl bg-live-halo opacity-0"
         />
       )}
-      <p className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
-        {label}
-        {href && (
-          <ArrowRightIcon
-            aria-hidden
-            className="size-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          />
+      <div className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
+        {href ? (
+          // Stretched over the card, so the info button stays a sibling, not a nested control.
+          <Link
+            href={href}
+            aria-label={[`${label}, ${value}`, linkLabel]
+              .filter(Boolean)
+              .join('. ')}
+            className="outline-none after:absolute after:inset-0 after:rounded-xl"
+          >
+            {heading}
+          </Link>
+        ) : (
+          <p>{heading}</p>
         )}
-      </p>
-      <p className="text-[34px] leading-none font-semibold tracking-[-0.02em]">
-        <span
-          key={signal}
-          className={cn('inline-block', signal > 0 && 'animate-value-in')}
-        >
-          {value}
-        </span>
-      </p>
-      {note && (
+        {definition ? (
+          <Definition label={label}>{definition}</Definition>
+        ) : (
+          href && (
+            <ArrowRightIcon
+              aria-hidden
+              className="size-4 opacity-0 transition-opacity group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
+            />
+          )
+        )}
+      </div>
+      <div className="flex items-end justify-between gap-3">
         <p
           className={cn(
-            'truncate text-xs',
-            problem ? 'text-destructive' : 'text-muted-foreground',
+            'text-[34px] leading-none font-semibold tracking-[-0.02em]',
+            tone && TONE_CLASS[tone],
           )}
         >
-          {note}
+          <span
+            key={signal}
+            className={cn('inline-block', signal > 0 && 'animate-value-in')}
+          >
+            {value}
+          </span>
         </p>
-      )}
-    </>
+        {sparkline && <Sparkline values={sparkline} target={target} />}
+      </div>
+      {note && <p className="truncate text-xs text-muted-foreground">{note}</p>}
+    </div>
   );
+}
 
-  if (!href) return <div className={tile}>{content}</div>;
+function Definition({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
-    // An outline, not a ring: it survives forced-colors mode.
-    <Link
-      href={href}
-      className={cn(
-        tile,
-        'transition-colors outline-ring hover:bg-selected focus-visible:outline-2 focus-visible:outline-offset-2',
-      )}
-    >
-      {content}
-    </Link>
+    <Popover.Root>
+      <Popover.Trigger
+        aria-label={`About ${label}`}
+        className="relative z-10 -m-1 grid size-6 place-items-center rounded-full text-muted-foreground outline-ring hover:text-foreground focus-visible:outline-2 pointer-coarse:size-8"
+      >
+        <InfoIcon aria-hidden className="size-3.5" />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="end"
+          sideOffset={6}
+          collisionPadding={16}
+          className="z-50 max-w-72 rounded-lg bg-popover p-3 text-[13px] leading-relaxed text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none"
+        >
+          {children}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

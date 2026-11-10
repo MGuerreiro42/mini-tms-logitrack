@@ -98,7 +98,7 @@ function SellerDashboardView({
           label="On time"
           value={onTime.rate === null ? '—' : `${onTime.rate.toFixed(1)}%`}
           note={onTimeNote(onTime)}
-          problem={onTime.late > 0}
+          tone={onTime.late > 0 ? 'caution' : undefined}
         />
         <StatTile
           label="Needs attention"

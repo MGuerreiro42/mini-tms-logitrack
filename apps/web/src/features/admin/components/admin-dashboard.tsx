@@ -130,7 +130,7 @@ function ShipmentTiles({
             : '—'
         }
         note={failed ? FAILED_NOTE : 'Across all carriers'}
-        problem={failed}
+        tone={failed ? 'critical' : undefined}
       />
       <StatTile
         label="Delivered"
@@ -141,7 +141,7 @@ function ShipmentTiles({
             ? FAILED_NOTE
             : counts && `Of ${plural(sumRecord(counts), 'shipment')}`
         }
-        problem={failed}
+        tone={failed ? 'critical' : undefined}
       />
     </>
   );
