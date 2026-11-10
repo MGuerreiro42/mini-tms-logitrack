@@ -4,8 +4,6 @@ import { cn } from '@/lib/utils';
 
 interface PanelProps {
   title: ReactNode;
-  // For a region inside that names itself after the panel (aria-labelledby).
-  titleId?: string;
   description?: string;
   aside?: ReactNode;
   footer?: ReactNode;
@@ -17,7 +15,6 @@ interface PanelProps {
 
 export function Panel({
   title,
-  titleId,
   description,
   aside,
   footer,
@@ -29,9 +26,7 @@ export function Panel({
   return (
     <Card className={cn('gap-4 px-5.5', className)}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h2 id={titleId} className="text-base font-semibold">
-          {title}
-        </h2>
+        <h2 className="text-base font-semibold">{title}</h2>
         {description && !isEmpty && (
           <p className="text-[13px] text-muted-foreground">{description}</p>
         )}

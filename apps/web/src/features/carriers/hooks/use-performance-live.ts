@@ -4,15 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { useSocketSubscription } from '@/hooks/use-socket-subscription';
-import type { LiveConnection } from '@/lib/live-status';
 import { throttle } from '@/lib/throttle';
 import { getSocket } from '@/services/websocket-client';
 import { carrierKeys } from '../api/keys';
 
 // Aggregates move slowly: one refetch per 10 s is enough, however busy the queue.
-export const PERFORMANCE_REFRESH_MS = 10_000;
+const REFRESH_THROTTLE_MS = 10_000;
 
-export function usePerformanceLive(): LiveConnection {
+export function usePerformanceLive() {
   const queryClient = useQueryClient();
   const [refresh] = useState(() =>
     throttle(() => {
@@ -22,22 +21,16 @@ export function usePerformanceLive(): LiveConnection {
       queryClient.invalidateQueries({
         queryKey: [...carrierKeys.me(), 'operator-ranking'],
       });
-    }, PERFORMANCE_REFRESH_MS),
+    }, REFRESH_THROTTLE_MS),
   );
-  const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
 
   useEffect(() => refresh.cancel, [refresh]);
 
-  const status = useSocketSubscription({
+  return useSocketSubscription({
     getSocket,
     connectionKey: useSession()?.token,
     subscriptions: [{ event: 'subscribe:queue' }],
     updateEvent: 'shipment:updated',
-    onUpdate: (payload) => {
-      refresh();
-      if (payload) setLastEventAt(new Date());
-    },
+    onUpdate: refresh,
   });
-
-  return { status, lastEventAt };
 }

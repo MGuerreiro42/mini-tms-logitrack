@@ -1,7 +1,7 @@
 'use client';
 
-import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { useSession } from '@/hooks/use-session';
+import { initialsFor } from '@/lib/initials';
 import { type CarrierShipment, isClaimable } from '../types';
 
 // "Ana Souza" reads "Ana S."; a single-word name stays as it is.
@@ -38,7 +38,12 @@ export function OwnerChip({
         : ownerEmail;
   return (
     <span className="inline-flex items-center gap-1.5" title={ownerEmail}>
-      <InitialsAvatar name={ownerName ?? ownerEmail} />
+      <span
+        aria-hidden
+        className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold text-foreground"
+      >
+        {initialsFor(ownerName ?? ownerEmail)}
+      </span>
       {label}
     </span>
   );

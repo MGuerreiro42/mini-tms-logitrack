@@ -4,6 +4,7 @@ import type {
   ApprovalStatus,
   ApprovalStatusCounts,
   ShipmentStatus,
+  ShipmentStatusCounts,
 } from '@/types/status';
 
 export type { ApprovalStatusCounts };

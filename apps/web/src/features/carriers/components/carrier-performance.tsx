@@ -1,10 +1,7 @@
 'use client';
 
 import { EmptyState } from '@/components/common/feedback-state';
-import {
-  LiveIndicator,
-  OfflineBanner,
-} from '@/components/common/live-indicator';
+import { LiveIndicator } from '@/components/common/live-indicator';
 import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { QueryState } from '@/components/common/query-state';
@@ -17,17 +14,20 @@ import { cn } from '@/lib/utils';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import { usePerformanceLive } from '../hooks/use-performance-live';
-import type { CarrierPerformance as CarrierPerformanceData } from '../types';
+import type {
+  CarrierPerformance as CarrierPerformanceData,
+  TeamMember,
+} from '../types';
 import { StageDurationChart } from './stage-duration-chart';
 import { TeamTable } from './team-table';
 
 export function CarrierPerformance() {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
-  const live = usePerformanceLive();
-  const query = useCarrierPerformance(statsWindow, live.status);
-  const team = useOperatorRanking(statsWindow, live.status);
+  const query = useCarrierPerformance(statsWindow);
+  const team = useOperatorRanking(statsWindow);
   const loadingNext = query.isPlaceholderData || team.isPlaceholderData;
+  const live = usePerformanceLive();
 
   return (
     <div className="flex flex-col gap-5">
@@ -36,12 +36,11 @@ export function CarrierPerformance() {
         description="How your company's shipments are performing."
         action={
           <div className="flex flex-wrap items-center gap-3">
-            <LiveIndicator live={live} />
+            <LiveIndicator live={{ status: live, lastEventAt: null }} />
             <WindowSelector value={statsWindow} onChange={setStatsWindow} />
           </div>
         }
       />
-      <OfflineBanner status={live.status} />
       <QueryState query={query} errorMessage="Couldn't load performance data.">
         {(data) => (
           // The previous window's numbers stay, dimmed, until the new ones arrive.
@@ -57,7 +56,7 @@ export function CarrierPerformance() {
             ) : (
               <CarrierPerformanceView
                 data={data}
-                team={team}
+                team={team.data}
                 scope={windowLabel(statsWindow)}
               />
             )}
@@ -74,7 +73,7 @@ function CarrierPerformanceView({
   scope,
 }: {
   data: CarrierPerformanceData;
-  team: ReturnType<typeof useOperatorRanking>;
+  team?: TeamMember[];
   scope: string;
 }) {
   const { medianDelivery, firstAttempt, claim } = data;
@@ -130,10 +129,7 @@ function CarrierPerformanceView({
       </div>
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <StageDurationChart stages={data.stages} />
-        {/* Its own state, so a failed team keeps the grid's two columns. */}
-        <QueryState query={team} errorMessage="Couldn't load the team.">
-          {(members) => <TeamTable members={members} scope={scope} />}
-        </QueryState>
+        {team && <TeamTable members={team} scope={scope} />}
       </div>
     </div>
   );

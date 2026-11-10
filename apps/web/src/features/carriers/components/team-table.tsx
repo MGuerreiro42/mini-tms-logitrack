@@ -1,7 +1,6 @@
 'use client';
 
-import { Fragment, useId } from 'react';
-import { InitialsAvatar } from '@/components/common/initials-avatar';
+import { Fragment } from 'react';
 import { Panel } from '@/components/common/panel';
 import {
   Table,
@@ -12,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSession } from '@/hooks/use-session';
+import { initialsFor } from '@/lib/initials';
 import { hasEnoughData } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '../types';
@@ -26,22 +26,17 @@ export function TeamTable({
   scope: string;
 }) {
   const email = useSession()?.email;
-  const titleId = useId();
   // The API sends operators first, so the manager section starts at the first manager.
   const firstManager = members.findIndex((member) => member.role === 'MANAGER');
 
   return (
-    <Panel
-      title="Team"
-      titleId={titleId}
-      description={`Owned shipments · ${scope}`}
-    >
-      <Table aria-labelledby={titleId}>
+    <Panel title="Team" description={`Owned shipments · ${scope}`}>
+      <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead className="text-right">Active</TableHead>
-            <TableHead className="text-right max-sm:hidden">Claimed</TableHead>
+            <TableHead className="text-right">Claimed</TableHead>
             <TableHead className="text-right">Delivered</TableHead>
             <TableHead className="text-right">On time</TableHead>
           </TableRow>
@@ -54,13 +49,12 @@ export function TeamTable({
               <Fragment key={member.carrierUserId}>
                 {index === firstManager && (
                   <TableRow className="hover:bg-transparent">
-                    <th
+                    <TableCell
                       colSpan={5}
-                      scope="colgroup"
-                      className="px-2 pt-4 pb-2 text-left text-xs font-semibold text-muted-foreground"
+                      className="pt-4 text-xs font-semibold text-muted-foreground"
                     >
                       Manager
-                    </th>
+                    </TableCell>
                   </TableRow>
                 )}
                 <TableRow className={cn(you && 'bg-selected')}>
@@ -69,12 +63,17 @@ export function TeamTable({
                       className="inline-flex items-center gap-2"
                       title={member.email}
                     >
-                      <InitialsAvatar name={member.name ?? member.email} />
+                      <span
+                        aria-hidden
+                        className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-semibold"
+                      >
+                        {initialsFor(member.name ?? member.email)}
+                      </span>
                       {you ? 'You' : (member.name ?? member.email)}
                     </span>
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>{member.active}</TableCell>
-                  <TableCell className={cn(NUMBER_CELL, 'max-sm:hidden')}>
+                  <TableCell className={NUMBER_CELL}>
                     {member.claimed}
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>
