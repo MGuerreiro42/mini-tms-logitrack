@@ -4,6 +4,7 @@ import type {
   PositionEvent,
 } from '@/features/tracking/types';
 import type { StatsWindow } from '@/hooks/use-stats-window';
+import type { OnTimeTrend, Rate } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ShipmentStatus,
@@ -13,16 +14,9 @@ import type {
 
 export type { ShipmentStatus, ShipmentStatusCounts };
 
-// n is the denominator; rate is null at n = 0 (spec 07 FR-008).
-export interface Rate {
-  n: number;
-  count: number;
-  rate: number | null;
-}
-
 export interface SellerMetrics {
   delivered: number;
-  onTime: Rate & { trend: (number | null)[] };
+  onTime: OnTimeTrend;
   byModality: (Rate & { modalityCode: string; modalityName: string })[];
 }
 
