@@ -2,11 +2,10 @@
 
 import { MetricBarChart } from '@/components/common/charts/metric-bar-chart';
 import { Panel } from '@/components/common/panel';
+import { ON_TIME_TARGET } from '@/lib/metrics';
 import type { SlaSummaryItem } from '../types';
 
 const percent = (value: number) => `${value.toFixed(0)}%`;
-
-const SLA_TARGET = 90;
 
 export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
   return (
@@ -23,7 +22,10 @@ export function SlaSummaryChart({ data }: { data: SlaSummaryItem[] }) {
         orientation="vertical"
         valueDomain={[0, 100]}
         formatTick={percent}
-        target={{ value: SLA_TARGET, label: `Target ${percent(SLA_TARGET)}` }}
+        target={{
+          value: ON_TIME_TARGET,
+          label: `Target ${percent(ON_TIME_TARGET)}`,
+        }}
         formatLabel={(row) => percent(row.onTimeRate)}
         formatTooltip={(row) =>
           `${percent(row.onTimeRate)} on time (${row.onTimeCount}/${row.deliveredCount} delivered)`
