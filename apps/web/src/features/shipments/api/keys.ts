@@ -1,3 +1,4 @@
+import type { StatsWindow } from '@/hooks/use-stats-window';
 import type {
   AdminStatusCountsQuery,
   ListAdminShipmentsQuery,
@@ -22,8 +23,10 @@ export const shipmentKeys = {
     [...shipmentKeys.all, 'admin', 'status-counts', query] as const,
   adminViewCounts: (query: AdminStatusCountsQuery) =>
     [...shipmentKeys.all, 'admin', 'view-counts', query] as const,
-  statusCounts: () => [...shipmentKeys.all, 'status-counts'] as const,
-  viewCounts: () => [...shipmentKeys.all, 'view-counts'] as const,
+  statusCounts: (window?: StatsWindow) =>
+    [...shipmentKeys.all, 'status-counts', window] as const,
+  viewCounts: (window?: StatsWindow) =>
+    [...shipmentKeys.all, 'view-counts', window] as const,
   queueViewCounts: () => [...shipmentKeys.all, 'queue', 'view-counts'] as const,
   attention: () => [...shipmentKeys.all, 'attention'] as const,
   activity: () => [...shipmentKeys.all, 'activity'] as const,

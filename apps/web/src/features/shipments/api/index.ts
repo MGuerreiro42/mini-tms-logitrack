@@ -1,3 +1,4 @@
+import type { StatsWindow } from '@/hooks/use-stats-window';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
@@ -67,16 +68,24 @@ export function getShipment(
 
 export function getShipmentStatusCounts(
   token: string,
+  window?: StatsWindow,
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
-    '/shipments/status-counts',
+    `/shipments/status-counts${toQueryString({ window })}`,
     undefined,
     token,
   );
 }
 
-export function getShipmentViewCounts(token: string): Promise<ViewCounts> {
-  return apiClient<ViewCounts>('/shipments/view-counts', undefined, token);
+export function getShipmentViewCounts(
+  token: string,
+  window?: StatsWindow,
+): Promise<ViewCounts> {
+  return apiClient<ViewCounts>(
+    `/shipments/view-counts${toQueryString({ window })}`,
+    undefined,
+    token,
+  );
 }
 
 export function getQueueViewCounts(
