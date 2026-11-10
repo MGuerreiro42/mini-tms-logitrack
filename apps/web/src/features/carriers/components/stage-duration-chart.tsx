@@ -1,49 +1,31 @@
-'use client';
-
-import { MetricBarChart } from '@/components/common/charts/metric-bar-chart';
+import { StageChart } from '@/components/common/charts/stage-chart';
 import { Panel } from '@/components/common/panel';
-import { formatDuration } from '@/lib/format-duration';
-import { SHIPMENT_STATUS } from '@/lib/status-colors';
+import type { ShipmentStatus } from '@/types/status';
 import type { StageDuration } from '../types';
 
-const NBSP = '\u00a0';
+// Each stage is named by the status the shipment sits in (spec 07 FR-016).
+const STAGE_LABEL: Partial<Record<ShipmentStatus, string>> = {
+  PENDING: 'Claim wait',
+  ACCEPTED: 'Pickup wait',
+  COLLECTED: 'At origin',
+  IN_TRANSIT: 'Line haul',
+  OUT_FOR_DELIVERY: 'Last mile',
+};
 
-// The axis wraps on spaces; only the one after the arrow may break ("Collected →" / "In transit").
-function unbreakable(label: string): string {
-  return label.replaceAll(' ', NBSP);
-}
-
-export function StageDurationChart({ data }: { data: StageDuration[] }) {
-  const rows = data.map((stage) => ({
-    label: `${unbreakable(SHIPMENT_STATUS[stage.fromStatus].label)}${NBSP}→ ${unbreakable(SHIPMENT_STATUS[stage.toStatus].label)}`,
-    avgHours: stage.avgHours ?? 0,
-    hasData: stage.avgHours !== null,
-    display:
-      stage.avgHours === null ? 'no data' : formatDuration(stage.avgHours),
-    sampleCount: stage.sampleCount,
-  }));
-
+export function StageDurationChart({ stages }: { stages: StageDuration[] }) {
   return (
     <Panel
       title="Time per stage"
-      description="Average, happy path"
-      isEmpty={rows.every((row) => !row.hasData)}
-      emptyMessage="Not enough data yet. The funnel fills in as shipments move through each stage."
+      description="Budgets are shares of the median SLA"
+      isEmpty={stages.every((stage) => stage.n === 0)}
+      emptyMessage="Not enough data yet. Stages fill in as shipments move through them."
     >
-      <MetricBarChart
-        data={rows}
-        categoryKey="label"
-        valueKey="avgHours"
-        valueLabel="Avg. duration"
-        orientation="horizontal"
-        emphasis="max"
-        className="h-64"
-        formatLabel={(row) => row.display}
-        formatTooltip={(row) =>
-          row.hasData
-            ? `${row.display} avg (${row.sampleCount} sample${row.sampleCount === 1 ? '' : 's'})`
-            : 'Not enough data yet'
-        }
+      <StageChart
+        rows={stages.map((stage) => ({
+          ...stage,
+          key: stage.status,
+          label: STAGE_LABEL[stage.status] ?? stage.status,
+        }))}
       />
     </Panel>
   );
