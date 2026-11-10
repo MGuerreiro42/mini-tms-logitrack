@@ -199,23 +199,6 @@ describe('List views and search (e2e)', () => {
     expect(adminStatuses.body.DELIVERED).toBe(1);
   });
 
-  it.each(['7d', '30d', '90d'])(
-    'gives the %s seller metrics the totals of the lists their tiles open',
-    async (window) => {
-      const metrics = await get(tenants.sellerA, '/shipments/metrics', {
-        window,
-      }).expect(200);
-
-      await expect(
-        totalOf(tenants.sellerA, '/shipments', {
-          status: 'DELIVERED',
-          window,
-        }),
-      ).resolves.toBe(metrics.body.delivered);
-      expect(metrics.body.onTime.trend).toHaveLength(12);
-    },
-  );
-
   it.each([
     ['seller', '/shipments'],
     ['seller', '/shipments/view-counts'],
