@@ -154,6 +154,25 @@ describe('AdminDashboard', () => {
     expect(await screen.findByText('Rota Sul Logística')).toBeInTheDocument();
   });
 
+  it('keeps the tiles and the review queue when the pulse fails', async () => {
+    server.use(
+      http.get(`${API_URL}/admin/pulse`, () =>
+        HttpResponse.json({}, { status: 503 }),
+      ),
+    );
+    renderWithQueryClient(<AdminDashboard />);
+
+    expect(
+      await screen.findByText('Pulse unavailable · retrying'),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole('link', {
+        name: 'Late now, 2. View late shipments',
+      }),
+    ).toBeVisible();
+    expect(await screen.findByText('Rota Sul Logística')).toBeInTheDocument();
+  });
+
   it('says so when the approval counts fail, keeping the metrics', async () => {
     server.use(
       http.get(`${API_URL}/sellers/status-counts`, () =>
