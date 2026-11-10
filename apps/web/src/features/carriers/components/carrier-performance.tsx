@@ -1,30 +1,33 @@
 'use client';
 
-import { StatusDistribution } from '@/components/common/charts/status-distribution';
 import { EmptyState } from '@/components/common/feedback-state';
+import { LiveIndicator } from '@/components/common/live-indicator';
+import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { WindowSelector } from '@/components/common/window-selector';
 import { useStatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { formatDuration } from '@/lib/format-duration';
+import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
+import { usePerformanceLive } from '../hooks/use-performance-live';
 import type {
   CarrierPerformance as CarrierPerformanceData,
-  OperatorRankingItem,
+  TeamMember,
 } from '../types';
-import { OperatorRankingChart } from './operator-ranking-chart';
 import { StageDurationChart } from './stage-duration-chart';
+import { TeamTable } from './team-table';
 
 export function CarrierPerformance() {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
   const query = useCarrierPerformance(statsWindow);
-  const operatorRanking = useOperatorRanking(statsWindow);
-  const loadingNext =
-    query.isPlaceholderData || operatorRanking.isPlaceholderData;
+  const team = useOperatorRanking(statsWindow);
+  const loadingNext = query.isPlaceholderData || team.isPlaceholderData;
+  const live = usePerformanceLive();
 
   return (
     <div className="flex flex-col gap-5">
@@ -32,7 +35,10 @@ export function CarrierPerformance() {
         title="Performance"
         description="How your company's shipments are performing."
         action={
-          <WindowSelector value={statsWindow} onChange={setStatsWindow} />
+          <div className="flex flex-wrap items-center gap-3">
+            <LiveIndicator live={{ status: live, lastEventAt: null }} />
+            <WindowSelector value={statsWindow} onChange={setStatsWindow} />
+          </div>
         }
       />
       <QueryState query={query} errorMessage="Couldn't load performance data.">
@@ -50,7 +56,8 @@ export function CarrierPerformance() {
             ) : (
               <CarrierPerformanceView
                 data={data}
-                operatorRanking={operatorRanking.data}
+                team={team.data}
+                scope={windowLabel(statsWindow)}
               />
             )}
           </div>
@@ -62,44 +69,67 @@ export function CarrierPerformance() {
 
 function CarrierPerformanceView({
   data,
-  operatorRanking,
+  team,
+  scope,
 }: {
   data: CarrierPerformanceData;
-  operatorRanking?: OperatorRankingItem[];
+  team?: TeamMember[];
+  scope: string;
 }) {
+  const { medianDelivery, firstAttempt, claim } = data;
+  const deliveryShown =
+    hasEnoughData(medianDelivery.n) && medianDelivery.hours !== null;
+  const firstShown =
+    hasEnoughData(firstAttempt.n) && firstAttempt.rate !== null;
+  const claimShown = hasEnoughData(claim.n) && claim.p50Minutes !== null;
+
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Total shipments" value={data.totalShipments} />
+        <OnTimeTile onTime={data.onTime} scope={scope} />
         <StatTile
-          label="Avg. time between updates"
+          label="Median delivery"
+          scope={scope}
           value={
-            data.avgHoursBetweenEvents === null
-              ? '—'
-              : formatDuration(data.avgHoursBetweenEvents)
+            deliveryShown ? formatDuration(medianDelivery.hours as number) : '—'
           }
+          note={
+            deliveryShown
+              ? `n=${medianDelivery.n}`
+              : notEnoughNote(medianDelivery.n, 'deliveries')
+          }
+          definition={`Middle value (nearest rank) of creation to delivery, over the shipments created in the last ${scope} and delivered (n=${medianDelivery.n}).`}
         />
         <StatTile
-          label="Failed delivery rate"
-          value={`${data.failedDeliveryRate.toFixed(1)}%`}
+          label="First attempt"
+          scope={scope}
+          value={
+            firstShown ? `${(firstAttempt.rate as number).toFixed(1)}%` : '—'
+          }
+          note={
+            firstShown
+              ? `${firstAttempt.failed} failed · ${firstAttempt.returned} returned`
+              : notEnoughNote(firstAttempt.n, 'deliveries')
+          }
+          definition={`Outcomes without a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}). A failure that later returned still counts as failed.`}
         />
         <StatTile
-          label="Returned rate"
-          value={`${data.returnedRate.toFixed(1)}%`}
+          label="Median claim"
+          scope={scope}
+          value={
+            claimShown ? formatDuration((claim.p50Minutes as number) / 60) : '—'
+          }
+          note={
+            claimShown
+              ? `p90 ${formatDuration((claim.p90Minutes as number) / 60)} · n=${claim.n}`
+              : notEnoughNote(claim.n, 'data')
+          }
+          definition={`Middle value (nearest rank) of creation to the first claim, over the shipments created in the last ${scope} that were claimed (n=${claim.n}).`}
         />
       </div>
-      {data.avgHoursBetweenEvents === null && (
-        <p className="text-[13px] text-muted-foreground">
-          Avg. time between updates needs a shipment with at least two tracking
-          events.
-        </p>
-      )}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
-        <div className="flex flex-col gap-5">
-          <StatusDistribution counts={data.shipmentCountsByStatus} />
-          <StageDurationChart data={data.stageDurations} />
-        </div>
-        {operatorRanking && <OperatorRankingChart data={operatorRanking} />}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+        <StageDurationChart stages={data.stages} />
+        {team && <TeamTable members={team} scope={scope} />}
       </div>
     </div>
   );
