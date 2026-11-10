@@ -1,7 +1,7 @@
 'use client';
 
 import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { type FocusEvent, useState } from 'react';
+import { type FocusEvent, useMemo, useState } from 'react';
 import { TrackingCode } from '@/components/common/tracking-code';
 import { Button } from '@/components/ui/button';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -14,12 +14,15 @@ import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
 import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 import { useActivityFeed } from '../hooks/use-activity-feed';
-import type { ShipmentActivity } from '../types';
+import { type ActivityGroup, groupActivity } from '../lib/activity-feed';
+import type { ShipmentActivity, ShipmentStatus } from '../types';
 import { PanelLink } from './panel-link';
 
 const TIME_REFRESH_MS = 15_000;
 
 export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
+  const [known] = useState(() => new Map<string, ShipmentStatus>());
+  const groups = useMemo(() => groupActivity(events, known), [events, known]);
   const [paused, setPaused] = useState(false);
   const [pointerInside, setPointerInside] = useState(false);
   const [focusInside, setFocusInside] = useState(false);
@@ -28,7 +31,7 @@ export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
   const holding = paused || focusInside || (canHover && pointerInside);
 
   const { shown, freshIds, heldCount, apply, listKey } = useActivityFeed(
-    events,
+    groups,
     holding,
   );
   const [listRef] = useAutoAnimate<HTMLOListElement>(LIST_ANIMATION);
@@ -64,26 +67,27 @@ export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
           Status changes of your shipments show up here as they happen.
         </p>
       ) : (
-        <ol
-          key={listKey}
-          ref={listRef}
-          role="log"
-          aria-label="Recent updates"
-          onPointerEnter={() => setPointerInside(true)}
-          onPointerLeave={() => setPointerInside(false)}
-          onFocus={() => setFocusInside(true)}
-          onBlur={leaveFocus}
-        >
-          {shown.map((event) => (
-            <li key={event.id}>
-              <ActivityLine
-                event={event}
-                now={now}
-                fresh={freshIds.has(event.id)}
-              />
-            </li>
-          ))}
-        </ol>
+        // The log node stays; only the list inside remounts to skip entrance animations.
+        <div role="log" aria-label="Recent updates">
+          <ol
+            key={listKey}
+            ref={listRef}
+            onPointerEnter={() => setPointerInside(true)}
+            onPointerLeave={() => setPointerInside(false)}
+            onFocus={() => setFocusInside(true)}
+            onBlur={leaveFocus}
+          >
+            {shown.map((event) => (
+              <li key={event.id}>
+                <ActivityLine
+                  event={event}
+                  now={now}
+                  fresh={freshIds.has(event.id)}
+                />
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </div>
   );
@@ -94,7 +98,7 @@ function ActivityLine({
   now,
   fresh,
 }: {
-  event: ShipmentActivity;
+  event: ActivityGroup;
   now: Date;
   fresh: boolean;
 }) {
@@ -111,14 +115,21 @@ function ActivityLine({
         )}
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <TrackingCode code={event.trackingCode} className="text-[13px]" />
+        {/* Status first on the second line, so a narrow screen truncates the city, not the change. */}
         <span className="truncate text-sm">
-          <TrackingCode code={event.trackingCode} className="text-[13px]" />{' '}
+          {event.previousStatus && (
+            <span className="text-muted-foreground">
+              {SHIPMENT_STATUS_LABEL[event.previousStatus]} →{' '}
+            </span>
+          )}
           <span className="font-semibold">
             {SHIPMENT_STATUS_LABEL[event.status]}
           </span>
-        </span>
-        <span className="truncate text-[13px] text-muted-foreground">
-          {event.city}
+          <span className="text-[13px] text-muted-foreground">
+            {' · '}
+            {event.city}
+          </span>
         </span>
       </span>
       {fresh && (
