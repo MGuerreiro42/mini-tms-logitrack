@@ -65,6 +65,35 @@ interface Mutation {
   isPending: boolean;
 }
 
+// The header of every admin tenant page: breadcrumb, name with its approval badge, details, action.
+export function TenantHeader({
+  company,
+  back,
+  description,
+  action,
+}: {
+  company: Company;
+  back: { href: string; label: string };
+  description: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Breadcrumb parent={back}>{company.companyName}</Breadcrumb>
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3.5">
+            {company.companyName}
+            <ApprovalStatusBadge status={company.status} />
+          </span>
+        }
+        description={description}
+        action={action}
+      />
+    </div>
+  );
+}
+
 export function CompanyReview({
   company,
   rows,
@@ -80,29 +109,22 @@ export function CompanyReview({
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        <Breadcrumb parent={back}>{company.companyName}</Breadcrumb>
-        <PageHeader
-          title={
-            <span className="flex flex-wrap items-center gap-3.5">
-              {company.companyName}
-              <ApprovalStatusBadge status={company.status} />
-            </span>
-          }
-          description={
-            <span role="status">{REVIEW_SUBTITLE[company.status]}</span>
-          }
-          action={
-            <ApproveRejectActions
-              status={company.status}
-              onApprove={() => approve.mutate()}
-              onReject={() => reject.mutateAsync()}
-              isApproving={approve.isPending}
-              isRejecting={reject.isPending}
-            />
-          }
-        />
-      </div>
+      <TenantHeader
+        company={company}
+        back={back}
+        description={
+          <span role="status">{REVIEW_SUBTITLE[company.status]}</span>
+        }
+        action={
+          <ApproveRejectActions
+            status={company.status}
+            onApprove={() => approve.mutate()}
+            onReject={() => reject.mutateAsync()}
+            isApproving={approve.isPending}
+            isRejecting={reject.isPending}
+          />
+        }
+      />
       <DetailsPanel rows={rows} />
     </div>
   );
