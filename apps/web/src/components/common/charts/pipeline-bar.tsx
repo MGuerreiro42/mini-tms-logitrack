@@ -14,6 +14,15 @@ export const PIPELINE_STATUSES = [
 
 type PipelineStatus = (typeof PIPELINE_STATUSES)[number];
 
+// Label ink per segment, each at least 4.5:1 on its dot in both themes.
+const LABEL_INK: Record<PipelineStatus, string> = {
+  PENDING: 'text-status-dot-ink',
+  ACCEPTED: 'text-card dark:text-background',
+  COLLECTED: 'text-status-dot-ink',
+  IN_TRANSIT: 'text-card dark:text-background',
+  OUT_FOR_DELIVERY: 'text-status-dot-ink',
+};
+
 // Below this share a segment is too narrow for its label; the legend and aria-label still carry it.
 const MIN_LABEL_SHARE = 0.12;
 
@@ -48,14 +57,17 @@ export function PipelineBar({ counts, hrefFor }: PipelineBarProps) {
               aria-label={name}
               title={name}
               className={cn(
-                'flex h-full items-center overflow-hidden rounded bg-current px-2 outline-ring hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2',
+                'flex h-full items-center overflow-hidden rounded bg-current outline-ring hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2',
                 SHIPMENT_STATUS_DOT[status],
               )}
             >
               {total > 0 && count / total >= MIN_LABEL_SHARE && (
                 <span
                   aria-hidden
-                  className="truncate text-xs font-semibold text-white max-md:hidden dark:text-neutral-950"
+                  className={cn(
+                    'truncate px-2 text-xs font-semibold max-md:hidden',
+                    LABEL_INK[status],
+                  )}
                 >
                   {name}
                 </span>
@@ -66,7 +78,7 @@ export function PipelineBar({ counts, hrefFor }: PipelineBarProps) {
       </ul>
       <ul
         aria-hidden
-        className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] md:hidden"
+        className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-3 lg:grid-cols-5"
       >
         {segments.map(({ status, count }) => (
           <li key={status} className="flex items-center gap-2">

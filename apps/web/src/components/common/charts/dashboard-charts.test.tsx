@@ -42,12 +42,14 @@ describe('OnTimeRows', () => {
         rows={[
           { key: 'a', label: 'Express', rate: 92.5, n: 40 },
           { key: 'b', label: 'Economy', rate: 100, n: 3 },
+          { key: 'c', label: 'Same day', rate: null, n: 6 },
         ]}
       />,
     );
 
     expect(screen.getByText('92.5%')).toBeVisible();
-    expect(screen.getByText('n=3, not enough')).toBeVisible();
+    expect(screen.getByText('Not enough deliveries (n=3)')).toBeVisible();
+    expect(screen.getByText('n=6')).toBeVisible();
     expect(container.querySelectorAll('.bg-chart-1')).toHaveLength(1);
   });
 });
@@ -96,7 +98,16 @@ describe('StageChart', () => {
     await user.click(screen.getByRole('button', { name: 'View as table' }));
 
     expect(screen.getByRole('columnheader', { name: 'p90' })).toBeVisible();
-    expect(screen.getByRole('row', { name: /Pickup wait 1 h 1 h 2 h 3/ }));
+    expect(
+      screen.getByRole('row', {
+        name: /^Pickup wait\s*Not enough data \(n=3\) — — 2 h 3$/,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('row', {
+        name: /^Claim wait 2 h\s*over budget 5 h 1 h 12$/,
+      }),
+    ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'View as chart' }));
     expect(screen.queryByRole('table')).toBeNull();
   });

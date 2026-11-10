@@ -34,10 +34,14 @@ function axisMax(max: number): number {
   return step * magnitude * TICKS;
 }
 
+// Too few samples: no bar, no median, no over-budget flag, in the chart and the table alike.
+const isCharted = (row: StageRow) =>
+  hasEnoughData(row.n) && row.p50Hours !== null;
+
 const isOver = (row: StageRow) =>
-  row.p50Hours !== null &&
+  isCharted(row) &&
   row.budgetHours !== null &&
-  row.p50Hours > row.budgetHours;
+  (row.p50Hours as number) > row.budgetHours;
 
 const summary = (row: StageRow) =>
   `${row.label}: median ${fmt(row.p50Hours)}, p90 ${fmt(row.p90Hours)}, budget ${fmt(row.budgetHours)}, n=${row.n}${isOver(row) ? ', over budget' : ''}`;
@@ -47,7 +51,13 @@ export function StageChart({ rows }: { rows: StageRow[] }) {
   const n = rows.reduce((sum, row) => sum + row.n, 0);
   const max = axisMax(
     Math.max(
-      ...rows.flatMap((row) => [row.p90Hours ?? 0, row.budgetHours ?? 0]),
+      ...rows
+        .filter(isCharted)
+        .flatMap((row) => [
+          row.p50Hours ?? 0,
+          row.p90Hours ?? 0,
+          row.budgetHours ?? 0,
+        ]),
       1,
     ),
   );
@@ -69,12 +79,24 @@ export function StageChart({ rows }: { rows: StageRow[] }) {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.key}>
-                <TableCell>{row.label}</TableCell>
-                <TableCell className="text-right font-mono">
-                  {fmt(row.p50Hours)}
+                <TableCell>
+                  {row.label}
+                  {!isCharted(row) && (
+                    <span className="block text-xs text-muted-foreground">
+                      {notEnoughNote(row.n, 'data')}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {fmt(row.p90Hours)}
+                  {isCharted(row) ? fmt(row.p50Hours) : '—'}
+                  {isOver(row) && (
+                    <span className="block font-sans text-xs font-semibold text-destructive">
+                      over budget
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {isCharted(row) ? fmt(row.p90Hours) : '—'}
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {fmt(row.budgetHours)}
@@ -92,7 +114,7 @@ export function StageChart({ rows }: { rows: StageRow[] }) {
               // biome-ignore lint/a11y/noNoninteractiveTabindex: a data mark whose tooltip opens on focus
               tabIndex={0}
               aria-label={
-                hasEnoughData(row.n)
+                isCharted(row)
                   ? summary(row)
                   : `${row.label}: ${notEnoughNote(row.n, 'data')}`
               }
@@ -101,7 +123,7 @@ export function StageChart({ rows }: { rows: StageRow[] }) {
               <span className="truncate text-muted-foreground">
                 {row.label}
               </span>
-              {hasEnoughData(row.n) && row.p50Hours !== null ? (
+              {isCharted(row) ? (
                 <StageBar row={row} at={at} />
               ) : (
                 <span className="text-muted-foreground">
