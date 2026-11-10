@@ -115,6 +115,7 @@ describe('SellerDashboard', () => {
         HttpResponse.json({
           shipments: [failed, late],
           counts: { failed: 1, late: 6 },
+          oldestLateDueAt: late.dueAt,
         }),
       ),
       http.get(`${API_URL}/shipments/activity`, () =>
@@ -145,6 +146,43 @@ describe('SellerDashboard', () => {
     expect(screen.getByText(/^oldest 5 h/)).toBeInTheDocument();
     expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('30d');
     expect(screen.getByText('5 more shipments not shown')).toBeInTheDocument();
+  });
+
+  it('dates the oldest late shipment even when failed ones fill the list', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/attention`, () =>
+        HttpResponse.json({
+          shipments: Array.from({ length: 5 }, (_, i) => ({
+            ...failed,
+            id: `failed-${i}`,
+          })),
+          counts: { failed: 5, late: 2 },
+          oldestLateDueAt: new Date(Date.now() - 9 * HOUR_MS).toISOString(),
+        }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText(/^oldest 9 h/)).toBeVisible();
+    expect(screen.queryByText('Nothing past its due time')).toBeNull();
+  });
+
+  it('keeps the now tiles when the window metrics fail', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/metrics`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(
+      (await screen.findAllByText("Couldn't load the window's metrics."))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('link', { name: 'Late now, 6. View late shipments' }),
+    ).toBeVisible();
+    expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
   });
 
   it('opens each count tile and pipeline segment on exactly that list', async () => {
