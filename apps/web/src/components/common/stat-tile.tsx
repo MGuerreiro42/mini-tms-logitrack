@@ -72,7 +72,10 @@ export function StatTile({
           // Stretched over the card, so the info button stays a sibling, not a nested control.
           <Link
             href={href}
-            aria-label={[`${label}, ${value}`, linkLabel]
+            aria-label={[
+              `${[label, scope].filter(Boolean).join(' ')}, ${value}`,
+              linkLabel,
+            ]
               .filter(Boolean)
               .join('. ')}
             className="outline-none after:absolute after:inset-0 after:rounded-xl"
@@ -92,7 +95,8 @@ export function StatTile({
           {definition && <Definition label={label}>{definition}</Definition>}
         </span>
       </div>
-      <div className="flex items-end justify-between gap-3">
+      {/* The sparkline drops under the value when the tile is narrow. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
         <p
           className={cn(
             'text-[34px] leading-none font-semibold tracking-[-0.02em]',
