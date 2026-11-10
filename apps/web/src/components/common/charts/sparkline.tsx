@@ -39,7 +39,7 @@ export function Sparkline({ values, target }: SparklineProps) {
           x2={WIDTH}
           y1={y(target)}
           y2={y(target)}
-          className="stroke-muted-foreground/50"
+          className="stroke-muted-foreground"
           strokeWidth={1}
           strokeDasharray="2 2"
         />
