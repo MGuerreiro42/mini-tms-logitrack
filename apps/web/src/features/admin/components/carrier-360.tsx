@@ -35,7 +35,6 @@ import { ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 
 const BACK = { href: '/admin/carriers', label: 'Carriers' };
-const TWO_COLUMNS = 'grid grid-cols-1 gap-5 lg:items-start';
 
 export function Carrier360({ id }: { id: string }) {
   const query = useCarrier(id);
@@ -118,23 +117,19 @@ function ApprovedCarrier({ carrier }: { carrier: Carrier }) {
                 linkLabel="View active shipments"
               />
             </div>
-            <div className={cn(TWO_COLUMNS, 'lg:grid-cols-2')}>
-              <StageDurationChart stages={data.stages} />
-              <QueryState query={team} errorMessage="Couldn't load the team.">
-                {(members) => <TeamTable members={members} scope={scope} />}
-              </QueryState>
-            </div>
+            <StageDurationChart stages={data.stages} />
           </div>
         )}
       </QueryState>
-      <div
-        className={cn(
-          TWO_COLUMNS,
-          'lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]',
-        )}
-      >
+      {/* Team and coverage stack beside the ten recent rows, so both columns end close. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:items-start">
         <RecentShipments scope={{ carrierId }} liveStatus={liveStatus} />
-        <CarrierCoveragePanel id={carrierId} />
+        <div className="flex flex-col gap-5">
+          <QueryState query={team} errorMessage="Couldn't load the team.">
+            {(members) => <TeamTable members={members} scope={scope} />}
+          </QueryState>
+          <CarrierCoveragePanel id={carrierId} />
+        </div>
       </div>
     </div>
   );
