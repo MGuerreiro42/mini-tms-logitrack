@@ -6,11 +6,11 @@ import type { StatsWindow } from '@/hooks/use-stats-window';
 import { getQueueViewCounts, getShipmentViewCounts } from '../api';
 import { shipmentKeys } from '../api/keys';
 
-export function useSellerViewCounts(window?: StatsWindow) {
+export function useSellerViewCounts(statsWindow?: StatsWindow) {
   const { token, enabled } = useAuthToken();
   return useQuery({
-    queryKey: shipmentKeys.viewCounts(window),
-    queryFn: () => getShipmentViewCounts(token, window),
+    queryKey: shipmentKeys.viewCounts(statsWindow),
+    queryFn: () => getShipmentViewCounts(token, statsWindow),
     enabled,
   });
 }

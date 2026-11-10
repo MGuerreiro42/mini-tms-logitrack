@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
 import type { LiveConnection } from '@/lib/live-status';
+import { ON_TIME_TARGET } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
@@ -98,7 +99,11 @@ function SellerDashboardView({
           label="On time"
           value={onTime.rate === null ? '—' : `${onTime.rate.toFixed(1)}%`}
           note={onTimeNote(onTime)}
-          tone={onTime.late > 0 ? 'caution' : undefined}
+          tone={
+            onTime.rate !== null && onTime.rate < ON_TIME_TARGET
+              ? 'caution'
+              : undefined
+          }
         />
         <StatTile
           label="Needs attention"

@@ -63,12 +63,15 @@ function trend(rows: MetricRow[], since: Date, now: Date): (number | null)[] {
   );
   for (const row of rows) {
     const offset = row.createdAt.getTime() - since.getTime();
-    if (offset < 0 || offset > span) continue;
-    // createdAt = now belongs to the last bucket, not a 13th.
-    const index = Math.min(
-      Math.floor((offset / span) * TREND_BUCKETS),
-      TREND_BUCKETS - 1,
-    );
+    if (offset < 0) continue;
+    // createdAt at or after now (clock skew, an empty span) belongs to the last bucket.
+    const index =
+      span > 0
+        ? Math.min(
+            Math.floor((offset / span) * TREND_BUCKETS),
+            TREND_BUCKETS - 1,
+          )
+        : TREND_BUCKETS - 1;
     buckets[index].push(row);
   }
   return buckets.map((bucket) => onTime(bucket).rate);
@@ -76,16 +79,15 @@ function trend(rows: MetricRow[], since: Date, now: Date): (number | null)[] {
 
 const minutesBetween = (from: Date, to: Date) => hoursBetween(from, to) * 60;
 
+const isDelivered = (row: MetricRow) =>
+  row.status === ShipmentStatus.DELIVERED && row.deliveredAt !== null;
+
 export function deliveryMetrics(
   rows: MetricRow[],
   { since, now }: { since: Date; now: Date },
 ) {
-  const delivered = rows.filter(
-    (row) => row.status === ShipmentStatus.DELIVERED && row.deliveredAt,
-  );
-  const outcomes = rows.filter(
-    (row) => row.status === ShipmentStatus.DELIVERED || row.everFailed,
-  );
+  const delivered = rows.filter(isDelivered);
+  const outcomes = rows.filter((row) => isDelivered(row) || row.everFailed);
   const claimMinutes = rows.flatMap((row) =>
     row.acceptedAt ? [minutesBetween(row.createdAt, row.acceptedAt)] : [],
   );

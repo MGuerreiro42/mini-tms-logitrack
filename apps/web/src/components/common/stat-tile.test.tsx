@@ -65,6 +65,7 @@ describe('StatTile', () => {
     await user.keyboard('{Enter}');
 
     expect(await findByText('Delivered by the due time, n=40.')).toBeVisible();
+    expect(getByRole('dialog', { name: 'On time definition' })).toBeVisible();
     await user.keyboard('{Escape}');
     expect(getByRole('button', { name: 'About On time' })).toHaveFocus();
   });

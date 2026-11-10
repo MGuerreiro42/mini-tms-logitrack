@@ -47,7 +47,7 @@ export function StatTile({
   const heading = (
     <>
       {label}
-      {scope && <span className="text-muted-foreground/70"> · {scope}</span>}
+      {scope && <span className="text-muted-foreground"> · {scope}</span>}
     </>
   );
 
@@ -82,16 +82,15 @@ export function StatTile({
         ) : (
           <p>{heading}</p>
         )}
-        {definition ? (
-          <Definition label={label}>{definition}</Definition>
-        ) : (
-          href && (
+        <span className="flex items-center gap-1">
+          {href && (
             <ArrowRightIcon
               aria-hidden
               className="size-4 opacity-0 transition-opacity group-hover:opacity-100 group-has-[a:focus-visible]:opacity-100"
             />
-          )
-        )}
+          )}
+          {definition && <Definition label={label}>{definition}</Definition>}
+        </span>
       </div>
       <div className="flex items-end justify-between gap-3">
         <p
@@ -131,6 +130,7 @@ function Definition({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          aria-label={`${label} definition`}
           side="bottom"
           align="end"
           sideOffset={6}

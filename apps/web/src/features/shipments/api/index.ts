@@ -68,10 +68,10 @@ export function getShipment(
 
 export function getShipmentStatusCounts(
   token: string,
-  window?: StatsWindow,
+  statsWindow?: StatsWindow,
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
-    `/shipments/status-counts${toQueryString({ window })}`,
+    `/shipments/status-counts${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );
@@ -79,10 +79,10 @@ export function getShipmentStatusCounts(
 
 export function getShipmentViewCounts(
   token: string,
-  window?: StatsWindow,
+  statsWindow?: StatsWindow,
 ): Promise<ViewCounts> {
   return apiClient<ViewCounts>(
-    `/shipments/view-counts${toQueryString({ window })}`,
+    `/shipments/view-counts${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );

@@ -717,12 +717,16 @@ describe('ShipmentsService', () => {
         delivered(5, 'EXPRESS', { deliveredAt: null }),
         delivered(-4, 'STANDARD'),
         delivered(0.01, 'EXPRESS'),
+        // A third EXPRESS sample: 2 of 3, a rate that is not a whole number.
+        delivered(-2, 'EXPRESS'),
       ];
       shipmentFindMany.mockResolvedValue(rows);
 
       const result = await shipmentsService.slaSummaryForSeller('user-1');
 
       expect(result).toEqual(legacySlaSummary(rows));
+      expect(result[0].onTimeRate).toBeCloseTo(66.667, 3);
+      expect(trackingEventFindMany).not.toHaveBeenCalled();
       expect(result.map((item) => item.modalityCode)).toEqual([
         'EXPRESS',
         'STANDARD',
