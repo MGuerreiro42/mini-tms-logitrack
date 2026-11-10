@@ -16,8 +16,10 @@ describe('shipment views', () => {
       ),
     ).toEqual({
       AND: [
-        { sellerId: 's' },
-        { createdAt: { gte: new Date('2026-01-01T00:00:00Z') } },
+        {
+          sellerId: 's',
+          createdAt: { gte: new Date('2026-01-01T00:00:00Z') },
+        },
       ],
     });
   });
