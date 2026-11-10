@@ -31,6 +31,7 @@ describe('CarriersService', () => {
   const carrierCoverageAreaDeleteMany = vi.fn();
   const carrierCoverageAreaCreateMany = vi.fn();
   const shipmentGroupBy = vi.fn();
+  const shipmentFindMany = vi.fn();
   const trackingEventFindMany = vi.fn();
   const carrierUserFindMany = vi.fn();
   const transaction = vi.fn((arg) =>
@@ -80,6 +81,7 @@ describe('CarriersService', () => {
     carrierCoverageAreaDeleteMany.mockReset();
     carrierCoverageAreaCreateMany.mockReset();
     shipmentGroupBy.mockReset();
+    shipmentFindMany.mockReset();
     trackingEventFindMany.mockReset();
     carrierUserFindMany.mockReset();
     transaction.mockClear();
@@ -118,7 +120,10 @@ describe('CarriersService', () => {
               deleteMany: carrierCoverageAreaDeleteMany,
               createMany: carrierCoverageAreaCreateMany,
             },
-            shipment: { groupBy: shipmentGroupBy },
+            shipment: {
+              groupBy: shipmentGroupBy,
+              findMany: shipmentFindMany,
+            },
             trackingEvent: { findMany: trackingEventFindMany },
           },
         },
@@ -460,171 +465,42 @@ describe('CarriersService', () => {
   });
 
   describe('performance', () => {
-    const at = (hour: number) =>
-      new Date(`2026-01-01T${String(hour).padStart(2, '0')}:00:00Z`);
-
-    it('fills every ShipmentStatus with 0, computes rates, and averages the gap between consecutive events per shipment', async () => {
-      const hoursToAccept = 2;
-      const hoursToCollect = 4;
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValue([
-        { status: 'DELIVERED', _count: 3 },
-        { status: 'PENDING', _count: 1 },
+    it('runs the metrics core over the carrier window, events included', async () => {
+      const since = new Date('2026-01-01T00:00:00Z');
+      const at = (hours: number) =>
+        new Date(since.getTime() + hours * 3_600_000);
+      shipmentFindMany.mockResolvedValue([
+        {
+          id: 's-1',
+          createdAt: at(1),
+          status: 'DELIVERED',
+          dueAt: at(30),
+          deliveredAt: at(20),
+          modality: { code: 'EXPRESS', name: 'Express', slaHours: 30 },
+        },
       ]);
       trackingEventFindMany.mockResolvedValue([
-        { shipmentId: 'collected', status: 'PENDING', createdAt: at(0) },
-        {
-          shipmentId: 'collected',
-          status: 'ACCEPTED',
-          createdAt: at(hoursToAccept),
-        },
-        {
-          shipmentId: 'collected',
-          status: 'COLLECTED',
-          createdAt: at(hoursToAccept + hoursToCollect),
-        },
-        { shipmentId: 'single-event', status: 'PENDING', createdAt: at(0) },
+        { shipmentId: 's-1', status: 'PENDING', createdAt: at(1) },
+        { shipmentId: 's-1', status: 'ACCEPTED', createdAt: at(3) },
       ]);
 
-      const since = new Date('2025-12-01T00:00:00Z');
-      const result = await carriersService.performance('user-1', since);
+      const result = await carriersService.performance('carrier-1', since);
 
-      const where = { carrierId: 'carrier-1', createdAt: { gte: since } };
-      expect(shipmentGroupBy).toHaveBeenCalledWith({
-        by: ['status'],
-        where,
-        _count: true,
-      });
-      expect(trackingEventFindMany).toHaveBeenCalledWith({
-        where: { shipment: where },
-        select: { shipmentId: true, status: true, createdAt: true },
-        orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
-      });
-      expect(result.shipmentCountsByStatus).toEqual({
-        PENDING: 1,
-        ACCEPTED: 0,
-        COLLECTED: 0,
-        IN_TRANSIT: 0,
-        OUT_FOR_DELIVERY: 0,
-        DELIVERED: 3,
-        FAILED_DELIVERY: 0,
-        CANCELLED: 0,
-        RETURNED: 0,
-      });
-      expect(result.totalShipments).toBe(4);
-      expect(result.avgHoursBetweenEvents).toBe(
-        (hoursToAccept + hoursToCollect) / 2,
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { carrierId: 'carrier-1', createdAt: { gte: since } },
+        }),
       );
-      expect(result.failedDeliveryRate).toBe(0);
-      expect(result.returnedRate).toBe(0);
-      expect(result.stageDurations).toEqual([
-        {
-          fromStatus: 'PENDING',
-          toStatus: 'ACCEPTED',
-          avgHours: hoursToAccept,
-          sampleCount: 1,
-        },
-        {
-          fromStatus: 'ACCEPTED',
-          toStatus: 'COLLECTED',
-          avgHours: hoursToCollect,
-          sampleCount: 1,
-        },
-        {
-          fromStatus: 'COLLECTED',
-          toStatus: 'IN_TRANSIT',
-          avgHours: null,
-          sampleCount: 0,
-        },
-        {
-          fromStatus: 'IN_TRANSIT',
-          toStatus: 'OUT_FOR_DELIVERY',
-          avgHours: null,
-          sampleCount: 0,
-        },
-        {
-          fromStatus: 'OUT_FOR_DELIVERY',
-          toStatus: 'DELIVERED',
-          avgHours: null,
-          sampleCount: 0,
-        },
-      ]);
-    });
-
-    it('counts a shipment that failed delivery and was then returned in both rates', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      const totalShipments = 4;
-      const everFailed = 2;
-      const returned = 1;
-      shipmentGroupBy.mockResolvedValue([
-        { status: 'RETURNED', _count: returned },
-        { status: 'FAILED_DELIVERY', _count: everFailed - returned },
-        { status: 'DELIVERED', _count: totalShipments - everFailed },
-      ]);
-      trackingEventFindMany.mockResolvedValue([
-        {
-          shipmentId: 'returned',
-          status: 'OUT_FOR_DELIVERY',
-          createdAt: at(0),
-        },
-        { shipmentId: 'returned', status: 'FAILED_DELIVERY', createdAt: at(1) },
-        { shipmentId: 'returned', status: 'RETURNED', createdAt: at(2) },
-        { shipmentId: 'failed', status: 'OUT_FOR_DELIVERY', createdAt: at(0) },
-        { shipmentId: 'failed', status: 'FAILED_DELIVERY', createdAt: at(1) },
-      ]);
-
-      const result = await carriersService.performance('user-1');
-
-      expect(result.failedDeliveryRate).toBe(
-        (everFailed / totalShipments) * 100,
-      );
-      expect(result.returnedRate).toBe((returned / totalShipments) * 100);
-    });
-
-    it('returns null avgHoursBetweenEvents when no shipment has a second event yet', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValue([{ status: 'PENDING', _count: 2 }]);
-      trackingEventFindMany.mockResolvedValue([
-        {
-          shipmentId: 'shipment-1',
-          status: 'PENDING',
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-        },
-        {
-          shipmentId: 'shipment-2',
-          status: 'PENDING',
-          createdAt: new Date('2026-01-02T00:00:00Z'),
-        },
-      ]);
-
-      const result = await carriersService.performance('user-1');
-
-      expect(result.avgHoursBetweenEvents).toBeNull();
-      expect(result.failedDeliveryRate).toBe(0);
-    });
-
-    it('returns all-zero rates, a null average, and all-null stageDurations with no shipments at all', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValue([]);
-      trackingEventFindMany.mockResolvedValue([]);
-
-      const result = await carriersService.performance('user-1');
-
-      expect(result.totalShipments).toBe(0);
-      expect(result.avgHoursBetweenEvents).toBeNull();
-      expect(result.failedDeliveryRate).toBe(0);
-      expect(result.returnedRate).toBe(0);
-      expect(
-        result.stageDurations.every((stage) => stage.avgHours === null),
-      ).toBe(true);
-    });
-
-    it('throws NotFoundException when the user has no CarrierUser link', async () => {
-      carrierUserFindUnique.mockResolvedValue(null);
-
-      await expect(carriersService.performance('user-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      expect(result.totalShipments).toBe(1);
+      expect(result.onTime).toMatchObject({ n: 1, count: 1, rate: 100 });
+      expect(result.claim).toEqual({ p50Minutes: 120, p90Minutes: 120, n: 1 });
+      expect(result.stages[0]).toEqual({
+        status: 'PENDING',
+        p50Hours: 2,
+        p90Hours: 2,
+        budgetHours: 3,
+        n: 1,
+      });
     });
   });
 
