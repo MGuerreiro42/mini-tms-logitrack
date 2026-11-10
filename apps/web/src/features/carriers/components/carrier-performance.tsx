@@ -9,16 +9,14 @@ import { MedianClaimTile } from '@/components/common/median-claim-tile';
 import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { QueryState } from '@/components/common/query-state';
-import { StatTile } from '@/components/common/stat-tile';
 import { WindowSelector } from '@/components/common/window-selector';
 import { useStatsWindow, windowLabel } from '@/hooks/use-stats-window';
-import { formatDuration } from '@/lib/format-duration';
-import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import { usePerformanceLive } from '../hooks/use-performance-live';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
+import { FirstAttemptTile, MedianDeliveryTile } from './delivery-tiles';
 import { StageDurationChart } from './stage-duration-chart';
 import { TeamTable } from './team-table';
 
@@ -78,43 +76,13 @@ function CarrierPerformanceView({
   team: ReturnType<typeof useOperatorRanking>;
   scope: string;
 }) {
-  const { medianDelivery, firstAttempt, claim } = data;
-  const deliveryShown =
-    hasEnoughData(medianDelivery.n) && medianDelivery.hours !== null;
-  const firstShown =
-    hasEnoughData(firstAttempt.n) && firstAttempt.rate !== null;
-
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <OnTimeTile onTime={data.onTime} scope={scope} />
-        <StatTile
-          label="Median delivery"
-          scope={scope}
-          value={
-            deliveryShown ? formatDuration(medianDelivery.hours as number) : '—'
-          }
-          note={
-            deliveryShown
-              ? `n=${medianDelivery.n}`
-              : notEnoughNote(medianDelivery.n, 'deliveries')
-          }
-          definition={`Middle value (nearest rank) of creation to delivery, over the shipments created in the last ${scope} and delivered (n=${medianDelivery.n}).`}
-        />
-        <StatTile
-          label="First attempt"
-          scope={scope}
-          value={
-            firstShown ? `${(firstAttempt.rate as number).toFixed(1)}%` : '—'
-          }
-          note={
-            firstShown
-              ? `${firstAttempt.failed} failed · ${firstAttempt.returned} returned`
-              : notEnoughNote(firstAttempt.n, 'deliveries')
-          }
-          definition={`Outcomes without a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}). A failure that later returned still counts as failed.`}
-        />
-        <MedianClaimTile claim={claim} scope={scope} />
+        <MedianDeliveryTile metric={data.medianDelivery} scope={scope} />
+        <FirstAttemptTile metric={data.firstAttempt} scope={scope} />
+        <MedianClaimTile claim={data.claim} scope={scope} />
       </div>
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <StageDurationChart stages={data.stages} />

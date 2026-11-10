@@ -10,8 +10,17 @@ export const carrierKeys = {
   me: () => [...carrierKeys.all, 'me'] as const,
   myModalities: () => [...carrierKeys.me(), 'modalities'] as const,
   coverageAreas: () => [...carrierKeys.me(), 'coverage-areas'] as const,
-  performance: (statsWindow: StatsWindow) =>
-    [...carrierKeys.me(), 'performance', statsWindow] as const,
-  operatorRanking: (statsWindow: StatsWindow) =>
-    [...carrierKeys.me(), 'operator-ranking', statsWindow] as const,
+  // Under the carrier's detail for the admin's by-id reads, under me otherwise.
+  performance: (statsWindow: StatsWindow, carrierId?: string) =>
+    [...carrierScope(carrierId), 'performance', statsWindow] as const,
+  operatorRanking: (statsWindow: StatsWindow, carrierId?: string) =>
+    [...carrierScope(carrierId), 'operator-ranking', statsWindow] as const,
+  coverageAreasOf: (carrierId: string) =>
+    [...carrierKeys.detail(carrierId), 'coverage-areas'] as const,
+  modalitiesOf: (carrierId: string) =>
+    [...carrierKeys.detail(carrierId), 'modalities'] as const,
 };
+
+function carrierScope(carrierId?: string) {
+  return carrierId ? carrierKeys.detail(carrierId) : carrierKeys.me();
+}
