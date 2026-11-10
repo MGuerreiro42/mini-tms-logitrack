@@ -10,7 +10,7 @@ import {
   listAdminShipments,
 } from '../api';
 import { shipmentKeys } from '../api/keys';
-import type { AdminStatusCountsQuery, ListAdminShipmentsQuery } from '../types';
+import type { AdminScopeQuery, ListAdminShipmentsQuery } from '../types';
 
 export function useAdminShipments(
   query: ListAdminShipmentsQuery,
@@ -33,7 +33,7 @@ export function useAdminShipment(id: string, liveStatus: LiveStatus) {
 }
 
 export function useAdminShipmentStatusCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   liveStatus: LiveStatus,
 ) {
   return useLiveQuery({
@@ -45,7 +45,7 @@ export function useAdminShipmentStatusCounts(
 }
 
 export function useAdminMetrics(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   liveStatus: LiveStatus,
 ) {
   return useLiveQuery({
@@ -57,7 +57,7 @@ export function useAdminMetrics(
 }
 
 export function useAdminShipmentViewCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   liveStatus: LiveStatus,
 ) {
   return useLiveQuery({

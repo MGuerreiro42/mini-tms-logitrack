@@ -115,6 +115,7 @@ describe('SellerDashboard', () => {
         HttpResponse.json({
           shipments: [failed, late],
           counts: { failed: 1, late: 6 },
+          oldestLateDueAt: late.dueAt,
         }),
       ),
       http.get(`${API_URL}/shipments/activity`, () =>
@@ -127,9 +128,13 @@ describe('SellerDashboard', () => {
     renderWithQueryClient(<SellerDashboard />);
 
     const exceptions = (
-      await screen.findByRole('heading', { name: /^Exceptions\s*7$/ })
+      await screen.findByRole('heading', { name: 'Exceptions' })
     ).closest('[data-slot="card"]') as HTMLElement;
     expect(within(exceptions).getByText('6 late · 1 failed')).toBeVisible();
+    expect(within(exceptions).getByText('7 exceptions')).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
     const items = within(exceptions).getAllByRole('link');
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent('Failed');
@@ -149,6 +154,43 @@ describe('SellerDashboard', () => {
     expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
     expect(screen.getByText(/^oldest 5 h/)).toBeInTheDocument();
     expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('30d');
+  });
+
+  it('dates the oldest late shipment even when failed ones fill the list', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/attention`, () =>
+        HttpResponse.json({
+          shipments: Array.from({ length: 5 }, (_, i) => ({
+            ...failed,
+            id: `failed-${i}`,
+          })),
+          counts: { failed: 5, late: 2 },
+          oldestLateDueAt: new Date(Date.now() - 9 * HOUR_MS).toISOString(),
+        }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText(/^oldest 9 h/)).toBeVisible();
+    expect(screen.queryByText('Nothing past its due time')).toBeNull();
+  });
+
+  it('keeps the now tiles when the window metrics fail', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/metrics`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(
+      (await screen.findAllByText("Couldn't load the window's metrics."))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('link', { name: 'Late now, 6. View late shipments' }),
+    ).toBeVisible();
+    expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
   });
 
   it('opens each count tile and pipeline segment on exactly that list', async () => {

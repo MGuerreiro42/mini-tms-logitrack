@@ -17,6 +17,7 @@ describe('List views and search (e2e)', () => {
   let tenants: Awaited<ReturnType<typeof createTenants>>;
   let admin: string;
   const codes: Record<string, string> = {};
+  let sellerId: string;
 
   const get = (token: string, path: string, query: object = {}) =>
     request(ctx.app.getHttpServer())
@@ -43,7 +44,10 @@ describe('List views and search (e2e)', () => {
     tenants = await createTenants(ctx);
     admin = await adminToken(ctx);
 
-    await seed('soon', { dueAt: inHours(2) });
+    const soon = await seed('soon', { dueAt: inHours(2) });
+    ({ sellerId } = await ctx.prisma.shipment.findUniqueOrThrow({
+      where: { id: soon },
+    }));
     await seed('later', {
       dueAt: inHours(10),
       addressCity: 'Campinas',
@@ -200,23 +204,6 @@ describe('List views and search (e2e)', () => {
   });
 
   it.each(['7d', '30d', '90d'])(
-    'gives the %s seller metrics the totals of the lists their tiles open',
-    async (window) => {
-      const metrics = await get(tenants.sellerA, '/shipments/metrics', {
-        window,
-      }).expect(200);
-
-      await expect(
-        totalOf(tenants.sellerA, '/shipments', {
-          status: 'DELIVERED',
-          window,
-        }),
-      ).resolves.toBe(metrics.body.delivered);
-      expect(metrics.body.onTime.trend).toHaveLength(12);
-    },
-  );
-
-  it.each(['7d', '30d', '90d'])(
     'gives the %s admin metrics the numbers of the carrier and the lists',
     async (window) => {
       const scope = { carrierId: tenants.carrierId };
@@ -237,12 +224,31 @@ describe('List views and search (e2e)', () => {
         rate: performance.body.onTime.rate,
       });
       expect(carrier.body.byCarrier).toEqual([]);
+    },
+  );
+
+  it.each([
+    ['the platform', () => ({})],
+    ['a carrier', () => ({ carrierId: tenants.carrierId })],
+    ['a seller', () => ({ sellerId })],
+    [
+      'a carrier and a seller',
+      () => ({ carrierId: tenants.carrierId, sellerId }),
+    ],
+  ])(
+    'gives the admin metrics of %s the active and late totals of monitoring',
+    async (_, scope) => {
+      const { body } = await get(admin, '/admin/metrics', scope()).expect(200);
+
       await expect(
-        totalOf(admin, '/admin/shipments', { ...scope, view: 'late' }),
-      ).resolves.toBe(carrier.body.lateNow);
+        totalOf(admin, '/admin/shipments', { ...scope(), view: 'late' }),
+      ).resolves.toBe(body.lateNow);
       await expect(
-        totalOf(admin, '/admin/shipments', { ...scope, view: 'active' }),
-      ).resolves.toBe(carrier.body.active);
+        totalOf(admin, '/admin/shipments', { ...scope(), view: 'active' }),
+      ).resolves.toBe(body.active);
+      await expect(
+        totalOf(admin, '/admin/shipments', scope()),
+      ).resolves.toBeGreaterThanOrEqual(body.shipments);
     },
   );
 

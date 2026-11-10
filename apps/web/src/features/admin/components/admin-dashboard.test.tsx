@@ -105,7 +105,8 @@ describe('AdminDashboard', () => {
     const rows = within(list).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Ateliê AuroraSeller');
     expect(rows[1]).toHaveTextContent('Rota Sul LogísticaCarrier');
-    expect(screen.getByText('3 sellers · 2 carriers')).toBeVisible();
+    // Approved tenants only: the pending ones are the list above.
+    expect(screen.getByText('2 sellers · 1 carrier')).toBeVisible();
   });
 
   it('shows the platform tiles and on time per carrier for the window', async () => {
@@ -151,5 +152,23 @@ describe('AdminDashboard', () => {
       (await screen.findAllByText("Couldn't load platform metrics.")).length,
     ).toBeGreaterThan(0);
     expect(await screen.findByText('Rota Sul Logística')).toBeInTheDocument();
+  });
+
+  it('says so when the approval counts fail, keeping the metrics', async () => {
+    server.use(
+      http.get(`${API_URL}/sellers/status-counts`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<AdminDashboard />);
+
+    expect(
+      await screen.findByText(
+        "Couldn't load the applications waiting for review.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Late now, 2. View late shipments' }),
+    ).toBeVisible();
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useQueries } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import type { StatsWindow } from '@/hooks/use-stats-window';
 import { combineQueries } from '@/lib/combine-queries';
@@ -12,7 +12,6 @@ import {
 } from '../api';
 import { shipmentKeys } from '../api/keys';
 import type {
-  SellerMetrics,
   ShipmentActivity,
   ShipmentAttention,
   ShipmentStatusCounts,
@@ -27,7 +26,6 @@ export interface SellerDashboardData {
   counts: ShipmentStatusCounts;
   attention: ShipmentAttention;
   activity: ShipmentActivity[];
-  metrics: SellerMetrics;
 }
 
 export function useSellerDashboard(statsWindow: StatsWindow) {
@@ -35,6 +33,7 @@ export function useSellerDashboard(statsWindow: StatsWindow) {
   const live = useShipmentTracking({ subscribeToSeller: true });
   const refetchInterval = fallbackPollInterval(live.status);
 
+  // The "now" numbers and the window's metrics load and fail apart.
   const query = useQueries({
     queries: [
       { ...statusCountsQuery(token, enabled), refetchInterval },
@@ -50,28 +49,24 @@ export function useSellerDashboard(statsWindow: StatsWindow) {
         enabled,
         refetchInterval,
       },
-      {
-        queryKey: shipmentKeys.metrics(statsWindow),
-        queryFn: () => getSellerMetrics(statsWindow, token),
-        enabled,
-        refetchInterval,
-        placeholderData: keepPreviousData,
-      },
     ],
-    combine: (results) => ({
-      ...combineQueries(
+    combine: (results) =>
+      combineQueries(
         results,
-        ([counts, activity, attention, metrics]): SellerDashboardData => ({
+        ([counts, activity, attention]): SellerDashboardData => ({
           counts,
           attention,
           activity,
-          metrics,
         }),
       ),
-      // The previous window stays on screen while the next one loads.
-      isPlaceholderData: results[3].isPlaceholderData,
-    }),
+  });
+  const metrics = useQuery({
+    queryKey: shipmentKeys.metrics(statsWindow),
+    queryFn: () => getSellerMetrics(statsWindow, token),
+    enabled,
+    refetchInterval,
+    placeholderData: keepPreviousData,
   });
 
-  return { query, live };
+  return { query, metrics, live };
 }

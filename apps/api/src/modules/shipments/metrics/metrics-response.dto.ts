@@ -34,7 +34,10 @@ export class ModalityOnTimeDto extends RateDto {
 }
 
 export class SellerMetricsResponseDto {
-  @ApiProperty({ description: 'DELIVERED shipments created in the window' })
+  @ApiProperty({
+    description:
+      'DELIVERED shipments created in the window, rows without deliveredAt included, so it equals the list it opens',
+  })
   delivered: number;
 
   @ApiProperty({

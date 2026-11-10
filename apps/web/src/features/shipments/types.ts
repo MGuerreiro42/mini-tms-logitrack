@@ -47,6 +47,7 @@ export interface ShipmentActivity {
 export interface ShipmentAttention {
   shipments: Shipment[];
   counts: { failed: number; late: number };
+  oldestLateDueAt: string | null;
 }
 
 export interface ShipmentAddress {
@@ -116,7 +117,8 @@ export interface AdminShipmentDetail extends AdminShipment {
   trackingEvents: TrackingEvent[];
 }
 
-export interface AdminStatusCountsQuery {
+// The carrier, seller and window every admin read of shipments can be narrowed to.
+export interface AdminScopeQuery {
   carrierId?: string;
   sellerId?: string;
   window?: StatsWindow;
@@ -124,7 +126,7 @@ export interface AdminStatusCountsQuery {
 
 export interface ListAdminShipmentsQuery
   extends PaginationQuery,
-    AdminStatusCountsQuery {
+    AdminScopeQuery {
   status?: ShipmentStatus;
   view?: ListView;
   q?: string;

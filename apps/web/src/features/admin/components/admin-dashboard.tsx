@@ -63,11 +63,13 @@ export function AdminDashboard() {
       <PageHeader
         title="Platform overview"
         description={
-          !counts
-            ? undefined
-            : waiting > 0
-              ? `${plural(waiting, 'application')} waiting for review`
-              : 'No applications waiting for review'
+          approvals.error && !counts
+            ? "Couldn't load the applications waiting for review."
+            : !counts
+              ? undefined
+              : waiting > 0
+                ? `${plural(waiting, 'application')} waiting for review`
+                : 'No applications waiting for review'
         }
         action={
           <WindowSelector value={statsWindow} onChange={setStatsWindow} />
@@ -90,9 +92,14 @@ export function AdminDashboard() {
           </div>
         )}
       </QueryState>
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
+      {/* Grid items stretch to the row, so both columns end flush. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
         <Panel
           title={`On time by carrier · ${scope}`}
+          className={cn(
+            'transition-opacity',
+            metrics.isPlaceholderData && 'opacity-60',
+          )}
           isEmpty={metrics.data?.byCarrier.length === 0}
           emptyMessage="No approved carrier yet."
         >
@@ -102,18 +109,20 @@ export function AdminDashboard() {
             errorMessage="Couldn't load platform metrics."
           >
             {(data) => (
-              <OnTimeRows
-                rows={data.byCarrier.map((carrier) => ({
-                  key: carrier.carrierId,
-                  label: (
-                    <TextLink href={KINDS.carrier.href(carrier.carrierId)}>
-                      {carrier.companyName}
-                    </TextLink>
-                  ),
-                  rate: carrier.rate,
-                  n: carrier.n,
-                }))}
-              />
+              <div aria-busy={metrics.isPlaceholderData}>
+                <OnTimeRows
+                  rows={data.byCarrier.map((carrier) => ({
+                    key: carrier.carrierId,
+                    label: (
+                      <TextLink href={KINDS.carrier.href(carrier.carrierId)}>
+                        {carrier.companyName}
+                      </TextLink>
+                    ),
+                    rate: carrier.rate,
+                    n: carrier.n,
+                  }))}
+                />
+              </div>
             )}
           </QueryState>
         </Panel>
@@ -121,7 +130,7 @@ export function AdminDashboard() {
           waiting={waiting}
           tenants={
             counts &&
-            `${plural(sumRecord(counts.sellers), 'seller')} · ${plural(sumRecord(counts.carriers), 'carrier')}`
+            `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
           }
         />
       </div>
@@ -131,8 +140,7 @@ export function AdminDashboard() {
 
 function PlatformTiles({ data, scope }: { data: AdminMetrics; scope: string }) {
   const { firstAttempt } = data;
-  const failedShown =
-    hasEnoughData(firstAttempt.n) && firstAttempt.rate !== null;
+  const firstRate = hasEnoughData(firstAttempt.n) ? firstAttempt.rate : null;
   return (
     <>
       <OnTimeTile onTime={data.onTime} scope={scope} />
@@ -148,17 +156,13 @@ function PlatformTiles({ data, scope }: { data: AdminMetrics; scope: string }) {
       <StatTile
         label="Failed"
         scope={scope}
-        value={
-          failedShown
-            ? `${(100 - (firstAttempt.rate as number)).toFixed(1)}%`
-            : '—'
-        }
+        value={firstRate === null ? '—' : `${(100 - firstRate).toFixed(1)}%`}
         note={
-          failedShown
+          firstRate !== null
             ? `${firstAttempt.failed} failed · ${firstAttempt.returned} returned`
             : notEnoughNote(firstAttempt.n, 'deliveries')
         }
-        definition={`Outcomes with a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}).`}
+        definition={`Outcomes with a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}). A failure that later returned still counts.`}
       />
       <MedianClaimTile claim={data.claim} scope={scope} />
     </>

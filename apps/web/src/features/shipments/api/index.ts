@@ -3,10 +3,10 @@ import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
   AdminMetrics,
+  AdminScopeQuery,
   AdminShipment,
   AdminShipmentDetail,
   AdminShipmentResponse,
-  AdminStatusCountsQuery,
   CarrierShipment,
   CarrierView,
   CreateShipmentInput,
@@ -117,7 +117,7 @@ export function getShipmentActivity(
 }
 
 export function getAdminMetrics(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   token: string,
 ): Promise<AdminMetrics> {
   return apiClient<AdminMetrics>(
@@ -183,7 +183,7 @@ export async function getAdminShipment(
 }
 
 export function getAdminShipmentStatusCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   token: string,
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
@@ -194,7 +194,7 @@ export function getAdminShipmentStatusCounts(
 }
 
 export function getAdminShipmentViewCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   token: string,
 ): Promise<ViewCounts> {
   return apiClient<ViewCounts>(
