@@ -2,10 +2,11 @@ import type { StatsWindow } from '@/hooks/use-stats-window';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
+  AdminMetrics,
+  AdminScopeQuery,
   AdminShipment,
   AdminShipmentDetail,
   AdminShipmentResponse,
-  AdminStatusCountsQuery,
   CarrierShipment,
   CarrierView,
   CreateShipmentInput,
@@ -115,6 +116,17 @@ export function getShipmentActivity(
   );
 }
 
+export function getAdminMetrics(
+  query: AdminScopeQuery,
+  token: string,
+): Promise<AdminMetrics> {
+  return apiClient<AdminMetrics>(
+    `/admin/metrics${toQueryString({ ...query })}`,
+    undefined,
+    token,
+  );
+}
+
 export function getSellerMetrics(
   statsWindow: StatsWindow,
   token: string,
@@ -171,7 +183,7 @@ export async function getAdminShipment(
 }
 
 export function getAdminShipmentStatusCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   token: string,
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
@@ -182,7 +194,7 @@ export function getAdminShipmentStatusCounts(
 }
 
 export function getAdminShipmentViewCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   token: string,
 ): Promise<ViewCounts> {
   return apiClient<ViewCounts>(
