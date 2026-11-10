@@ -59,7 +59,11 @@ describe('StatTile', () => {
       />,
     );
 
-    expect(getByRole('link').contains(getByRole('button'))).toBe(false);
+    expect(
+      getByRole('link', { name: 'On time 30 d, 92.0%' }).contains(
+        getByRole('button'),
+      ),
+    ).toBe(false);
     await user.tab();
     await user.tab();
     await user.keyboard('{Enter}');
