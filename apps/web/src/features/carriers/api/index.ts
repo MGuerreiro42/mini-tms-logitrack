@@ -95,22 +95,22 @@ export function getMyCoverageAreas(token: string): Promise<CoverageArea[]> {
 }
 
 export function getMyCarrierPerformance(
-  window: StatsWindow,
+  statsWindow: StatsWindow,
   token: string,
 ): Promise<CarrierPerformance> {
   return apiClient<CarrierPerformance>(
-    `/carriers/me/performance${toQueryString({ window })}`,
+    `/carriers/me/performance${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );
 }
 
 export function getMyOperatorRanking(
-  window: StatsWindow,
+  statsWindow: StatsWindow,
   token: string,
 ): Promise<OperatorRankingItem[]> {
   return apiClient<OperatorRankingItem[]>(
-    `/carriers/me/operator-ranking${toQueryString({ window })}`,
+    `/carriers/me/operator-ranking${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );

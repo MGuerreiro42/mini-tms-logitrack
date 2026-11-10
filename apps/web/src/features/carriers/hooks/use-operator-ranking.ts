@@ -6,12 +6,12 @@ import type { StatsWindow } from '@/hooks/use-stats-window';
 import { getMyOperatorRanking } from '../api';
 import { carrierKeys } from '../api/keys';
 
-export function useOperatorRanking(window: StatsWindow) {
+export function useOperatorRanking(statsWindow: StatsWindow) {
   const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: carrierKeys.operatorRanking(window),
-    queryFn: () => getMyOperatorRanking(window, token),
+    queryKey: carrierKeys.operatorRanking(statsWindow),
+    queryFn: () => getMyOperatorRanking(statsWindow, token),
     enabled,
     placeholderData: keepPreviousData,
   });

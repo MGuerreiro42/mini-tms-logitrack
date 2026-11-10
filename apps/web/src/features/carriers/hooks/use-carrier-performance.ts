@@ -6,12 +6,12 @@ import type { StatsWindow } from '@/hooks/use-stats-window';
 import { getMyCarrierPerformance } from '../api';
 import { carrierKeys } from '../api/keys';
 
-export function useCarrierPerformance(window: StatsWindow) {
+export function useCarrierPerformance(statsWindow: StatsWindow) {
   const { token, enabled } = useAuthToken();
 
   return useQuery({
-    queryKey: carrierKeys.performance(window),
-    queryFn: () => getMyCarrierPerformance(window, token),
+    queryKey: carrierKeys.performance(statsWindow),
+    queryFn: () => getMyCarrierPerformance(statsWindow, token),
     enabled,
     placeholderData: keepPreviousData,
   });
