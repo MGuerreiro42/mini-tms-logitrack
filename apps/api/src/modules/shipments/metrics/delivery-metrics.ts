@@ -103,6 +103,8 @@ export function deliveryMetrics(
   const deliveryHours = delivered.map((row) =>
     hoursBetween(row.createdAt, row.deliveredAt as Date),
   );
+  // Budget base: the median slaHours over every shipment of the window with an SLA, so one
+  // budget per stage covers a mix of modalities.
   const slaMedian = percentile(
     rows.flatMap((row) =>
       row.modality.slaHours === null ? [] : [row.modality.slaHours],

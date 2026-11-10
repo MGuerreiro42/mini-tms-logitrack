@@ -420,6 +420,8 @@ describe('ShipmentsService', () => {
         Array(5).fill('FAILED_DELIVERY'),
       );
       expect(result.counts).toEqual({ failed: 8, late: 1 });
+      // The late row is capped off the list but still dates the oldest late.
+      expect(result.oldestLateDueAt).toEqual(late('late-1').dueAt);
     });
 
     it('reports zero late shipments when none are overdue', async () => {
@@ -429,7 +431,11 @@ describe('ShipmentsService', () => {
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
-      expect(result).toEqual({ shipments: [], counts: { failed: 0, late: 0 } });
+      expect(result).toEqual({
+        shipments: [],
+        counts: { failed: 0, late: 0 },
+        oldestLateDueAt: null,
+      });
     });
   });
 
