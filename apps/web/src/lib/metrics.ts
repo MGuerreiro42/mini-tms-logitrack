@@ -6,13 +6,5 @@ export const ON_TIME_TARGET = 90;
 
 export const hasEnoughData = (n: number) => n >= MIN_SAMPLE;
 
-// The popover's words for a sparkline: first point with data against the last.
-export function trendDirection(values: (number | null)[]): string {
-  const points = values.filter((value) => value !== null);
-  const delta = (points.at(-1) ?? 0) - (points[0] ?? 0);
-  if (points.length < 2 || Math.abs(delta) < 1) return 'steady';
-  return delta > 0 ? 'rising' : 'falling';
-}
-
 export const notEnoughNote = (n: number, noun: 'deliveries' | 'data') =>
   `Not enough ${noun} (n=${n})`;

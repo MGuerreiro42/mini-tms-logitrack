@@ -1,110 +1,59 @@
 'use client';
 
 import Link from 'next/link';
-import { OnTimeRows } from '@/components/common/charts/on-time-rows';
-import {
-  PIPELINE_STATUSES,
-  PipelineBar,
-} from '@/components/common/charts/pipeline-bar';
 import { EmptyState } from '@/components/common/feedback-state';
 import { LiveIndicator } from '@/components/common/live-indicator';
-import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
 import { RiskBadge } from '@/components/common/risk-badge';
 import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
 import { TrackingCode } from '@/components/common/tracking-code';
-import { WindowSelector } from '@/components/common/window-selector';
 import { Button } from '@/components/ui/button';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
-import {
-  type StatsWindow,
-  useStatsWindow,
-  windowLabel,
-} from '@/hooks/use-stats-window';
-import { formatDuration } from '@/lib/format-duration';
 import type { LiveConnection } from '@/lib/live-status';
-import {
-  hasEnoughData,
-  notEnoughNote,
-  ON_TIME_TARGET,
-  trendDirection,
-} from '@/lib/metrics';
+import { ON_TIME_TARGET } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
-import { sumRecord } from '@/lib/sum-record';
-import { cn } from '@/lib/utils';
 import {
   type SellerDashboardData,
   useSellerDashboard,
 } from '../hooks/use-seller-dashboard';
-import type { SellerMetrics, Shipment, ShipmentAttention } from '../types';
+import type { Shipment, ShipmentAttention } from '../types';
 import { ActivityFeed } from './activity-feed';
 import { PanelLink } from './panel-link';
+import { SlaSummaryChart } from './sla-summary-chart';
 
 const SLA_REFRESH_MS = 60_000;
-const HOUR_MS = 3_600_000;
 
 const place = (shipment: Shipment) =>
   `${shipment.addressCity}, ${shipment.addressState}`;
-const listHref = (search: string) => `${ROUTES.sellerShipments}?${search}`;
+function onTimeNote({ rate, late }: SellerDashboardData['onTime']): string {
+  if (rate === null) return 'No deliveries with an SLA yet';
+  if (late === 0) return 'Every delivery within SLA';
+  return `${plural(late, 'delivery', 'deliveries')} past SLA`;
+}
 
 export function SellerDashboard() {
-  // One reader of the window per page: the selector and the queries share it.
-  const [statsWindow, setStatsWindow] = useStatsWindow();
-  const { query, live } = useSellerDashboard(statsWindow);
+  const { query, live } = useSellerDashboard();
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Overview"
-        description="What needs you and what is moving now."
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            <WindowSelector value={statsWindow} onChange={setStatsWindow} />
-            <Button asChild>
-              <Link href={ROUTES.newShipment}>Create shipment</Link>
-            </Button>
-          </div>
-        }
-      />
-      <QueryState query={query} errorMessage="Couldn't load your dashboard.">
-        {(data) => (
-          // The previous window's numbers stay, dimmed, until the new ones arrive.
-          <div
-            aria-busy={query.isPlaceholderData}
-            className={cn(
-              'transition-opacity',
-              query.isPlaceholderData && 'opacity-60',
-            )}
-          >
-            <SellerDashboardView
-              data={data}
-              live={live}
-              statsWindow={statsWindow}
-            />
-          </div>
-        )}
-      </QueryState>
-    </div>
+    <QueryState query={query} errorMessage="Couldn't load your dashboard.">
+      {(data) => <SellerDashboardView data={data} live={live} />}
+    </QueryState>
   );
 }
 
 function SellerDashboardView({
-  data: { counts, attention, activity, metrics },
+  data: { counts, onTime, attention, activity, slaSummary },
   live,
-  statsWindow,
 }: {
   data: SellerDashboardData;
   live: LiveConnection;
-  statsWindow: StatsWindow;
 }) {
-  const now = useNow(SLA_REFRESH_MS);
-
-  if (sumRecord(counts) === 0) {
+  if (counts.total === 0) {
     return (
       <EmptyState
         title="Send your first shipment"
@@ -131,72 +80,42 @@ function SellerDashboardView({
     );
   }
 
-  const scope = windowLabel(statsWindow);
-  const active = PIPELINE_STATUSES.reduce(
-    (sum, status) => sum + counts[status],
-    0,
-  );
-  // Late shipments follow the failed ones, most overdue first.
-  const oldestLate = attention.shipments.find(
-    (shipment) => shipment.status !== 'FAILED_DELIVERY' && shipment.dueAt,
-  )?.dueAt;
-  const lateNow = attention.counts.late;
-
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          label="Active"
-          scope="now"
-          value={active}
-          href={listHref('view=active')}
-          linkLabel="View active shipments"
-          note={`${counts.PENDING} waiting for a carrier`}
+          label="In progress"
+          value={counts.inProgress}
+          href={`${ROUTES.sellerShipments}?view=active`}
+          note={`${counts.pending} waiting for a carrier`}
         />
-        <StatTile
-          label="Late"
-          scope="now"
-          value={lateNow}
-          tone={lateNow > 0 ? 'critical' : undefined}
-          href={listHref('view=late')}
-          linkLabel="View late shipments"
-          note={
-            oldestLate
-              ? `oldest ${formatDuration((now.getTime() - Date.parse(oldestLate)) / HOUR_MS)}`
-              : 'Nothing past its due time'
-          }
-        />
-        <OnTimeTile onTime={metrics.onTime} scope={scope} />
         <StatTile
           label="Delivered"
-          scope={scope}
-          value={metrics.delivered}
-          href={listHref(`status=DELIVERED&window=${statsWindow}`)}
-          linkLabel="View delivered shipments"
+          value={counts.delivered}
+          href={`${ROUTES.sellerShipments}?status=DELIVERED`}
+          note={`Of ${plural(counts.total, 'shipment')}`}
+        />
+        <StatTile
+          label="On time"
+          value={onTime.rate === null ? '—' : `${onTime.rate.toFixed(1)}%`}
+          note={onTimeNote(onTime)}
+          tone={
+            onTime.rate !== null && onTime.rate < ON_TIME_TARGET
+              ? 'caution'
+              : undefined
+          }
+        />
+        <StatTile
+          label="Needs attention"
+          value={attention.counts.failed + attention.counts.late}
+          href={`${ROUTES.sellerShipments}?view=exceptions`}
+          note={`${attention.counts.failed} failed, ${attention.counts.late} late`}
         />
       </div>
-      <PipelineBar
-        counts={counts}
-        hrefFor={(status) => listHref(`status=${status}`)}
-      />
-      {/* The columns stack on their own (decision 10.11): no panel stretches to the other's height. */}
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <AttentionPanel attention={attention} />
-          <Panel
-            title={`On time by modality · ${scope}`}
-            isEmpty={metrics.byModality.length === 0}
-            emptyMessage="No delivery with an SLA in this window yet."
-          >
-            <OnTimeRows
-              rows={metrics.byModality.map((modality) => ({
-                key: modality.modalityCode,
-                label: modality.modalityName,
-                rate: modality.rate,
-                n: modality.n,
-              }))}
-            />
-          </Panel>
+          <SlaSummaryChart data={slaSummary} />
         </div>
         <Panel
           title="Recent updates"
@@ -212,32 +131,6 @@ function SellerDashboardView({
         </Panel>
       </div>
     </div>
-  );
-}
-
-function OnTimeTile({
-  onTime: { n, rate, trend },
-  scope,
-}: {
-  onTime: SellerMetrics['onTime'];
-  scope: string;
-}) {
-  const enough = hasEnoughData(n) && rate !== null;
-  return (
-    <StatTile
-      label="On time"
-      scope={scope}
-      value={enough ? `${rate.toFixed(1)}%` : '—'}
-      tone={enough && rate < ON_TIME_TARGET ? 'caution' : undefined}
-      sparkline={enough ? trend : undefined}
-      target={ON_TIME_TARGET}
-      note={
-        enough
-          ? `n=${n} · target ${ON_TIME_TARGET}%`
-          : notEnoughNote(n, 'deliveries')
-      }
-      definition={`Delivered by the due time ÷ deliveries with a due time, among shipments created in the last ${scope} (n=${n}). Shipments without an SLA are left out. Trend over the window: ${trendDirection(trend)}.`}
-    />
   );
 }
 

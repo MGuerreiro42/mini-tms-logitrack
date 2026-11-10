@@ -1,35 +1,63 @@
 'use client';
 
-import { keepPreviousData, useQueries } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import type { StatsWindow } from '@/hooks/use-stats-window';
 import { combineQueries } from '@/lib/combine-queries';
 import { fallbackPollInterval } from '@/lib/live-status';
+import { sumRecord } from '@/lib/sum-record';
 import {
-  getSellerMetrics,
   getShipmentActivity,
   getShipmentAttention,
+  getSlaSummary,
 } from '../api';
 import { shipmentKeys } from '../api/keys';
 import type {
-  SellerMetrics,
   ShipmentActivity,
   ShipmentAttention,
+  ShipmentStatus,
   ShipmentStatusCounts,
+  SlaSummaryItem,
 } from '../types';
 import { statusCountsQuery } from './use-shipment-status-counts';
 import { useShipmentTracking } from './use-shipment-tracking';
 
 const ACTIVITY_LIMIT = 8;
 
+const IN_PROGRESS: ShipmentStatus[] = [
+  'PENDING',
+  'ACCEPTED',
+  'COLLECTED',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+];
+
 export interface SellerDashboardData {
-  counts: ShipmentStatusCounts;
+  counts: ReturnType<typeof toCounts>;
+  onTime: ReturnType<typeof toOnTime>;
   attention: ShipmentAttention;
   activity: ShipmentActivity[];
-  metrics: SellerMetrics;
+  slaSummary: SlaSummaryItem[];
 }
 
-export function useSellerDashboard(statsWindow: StatsWindow) {
+function toCounts(byStatus: ShipmentStatusCounts) {
+  return {
+    inProgress: IN_PROGRESS.reduce((sum, status) => sum + byStatus[status], 0),
+    pending: byStatus.PENDING,
+    delivered: byStatus.DELIVERED,
+    total: sumRecord(byStatus),
+  };
+}
+
+function toOnTime(summary: SlaSummaryItem[]) {
+  const delivered = summary.reduce((sum, row) => sum + row.deliveredCount, 0);
+  const onTime = summary.reduce((sum, row) => sum + row.onTimeCount, 0);
+  return {
+    rate: delivered === 0 ? null : (onTime / delivered) * 100,
+    late: delivered - onTime,
+  };
+}
+
+export function useSellerDashboard() {
   const { token, enabled } = useAuthToken();
   const live = useShipmentTracking({ subscribeToSeller: true });
   const refetchInterval = fallbackPollInterval(live.status);
@@ -44,32 +72,29 @@ export function useSellerDashboard(statsWindow: StatsWindow) {
         refetchInterval,
       },
       {
+        queryKey: shipmentKeys.slaSummary(),
+        queryFn: () => getSlaSummary(token),
+        enabled,
+        refetchInterval,
+      },
+      {
         queryKey: shipmentKeys.attention(),
         queryFn: () => getShipmentAttention(token),
         enabled,
         refetchInterval,
       },
-      {
-        queryKey: shipmentKeys.metrics(statsWindow),
-        queryFn: () => getSellerMetrics(statsWindow, token),
-        enabled,
-        refetchInterval,
-        placeholderData: keepPreviousData,
-      },
     ],
-    combine: (results) => ({
-      ...combineQueries(
+    combine: (results) =>
+      combineQueries(
         results,
-        ([counts, activity, attention, metrics]): SellerDashboardData => ({
-          counts,
+        ([counts, activity, slaSummary, attention]): SellerDashboardData => ({
+          counts: toCounts(counts),
+          onTime: toOnTime(slaSummary),
           attention,
           activity,
-          metrics,
+          slaSummary,
         }),
       ),
-      // The previous window stays on screen while the next one loads.
-      isPlaceholderData: results[3].isPlaceholderData,
-    }),
   });
 
   return { query, live };

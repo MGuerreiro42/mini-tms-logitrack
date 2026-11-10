@@ -13,17 +13,12 @@ import type {
 
 export type { ShipmentStatus, ShipmentStatusCounts };
 
-// n is the denominator; rate is null at n = 0 (spec 07 FR-008).
-export interface Rate {
-  n: number;
-  count: number;
-  rate: number | null;
-}
-
-export interface SellerMetrics {
-  delivered: number;
-  onTime: Rate & { trend: (number | null)[] };
-  byModality: (Rate & { modalityCode: string; modalityName: string })[];
+export interface SlaSummaryItem {
+  modalityCode: string;
+  modalityName: string;
+  deliveredCount: number;
+  onTimeCount: number;
+  onTimeRate: number;
 }
 
 export interface ShipmentActivity {
