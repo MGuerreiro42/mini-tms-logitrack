@@ -1,4 +1,4 @@
-import { SellerDetailCard } from '@/features/sellers/components/seller-detail-card';
+import { Seller360 } from '@/features/admin/components/seller-360';
 
 export default async function AdminSellerDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function AdminSellerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <SellerDetailCard id={id} />;
+  return <Seller360 id={id} />;
 }

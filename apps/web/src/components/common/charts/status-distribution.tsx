@@ -7,8 +7,10 @@ import type { ShipmentStatus, ShipmentStatusCounts } from '@/types/status';
 
 export function StatusDistribution({
   counts,
+  title = 'Status distribution',
 }: {
   counts: ShipmentStatusCounts;
+  title?: string;
 }) {
   const entries = (Object.entries(counts) as [ShipmentStatus, number][])
     .filter(([, count]) => count > 0)
@@ -19,7 +21,7 @@ export function StatusDistribution({
 
   return (
     <Panel
-      title="Status distribution"
+      title={title}
       description={plural(sumRecord(counts), 'shipment')}
       isEmpty={entries.length === 0}
       emptyMessage="No shipments yet."
