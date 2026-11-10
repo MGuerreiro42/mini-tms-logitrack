@@ -11,7 +11,7 @@ export interface MetricRow {
   status: ShipmentStatus;
   dueAt: Date | null;
   deliveredAt: Date | null;
-  modality: { code: string; name: string };
+  modality: { code: string; name: string; slaHours: number | null };
   acceptedAt: Date | null;
   everFailed: boolean;
   stages: { status: ShipmentStatus; hours: number }[];
@@ -26,14 +26,18 @@ export interface Rate {
 
 export const TREND_BUCKETS = 12;
 
-// The status a shipment sits in during each happy-path stage, in lifecycle order.
-export const STAGE_STATUSES = [
-  ShipmentStatus.PENDING,
-  ShipmentStatus.ACCEPTED,
-  ShipmentStatus.COLLECTED,
-  ShipmentStatus.IN_TRANSIT,
-  ShipmentStatus.OUT_FOR_DELIVERY,
-] as const;
+// Each happy-path stage, named by the status a shipment sits in, in lifecycle order, with its
+// budget as a share of the window's median slaHours (spec 07 FR-016).
+export const STAGE_BUDGET_SHARE: Partial<Record<ShipmentStatus, number>> = {
+  [ShipmentStatus.PENDING]: 0.1,
+  [ShipmentStatus.ACCEPTED]: 0.2,
+  [ShipmentStatus.COLLECTED]: 0.1,
+  [ShipmentStatus.IN_TRANSIT]: 0.4,
+  [ShipmentStatus.OUT_FOR_DELIVERY]: 0.2,
+};
+export const STAGE_STATUSES = Object.keys(
+  STAGE_BUDGET_SHARE,
+) as ShipmentStatus[];
 
 const rate = (count: number, n: number): Rate => ({
   n,
@@ -98,6 +102,12 @@ export function deliveryMetrics(
   const deliveryHours = delivered.map((row) =>
     hoursBetween(row.createdAt, row.deliveredAt as Date),
   );
+  const slaMedian = percentile(
+    rows.flatMap((row) =>
+      row.modality.slaHours === null ? [] : [row.modality.slaHours],
+    ),
+    50,
+  );
   const first = rate(
     outcomes.filter((row) => !row.everFailed).length,
     outcomes.length,
@@ -131,6 +141,10 @@ export function deliveryMetrics(
         status,
         p50Hours: percentile(hours, 50),
         p90Hours: percentile(hours, 90),
+        budgetHours:
+          slaMedian === null
+            ? null
+            : slaMedian * (STAGE_BUDGET_SHARE[status] as number),
         n: hours.length,
       };
     }),

@@ -11,7 +11,7 @@ const row = (overrides: Partial<MetricRow> = {}): MetricRow => ({
   status: ShipmentStatus.DELIVERED,
   dueAt: at(24),
   deliveredAt: at(10),
-  modality: { code: 'EXPRESS', name: 'Express' },
+  modality: { code: 'EXPRESS', name: 'Express', slaHours: 24 },
   acceptedAt: null,
   everFailed: false,
   stages: [],
@@ -135,7 +135,12 @@ describe('deliveryMetrics', () => {
       status: ShipmentStatus.PENDING,
       p50Hours: 0.5,
       p90Hours: 0.5,
+      // 10 % of the median slaHours (24).
+      budgetHours: expect.closeTo(2.4),
       n: 1,
     });
+    expect(
+      metrics.stages.map((stage) => stage.budgetHours?.toFixed(1)),
+    ).toEqual(['2.4', '4.8', '2.4', '9.6', '4.8']);
   });
 });
