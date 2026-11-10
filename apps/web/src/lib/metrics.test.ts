@@ -1,10 +1,21 @@
-import { hasEnoughData, notEnoughNote, trendDirection } from './metrics';
+import {
+  hasEnoughData,
+  notEnoughNote,
+  rateCell,
+  trendDirection,
+} from './metrics';
 
 describe('metrics', () => {
   it('needs 5 samples before a rate or median counts', () => {
     expect(hasEnoughData(4)).toBe(false);
     expect(hasEnoughData(5)).toBe(true);
     expect(notEnoughNote(3, 'deliveries')).toBe('Not enough deliveries (n=3)');
+  });
+
+  it('writes a rate cell, or its sample when too small', () => {
+    expect(rateCell(92.31, 13)).toBe('92.3%');
+    expect(rateCell(100, 4)).toBe('n=4, not enough');
+    expect(rateCell(null, 0)).toBe('n=0, not enough');
   });
 
   it('reads the trend from the first and the last bucket with data', () => {

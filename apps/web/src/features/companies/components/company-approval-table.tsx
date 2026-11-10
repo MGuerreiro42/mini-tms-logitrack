@@ -14,6 +14,7 @@ import {
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
+import { type ListStats, rateCell } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
@@ -26,6 +27,24 @@ interface CompanyRow {
   document: string;
   status: ApprovalStatus;
   createdAt: string;
+}
+
+const NUMBER_CELL = 'text-right tabular-nums';
+
+// Shipments and on time over the last 30 d, from the list's include=stats.
+export function statsColumns<T extends { stats?: ListStats }>(): Column<T>[] {
+  return [
+    {
+      header: 'Shipments · 30 d',
+      className: NUMBER_CELL,
+      cell: (c) => c.stats?.shipments,
+    },
+    {
+      header: 'On time',
+      className: NUMBER_CELL,
+      cell: (c) => c.stats && rateCell(c.stats.onTime.rate, c.stats.onTime.n),
+    },
+  ];
 }
 
 const STATUSES: ApprovalStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
