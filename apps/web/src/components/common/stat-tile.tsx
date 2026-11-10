@@ -47,7 +47,15 @@ export function StatTile({
   const heading = (
     <>
       {label}
-      {scope && <span className="text-muted-foreground"> · {scope}</span>}
+      {/* The scope wraps as one piece, never "· 30" / "d". */}
+      {scope && (
+        <>
+          {' '}
+          <span className="whitespace-nowrap text-muted-foreground">
+            · {scope}
+          </span>
+        </>
+      )}
     </>
   );
 
