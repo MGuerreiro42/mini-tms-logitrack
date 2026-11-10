@@ -93,7 +93,7 @@ The reasoning behind each decision is in [`DESIGN.md`](./DESIGN.md).
 | | |
 |---|---|
 | **API** | NestJS 11, Prisma 7, PostgreSQL 16, Redis 7, Socket.IO, JWT |
-| **Web** | Next.js 16 (App Router), React 19, TanStack Query, Tailwind CSS 4, shadcn/ui, Recharts |
+| **Web** | Next.js 16 (App Router), React 19, TanStack Query, Tailwind CSS 4, shadcn/ui |
 | **Testing** | Vitest (unit + e2e on real Postgres and Redis), Testing Library, MSW |
 | **Tooling** | pnpm, Biome, lefthook, commitlint, GitHub Actions (CI, CodeQL, gitleaks) |
 
