@@ -523,6 +523,8 @@ describe('CarriersService', () => {
         { id: 'm', role: 'MANAGER', user: { name: 'Maria', email: 'm@x' } },
         { id: 'a', role: 'OPERATOR', user: { name: 'Ana', email: 'a@x' } },
         { id: 'b', role: 'OPERATOR', user: { name: 'Bruno', email: 'b@x' } },
+        { id: 'c', role: 'OPERATOR', user: { name: 'Carla', email: 'c@x' } },
+        { id: 'd', role: 'OPERATOR', user: { name: 'Caio', email: 'd@x' } },
       ]);
       shipmentFindMany.mockResolvedValue([
         shipment('a', 'DELIVERED'),
@@ -533,6 +535,8 @@ describe('CarriersService', () => {
       shipmentGroupBy.mockResolvedValue([
         { ownerId: 'b', _count: 3 },
         { ownerId: 'a', _count: 1 },
+        { ownerId: 'c', _count: 1 },
+        { ownerId: 'd', _count: 1 },
       ]);
 
       const result = await carriersService.operatorRanking('carrier-1', since);
@@ -540,7 +544,14 @@ describe('CarriersService', () => {
       expect(carrierUserFindMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { carrierId: 'carrier-1' } }),
       );
-      expect(result.map((row) => row.carrierUserId)).toEqual(['b', 'a', 'm']);
+      // a and c/d tie on active: claimed breaks it, then the name.
+      expect(result.map((row) => row.carrierUserId)).toEqual([
+        'b',
+        'a',
+        'd',
+        'c',
+        'm',
+      ]);
       expect(result[1]).toEqual({
         carrierUserId: 'a',
         name: 'Ana',
@@ -551,7 +562,7 @@ describe('CarriersService', () => {
         delivered: 2,
         onTime: { n: 2, count: 1, rate: 50 },
       });
-      expect(result[2]).toMatchObject({
+      expect(result[4]).toMatchObject({
         active: 0,
         claimed: 0,
         onTime: { n: 0, rate: null },
