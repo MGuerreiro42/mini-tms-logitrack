@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -110,6 +111,18 @@ export class SellersController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.sellersService.findOne(id);
+  }
+
+  @ApiOperation({
+    summary:
+      'List the modality catalog with an enabled flag for one seller — admin only',
+  })
+  @ApiResponse({ status: 200, type: [ModalityToggleResponseDto] })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @Auth(GlobalRole.ADMIN)
+  @Get(':id/modalities')
+  getModalitiesById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.sellersService.getModalitiesById(id);
   }
 
   @ApiOperation({ summary: 'Approve a pending seller' })
