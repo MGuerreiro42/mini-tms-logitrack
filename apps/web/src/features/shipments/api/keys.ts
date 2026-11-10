@@ -30,7 +30,8 @@ export const shipmentKeys = {
   queueViewCounts: () => [...shipmentKeys.all, 'queue', 'view-counts'] as const,
   attention: () => [...shipmentKeys.all, 'attention'] as const,
   activity: () => [...shipmentKeys.all, 'activity'] as const,
-  slaSummary: () => [...shipmentKeys.all, 'sla-summary'] as const,
+  metrics: (statsWindow: StatsWindow) =>
+    [...shipmentKeys.all, 'metrics', statsWindow] as const,
 };
 
 export const eligibleCarriersKey = (
