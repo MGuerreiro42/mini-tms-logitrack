@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { setSession } from '@/lib/session';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
 import { CarrierPerformance } from './carrier-performance';
@@ -48,5 +49,23 @@ describe('CarrierPerformance', () => {
 
     expect(await screen.findByText('3 min')).toBeInTheDocument();
     expect(screen.queryByText('0.0h')).toBeNull();
+  });
+
+  it('names the window when it holds no shipment', async () => {
+    resetNavigation('/carrier/performance?window=7d');
+    server.use(
+      http.get(`${API_URL}/carriers/me/performance`, () =>
+        HttpResponse.json({ ...performance, totalShipments: 0 }),
+      ),
+      http.get(`${API_URL}/carriers/me/operator-ranking`, () =>
+        HttpResponse.json([]),
+      ),
+    );
+
+    renderWithQueryClient(<CarrierPerformance />);
+
+    expect(
+      await screen.findByText('No shipments created in the last 7 d'),
+    ).toBeVisible();
   });
 });

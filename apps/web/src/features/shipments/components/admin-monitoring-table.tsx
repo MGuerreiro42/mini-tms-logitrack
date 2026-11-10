@@ -18,6 +18,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { usePeek } from '@/hooks/use-peek';
 import { useRecentCount } from '@/hooks/use-recent-count';
+import { STATS_WINDOWS, type StatsWindow } from '@/hooks/use-stats-window';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import type { LiveConnection } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
@@ -71,11 +72,13 @@ export function AdminMonitoringTable({
       q: '',
       carrierId: ALL as string,
       sellerId: ALL as string,
+      window: ALL as StatsWindow | typeof ALL,
     },
     {
-      view: [ALL, 'active', 'exceptions'],
+      view: [ALL, 'active', 'late', 'exceptions'],
       status: [ALL, ...SHIPMENT_STATUSES],
       q: FREE_TEXT,
+      window: [ALL, ...STATS_WINDOWS],
       carrierId: carrierChoices.map((choice) => choice.value),
       sellerId: sellerChoices.map((choice) => choice.value),
     },
@@ -92,7 +95,11 @@ export function AdminMonitoringTable({
     subscribeToMonitoring: true,
     onEvent: () => recordUpdate.current?.(),
   });
-  const scope = { carrierId: params.carrierId, sellerId: params.sellerId };
+  const scope = {
+    carrierId: params.carrierId,
+    sellerId: params.sellerId,
+    window: params.window,
+  };
   const statusCounts = useAdminShipmentStatusCounts(scope, live.status).data;
   const viewCounts = useAdminShipmentViewCounts(scope, live.status).data;
   const [all, ...statusTabs] = statusFilterOptions(
@@ -107,6 +114,12 @@ export function AdminMonitoringTable({
       label: 'Active',
       value: 'active',
       count: viewCounts?.active,
+    },
+    {
+      key: 'view' as const,
+      label: 'Late',
+      value: 'late',
+      count: viewCounts?.late,
     },
     {
       key: 'view' as const,

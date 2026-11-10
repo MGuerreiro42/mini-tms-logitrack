@@ -82,7 +82,13 @@ describe('shipments api', () => {
 
   it('getShipmentStatusCounts gets /shipments/status-counts', async () => {
     await getShipmentStatusCounts('token');
+    await getShipmentStatusCounts('token', '30d');
 
+    expect(apiClient).toHaveBeenCalledWith(
+      '/shipments/status-counts?window=30d',
+      undefined,
+      'token',
+    );
     expect(apiClient).toHaveBeenCalledWith(
       '/shipments/status-counts',
       undefined,

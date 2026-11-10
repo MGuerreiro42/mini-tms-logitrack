@@ -10,6 +10,7 @@ import type {
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { usePeek } from '@/hooks/use-peek';
+import { STATS_WINDOWS, type StatsWindow } from '@/hooks/use-stats-window';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
@@ -34,9 +35,15 @@ type SellerFilters = {
   view: ListView | typeof ALL;
   status: StatusFilter<ShipmentStatus>;
   q: string;
+  window: StatsWindow | typeof ALL;
 };
 
-const DEFAULT_FILTERS: SellerFilters = { view: ALL, status: ALL, q: '' };
+const DEFAULT_FILTERS: SellerFilters = {
+  view: ALL,
+  status: ALL,
+  q: '',
+  window: ALL,
+};
 const VIEW_KEYS: (keyof SellerFilters)[] = ['view', 'status'];
 
 const SLA_REFRESH_MS = 60_000;
@@ -46,15 +53,16 @@ export function ShipmentsTable() {
   const list = useFilteredPagination(
     DEFAULT_FILTERS,
     {
-      view: [ALL, 'active', 'exceptions'],
+      view: [ALL, 'active', 'late', 'exceptions'],
       status: [ALL, ...SHIPMENT_STATUSES],
       q: FREE_TEXT,
+      window: [ALL, ...STATS_WINDOWS],
     },
     { viewKeys: VIEW_KEYS },
   );
 
-  const statusCounts = useShipmentStatusCounts().data;
-  const viewCounts = useSellerViewCounts().data;
+  const statusCounts = useShipmentStatusCounts(list.params.window).data;
+  const viewCounts = useSellerViewCounts(list.params.window).data;
   const now = useNow(SLA_REFRESH_MS);
 
   const tabs: ViewTabOption<'view' | 'status'>[] = [
@@ -69,6 +77,12 @@ export function ShipmentsTable() {
       label: 'Active',
       value: 'active',
       count: viewCounts?.active,
+    },
+    {
+      key: 'view',
+      label: 'Late',
+      value: 'late',
+      count: viewCounts?.late,
     },
     {
       key: 'view',
