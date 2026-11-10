@@ -9,16 +9,16 @@ import { shipmentKeys } from '../api/keys';
 export function statusCountsQuery(
   token: string,
   enabled: boolean,
-  window?: StatsWindow,
+  statsWindow?: StatsWindow,
 ) {
   return queryOptions({
-    queryKey: shipmentKeys.statusCounts(window),
-    queryFn: () => getShipmentStatusCounts(token, window),
+    queryKey: shipmentKeys.statusCounts(statsWindow),
+    queryFn: () => getShipmentStatusCounts(token, statsWindow),
     enabled,
   });
 }
 
-export function useShipmentStatusCounts(window?: StatsWindow) {
+export function useShipmentStatusCounts(statsWindow?: StatsWindow) {
   const { token, enabled } = useAuthToken();
-  return useQuery(statusCountsQuery(token, enabled, window));
+  return useQuery(statusCountsQuery(token, enabled, statsWindow));
 }

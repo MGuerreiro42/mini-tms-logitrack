@@ -109,8 +109,7 @@ export function listWhere(
   { status, view, q, window }: ListFilters,
   ctx: ViewContext & { includeSeller: boolean },
 ): Prisma.ShipmentWhereInput {
-  const parts = [scope];
-  if (window) parts.push(windowWhere(window, ctx.now));
+  const parts = [{ ...scope, ...windowWhere(window, ctx.now) }];
   if (status) parts.push({ status });
   if (view) parts.push(viewWhere(view, ctx));
   if (q) parts.push(searchWhere(q, ctx));

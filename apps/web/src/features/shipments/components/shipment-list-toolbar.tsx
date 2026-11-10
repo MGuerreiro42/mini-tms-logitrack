@@ -106,7 +106,7 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
             },
           ];
     }),
-    ...(filters.window && filters.window !== defaults.window
+    ...(filters.window !== defaults.window
       ? [
           {
             id: 'window',
@@ -151,7 +151,7 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
                       'q',
                       ...menuKeys,
                       ...(strayStatus ? (['status'] as const) : []),
-                      ...(filters.window ? (['window'] as const) : []),
+                      'window',
                     )
                 : undefined
             }

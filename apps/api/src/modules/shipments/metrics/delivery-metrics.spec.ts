@@ -49,6 +49,8 @@ describe('deliveryMetrics', () => {
         }),
         // Still open and never failed: not an outcome yet.
         row({ status: ShipmentStatus.IN_TRANSIT, deliveredAt: null }),
+        // Delivered without a delivery time: no outcome, as in delivered.
+        row({ deliveredAt: null }),
       ],
       { since, now },
     );
@@ -80,6 +82,8 @@ describe('deliveryMetrics', () => {
         row({ createdAt: at(23.99), deliveredAt: at(30), dueAt: at(25) }),
         row({ createdAt: at(24) }),
         row({ createdAt: now, deliveredAt: at(400), dueAt: at(300) }),
+        // Created after now (clock skew): still the last bucket.
+        row({ createdAt: at(300), deliveredAt: at(301), dueAt: at(400) }),
         row({ createdAt: at(-1) }),
       ],
       { since, now },
@@ -97,8 +101,18 @@ describe('deliveryMetrics', () => {
       null,
       null,
       null,
-      0,
+      50,
     ]);
+  });
+
+  it('puts every row in the last bucket when the window has no span', () => {
+    const { trend } = deliveryMetrics([row({ createdAt: now })], {
+      since: now,
+      now,
+    }).onTime;
+
+    expect(trend.at(-1)).toBe(100);
+    expect(trend.slice(0, -1).every((rate) => rate === null)).toBe(true);
   });
 
   it('takes nearest-rank medians of delivery, claim and stage times', () => {

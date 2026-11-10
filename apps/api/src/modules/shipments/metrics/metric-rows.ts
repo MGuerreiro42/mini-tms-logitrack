@@ -65,18 +65,28 @@ export function toMetricRows(
   });
 }
 
-// One shipment query and one event query, whatever the window holds.
+// One shipment query and one event query, whatever the window holds; on-time alone needs no events.
+// shortcut: every row of the window is loaded and aggregated in memory (an admin 90 d reads the
+// whole platform); upgrade to SQL percentile_disc and grouped counts when volume outgrows it.
 export async function loadMetricRows(
   prisma: PrismaService,
   where: Prisma.ShipmentWhereInput,
+  { events: withEvents = true } = {},
 ): Promise<MetricRow[]> {
   const [shipments, events] = await Promise.all([
     prisma.shipment.findMany({ where, select: SHIPMENT_SELECT }),
-    prisma.trackingEvent.findMany({
-      where: { shipment: where },
-      select: { shipmentId: true, status: true, createdAt: true },
-      orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
-    }),
+    withEvents
+      ? prisma.trackingEvent.findMany({
+          where: { shipment: where },
+          select: { shipmentId: true, status: true, createdAt: true },
+          // Ids are random uuids: equal timestamps fall back to the enum, declared in lifecycle order.
+          orderBy: [
+            { shipmentId: 'asc' },
+            { createdAt: 'asc' },
+            { status: 'asc' },
+          ],
+        })
+      : [],
   ]);
   return toMetricRows(shipments, events);
 }
