@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  type HttpException,
   Injectable,
   Logger,
   NotFoundException,
@@ -222,12 +223,10 @@ export class ShipmentsService {
     userId: string,
     dto: CreateShipmentDto,
   ): Promise<ShipmentResponseDto> {
-    const seller = await this.findSellerOrThrow(userId);
-    if (seller.status !== ApprovalStatus.APPROVED) {
-      throw new BadRequestException(
-        'Only an approved seller can create shipments',
-      );
-    }
+    const seller = await this.findApprovedSellerOrThrow(
+      userId,
+      new BadRequestException('Only an approved seller can create shipments'),
+    );
 
     // Re-validate the eligible-carriers preview: nothing forces the client to have used it.
     const [sellerModality, carrier] = await Promise.all([
@@ -416,10 +415,10 @@ export class ShipmentsService {
     userId: string,
     since: Date,
   ): Promise<SellerMetricsResponseDto> {
-    const seller = await this.findSellerOrThrow(userId);
-    if (seller.status !== ApprovalStatus.APPROVED) {
-      throw new ForbiddenException('Seller is not approved');
-    }
+    const seller = await this.findApprovedSellerOrThrow(
+      userId,
+      new ForbiddenException('Seller is not approved'),
+    );
     // Delivered and on-time read no history, so the event query is skipped.
     const rows = await loadMetricRows(
       this.prisma,
@@ -516,6 +515,8 @@ export class ShipmentsService {
         ...late.slice(0, ATTENTION_LIMIT - failed.length),
       ].map(toShipmentResponseDto),
       counts: { failed: failedCount, late: lateCount },
+      // From the late query itself, whatever the cap and the failed-first order leave on screen.
+      oldestLateDueAt: late[0]?.dueAt ?? null,
     };
   }
 
@@ -974,6 +975,16 @@ export class ShipmentsService {
     if (!seller) {
       throw new NotFoundException('Seller not found');
     }
+    return seller;
+  }
+
+  // Each caller keeps its own status code for a seller still under review.
+  private async findApprovedSellerOrThrow(
+    userId: string,
+    notApproved: HttpException,
+  ) {
+    const seller = await this.findSellerOrThrow(userId);
+    if (seller.status !== ApprovalStatus.APPROVED) throw notApproved;
     return seller;
   }
 

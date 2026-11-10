@@ -18,13 +18,21 @@ export type ActivityGroup = ShipmentActivity & {
 };
 
 // Events come newest first: each shipment keeps its newest position, and the next older event
-// of the same shipment in the batch gives the status it came from.
-export function groupActivity(events: ShipmentActivity[]): ActivityGroup[] {
+// of the same shipment in the batch gives the status it came from. `known` remembers that status
+// per event id, so a row keeps it after its older event leaves the batch.
+export function groupActivity(
+  events: ShipmentActivity[],
+  known: Map<string, ShipmentStatus>,
+): ActivityGroup[] {
   const groups: ActivityGroup[] = [];
   for (const event of events) {
     const group = groups.find((g) => g.shipmentId === event.shipmentId);
     if (!group) groups.push({ ...event, previousStatus: null });
     else group.previousStatus ??= event.status;
   }
-  return groups.slice(0, MAX_ACTIVITY_GROUPS);
+  return groups.slice(0, MAX_ACTIVITY_GROUPS).map((group) => {
+    const previousStatus = group.previousStatus ?? known.get(group.id) ?? null;
+    if (previousStatus) known.set(group.id, previousStatus);
+    return { ...group, previousStatus };
+  });
 }

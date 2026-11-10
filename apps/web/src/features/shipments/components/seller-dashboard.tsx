@@ -11,7 +11,7 @@ import { LiveIndicator } from '@/components/common/live-indicator';
 import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { RiskBadge } from '@/components/common/risk-badge';
 import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
@@ -27,6 +27,7 @@ import {
 } from '@/hooks/use-stats-window';
 import { formatDuration } from '@/lib/format-duration';
 import type { LiveConnection } from '@/lib/live-status';
+import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
 import { slaState } from '@/lib/sla';
 import { sumRecord } from '@/lib/sum-record';
@@ -49,7 +50,7 @@ const listHref = (search: string) => `${ROUTES.sellerShipments}?${search}`;
 export function SellerDashboard() {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
-  const { query, live } = useSellerDashboard(statsWindow);
+  const { query, metrics, live } = useSellerDashboard(statsWindow);
 
   return (
     <div className="space-y-6">
@@ -67,20 +68,12 @@ export function SellerDashboard() {
       />
       <QueryState query={query} errorMessage="Couldn't load your dashboard.">
         {(data) => (
-          // The previous window's numbers stay, dimmed, until the new ones arrive.
-          <div
-            aria-busy={query.isPlaceholderData}
-            className={cn(
-              'transition-opacity',
-              query.isPlaceholderData && 'opacity-60',
-            )}
-          >
-            <SellerDashboardView
-              data={data}
-              live={live}
-              statsWindow={statsWindow}
-            />
-          </div>
+          <SellerDashboardView
+            data={data}
+            metrics={metrics}
+            live={live}
+            statsWindow={statsWindow}
+          />
         )}
       </QueryState>
     </div>
@@ -88,11 +81,13 @@ export function SellerDashboard() {
 }
 
 function SellerDashboardView({
-  data: { counts, attention, activity, metrics },
+  data: { counts, attention, activity },
+  metrics,
   live,
   statsWindow,
 }: {
   data: SellerDashboardData;
+  metrics: ReturnType<typeof useSellerDashboard>['metrics'];
   live: LiveConnection;
   statsWindow: StatsWindow;
 }) {
@@ -130,11 +125,11 @@ function SellerDashboardView({
     (sum, status) => sum + counts[status],
     0,
   );
-  // Late shipments follow the failed ones, most overdue first.
-  const oldestLate = attention.shipments.find(
-    (shipment) => shipment.status !== 'FAILED_DELIVERY' && shipment.dueAt,
-  )?.dueAt;
+  const { oldestLateDueAt } = attention;
   const lateNow = attention.counts.late;
+  // The previous window's numbers stay, dimmed, until the new ones arrive.
+  const busy = metrics.isPlaceholderData;
+  const dim = cn('transition-opacity', busy && 'opacity-60');
 
   return (
     <div className="space-y-5">
@@ -155,42 +150,69 @@ function SellerDashboardView({
           href={listHref('view=late')}
           linkLabel="View late shipments"
           note={
-            oldestLate
-              ? `oldest ${formatDuration((now.getTime() - Date.parse(oldestLate)) / HOUR_MS)}`
-              : 'Nothing past its due time'
+            oldestLateDueAt
+              ? `oldest ${formatDuration((now.getTime() - Date.parse(oldestLateDueAt)) / HOUR_MS)}`
+              : lateNow === 0 && 'Nothing past its due time'
           }
         />
-        <OnTimeTile onTime={metrics.onTime} scope={scope} />
-        <StatTile
-          label="Delivered"
-          scope={scope}
-          value={metrics.delivered}
-          href={listHref(`status=DELIVERED&window=${statsWindow}`)}
-          linkLabel="View delivered shipments"
-        />
+        <div
+          aria-busy={busy}
+          className={cn('col-span-2 grid grid-cols-2 gap-4', dim)}
+        >
+          <QueryState
+            query={metrics}
+            skeleton={<QuerySkeleton />}
+            errorMessage="Couldn't load the window's metrics."
+          >
+            {(data) => (
+              <>
+                <OnTimeTile onTime={data.onTime} scope={scope} />
+                <StatTile
+                  label="Delivered"
+                  scope={scope}
+                  value={data.delivered}
+                  href={listHref(`status=DELIVERED&window=${statsWindow}`)}
+                  linkLabel="View delivered shipments"
+                />
+              </>
+            )}
+          </QueryState>
+        </div>
       </div>
       <PipelineBar
         counts={counts}
         hrefFor={(status) => listHref(`status=${status}`)}
       />
-      {/* The columns stack on their own (decision 10.11): no panel stretches to the other's height. */}
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <ExceptionsPanel attention={attention} />
-          <Panel
-            title={`On time by modality · ${scope}`}
-            isEmpty={metrics.byModality.length === 0}
-            emptyMessage="No delivery with an SLA in this window yet."
-          >
-            <OnTimeRows
-              rows={metrics.byModality.map((modality) => ({
-                key: modality.modalityCode,
-                label: modality.modalityName,
-                rate: modality.rate,
-                n: modality.n,
-              }))}
-            />
-          </Panel>
+          {/* Grid items stretch to the row; the modality panel fills the left column so both end flush. */}
+          <div aria-busy={busy} className={cn('flex-1', dim)}>
+            <Panel title={`On time by modality · ${scope}`} className="h-full">
+              <QueryState
+                query={metrics}
+                skeleton={<QuerySkeleton variant="lines" />}
+                errorMessage="Couldn't load the window's metrics."
+              >
+                {(data) =>
+                  data.byModality.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No delivery with an SLA in this window yet.
+                    </p>
+                  ) : (
+                    <OnTimeRows
+                      rows={data.byModality.map((modality) => ({
+                        key: modality.modalityCode,
+                        label: modality.modalityName,
+                        rate: modality.rate,
+                        n: modality.n,
+                      }))}
+                    />
+                  )
+                }
+              </QueryState>
+            </Panel>
+          </div>
         </div>
         <Panel
           title="Recent updates"
@@ -222,10 +244,15 @@ function ExceptionsPanel({
       title={
         <span className="flex items-center gap-2">
           Exceptions
-          {/* Announced when the number changes, not on first render. */}
-          <Badge variant="secondary" aria-live="polite">
+          <Badge variant="secondary" aria-hidden>
             {total}
           </Badge>
+        </span>
+      }
+      aside={
+        // Announced with its noun when the number changes, not on first render.
+        <span className="sr-only" aria-live="polite">
+          {plural(total, 'exception')}
         </span>
       }
       description={
@@ -249,7 +276,10 @@ function ExceptionsPanel({
           {shipments.map((shipment) => (
             <li key={shipment.id}>
               <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
-                <RiskBadge state={slaState({ ...shipment, now })} />
+                {/* A fixed column, so the codes line up whatever the badge says. */}
+                <span className="w-22 shrink-0">
+                  <RiskBadge state={slaState({ ...shipment, now })} />
+                </span>
                 <TrackingCode
                   code={shipment.trackingCode}
                   className="shrink-0 text-[13px]"

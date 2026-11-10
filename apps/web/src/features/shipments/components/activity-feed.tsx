@@ -15,13 +15,14 @@ import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 import { useActivityFeed } from '../hooks/use-activity-feed';
 import { type ActivityGroup, groupActivity } from '../lib/activity-feed';
-import type { ShipmentActivity } from '../types';
+import type { ShipmentActivity, ShipmentStatus } from '../types';
 import { PanelLink } from './panel-link';
 
 const TIME_REFRESH_MS = 15_000;
 
 export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
-  const groups = useMemo(() => groupActivity(events), [events]);
+  const [known] = useState(() => new Map<string, ShipmentStatus>());
+  const groups = useMemo(() => groupActivity(events, known), [events, known]);
   const [paused, setPaused] = useState(false);
   const [pointerInside, setPointerInside] = useState(false);
   const [focusInside, setFocusInside] = useState(false);
@@ -66,26 +67,27 @@ export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
           Status changes of your shipments show up here as they happen.
         </p>
       ) : (
-        <ol
-          key={listKey}
-          ref={listRef}
-          role="log"
-          aria-label="Recent updates"
-          onPointerEnter={() => setPointerInside(true)}
-          onPointerLeave={() => setPointerInside(false)}
-          onFocus={() => setFocusInside(true)}
-          onBlur={leaveFocus}
-        >
-          {shown.map((event) => (
-            <li key={event.id}>
-              <ActivityLine
-                event={event}
-                now={now}
-                fresh={freshIds.has(event.id)}
-              />
-            </li>
-          ))}
-        </ol>
+        // The log node stays; only the list inside remounts to skip entrance animations.
+        <div role="log" aria-label="Recent updates">
+          <ol
+            key={listKey}
+            ref={listRef}
+            onPointerEnter={() => setPointerInside(true)}
+            onPointerLeave={() => setPointerInside(false)}
+            onFocus={() => setFocusInside(true)}
+            onBlur={leaveFocus}
+          >
+            {shown.map((event) => (
+              <li key={event.id}>
+                <ActivityLine
+                  event={event}
+                  now={now}
+                  fresh={freshIds.has(event.id)}
+                />
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </div>
   );

@@ -18,14 +18,7 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
-import {
-  average,
-  countByStatus,
-  createdSince,
-  groupBy,
-  hoursBetween,
-  percentage,
-} from '../../shared/stats/stats';
+import { countByStatus, createdSince, groupBy } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
@@ -217,28 +210,35 @@ export class CarriersService {
     const owned = groupBy(rows, (row) => row.ownerId);
     const active = new Map(openGroups.map((g) => [g.ownerId, g._count]));
 
-    return carrierUsers
-      .map(({ id, role, user }) => {
-        const mine = owned.get(id) ?? [];
-        return {
-          carrierUserId: id,
-          name: user.name,
-          email: user.email,
-          role,
-          active: active.get(id) ?? 0,
-          claimed: mine.filter((row) => row.status !== ShipmentStatus.CANCELLED)
-            .length,
-          delivered: mine.filter(
-            (row) => row.status === ShipmentStatus.DELIVERED,
-          ).length,
-          onTime: onTime(mine),
-        };
-      })
-      .sort(
-        (a, b) =>
-          Number(a.role === CarrierRole.MANAGER) -
-            Number(b.role === CarrierRole.MANAGER) || b.active - a.active,
-      );
+    return (
+      carrierUsers
+        .map(({ id, role, user }) => {
+          const mine = owned.get(id) ?? [];
+          return {
+            carrierUserId: id,
+            name: user.name,
+            email: user.email,
+            role,
+            active: active.get(id) ?? 0,
+            claimed: mine.filter(
+              (row) => row.status !== ShipmentStatus.CANCELLED,
+            ).length,
+            delivered: mine.filter(
+              (row) => row.status === ShipmentStatus.DELIVERED,
+            ).length,
+            onTime: onTime(mine),
+          };
+        })
+        // Operators first, then by active, claimed and name, so equal rows keep one order.
+        .sort(
+          (a, b) =>
+            Number(a.role === CarrierRole.MANAGER) -
+              Number(b.role === CarrierRole.MANAGER) ||
+            b.active - a.active ||
+            b.claimed - a.claimed ||
+            (a.name ?? a.email).localeCompare(b.name ?? b.email),
+        )
+    );
   }
 
   async getCoverageAreas(userId: string): Promise<CoverageAreaResponseDto[]> {
