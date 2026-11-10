@@ -216,9 +216,45 @@ describe('List views and search (e2e)', () => {
     },
   );
 
+  it.each(['7d', '30d', '90d'])(
+    'gives the %s admin metrics the numbers of the carrier and the lists',
+    async (window) => {
+      const scope = { carrierId: tenants.carrierId };
+      const [platform, carrier, performance] = await Promise.all([
+        get(admin, '/admin/metrics', { window }).expect(200),
+        get(admin, '/admin/metrics', { ...scope, window }).expect(200),
+        get(tenants.manager, '/carriers/me/performance', { window }).expect(
+          200,
+        ),
+      ]);
+      const row = platform.body.byCarrier.find(
+        (c: { carrierId: string }) => c.carrierId === tenants.carrierId,
+      );
+
+      expect(carrier.body.onTime).toEqual(performance.body.onTime);
+      expect(row).toMatchObject({
+        n: performance.body.onTime.n,
+        rate: performance.body.onTime.rate,
+      });
+      expect(carrier.body.byCarrier).toEqual([]);
+      await expect(
+        totalOf(admin, '/admin/shipments', { ...scope, view: 'late' }),
+      ).resolves.toBe(carrier.body.lateNow);
+      await expect(
+        totalOf(admin, '/admin/shipments', { ...scope, view: 'active' }),
+      ).resolves.toBe(carrier.body.active);
+    },
+  );
+
+  it('keeps the admin metrics to admins', async () => {
+    await get(tenants.sellerA, '/admin/metrics').expect(403);
+    await get(tenants.manager, '/admin/metrics').expect(403);
+  });
+
   it.each([
     ['seller', '/shipments'],
     ['seller', '/shipments/view-counts'],
+    ['admin', '/admin/metrics'],
     ['seller', '/shipments/metrics'],
     ['seller', '/shipments/status-counts'],
     ['seller', '/shipments/sla-summary'],

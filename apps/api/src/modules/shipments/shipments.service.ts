@@ -58,6 +58,7 @@ import type {
   CarrierViewCountsResponseDto,
   SellerViewCountsResponseDto,
 } from './dto/view-counts-response.dto';
+import type { AdminMetricsResponseDto } from './metrics/admin-metrics.dto';
 import {
   deliveryMetrics,
   isOnTimeSample,
@@ -430,6 +431,52 @@ export class ShipmentsService {
       now: new Date(),
     });
     return { delivered, onTime, byModality: onTimeByModality(rows) };
+  }
+
+  async metricsForAdmin({
+    carrierId,
+    sellerId,
+    since,
+  }: {
+    carrierId?: string;
+    sellerId?: string;
+    since: Date;
+  }): Promise<AdminMetricsResponseDto> {
+    const now = new Date();
+    const scope = adminScope(carrierId, sellerId);
+    const ctx = { now, carrierUserId: null };
+    const [rows, active, lateNow, carriers] = await Promise.all([
+      loadMetricRows(this.prisma, { ...scope, ...createdSince(since) }),
+      this.prisma.shipment.count({
+        where: { ...scope, ...viewWhere('active', ctx) },
+      }),
+      this.prisma.shipment.count({
+        where: { ...scope, ...viewWhere('late', ctx) },
+      }),
+      carrierId
+        ? []
+        : this.prisma.carrier.findMany({
+            where: { status: ApprovalStatus.APPROVED },
+            select: { id: true, companyName: true },
+            orderBy: { companyName: 'asc' },
+          }),
+    ]);
+    const metrics = deliveryMetrics(rows, { since, now });
+    const byCarrierId = groupBy(rows, (row) => row.carrierId);
+    return {
+      shipments: metrics.shipments,
+      active,
+      lateNow,
+      onTime: metrics.onTime,
+      medianDelivery: metrics.medianDelivery,
+      firstAttempt: metrics.firstAttempt,
+      claim: metrics.claim,
+      byCarrier: carriers.map((carrier) => ({
+        carrierId: carrier.id,
+        companyName: carrier.companyName,
+        ...onTime(byCarrierId.get(carrier.id) ?? []),
+      })),
+    };
   }
 
   async attentionForSeller(
