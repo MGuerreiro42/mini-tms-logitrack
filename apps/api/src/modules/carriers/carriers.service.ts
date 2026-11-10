@@ -18,13 +18,7 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
-import {
-  average,
-  countByStatus,
-  createdSince,
-  hoursBetween,
-  percentage,
-} from '../../shared/stats/stats';
+import { countByStatus, createdSince } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
