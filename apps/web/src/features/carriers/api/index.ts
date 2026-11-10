@@ -1,4 +1,5 @@
 import type { ModalityToggle } from '@/features/modalities/types';
+import type { StatsWindow } from '@/hooks/use-stats-window';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
@@ -94,20 +95,22 @@ export function getMyCoverageAreas(token: string): Promise<CoverageArea[]> {
 }
 
 export function getMyCarrierPerformance(
+  window: StatsWindow,
   token: string,
 ): Promise<CarrierPerformance> {
   return apiClient<CarrierPerformance>(
-    '/carriers/me/performance',
+    `/carriers/me/performance${toQueryString({ window })}`,
     undefined,
     token,
   );
 }
 
 export function getMyOperatorRanking(
+  window: StatsWindow,
   token: string,
 ): Promise<OperatorRankingItem[]> {
   return apiClient<OperatorRankingItem[]>(
-    '/carriers/me/operator-ranking',
+    `/carriers/me/operator-ranking${toQueryString({ window })}`,
     undefined,
     token,
   );

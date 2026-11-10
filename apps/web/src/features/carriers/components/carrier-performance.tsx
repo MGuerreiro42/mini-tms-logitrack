@@ -6,7 +6,9 @@ import { EmptyState } from '@/components/common/feedback-state';
 import { QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { Button } from '@/components/ui/button';
+import { type StatsWindow, useStatsWindow } from '@/hooks/use-stats-window';
 import { formatDuration } from '@/lib/format-duration';
+import { cn } from '@/lib/utils';
 import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
@@ -14,17 +16,35 @@ import { OperatorRankingChart } from './operator-ranking-chart';
 import { StageDurationChart } from './stage-duration-chart';
 
 export function CarrierPerformance() {
-  const query = useCarrierPerformance();
+  const [window] = useStatsWindow();
+  const query = useCarrierPerformance(window);
 
   return (
     <QueryState query={query} errorMessage="Couldn't load performance data.">
-      {(data) => <CarrierPerformanceView data={data} />}
+      {(data) => (
+        // The previous window's numbers stay, dimmed, until the new ones arrive.
+        <div
+          aria-busy={query.isPlaceholderData}
+          className={cn(
+            'transition-opacity',
+            query.isPlaceholderData && 'opacity-60',
+          )}
+        >
+          <CarrierPerformanceView data={data} window={window} />
+        </div>
+      )}
     </QueryState>
   );
 }
 
-function CarrierPerformanceView({ data }: { data: CarrierPerformanceData }) {
-  const operatorRanking = useOperatorRanking();
+function CarrierPerformanceView({
+  data,
+  window,
+}: {
+  data: CarrierPerformanceData;
+  window: StatsWindow;
+}) {
+  const operatorRanking = useOperatorRanking(window);
 
   if (data.totalShipments === 0) {
     return (
