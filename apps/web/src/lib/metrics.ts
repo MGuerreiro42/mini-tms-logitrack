@@ -7,6 +7,12 @@ export interface Rate {
 
 export type OnTimeTrend = Rate & { trend: (number | null)[] };
 
+export interface ClaimMetric {
+  p50Minutes: number | null;
+  p90Minutes: number | null;
+  n: number;
+}
+
 // Below this many samples a rate or median is noise: shown as "—", never as a number.
 export const MIN_SAMPLE = 5;
 

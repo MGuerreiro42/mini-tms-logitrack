@@ -5,8 +5,8 @@ import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
-import type { ShipmentStatusCounts } from '@/types/status';
 import { AdminDashboard } from './admin-dashboard';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
@@ -16,16 +16,24 @@ vi.mock('@/services/websocket-client', async (importOriginal) => ({
 
 const API_URL = 'http://localhost:3333';
 
-const shipmentCounts: ShipmentStatusCounts = {
-  PENDING: 3,
-  ACCEPTED: 4,
-  COLLECTED: 5,
-  IN_TRANSIT: 3,
-  OUT_FOR_DELIVERY: 4,
-  DELIVERED: 26,
-  FAILED_DELIVERY: 2,
-  RETURNED: 4,
-  CANCELLED: 8,
+const metrics = {
+  shipments: 40,
+  active: 9,
+  lateNow: 2,
+  onTime: { n: 20, count: 18, rate: 90, trend: Array(12).fill(90) },
+  medianDelivery: { hours: 30, n: 20 },
+  firstAttempt: { rate: 85, n: 20, failed: 3, returned: 1 },
+  claim: { p50Minutes: 12, p90Minutes: 90, n: 30 },
+  byCarrier: [
+    {
+      carrierId: 'c-9',
+      companyName: 'Transportadora Demo',
+      n: 20,
+      count: 18,
+      rate: 90,
+    },
+    { carrierId: 'c-8', companyName: 'Rápida', n: 3, count: 3, rate: 100 },
+  ],
 };
 
 function company(id: string, companyName: string, createdAt: string) {
@@ -49,15 +57,19 @@ function page(data: unknown[]) {
 
 describe('AdminDashboard', () => {
   let approved: string[];
+  let metricsWindows: (string | null)[];
 
   beforeEach(() => {
     approved = [];
+    metricsWindows = [];
+    resetNavigation('/admin');
     setSession({ token: 't', role: 'ADMIN', userId: 'u', email: 'e' });
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     server.use(
-      http.get(`${API_URL}/admin/shipments/status-counts`, () =>
-        HttpResponse.json(shipmentCounts),
-      ),
+      http.get(`${API_URL}/admin/metrics`, ({ request }) => {
+        metricsWindows.push(new URL(request.url).searchParams.get('window'));
+        return HttpResponse.json(metrics);
+      }),
       http.get(`${API_URL}/sellers/status-counts`, () =>
         HttpResponse.json({ PENDING: 1, APPROVED: 2, REJECTED: 0 }),
       ),
@@ -93,7 +105,26 @@ describe('AdminDashboard', () => {
     const rows = within(list).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Ateliê AuroraSeller');
     expect(rows[1]).toHaveTextContent('Rota Sul LogísticaCarrier');
-    expect(screen.getByRole('link', { name: 'In progress, 19' })).toBeVisible();
+    expect(screen.getByText('3 sellers · 2 carriers')).toBeVisible();
+  });
+
+  it('shows the platform tiles and on time per carrier for the window', async () => {
+    renderWithQueryClient(<AdminDashboard />);
+
+    expect(
+      await screen.findByRole('link', {
+        name: 'Late now, 2. View late shipments',
+      }),
+    ).toHaveAttribute('href', '/admin/monitoring?view=late');
+    expect(screen.getByText('15.0%')).toBeVisible();
+    expect(screen.getByText('3 failed · 1 returned')).toBeVisible();
+    expect(screen.getByText('12 min')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Transportadora Demo' }),
+    ).toHaveAttribute('href', '/admin/carriers/c-9');
+    expect(screen.getByText('Not enough deliveries (n=3)')).toBeVisible();
+    expect(screen.queryByText('Status distribution')).toBeNull();
+    expect(metricsWindows).toEqual(['30d']);
   });
 
   it('approves an application inline', async () => {
@@ -108,20 +139,17 @@ describe('AdminDashboard', () => {
     await vi.waitFor(() => expect(approved).toEqual(['c-1']));
   });
 
-  it('keeps the approvals when the shipment counts fail', async () => {
+  it('keeps the approvals when the metrics fail', async () => {
     server.use(
-      http.get(`${API_URL}/admin/shipments/status-counts`, () =>
+      http.get(`${API_URL}/admin/metrics`, () =>
         HttpResponse.json({}, { status: 500 }),
       ),
     );
     renderWithQueryClient(<AdminDashboard />);
 
     expect(
-      await screen.findByText("Couldn't load shipment counts."),
-    ).toBeInTheDocument();
+      (await screen.findAllByText("Couldn't load platform metrics.")).length,
+    ).toBeGreaterThan(0);
     expect(await screen.findByText('Rota Sul Logística')).toBeInTheDocument();
-    expect(screen.getAllByText("Couldn't load shipment counts")).toHaveLength(
-      2,
-    );
   });
 });

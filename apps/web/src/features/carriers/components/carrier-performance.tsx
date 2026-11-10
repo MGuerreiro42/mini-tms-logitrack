@@ -2,6 +2,7 @@
 
 import { EmptyState } from '@/components/common/feedback-state';
 import { LiveIndicator } from '@/components/common/live-indicator';
+import { MedianClaimTile } from '@/components/common/median-claim-tile';
 import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { QueryState } from '@/components/common/query-state';
@@ -81,7 +82,6 @@ function CarrierPerformanceView({
     hasEnoughData(medianDelivery.n) && medianDelivery.hours !== null;
   const firstShown =
     hasEnoughData(firstAttempt.n) && firstAttempt.rate !== null;
-  const claimShown = hasEnoughData(claim.n) && claim.p50Minutes !== null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -113,19 +113,7 @@ function CarrierPerformanceView({
           }
           definition={`Outcomes without a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}). A failure that later returned still counts as failed.`}
         />
-        <StatTile
-          label="Median claim"
-          scope={scope}
-          value={
-            claimShown ? formatDuration((claim.p50Minutes as number) / 60) : '—'
-          }
-          note={
-            claimShown
-              ? `p90 ${formatDuration((claim.p90Minutes as number) / 60)} · n=${claim.n}`
-              : notEnoughNote(claim.n, 'data')
-          }
-          definition={`Middle value (nearest rank) of creation to the first claim, over the shipments created in the last ${scope} that were claimed (n=${claim.n}).`}
-        />
+        <MedianClaimTile claim={claim} scope={scope} />
       </div>
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
         <StageDurationChart stages={data.stages} />

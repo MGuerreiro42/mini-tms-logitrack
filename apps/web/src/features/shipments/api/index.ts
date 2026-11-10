@@ -2,6 +2,7 @@ import type { StatsWindow } from '@/hooks/use-stats-window';
 import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
+  AdminMetrics,
   AdminShipment,
   AdminShipmentDetail,
   AdminShipmentResponse,
@@ -110,6 +111,17 @@ export function getShipmentActivity(
 ): Promise<ShipmentActivity[]> {
   return apiClient<ShipmentActivity[]>(
     `/shipments/activity${toQueryString({ limit })}`,
+    undefined,
+    token,
+  );
+}
+
+export function getAdminMetrics(
+  query: AdminStatusCountsQuery,
+  token: string,
+): Promise<AdminMetrics> {
+  return apiClient<AdminMetrics>(
+    `/admin/metrics${toQueryString({ ...query })}`,
     undefined,
     token,
   );

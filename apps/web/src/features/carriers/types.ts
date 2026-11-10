@@ -1,4 +1,4 @@
-import type { OnTimeTrend, Rate } from '@/lib/metrics';
+import type { ClaimMetric, OnTimeTrend, Rate } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ApprovalStatus,
@@ -60,7 +60,7 @@ export interface CarrierPerformance {
     failed: number;
     returned: number;
   };
-  claim: { p50Minutes: number | null; p90Minutes: number | null; n: number };
+  claim: ClaimMetric;
   stages: StageDuration[];
 }
 

@@ -4,7 +4,7 @@ import type {
   PositionEvent,
 } from '@/features/tracking/types';
 import type { StatsWindow } from '@/hooks/use-stats-window';
-import type { OnTimeTrend, Rate } from '@/lib/metrics';
+import type { ClaimMetric, OnTimeTrend, Rate } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ShipmentStatus,
@@ -13,6 +13,21 @@ import type {
 } from '@/types/status';
 
 export type { ShipmentStatus, ShipmentStatusCounts };
+
+export interface AdminMetrics {
+  shipments: number;
+  active: number;
+  lateNow: number;
+  onTime: OnTimeTrend;
+  firstAttempt: {
+    rate: number | null;
+    n: number;
+    failed: number;
+    returned: number;
+  };
+  claim: ClaimMetric;
+  byCarrier: (Rate & { carrierId: string; companyName: string })[];
+}
 
 export interface SellerMetrics {
   delivered: number;

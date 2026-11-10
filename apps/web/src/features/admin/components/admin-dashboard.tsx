@@ -1,11 +1,14 @@
 'use client';
 
-import { StatusDistribution } from '@/components/common/charts/status-distribution';
+import { OnTimeRows } from '@/components/common/charts/on-time-rows';
+import { MedianClaimTile } from '@/components/common/median-claim-tile';
+import { OnTimeTile } from '@/components/common/on-time-tile';
 import { PageHeader } from '@/components/common/page-header';
 import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
+import { WindowSelector } from '@/components/common/window-selector';
 import { Badge } from '@/components/ui/badge';
 import {
   useApproveCarrier,
@@ -16,21 +19,16 @@ import {
   useApproveSeller,
   useRejectSeller,
 } from '@/features/sellers/hooks/use-approve-reject-seller';
+import type { AdminMetrics } from '@/features/shipments/types';
+import { useStatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
+import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
-import { HAPPY_PATH } from '@/lib/shipment-progress';
 import { sumRecord } from '@/lib/sum-record';
-import type { QuerySource } from '@/types/query';
-import type {
-  ApprovalStatusCounts,
-  ShipmentStatusCounts,
-} from '@/types/status';
-import {
-  type AdminDashboardData,
-  useAdminDashboard,
-} from '../hooks/use-admin-dashboard';
+import { cn } from '@/lib/utils';
+import { useAdminDashboard } from '../hooks/use-admin-dashboard';
 import {
   type Application,
   type ApplicationKind,
@@ -52,110 +50,135 @@ const KINDS = {
   },
 } satisfies Record<ApplicationKind, unknown>;
 
-const FAILED_NOTE = "Couldn't load shipment counts";
-
-const IN_PROGRESS = HAPPY_PATH.filter((status) => status !== 'DELIVERED');
-
 export function AdminDashboard() {
-  const { approvals, shipments } = useAdminDashboard();
-
-  return (
-    <QueryState query={approvals}>
-      {(counts) => <AdminDashboardView counts={counts} shipments={shipments} />}
-    </QueryState>
-  );
-}
-
-function AdminDashboardView({
-  counts,
-  shipments,
-}: {
-  counts: AdminDashboardData;
-  shipments: QuerySource<ShipmentStatusCounts>;
-}) {
-  const waiting = counts.sellers.PENDING + counts.carriers.PENDING;
+  // One reader of the window per page: the selector and the queries share it.
+  const [statsWindow, setStatsWindow] = useStatsWindow();
+  const { approvals, metrics } = useAdminDashboard(statsWindow);
+  const counts = approvals.data;
+  const waiting = counts ? counts.sellers.PENDING + counts.carriers.PENDING : 0;
+  const scope = windowLabel(statsWindow);
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Platform overview"
         description={
-          waiting > 0
-            ? `${plural(waiting, 'application')} waiting for review`
-            : 'No applications waiting for review'
+          !counts
+            ? undefined
+            : waiting > 0
+              ? `${plural(waiting, 'application')} waiting for review`
+              : 'No applications waiting for review'
+        }
+        action={
+          <WindowSelector value={statsWindow} onChange={setStatsWindow} />
         }
       />
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start">
-        <PendingApplications waiting={waiting} />
-        <QueryState
-          query={shipments}
-          errorMessage="Couldn't load shipment counts."
+      <QueryState
+        query={metrics}
+        errorMessage="Couldn't load platform metrics."
+      >
+        {(data) => (
+          // The previous window's numbers stay, dimmed, until the new ones arrive.
+          <div
+            aria-busy={metrics.isPlaceholderData}
+            className={cn(
+              'grid grid-cols-2 gap-4 transition-opacity lg:grid-cols-4',
+              metrics.isPlaceholderData && 'opacity-60',
+            )}
+          >
+            <PlatformTiles data={data} scope={scope} />
+          </div>
+        )}
+      </QueryState>
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
+        <Panel
+          title={`On time by carrier · ${scope}`}
+          isEmpty={metrics.data?.byCarrier.length === 0}
+          emptyMessage="No approved carrier yet."
         >
-          {(shipmentCounts) => <StatusDistribution counts={shipmentCounts} />}
-        </QueryState>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile
-          label="Sellers"
-          value={sumRecord(counts.sellers)}
-          note={approvalNote(counts.sellers)}
+          <QueryState
+            query={metrics}
+            skeleton={<QuerySkeleton variant="lines" />}
+            errorMessage="Couldn't load platform metrics."
+          >
+            {(data) => (
+              <OnTimeRows
+                rows={data.byCarrier.map((carrier) => ({
+                  key: carrier.carrierId,
+                  label: (
+                    <TextLink href={KINDS.carrier.href(carrier.carrierId)}>
+                      {carrier.companyName}
+                    </TextLink>
+                  ),
+                  rate: carrier.rate,
+                  n: carrier.n,
+                }))}
+              />
+            )}
+          </QueryState>
+        </Panel>
+        <PendingApplications
+          waiting={waiting}
+          tenants={
+            counts &&
+            `${plural(sumRecord(counts.sellers), 'seller')} · ${plural(sumRecord(counts.carriers), 'carrier')}`
+          }
         />
-        <StatTile
-          label="Carriers"
-          value={sumRecord(counts.carriers)}
-          note={approvalNote(counts.carriers)}
-        />
-        <ShipmentTiles shipments={shipments} />
       </div>
     </div>
   );
 }
 
-function ShipmentTiles({
-  shipments,
-}: {
-  shipments: QuerySource<ShipmentStatusCounts>;
-}) {
-  const counts = shipments.data;
-  const failed = !counts && Boolean(shipments.error);
-
+function PlatformTiles({ data, scope }: { data: AdminMetrics; scope: string }) {
+  const { firstAttempt } = data;
+  const failedShown =
+    hasEnoughData(firstAttempt.n) && firstAttempt.rate !== null;
   return (
     <>
+      <OnTimeTile onTime={data.onTime} scope={scope} />
       <StatTile
-        label="In progress"
-        href={`${ROUTES.adminMonitoring}?view=active`}
+        label="Late"
+        scope="now"
+        value={data.lateNow}
+        tone={data.lateNow > 0 ? 'critical' : undefined}
+        href={`${ROUTES.adminMonitoring}?view=late`}
+        linkLabel="View late shipments"
+        note={`${data.active} active now`}
+      />
+      <StatTile
+        label="Failed"
+        scope={scope}
         value={
-          counts
-            ? IN_PROGRESS.reduce((sum, status) => sum + counts[status], 0)
+          failedShown
+            ? `${(100 - (firstAttempt.rate as number)).toFixed(1)}%`
             : '—'
         }
-        note={failed ? FAILED_NOTE : 'Across all carriers'}
-      />
-      <StatTile
-        label="Delivered"
-        value={counts ? counts.DELIVERED : '—'}
-        href={`${ROUTES.adminMonitoring}?status=DELIVERED`}
         note={
-          failed
-            ? FAILED_NOTE
-            : counts && `Of ${plural(sumRecord(counts), 'shipment')}`
+          failedShown
+            ? `${firstAttempt.failed} failed · ${firstAttempt.returned} returned`
+            : notEnoughNote(firstAttempt.n, 'deliveries')
         }
+        definition={`Outcomes with a failed delivery ÷ shipments created in the last ${scope} that were delivered or ever failed (n=${firstAttempt.n}).`}
       />
+      <MedianClaimTile claim={data.claim} scope={scope} />
     </>
   );
 }
 
-function approvalNote(counts: ApprovalStatusCounts): string {
-  return `${counts.APPROVED} approved · ${counts.PENDING} pending`;
-}
-
-function PendingApplications({ waiting }: { waiting: number }) {
+function PendingApplications({
+  waiting,
+  tenants,
+}: {
+  waiting: number;
+  tenants?: string;
+}) {
   const query = usePendingApplications();
   const hidden = waiting - (query.data?.length ?? 0);
 
   return (
     <Panel
       title="Waiting for review"
+      description={tenants}
       className="gap-2"
       footer={
         hidden > 0 && (

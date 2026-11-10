@@ -21,6 +21,8 @@ export const shipmentKeys = {
     [...shipmentKeys.all, 'admin', 'detail', id] as const,
   adminStatusCounts: (query: AdminStatusCountsQuery) =>
     [...shipmentKeys.all, 'admin', 'status-counts', query] as const,
+  adminMetrics: (query: AdminStatusCountsQuery) =>
+    [...shipmentKeys.all, 'admin', 'metrics', query] as const,
   adminViewCounts: (query: AdminStatusCountsQuery) =>
     [...shipmentKeys.all, 'admin', 'view-counts', query] as const,
   statusCounts: (statsWindow?: StatsWindow) =>
