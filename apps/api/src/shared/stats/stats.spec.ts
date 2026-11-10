@@ -54,7 +54,7 @@ describe('stats', () => {
       new Date('2026-01-24T00:00:00Z'),
     );
     expect(windowSince({ since }, now)).toBe(since);
-    expect(windowSince({}, now)).toBeUndefined();
+    expect(windowSince({}, now)).toEqual(new Date('2025-11-02T00:00:00Z'));
   });
 
   it('percentile takes the nearest rank, null without samples', () => {
