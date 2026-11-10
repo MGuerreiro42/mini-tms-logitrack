@@ -201,6 +201,7 @@ describe('List views and search (e2e)', () => {
   it.each([
     ['seller', '/shipments'],
     ['seller', '/shipments/view-counts'],
+    ['seller', '/shipments/metrics'],
     ['seller', '/shipments/status-counts'],
     ['seller', '/shipments/sla-summary'],
     ['admin', '/admin/shipments'],
