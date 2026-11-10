@@ -128,4 +128,44 @@ describe('Tenant 360 (e2e)', () => {
       await get(admin, `/carriers/${randomUUID()}/${part}`).expect(404);
     },
   );
+
+  it('gives each list row the numbers of its 360 at 30 d', async () => {
+    const rowOf = async (path: string, id: string) =>
+      (
+        await get(admin, path, { include: 'stats', limit: 100 }).expect(200)
+      ).body.data.find((row: { id: string }) => row.id === id).stats;
+    const [sellerRow, carrierRow, seller360, carrier360] = await Promise.all([
+      rowOf('/sellers', sellerId),
+      rowOf('/carriers', tenants.carrierId),
+      get(admin, '/admin/metrics', { sellerId, window: '30d' }).expect(200),
+      get(admin, `/carriers/${tenants.carrierId}/performance`, {
+        window: '30d',
+      }).expect(200),
+    ]);
+    const { n, count, rate } = seller360.body.onTime;
+    const first = carrier360.body.firstAttempt;
+
+    expect(sellerRow).toEqual({
+      shipments: seller360.body.shipments,
+      onTime: { n, count, rate },
+    });
+    expect(carrierRow).toMatchObject({
+      shipments: carrier360.body.totalShipments,
+      onTime: {
+        n: carrier360.body.onTime.n,
+        rate: carrier360.body.onTime.rate,
+      },
+      failed: {
+        n: first.n,
+        rate: first.rate === null ? null : 100 - first.rate,
+      },
+    });
+  });
+
+  it('adds stats only when asked and only for admins', async () => {
+    const { body } = await get(admin, '/sellers').expect(200);
+    expect(body.data[0]).not.toHaveProperty('stats');
+    await get(admin, '/carriers', { include: 'everything' }).expect(400);
+    await get(tenants.sellerA, '/sellers', { include: 'stats' }).expect(403);
+  });
 });

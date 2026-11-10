@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CarrierListStatsDto } from '../../shipments/metrics/list-stats.dto';
 
 export class CarrierResponseDto {
   @ApiProperty()
@@ -25,4 +26,10 @@ export class CarrierResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiPropertyOptional({
+    type: CarrierListStatsDto,
+    description: 'Only with include=stats: the last 30 days',
+  })
+  stats?: CarrierListStatsDto;
 }

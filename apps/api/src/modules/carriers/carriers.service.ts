@@ -23,6 +23,7 @@ import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
 import { deliveryMetrics, onTime } from '../shipments/metrics/delivery-metrics';
+import { listStatsByTenant } from '../shipments/metrics/list-stats';
 import { loadMetricRows } from '../shipments/metrics/metric-rows';
 import { OPEN_STATUSES } from '../shipments/shipment-views';
 import type { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
@@ -100,6 +101,7 @@ export class CarriersService {
     status?: ApprovalStatus,
     page = 1,
     limit = 20,
+    withStats = false,
   ): Promise<PaginatedResult<CarrierResponseDto>> {
     const where = status ? { status } : undefined;
     const [carriers, total] = await Promise.all([
@@ -113,8 +115,19 @@ export class CarriersService {
       this.prisma.carrier.count({ where }),
     ]);
 
+    const stats = withStats
+      ? await listStatsByTenant(
+          this.prisma,
+          'carrierId',
+          carriers.map((carrier) => carrier.id),
+        )
+      : undefined;
+
     return paginate(
-      carriers.map((carrier) => this.toResponseDto(carrier)),
+      carriers.map((carrier) => ({
+        ...this.toResponseDto(carrier),
+        ...(stats && { stats: stats.get(carrier.id) }),
+      })),
       total,
       page,
       limit,
