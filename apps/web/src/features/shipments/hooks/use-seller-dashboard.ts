@@ -20,7 +20,8 @@ import type {
 import { statusCountsQuery } from './use-shipment-status-counts';
 import { useShipmentTracking } from './use-shipment-tracking';
 
-const ACTIVITY_LIMIT = 8;
+// The API maximum: grouped by shipment, it fills the six groups shown.
+const ACTIVITY_LIMIT = 20;
 
 export interface SellerDashboardData {
   counts: ShipmentStatusCounts;
