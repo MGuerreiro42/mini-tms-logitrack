@@ -505,76 +505,68 @@ describe('CarriersService', () => {
   });
 
   describe('operatorRanking', () => {
-    it('ranks CarrierUsers by total shipments owned, with delivered counts and emails', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValue([
-        { ownerId: 'carrier-user-2', status: 'IN_TRANSIT', _count: 2 },
-        { ownerId: 'carrier-user-1', status: 'DELIVERED', _count: 3 },
-        { ownerId: 'carrier-user-1', status: 'ACCEPTED', _count: 2 },
-      ]);
+    const since = new Date('2026-01-01T00:00:00Z');
+    const shipment = (ownerId: string, status: string, onTime = true) => ({
+      id: `${ownerId}-${status}`,
+      createdAt: since,
+      ownerId,
+      status,
+      dueAt: new Date('2026-01-03T00:00:00Z'),
+      deliveredAt: new Date(
+        onTime ? '2026-01-02T00:00:00Z' : '2026-01-04T00:00:00Z',
+      ),
+      modality: { code: 'EXPRESS', name: 'Express', slaHours: 48 },
+    });
+
+    it('lists every member, operators first by active, the manager with zeros included', async () => {
       carrierUserFindMany.mockResolvedValue([
-        { id: 'carrier-user-1', user: { email: 'manager@example.com' } },
-        { id: 'carrier-user-2', user: { email: 'operator@example.com' } },
+        { id: 'm', role: 'MANAGER', user: { name: 'Maria', email: 'm@x' } },
+        { id: 'a', role: 'OPERATOR', user: { name: 'Ana', email: 'a@x' } },
+        { id: 'b', role: 'OPERATOR', user: { name: 'Bruno', email: 'b@x' } },
+        { id: 'c', role: 'OPERATOR', user: { name: 'Carla', email: 'c@x' } },
+        { id: 'd', role: 'OPERATOR', user: { name: 'Caio', email: 'd@x' } },
       ]);
-
-      const since = new Date('2025-12-01T00:00:00Z');
-      const result = await carriersService.operatorRanking('user-1', since);
-
-      expect(shipmentGroupBy).toHaveBeenCalledTimes(1);
-      expect(shipmentGroupBy).toHaveBeenCalledWith({
-        by: ['ownerId', 'status'],
-        where: {
-          carrierId: 'carrier-1',
-          ownerId: { not: null },
-          status: { not: 'CANCELLED' },
-          createdAt: { gte: since },
-        },
-        _count: true,
-      });
-      expect(result).toEqual([
-        {
-          carrierUserId: 'carrier-user-1',
-          email: 'manager@example.com',
-          totalOwned: 5,
-          delivered: 3,
-        },
-        {
-          carrierUserId: 'carrier-user-2',
-          email: 'operator@example.com',
-          totalOwned: 2,
-          delivered: 0,
-        },
+      shipmentFindMany.mockResolvedValue([
+        shipment('a', 'DELIVERED'),
+        shipment('a', 'DELIVERED', false),
+        shipment('a', 'CANCELLED'),
+        shipment('b', 'IN_TRANSIT'),
       ]);
-    });
-
-    it('returns an empty array when no shipment has an owner yet', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
-      shipmentGroupBy.mockResolvedValue([]);
-
-      const result = await carriersService.operatorRanking('user-1');
-
-      expect(result).toEqual([]);
-      expect(carrierUserFindMany).not.toHaveBeenCalled();
-    });
-
-    it('fails loudly when an owner has no CarrierUser row', async () => {
-      carrierUserFindUnique.mockResolvedValue({ carrierId: 'carrier-1' });
       shipmentGroupBy.mockResolvedValue([
-        { ownerId: 'carrier-user-gone', status: 'DELIVERED', _count: 1 },
+        { ownerId: 'b', _count: 3 },
+        { ownerId: 'a', _count: 1 },
+        { ownerId: 'c', _count: 1 },
+        { ownerId: 'd', _count: 1 },
       ]);
-      carrierUserFindMany.mockResolvedValue([]);
 
-      await expect(carriersService.operatorRanking('user-1')).rejects.toThrow(
-        'carrier-user-gone',
+      const result = await carriersService.operatorRanking('carrier-1', since);
+
+      expect(carrierUserFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { carrierId: 'carrier-1' } }),
       );
-    });
-
-    it('throws NotFoundException when the user has no CarrierUser link', async () => {
-      carrierUserFindUnique.mockResolvedValue(null);
-
-      await expect(carriersService.operatorRanking('user-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      // a and c/d tie on active: claimed breaks it, then the name.
+      expect(result.map((row) => row.carrierUserId)).toEqual([
+        'b',
+        'a',
+        'd',
+        'c',
+        'm',
+      ]);
+      expect(result[1]).toEqual({
+        carrierUserId: 'a',
+        name: 'Ana',
+        email: 'a@x',
+        role: 'OPERATOR',
+        active: 1,
+        claimed: 2,
+        delivered: 2,
+        onTime: { n: 2, count: 1, rate: 50 },
+      });
+      expect(result[4]).toMatchObject({
+        active: 0,
+        claimed: 0,
+        onTime: { n: 0, rate: null },
+      });
     });
   });
 
