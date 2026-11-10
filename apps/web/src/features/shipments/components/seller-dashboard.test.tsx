@@ -5,6 +5,7 @@ import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import type { Shipment, ShipmentActivity, ShipmentStatus } from '../types';
 import { SellerDashboard } from './seller-dashboard';
@@ -73,7 +74,11 @@ const collected = activity('collected', 'COLLECTED');
 const delivered = activity('delivered', 'DELIVERED');
 
 describe('SellerDashboard', () => {
+  let metricsUrls: URL[] = [];
+
   beforeEach(() => {
+    metricsUrls = [];
+    resetNavigation('/seller');
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     setSession({
       token: 't',
@@ -85,17 +90,27 @@ describe('SellerDashboard', () => {
       http.get(`${API_URL}/shipments/status-counts`, () =>
         HttpResponse.json(counts),
       ),
-      http.get(`${API_URL}/shipments/sla-summary`, () =>
-        HttpResponse.json([
-          {
-            modalityCode: 'STANDARD',
-            modalityName: 'Standard',
-            deliveredCount: 10,
-            onTimeCount: 8,
-            onTimeRate: 80,
+      http.get(`${API_URL}/shipments/metrics`, ({ request }) => {
+        metricsUrls.push(new URL(request.url));
+        return HttpResponse.json({
+          delivered: 9,
+          onTime: {
+            n: 10,
+            count: 8,
+            rate: 80,
+            trend: [100, null, 50, 80, 75, 90, 80, 70, 85, 80, 75, 80],
           },
-        ]),
-      ),
+          byModality: [
+            {
+              modalityCode: 'STANDARD',
+              modalityName: 'Standard',
+              n: 10,
+              count: 8,
+              rate: 80,
+            },
+          ],
+        });
+      }),
       http.get(`${API_URL}/shipments/attention`, () =>
         HttpResponse.json({
           shipments: [failed, late],
@@ -122,13 +137,35 @@ describe('SellerDashboard', () => {
     expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
 
     // The tone colours the value, never the note.
-    expect(screen.getByText('80.0%').parentElement).toHaveClass(
+    expect(screen.getAllByText('80.0%')[0].parentElement).toHaveClass(
       'text-notice-foreground',
     );
-    expect(screen.getByText('2 deliveries past SLA')).toBeInTheDocument();
+    expect(screen.getByText('n=10 · target 90%')).toBeInTheDocument();
     expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
-    expect(screen.getByText('1 failed, 6 late')).toBeInTheDocument();
+    expect(screen.getByText(/^oldest 5 h/)).toBeInTheDocument();
+    expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('30d');
     expect(screen.getByText('5 more shipments not shown')).toBeInTheDocument();
+  });
+
+  it('opens each count tile and pipeline segment on exactly that list', async () => {
+    resetNavigation('/seller?window=7d');
+    renderWithQueryClient(<SellerDashboard />);
+
+    const href = async (name: string) =>
+      (await screen.findByRole('link', { name })).getAttribute('href');
+    expect(await href('Active now, 2. View active shipments')).toBe(
+      '/seller/shipments?view=active',
+    );
+    expect(await href('Late now, 6. View late shipments')).toBe(
+      '/seller/shipments?view=late',
+    );
+    expect(await href('Delivered 7 d, 9. View delivered shipments')).toBe(
+      '/seller/shipments?status=DELIVERED&window=7d',
+    );
+    expect(await href('1 In transit')).toBe(
+      '/seller/shipments?status=IN_TRANSIT',
+    );
+    expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('7d');
   });
 
   it('listens on the seller room for live updates', async () => {
