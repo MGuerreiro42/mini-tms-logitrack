@@ -5,6 +5,7 @@ import {
   createShipment,
   createTenants,
   type E2eContext,
+  OPERATOR_NAME,
   startApp,
 } from './support/e2e-app';
 
@@ -258,5 +259,19 @@ describe('List views and search (e2e)', () => {
       'OUT_FOR_DELIVERY',
     ]);
     expect(body.stages[0].budgetHours).toBeGreaterThan(0);
+
+    const team = await get(tenants.operator, '/carriers/me/operator-ranking', {
+      window: '90d',
+    }).expect(200);
+    expect(
+      team.body.map((m: { role: string; claimed: number }) => [
+        m.role,
+        m.claimed,
+      ]),
+    ).toEqual([
+      ['OPERATOR', 1],
+      ['MANAGER', 0],
+    ]);
+    expect(team.body[0].name).toBe(OPERATOR_NAME);
   });
 });

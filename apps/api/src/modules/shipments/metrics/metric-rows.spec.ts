@@ -11,6 +11,7 @@ const event = (status: ShipmentStatus, hours: number, shipmentId = 'a') => ({
 const shipment = (id: string) => ({
   id,
   createdAt: at(0),
+  ownerId: null,
   status: ShipmentStatus.RETURNED,
   dueAt: null,
   deliveredAt: null,
