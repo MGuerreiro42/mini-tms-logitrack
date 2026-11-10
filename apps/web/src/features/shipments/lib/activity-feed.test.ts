@@ -37,13 +37,16 @@ describe('groupActivity', () => {
   });
 
   it('keeps each shipment at its newest event, with the status it came from', () => {
-    const groups = groupActivity([
-      step('5', 'a', 'IN_TRANSIT'),
-      step('4', 'b', 'ACCEPTED'),
-      step('3', 'a', 'COLLECTED'),
-      step('2', 'a', 'ACCEPTED'),
-      step('1', 'c', 'PENDING'),
-    ]);
+    const groups = groupActivity(
+      [
+        step('5', 'a', 'IN_TRANSIT'),
+        step('4', 'b', 'ACCEPTED'),
+        step('3', 'a', 'COLLECTED'),
+        step('2', 'a', 'ACCEPTED'),
+        step('1', 'c', 'PENDING'),
+      ],
+      new Map(),
+    );
 
     expect(groups.map((g) => [g.id, g.previousStatus, g.status])).toEqual([
       ['5', 'COLLECTED', 'IN_TRANSIT'],
@@ -57,6 +60,18 @@ describe('groupActivity', () => {
       step(String(i), `s${i}`, 'PENDING'),
     );
 
-    expect(groupActivity(events)).toHaveLength(6);
+    expect(groupActivity(events, new Map())).toHaveLength(6);
+  });
+
+  it('keeps the status a row came from after its older event leaves the batch', () => {
+    const known = new Map();
+    groupActivity(
+      [step('5', 'a', 'IN_TRANSIT'), step('3', 'a', 'COLLECTED')],
+      known,
+    );
+
+    const [row] = groupActivity([step('5', 'a', 'IN_TRANSIT')], known);
+
+    expect(row.previousStatus).toBe('COLLECTED');
   });
 });

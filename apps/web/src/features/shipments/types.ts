@@ -38,6 +38,7 @@ export interface ShipmentActivity {
 export interface ShipmentAttention {
   shipments: Shipment[];
   counts: { failed: number; late: number };
+  oldestLateDueAt: string | null;
 }
 
 export interface ShipmentAddress {
