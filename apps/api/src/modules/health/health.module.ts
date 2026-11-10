@@ -7,5 +7,7 @@ import { RedisHealthIndicator } from './redis.health';
   imports: [TerminusModule],
   controllers: [HealthController],
   providers: [RedisHealthIndicator],
+  // The admin pulse reads the same indicators as GET /health.
+  exports: [TerminusModule, RedisHealthIndicator],
 })
 export class HealthModule {}

@@ -16,12 +16,17 @@ import {
   AdminMetricsQueryDto,
   AdminMetricsResponseDto,
 } from './metrics/admin-metrics.dto';
+import { PulseResponseDto } from './metrics/pulse-response.dto';
+import { PulseService } from './pulse.service';
 import { ShipmentsService } from './shipments.service';
 
 @ApiTags('admin')
 @Controller('admin')
 export class AdminShipmentsController {
-  constructor(private readonly shipmentsService: ShipmentsService) {}
+  constructor(
+    private readonly shipmentsService: ShipmentsService,
+    private readonly pulseService: PulseService,
+  ) {}
 
   @ApiOperation({
     summary:
@@ -77,6 +82,17 @@ export class AdminShipmentsController {
       sellerId: query.sellerId,
       since: windowSince(query),
     });
+  }
+
+  @ApiOperation({
+    summary:
+      'Live platform pulse: events per minute, sockets, simulator, webhooks, queues and services; a part that fails reads null or false — admin only',
+  })
+  @ApiResponse({ status: 200, type: PulseResponseDto })
+  @Auth(GlobalRole.ADMIN)
+  @Get('pulse')
+  pulse() {
+    return this.pulseService.pulse();
   }
 
   // Declared after the static shipments/* routes, which the UUID pipe would otherwise reject.
