@@ -123,18 +123,23 @@ describe('SellerDashboard', () => {
     );
   });
 
-  it('shows the attention list and KPIs', async () => {
+  it('shows the exceptions and KPIs', async () => {
     renderWithQueryClient(<SellerDashboard />);
 
-    const attention = (
-      await screen.findByRole('heading', { name: 'Needs your attention' })
+    const exceptions = (
+      await screen.findByRole('heading', { name: /^Exceptions\s*7$/ })
     ).closest('[data-slot="card"]') as HTMLElement;
-    const items = within(attention).getAllByRole('link');
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent('Delivery attempt failed');
-    expect(items[1]).toHaveTextContent('Past its SLA');
+    expect(within(exceptions).getByText('6 late · 1 failed')).toBeVisible();
+    const items = within(exceptions).getAllByRole('link');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Failed');
     expect(items[1]).toHaveTextContent(/Late \d h/);
     expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
+    expect(items[2]).toHaveTextContent('All exceptions');
+    expect(items[2]).toHaveAttribute(
+      'href',
+      '/seller/shipments?view=exceptions',
+    );
 
     // The tone colours the value, never the note.
     expect(screen.getAllByText('80.0%')[0].parentElement).toHaveClass(
@@ -144,7 +149,6 @@ describe('SellerDashboard', () => {
     expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
     expect(screen.getByText(/^oldest 5 h/)).toBeInTheDocument();
     expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('30d');
-    expect(screen.getByText('5 more shipments not shown')).toBeInTheDocument();
   });
 
   it('opens each count tile and pipeline segment on exactly that list', async () => {
@@ -172,7 +176,7 @@ describe('SellerDashboard', () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     renderWithQueryClient(<SellerDashboard />);
-    await screen.findByRole('heading', { name: 'Needs your attention' });
+    await screen.findByRole('heading', { name: /^Exceptions/ });
 
     act(() => socket.trigger('connect'));
 
