@@ -122,7 +122,7 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "List the authenticated carrier's shared shipment queue, filterable by status, view, window and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
+      "List the authenticated carrier's shared shipment queue, filterable by status, view and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
   })
   @ApiPaginatedResponse(CarrierShipmentResponseDto)
   @ApiResponse({
@@ -324,14 +324,17 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      'Shipments of the authenticated seller that need attention — failed deliveries first (latest first), then open shipments past createdAt + modality.slaHours (most overdue first), at most 5, plus the full counts of each',
+      'Shipments of the authenticated seller that need attention — failed deliveries first (latest first), then open shipments past createdAt + modality.slaHours (most overdue first), at most 5, plus the full counts of each, optionally created in the window',
   })
   @ApiResponse({ status: 200, type: ShipmentAttentionResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @Auth(GlobalRole.SELLER)
   @Get('attention')
-  attention(@CurrentUser() user: AuthenticatedUser) {
-    return this.shipmentsService.attentionForSeller(user.id);
+  attention(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WindowQueryDto,
+  ) {
+    return this.shipmentsService.attentionForSeller(user.id, query.window);
   }
 
   @ApiOperation({

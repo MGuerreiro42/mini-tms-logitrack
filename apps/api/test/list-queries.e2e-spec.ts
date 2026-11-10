@@ -188,7 +188,12 @@ describe('List views and search (e2e)', () => {
       window: '90d',
     }).expect(200);
 
+    const attention = await get(tenants.sellerA, '/shipments/attention', {
+      window: '30d',
+    }).expect(200);
+
     expect(views.body).toMatchObject({ active: 5, done: 0 });
+    expect(attention.body.counts.late).toBe(views.body.late);
     expect(statuses.body.DELIVERED).toBe(0);
     expect(adminStatuses.body.DELIVERED).toBe(1);
   });
@@ -201,8 +206,25 @@ describe('List views and search (e2e)', () => {
     ['admin', '/admin/shipments'],
     ['admin', '/admin/shipments/view-counts'],
     ['admin', '/admin/shipments/status-counts'],
+    ['carrier', '/carriers/me/performance'],
   ])('rejects an unknown window on the %s %s', async (role, path) => {
-    const token = role === 'admin' ? admin : tenants.sellerA;
+    const token = { admin, seller: tenants.sellerA, carrier: tenants.manager }[
+      role
+    ] as string;
     await get(token, path, { window: '1d' }).expect(400);
+  });
+
+  it('lets window win over since on carrier performance', async () => {
+    const since = inHours(-60 * 24).toISOString();
+    const total = async (query: object) =>
+      (
+        await get(tenants.manager, '/carriers/me/performance', query).expect(
+          200,
+        )
+      ).body.totalShipments;
+
+    await expect(total({ since, window: '30d' })).resolves.toBe(
+      (await total({ since })) - 1,
+    );
   });
 });
