@@ -97,7 +97,10 @@ describe('Seller360', () => {
       await screen.findByRole('link', {
         name: 'Shipments 30 d, 14. View in Monitoring',
       }),
-    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1&window=30d');
+    ).toHaveAttribute(
+      'href',
+      '/admin/monitoring?sellerId=s-1&view=ALL&window=30d',
+    );
     expect(
       screen.getByRole('link', {
         name: 'Active now, 6. View active shipments',
@@ -119,10 +122,13 @@ describe('Seller360', () => {
 
     expect(
       await screen.findByRole('link', { name: 'All 23 in Monitoring →' }),
-    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1');
+    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1&view=ALL');
     expect(
       await screen.findByRole('link', { name: 'TMS-AAA111' }),
-    ).toHaveAttribute('href', '/admin/shipments/shipment-1');
+    ).toHaveAttribute(
+      'href',
+      '/admin/shipments/shipment-1?sellerId=s-1&view=ALL',
+    );
     expect(await screen.findByText('Status · 30 d')).toBeVisible();
     const modalities = await screen.findByRole('list', {
       name: 'Modalities',
@@ -139,13 +145,17 @@ describe('Seller360', () => {
     renderWithQueryClient(<Seller360 id="s-1" />);
 
     expect(await screen.findByText('No shipments yet')).toBeVisible();
+    expect(screen.queryByText('Active')).toBeNull();
     expect(screen.queryByRole('link', { name: /Shipments 30 d/ })).toBeNull();
   });
 
-  it('keeps the review and its actions for a pending seller', async () => {
+  it('keeps the review for a pending seller, then focuses the 360 title on approval', async () => {
     let approved = false;
     answer('PENDING');
     server.use(
+      http.get(`${API_URL}/sellers/s-1`, () =>
+        HttpResponse.json(seller(approved ? 'APPROVED' : 'PENDING')),
+      ),
       http.patch(`${API_URL}/sellers/s-1/approve`, () => {
         approved = true;
         return HttpResponse.json(seller('APPROVED'));
@@ -159,5 +169,10 @@ describe('Seller360', () => {
     await user.click(screen.getByRole('button', { name: 'Approve' }));
 
     await vi.waitFor(() => expect(approved).toBe(true));
+    const title = await screen.findByRole('heading', { level: 1 });
+    await vi.waitFor(() =>
+      expect(title).toContainElement(document.activeElement as HTMLElement),
+    );
+    expect(screen.queryByText('Company details')).toBeNull();
   });
 });
