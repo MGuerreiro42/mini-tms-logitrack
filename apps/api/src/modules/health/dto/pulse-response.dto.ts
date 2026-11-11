@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { ChaosScenarioId } from '../../simulator/chaos-scenarios';
+import { CHAOS_SCENARIO_IDS } from '../../simulator/chaos-scenarios';
 
 export const SIMULATOR_STATES = ['off', 'running', 'idle'] as const;
 export type SimulatorState = (typeof SIMULATOR_STATES)[number];
@@ -41,6 +43,17 @@ export class ServicesPulseDto {
   redis: boolean;
 }
 
+export class ChaosPulseDto {
+  @ApiProperty({ enum: CHAOS_SCENARIO_IDS })
+  scenario: ChaosScenarioId;
+
+  @ApiProperty()
+  label: string;
+
+  @ApiProperty()
+  endsAt: string;
+}
+
 // Every part degrades on its own: null (or false for services) when it could not be read.
 export class PulseResponseDto {
   @ApiProperty({
@@ -68,4 +81,11 @@ export class PulseResponseDto {
 
   @ApiProperty({ type: ServicesPulseDto })
   services: ServicesPulseDto;
+
+  @ApiProperty({
+    type: ChaosPulseDto,
+    nullable: true,
+    description: 'The running Chaos Mode scenario; null with the simulator off',
+  })
+  chaos: ChaosPulseDto | null;
 }
