@@ -28,6 +28,7 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 
 **Admins**
 - Approve or reject seller and carrier sign-ups
+- Demo card on the overview: reset the demo, and start Chaos Mode (failed-delivery storm, carrier outage or webhook endpoints down) that every signed-in visitor sees as a banner with a countdown ([spec](./specs/08-demo-showcase.md))
 - Overview with a live platform pulse (events, sockets, simulator, webhooks, queues, Postgres and Redis), platform tiles and on time per carrier
 - Seller 360 and Carrier 360 pages with the tenant's own numbers, and 30-day scorecards on both lists
 - Platform-wide monitoring with views per status, search and a peek, filterable by seller and carrier, updated live; overview tiles open the matching list
@@ -127,9 +128,10 @@ Demo accounts (local seed only):
 | Seller | `seller@demo.minitms.dev` | `demo12345` |
 | Carrier manager | `carrier@demo.minitms.dev` | `demo12345` |
 | Carrier operator | `operator1@demo.minitms.dev` | `demo12345` |
+| Demo admin (never decides sign-ups) | `admin@demo.minitms.dev` | `demo12345` |
 | Admin | `admin@minitms.dev` | `admin12345` |
 
-With `NEXT_PUBLIC_DEMO_LOGIN=true` (on in `.env.example`) the login page signs in as seller, carrier or operator in one click.
+With `NEXT_PUBLIC_DEMO_LOGIN=true` (on in `.env.example`) the login page signs in as seller, carrier manager, operator or demo admin in one click, and every app shows the Chaos Mode banner.
 
 With `DEMO_SIMULATOR=true` (on in `.env.example`) the demo carrier and sellers act on their own while anyone is connected, and the demo data is restored to the seed every night ([spec](./specs/01-demo-simulator.md)).
 
