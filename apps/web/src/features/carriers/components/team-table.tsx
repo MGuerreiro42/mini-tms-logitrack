@@ -35,7 +35,7 @@ export function TeamTable({
       title="Team"
       titleId={titleId}
       description={`Owned shipments · ${scope}`}
-      // Claimed drops by the panel's width, so the table also fits a side column.
+      // Claimed drops below 26rem of panel: a phone or the Carrier 360 side column, not Performance.
       className="@container"
     >
       <Table aria-labelledby={titleId}>
@@ -43,7 +43,9 @@ export function TeamTable({
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead className="text-right">Active</TableHead>
-            <TableHead className="text-right @max-md:hidden">Claimed</TableHead>
+            <TableHead className="text-right @max-[26rem]:hidden">
+              Claimed
+            </TableHead>
             <TableHead className="text-right">Delivered</TableHead>
             <TableHead className="text-right">On time</TableHead>
           </TableRow>
@@ -76,7 +78,7 @@ export function TeamTable({
                     </span>
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>{member.active}</TableCell>
-                  <TableCell className={cn(NUMBER_CELL, '@max-md:hidden')}>
+                  <TableCell className={cn(NUMBER_CELL, '@max-[26rem]:hidden')}>
                     {member.claimed}
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>
