@@ -8,6 +8,7 @@ import {
 } from '../generated/prisma/client';
 import {
   buildDemoShipments,
+  DEMO_ADMIN,
   DEMO_CARRIER,
   DEMO_CARRIER_MEMBERS,
   DEMO_EXTRA_CARRIERS,
@@ -221,6 +222,7 @@ async function main() {
   const sellers = await seedSellers(modalities, demoHash);
   const carrier = await seedCarrier(modalities, demoHash);
   await seedExtraCarriers(modalities, demoHash);
+  await upsertUser(DEMO_ADMIN.email, DEMO_ADMIN.name, 'ADMIN', demoHash);
   console.log(
     `Demo accounts seeded: ${sellers.sellerIds.length} sellers, ${1 + DEMO_EXTRA_CARRIERS.length} carriers`,
   );
