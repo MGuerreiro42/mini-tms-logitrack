@@ -178,7 +178,7 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - **Role:** Admin
 - **Goal:** the whole live platform at a glance.
-- **Data:** a pulse strip polled every 5 s, outside the window: events per minute (15-minute sparkline), sockets, simulator, webhooks over the last hour, queues and Postgres/Redis, each part degrading on its own ("Pulse unavailable · retrying" when the request fails); tiles On time, Late now, Failed and Median claim for the window; On time by carrier (each name opens its Carrier 360); the review queue with approve/reject inline and the approved tenant counts.
+- **Data:** a pulse strip polled every 5 s, outside the window: events per minute (15-minute sparkline), sockets, simulator, webhooks over the last hour, queues and Postgres/Redis, each part degrading on its own ("Pulse unavailable · retrying" when the request fails); tiles On time, Late now, Failed and Median claim for the window; On time by carrier (each name opens its Carrier 360 on the same window); the review queue with approve/reject inline and the approved tenant counts.
 - **Navigation →** Sellers List · Carriers List · Global Monitoring · Carrier Detail.
 
 ### Sellers List
@@ -186,14 +186,14 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Role:** Admin
 - **Data:** `companyName`, `document`, Shipments · 30 d and On time (same response, `include=stats`), `status`, `createdAt`.
 - **Actions:** filter by status (the `PENDING` queue is the default view, since it's the recurring action).
-- **States:** a rate on fewer than five deliveries reads "n=<n>, not enough".
+- **States:** a rate on fewer than five deliveries reads "—", with "Not enough deliveries (n=<n>)" as its title and for screen readers; Tax ID and sign-up date give way below 1024 px.
 - **Navigation →** Seller Detail.
 
 ### Seller Detail
 
 - **Role:** Admin — the Seller 360.
-- **Data:** header with the approval badge, e-mail and tax ID with copy buttons, and the window. Approved: tiles Shipments · window, On time · window, Active now and Late now, equal to the seller's own overview; the ten most recent shipments with a link to all of them in Monitoring; Status · window; the modality catalog with what the seller enabled. "No shipments yet" for an approved seller without any.
-- **Actions:** **approve / reject** while pending (the company details review); count tiles open Monitoring filtered by the seller.
+- **Data:** header with the approval badge, e-mail and tax ID with copy buttons, and the window. Approved: tiles Shipments · window, On time · window, Active now and Late now, equal to the seller's own overview; the ten most recent shipments (each opening its detail with the Monitoring scope kept for the breadcrumb) with a link to all of them in Monitoring (`view=ALL`); Status · window; the modality catalog, each Enabled or Off. "No shipments yet" for an approved seller without any, and no tile is drawn before the total is known.
+- **Actions:** **approve / reject** while pending (the company details review; focus moves to the new title after approval); count tiles open Monitoring filtered by the seller, Shipments on `view=ALL` and the window.
 - **States:** pending or rejected — the company details review instead of metrics.
 
 ### Carriers List
@@ -201,13 +201,13 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Role:** Admin
 - **Data:** `companyName`, `document`, `CarrierUser` count, Shipments · 30 d, On time and Failed (`include=stats`), `status`, `createdAt`.
 - **Actions:** filter by status.
-- **States:** a rate on fewer than five samples reads "n=<n>, not enough".
+- **States:** a rate on fewer than five samples reads "—", with "Not enough deliveries (n=<n>)" as its title and for screen readers; Tax ID and sign-up date give way below 1024 px.
 - **Navigation →** Carrier Detail.
 
 ### Carrier Detail
 
 - **Role:** Admin — the Carrier 360.
-- **Data:** header with the manager e-mail and user count, and the window. Approved: tiles On time, Median delivery, First attempt (the manager's own endpoints by id, so the numbers equal their Performance page) and Active now; time per stage; the ten most recent shipments beside the read-only Team table (no "You", no links) and Coverage & modalities (UF / city chips, "All of <UF>", modalities with SLA hours).
+- **Data:** header with the manager e-mail and user count, and the window. Approved: tiles On time, Median delivery, First attempt (the manager's own endpoints by id, so the numbers equal their Performance page) and Active now; time per stage, full width; from 1280 px the ten most recent shipments beside the read-only Team table (no "You", no links) and Coverage & modalities (UF / city chips, "All of <UF>", the enabled modalities with SLA hours), stacked full width below it. Performance and team refresh like the carrier's own page, at most once per 10 s. "No shipments yet" for an approved carrier without any; a carrier without a manager reads "No manager".
 - **Actions:** **approve/reject the company** while pending; Active now opens Monitoring filtered by the carrier.
 - **States:** pending or rejected — the company details review instead of metrics.
 
