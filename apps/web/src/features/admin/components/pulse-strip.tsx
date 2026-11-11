@@ -8,6 +8,12 @@ import { type Pulse, usePulse } from '../hooks/use-pulse';
 const SIMULATOR_WORDS = { off: 'Off', running: 'Running', idle: 'Idle' };
 const UNAVAILABLE = 'Unavailable';
 
+// Before the first answer it reads "—"; the Demo card shows the same word.
+export function simulatorWord(pulse?: Pulse): string {
+  if (!pulse) return '—';
+  return pulse.simulator ? SIMULATOR_WORDS[pulse.simulator] : UNAVAILABLE;
+}
+
 const sum = (values: number[]) =>
   values.reduce((total, value) => total + value, 0);
 
@@ -53,7 +59,14 @@ function PulseItems({ pulse }: { pulse?: Pulse }) {
         )}
       </Item>
       <Item label="Simulator">
-        {pending(pulse?.simulator && SIMULATOR_WORDS[pulse.simulator])}
+        {pulse?.chaos ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="size-2 rounded-full bg-warning" />
+            Chaos · {pulse.chaos.label}
+          </span>
+        ) : (
+          simulatorWord(pulse)
+        )}
       </Item>
       <Item label="Webhooks · 1 h">
         {pending(

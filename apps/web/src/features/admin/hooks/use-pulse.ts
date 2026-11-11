@@ -16,6 +16,7 @@ export interface Pulse {
   } | null;
   queues: { name: string; waiting: number; failed: number }[];
   services: { database: boolean; redis: boolean };
+  chaos: { scenario: string; label: string; endsAt: string } | null;
 }
 
 const PULSE_POLL_MS = 5_000;
