@@ -31,6 +31,31 @@ describe('Admin pulse (e2e)', () => {
   });
 
   it('reports events, sockets, webhooks, queues and services', async () => {
+    const seller = (
+      await request(ctx.app.getHttpServer())
+        .get('/sellers/me')
+        .auth(tenants.sellerA, { type: 'bearer' })
+    ).body;
+    // Before the shipment, whose webhook dispatch would create the seller's endpoint itself.
+    const endpoint = await ctx.prisma.webhookEndpoint.create({
+      data: {
+        sellerId: seller.id,
+        url: 'https://example.test/hook',
+        events: [],
+        secret: 'e2e',
+      },
+    });
+    await ctx.prisma.webhookDelivery.createMany({
+      data: [
+        { status: 'SUCCEEDED', durationMs: 80 },
+        { status: 'FAILED', durationMs: 900 },
+      ].map((delivery) => ({
+        ...delivery,
+        endpointId: endpoint.id,
+        event: 'SHIPMENT_CREATED' as const,
+        payload: {},
+      })),
+    });
     await createShipment(ctx, tenants.sellerA, tenants);
     const socket = await connectSocket(ctx, '/public');
 
@@ -40,8 +65,11 @@ describe('Admin pulse (e2e)', () => {
     expect(body.eventsPerMinute).toHaveLength(15);
     expect(body.eventsPerMinute.at(-1)).toBeGreaterThanOrEqual(1);
     expect(body.sockets.public).toBeGreaterThanOrEqual(1);
-    // Other suites may have delivered webhooks within the hour.
-    expect(body.webhooks).toMatchObject({ n: expect.any(Number) });
+    // Other suites may have delivered webhooks within the hour: at least these two.
+    expect(body.webhooks.n).toBeGreaterThanOrEqual(2);
+    expect(body.webhooks.successRate).toBeGreaterThan(0);
+    expect(body.webhooks.successRate).toBeLessThan(100);
+    expect(body.webhooks.p95Ms).toEqual(expect.any(Number));
     expect(body.queues).toContainEqual(
       expect.objectContaining({ name: 'webhooks' }),
     );

@@ -20,7 +20,7 @@ export function PulseStrip() {
       className="rounded-xl bg-card px-5 py-4 shadow-panel"
     >
       {pulse.isError ? (
-        <p className="text-sm text-muted-foreground">
+        <p role="status" className="text-sm text-muted-foreground">
           Pulse unavailable · retrying
         </p>
       ) : (
