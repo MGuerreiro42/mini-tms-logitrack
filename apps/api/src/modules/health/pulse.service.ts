@@ -1,16 +1,21 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { PrismaHealthIndicator } from '@nestjs/terminus';
 import type { Queue } from 'bullmq';
+import type { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { REDIS_CLIENT } from '../../shared/redis/redis.module';
 import { percentage } from '../../shared/stats/stats';
 import { WEBHOOKS_QUEUE } from '../integrations/webhook-queue';
+import { readChaos } from '../simulator/chaos.service';
+import { toChaosStatusDto } from '../simulator/dto/demo-status.dto';
 import { DEMO_QUEUE } from '../simulator/simulator.constants';
 import {
   type SocketCounts,
   TrackingPresence,
 } from '../tracking/tracking-presence';
 import type {
+  ChaosPulseDto,
   PulseResponseDto,
   QueuePulseDto,
   SimulatorState,
@@ -53,13 +58,14 @@ export class PulseService {
     private readonly presence: TrackingPresence,
     private readonly prismaHealth: PrismaHealthIndicator,
     private readonly redisHealth: RedisHealthIndicator,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectQueue(WEBHOOKS_QUEUE) private readonly webhooksQueue: Queue,
     // Exported by the simulator module, which is only loaded with DEMO_SIMULATOR=true.
     @Optional() @InjectQueue(DEMO_QUEUE) private readonly demoQueue?: Queue,
   ) {}
 
   async pulse(now = new Date()): Promise<PulseResponseDto> {
-    const [eventsPerMinute, sockets, webhooks, queues, database, redis] =
+    const [eventsPerMinute, sockets, webhooks, queues, database, redis, chaos] =
       await Promise.all([
         settle(() => this.eventsPerMinute(now), null),
         settle(() => this.presence.socketCounts(), null),
@@ -76,6 +82,7 @@ export class PulseService {
             (await this.redisHealth.pingCheck('redis')).redis.status === 'up',
           false,
         ),
+        settle(() => this.chaos(), null),
       ]);
 
     return {
@@ -85,7 +92,16 @@ export class PulseService {
       webhooks,
       queues,
       services: { database, redis },
+      chaos,
     };
+  }
+
+  private async chaos(): Promise<ChaosPulseDto | null> {
+    if (!this.demoQueue) return null;
+    const state = await readChaos(this.redis);
+    if (!state) return null;
+    const { scenario, label, endsAt } = toChaosStatusDto(state);
+    return { scenario, label, endsAt };
   }
 
   // Counted per minute in Postgres, on the createdAt index; the oldest minute comes first.
