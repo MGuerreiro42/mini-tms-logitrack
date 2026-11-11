@@ -78,8 +78,8 @@ describe('PulseStrip', () => {
     );
     renderWithQueryClient(<PulseStrip />);
 
-    expect(
-      await screen.findByText('Pulse unavailable · retrying'),
-    ).toBeVisible();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Pulse unavailable · retrying',
+    );
   });
 });
