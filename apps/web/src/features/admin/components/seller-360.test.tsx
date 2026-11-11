@@ -122,10 +122,13 @@ describe('Seller360', () => {
 
     expect(
       await screen.findByRole('link', { name: 'All 23 in Monitoring →' }),
-    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1');
+    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1&view=ALL');
     expect(
       await screen.findByRole('link', { name: 'TMS-AAA111' }),
-    ).toHaveAttribute('href', '/admin/shipments/shipment-1');
+    ).toHaveAttribute(
+      'href',
+      '/admin/shipments/shipment-1?sellerId=s-1&view=ALL',
+    );
     expect(await screen.findByText('Status · 30 d')).toBeVisible();
     const modalities = await screen.findByRole('list', {
       name: 'Modalities',
