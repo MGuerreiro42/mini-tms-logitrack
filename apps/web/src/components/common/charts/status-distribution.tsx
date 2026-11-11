@@ -8,9 +8,11 @@ import type { ShipmentStatus, ShipmentStatusCounts } from '@/types/status';
 export function StatusDistribution({
   counts,
   title = 'Status distribution',
+  emptyMessage = 'No shipments yet.',
 }: {
   counts: ShipmentStatusCounts;
   title?: string;
+  emptyMessage?: string;
 }) {
   const entries = (Object.entries(counts) as [ShipmentStatus, number][])
     .filter(([, count]) => count > 0)
@@ -24,7 +26,7 @@ export function StatusDistribution({
       title={title}
       description={plural(sumRecord(counts), 'shipment')}
       isEmpty={entries.length === 0}
-      emptyMessage="No shipments yet."
+      emptyMessage={emptyMessage}
     >
       <div
         role="img"
