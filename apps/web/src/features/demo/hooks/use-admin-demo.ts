@@ -7,6 +7,8 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { DEMO_RESET_EVENT } from '@/lib/demo-reset';
 import { demoKeys, getAdminDemo, resetDemo, startChaos } from '../api';
 
+const ENDING_POLL_MS = 2_000;
+
 // A 404 (simulator off) is not retried, so the card stays absent.
 export function useAdminDemo() {
   const { token, enabled } = useAuthToken();
@@ -15,6 +17,11 @@ export function useAdminDemo() {
     queryKey: demoKeys.admin(),
     queryFn: () => getAdminDemo(token),
     enabled,
+    // A run past its end that the server still holds (late end job) is polled until it ends.
+    refetchInterval: ({ state }) =>
+      state.data?.chaos && Date.parse(state.data.chaos.endsAt) <= Date.now()
+        ? ENDING_POLL_MS
+        : false,
   });
 }
 

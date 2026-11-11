@@ -54,7 +54,7 @@ describe('ChaosControls', () => {
   const startButtons = () => screen.getAllByRole('button', { name: /^Start / });
 
   it('starts a scenario for the chosen duration, 3 minutes by default', async () => {
-    renderWithQueryClient(<ChaosControls demo={IDLE} />);
+    renderWithQueryClient(<ChaosControls now={Date.now()} demo={IDLE} />);
     expect(screen.getByRole('radio', { name: '3 min' })).toBeChecked();
 
     await userEvent.click(screen.getByRole('radio', { name: '1 min' }));
@@ -77,7 +77,9 @@ describe('ChaosControls', () => {
       endsAt: at(120_000),
       startedBy: 'admin@minitms.dev',
     };
-    renderWithQueryClient(<ChaosControls demo={{ ...IDLE, chaos }} />);
+    renderWithQueryClient(
+      <ChaosControls now={Date.now()} demo={{ ...IDLE, chaos }} />,
+    );
 
     expect(screen.getByText('Running')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup')).toBeNull();
@@ -91,9 +93,32 @@ describe('ChaosControls', () => {
     expect(ended).toBe(1);
   });
 
+  it('says Ending… and keeps Start off for a run past its end the server still holds', () => {
+    const chaos = {
+      scenario: SCENARIOS[0].id,
+      label: SCENARIOS[0].label,
+      description: SCENARIOS[0].description,
+      startedAt: at(-61_000),
+      endsAt: at(-1_000),
+      startedBy: 'admin@minitms.dev',
+    };
+    renderWithQueryClient(
+      <ChaosControls now={Date.now()} demo={{ ...IDLE, chaos }} />,
+    );
+
+    expect(screen.getAllByText('Ending…')).toHaveLength(2);
+    for (const button of startButtons()) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription('Ending…');
+    }
+  });
+
   it('counts the cooldown down on every Start', () => {
     renderWithQueryClient(
-      <ChaosControls demo={{ ...IDLE, cooldownUntil: at(45_000) }} />,
+      <ChaosControls
+        now={Date.now()}
+        demo={{ ...IDLE, cooldownUntil: at(45_000) }}
+      />,
     );
 
     for (const button of startButtons()) {
@@ -111,6 +136,7 @@ describe('ChaosControls', () => {
     });
     renderWithQueryClient(
       <ChaosControls
+        now={Date.now()}
         demo={{ ...IDLE, runs: [run('expired'), run('admin'), run('reset')] }}
       />,
     );
