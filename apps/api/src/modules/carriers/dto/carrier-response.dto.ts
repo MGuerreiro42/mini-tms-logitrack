@@ -6,9 +6,12 @@ export class CarrierResponseDto {
   id: string;
 
   @ApiProperty({
-    description: "The manager's email (User.email via CarrierUser)",
+    type: String,
+    nullable: true,
+    description:
+      "The manager's email (User.email via CarrierUser); null without a manager",
   })
-  email: string;
+  email: string | null;
 
   @ApiProperty()
   companyName: string;

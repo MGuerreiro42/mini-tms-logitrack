@@ -18,6 +18,7 @@ export async function listStatsByTenant(
   key: 'sellerId' | 'carrierId',
   ids: string[],
 ): Promise<Map<string, CarrierListStatsDto>> {
+  if (ids.length === 0) return new Map();
   const now = new Date();
   const since = windowSince({ window: LIST_STATS_WINDOW }, now);
   const rows = await loadMetricRows(
