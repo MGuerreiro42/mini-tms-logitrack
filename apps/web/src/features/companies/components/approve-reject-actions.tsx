@@ -24,9 +24,11 @@ export function ApproveRejectActions({
 }: ApproveRejectActionsProps) {
   const isPending = status === 'PENDING';
   const isDemoAdmin = useSession()?.email === DEMO_ADMIN_EMAIL;
+  // Only a pending application has actions to refuse.
+  const blocked = isPending && isDemoAdmin;
   const noteId = useId();
-  const disabled = isApproving || isRejecting || isDemoAdmin;
-  const describedBy = isDemoAdmin ? noteId : undefined;
+  const disabled = isApproving || isRejecting || blocked;
+  const describedBy = blocked ? noteId : undefined;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -57,7 +59,7 @@ export function ApproveRejectActions({
         variant="destructive"
         onConfirm={onReject}
       />
-      {isPending && isDemoAdmin && (
+      {blocked && (
         <p id={noteId} className="text-[13px] text-muted-foreground">
           {DEMO_ADMIN_DECISION_NOTE}
         </p>
