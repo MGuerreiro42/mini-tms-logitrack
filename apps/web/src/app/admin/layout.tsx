@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
+import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { requireSegment } from '@/lib/server-session';
 
 const ADMIN_NAV: NavItem[] = [
@@ -18,6 +19,7 @@ export default async function AdminLayout({
 
   return (
     <AppShell
+      banner={<GlobalBanner />}
       navItems={ADMIN_NAV}
       user={{ name: session.email, role: 'Administrator', initials: 'AD' }}
     >

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PublicPage } from '@/components/common/public-page';
 import { TextLink } from '@/components/common/text-link';
 import { LoginForm } from '@/features/auth/components/login-form';
-import { DEMO_LOGIN_ENABLED } from '@/features/auth/lib/demo-accounts';
+import { DEMO_LOGIN_ENABLED } from '@/lib/demo';
 import { ROUTES } from '@/lib/routes';
 import { NEXT_PARAM, SESSION_EXPIRED_PARAM } from '@/lib/session';
 

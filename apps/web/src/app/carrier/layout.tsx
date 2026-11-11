@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
 import { getMyCarrier } from '@/features/carriers/api';
+import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
@@ -33,6 +34,7 @@ export default async function CarrierLayout({
 
   return (
     <AppShell
+      banner={<GlobalBanner />}
       navItems={CARRIER_NAV}
       user={{
         name: carrier.companyName,

@@ -1,8 +1,5 @@
 import type { LoginInput } from '../types';
 
-// Mirrors the API's SEED_DEMO: only turn it on where the demo accounts are seeded.
-export const DEMO_LOGIN_ENABLED = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
-
 const DEMO_PASSWORD = 'demo12345';
 
 // Admin is left out: its password comes from ADMIN_PASSWORD and isn't public.
