@@ -17,6 +17,7 @@ import {
   createShipment,
   createTenants,
   type E2eContext,
+  adminToken as newAdminToken,
   startApp,
 } from './support/e2e-app';
 import { truncateAllTables } from './support/e2e-database';
@@ -113,8 +114,10 @@ describe('Demo reset (e2e)', () => {
     ).resolves.not.toBeNull();
   });
 
-  it('lets only the admin trigger a reset', async () => {
+  it('lets only the admin trigger a reset, once a minute per admin', async () => {
     await resetAs(demoSellerToken).expect(403);
+    // The first test spent this admin's reset.
+    await resetAs(adminToken).expect(429);
   });
 
   it('tells connected clients that the demo was reset', async () => {
@@ -123,7 +126,7 @@ describe('Demo reset (e2e)', () => {
       socket.once('demo:reset', () => resolve()),
     );
 
-    await resetAs(adminToken).expect(204);
+    await resetAs(await newAdminToken(ctx)).expect(204);
 
     await expect(notified).resolves.toBeUndefined();
     socket.close();
