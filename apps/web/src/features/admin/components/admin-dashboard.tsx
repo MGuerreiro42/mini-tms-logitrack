@@ -15,6 +15,7 @@ import {
   useRejectCarrier,
 } from '@/features/carriers/hooks/use-approve-reject-carrier';
 import { ApproveRejectActions } from '@/features/companies/components/approve-reject-actions';
+import { DemoCard } from '@/features/demo/components/demo-card';
 import {
   useApproveSeller,
   useRejectSeller,
@@ -37,7 +38,8 @@ import {
   type ApplicationKind,
   usePendingApplications,
 } from '../hooks/use-pending-applications';
-import { PulseStrip } from './pulse-strip';
+import { usePulse } from '../hooks/use-pulse';
+import { PulseStrip, simulatorWord } from './pulse-strip';
 
 const KINDS = {
   seller: {
@@ -58,6 +60,8 @@ export function AdminDashboard() {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
   const { approvals, metrics } = useAdminDashboard(statsWindow);
+  // The same polled query as the strip's, read again for the Demo card.
+  const pulse = usePulse();
   const counts = approvals.data;
   const waiting = counts ? counts.sellers.PENDING + counts.carriers.PENDING : 0;
   const scope = windowLabel(statsWindow);
@@ -136,13 +140,16 @@ export function AdminDashboard() {
             )}
           </QueryState>
         </Panel>
-        <PendingApplications
-          waiting={waiting}
-          tenants={
-            counts &&
-            `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
-          }
-        />
+        <div className="flex flex-col gap-5">
+          <PendingApplications
+            waiting={waiting}
+            tenants={
+              counts &&
+              `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
+            }
+          />
+          <DemoCard simulator={simulatorWord(pulse.data)} />
+        </div>
       </div>
     </div>
   );
