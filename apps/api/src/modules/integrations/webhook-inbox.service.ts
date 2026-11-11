@@ -7,6 +7,8 @@ import { WebhookEvent } from '../../../generated/prisma/client';
 import type { EnvConfig } from '../../shared/config/env.validation';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
+import { readChaos } from '../simulator/chaos.service';
+import { DemoTenantService } from '../simulator/demo-tenant.service';
 import type {
   WebhookInboxRequestDto,
   WebhookInboxResponseDto,
@@ -33,6 +35,7 @@ export class WebhookInboxService {
     private readonly configService: ConfigService<EnvConfig, true>,
     private readonly eventEmitter: EventEmitter2,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly demoTenantService: DemoTenantService,
   ) {}
 
   // PUBLIC_API_URL is an origin: a path on it would be dropped here.
@@ -71,7 +74,9 @@ export class WebhookInboxService {
       throw new NotFoundException('Inbox not found');
     }
 
-    const failing = (await this.redis.exists(failingKey(inboxId))) === 1;
+    const failing =
+      (await this.redis.exists(failingKey(inboxId))) === 1 ||
+      (await this.downByChaos(endpoint.sellerId));
     const webhookId = headers['webhook-id'];
     const request: WebhookInboxRequestDto = {
       id: randomUUID(),
@@ -97,6 +102,15 @@ export class WebhookInboxService {
     };
     this.eventEmitter.emit(WEBHOOK_INBOX_RECEIVED, event);
     return request.responseStatus;
+  }
+
+  // webhook-down (spec 08 FR-023) is read per request, never written to the seller's own
+  // "Fail requests" flag: nothing is left behind when the run ends, however it ends.
+  private async downByChaos(sellerId: string): Promise<boolean> {
+    if ((await readChaos(this.redis))?.scenario !== 'webhook-down')
+      return false;
+    const tenant = await this.demoTenantService.load();
+    return tenant?.sellerIds.includes(sellerId) ?? false;
   }
 
   async read(inboxId: string): Promise<WebhookInboxResponseDto> {

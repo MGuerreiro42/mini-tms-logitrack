@@ -8,7 +8,8 @@ import { Toaster } from '@/components/ui/sonner';
 interface AppShellProps {
   navItems: NavItem[];
   user: { name: string; role: string; initials: string };
-  // Full width between the header and the page, e.g. the demo's GlobalBanner.
+  // Full width between the header and the page; each layout (admin, seller, carrier) passes
+  // the demo's GlobalBanner here, since shared code can't import a feature.
   banner?: React.ReactNode;
   children: React.ReactNode;
 }

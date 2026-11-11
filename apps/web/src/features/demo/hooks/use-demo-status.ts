@@ -25,9 +25,15 @@ export function useDemoStatus() {
         demoKeys.status(),
         (status) => status && { ...status, chaos },
       );
-    // An event missed while offline is caught up on every (re)connect.
-    const handleConnect = () =>
-      queryClient.invalidateQueries({ queryKey: demoKeys.status() });
+    // An event missed while offline is caught up on a reconnect; the first connect follows the
+    // query's own fetch.
+    let connected = socket.connected;
+    const handleConnect = () => {
+      if (connected) {
+        void queryClient.invalidateQueries({ queryKey: demoKeys.status() });
+      }
+      connected = true;
+    };
     socket.on(DEMO_CHAOS_EVENT, handleChaos);
     socket.on('connect', handleConnect);
     // Held on every page, so the banner reaches each signed-in visitor wherever they are.
