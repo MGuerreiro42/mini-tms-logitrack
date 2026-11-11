@@ -130,9 +130,10 @@ describe('Tenant 360 (e2e)', () => {
   );
 
   it('gives each list row the numbers of its 360 at 30 d', async () => {
+    // This suite's tenants are the newest: other suites leave carriers without a manager behind.
     const rowOf = async (path: string, id: string) =>
       (
-        await get(admin, path, { include: 'stats', limit: 100 }).expect(200)
+        await get(admin, path, { include: 'stats', limit: 5 }).expect(200)
       ).body.data.find((row: { id: string }) => row.id === id).stats;
     const [sellerRow, carrierRow, seller360, carrier360] = await Promise.all([
       rowOf('/sellers', sellerId),
