@@ -9,5 +9,6 @@ export interface ModalityToggle {
   id: string;
   code: string;
   name: string;
+  slaHours: number | null;
   enabled: boolean;
 }
