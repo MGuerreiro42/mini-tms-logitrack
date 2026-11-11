@@ -3,6 +3,7 @@
 import { Fragment, useId } from 'react';
 import { InitialsAvatar } from '@/components/common/initials-avatar';
 import { Panel } from '@/components/common/panel';
+import { RateCell } from '@/components/common/rate-cell';
 import {
   Table,
   TableBody,
@@ -12,7 +13,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSession } from '@/hooks/use-session';
-import { hasEnoughData } from '@/lib/metrics';
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '../types';
 
@@ -85,9 +85,7 @@ export function TeamTable({
                     {member.delivered}
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>
-                    {rate !== null && hasEnoughData(n)
-                      ? `${rate.toFixed(1)}%`
-                      : '—'}
+                    <RateCell rate={rate} n={n} />
                   </TableCell>
                 </TableRow>
               </Fragment>

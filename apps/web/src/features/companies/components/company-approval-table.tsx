@@ -6,6 +6,7 @@ import {
   PaginatedTable,
 } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
+import { RateCell } from '@/components/common/rate-cell';
 import {
   type StatusFilter,
   statusFilterOptions,
@@ -14,7 +15,7 @@ import {
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
-import { type ListStats, rateCell } from '@/lib/metrics';
+import type { ListStats } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
 import type { Paginated } from '@/types/pagination';
@@ -42,7 +43,7 @@ export function statsColumns<T extends { stats?: ListStats }>(): Column<T>[] {
     {
       header: 'On time',
       className: NUMBER_CELL,
-      cell: (c) => c.stats && rateCell(c.stats.onTime.rate, c.stats.onTime.n),
+      cell: (c) => c.stats && <RateCell {...c.stats.onTime} />,
     },
   ];
 }
@@ -88,9 +89,11 @@ export function CompanyApprovalTable<T extends CompanyRow>({
       card: 'title',
       cell: (c) => <span className="font-semibold">{c.companyName}</span>,
     },
+    // Tax ID and sign-up date give way below 1024 px so the stats columns fit; the detail has both.
     {
       header: 'Tax ID',
       card: 'meta',
+      hideBelow: 'lg',
       cell: (c) => (
         <span className="font-mono text-[13px]">{formatTaxId(c.document)}</span>
       ),
@@ -104,6 +107,7 @@ export function CompanyApprovalTable<T extends CompanyRow>({
     {
       header: 'Signed up',
       card: 'meta',
+      hideBelow: 'lg',
       className: 'text-right text-muted-foreground',
       cell: (c) => formatDate(c.createdAt),
     },

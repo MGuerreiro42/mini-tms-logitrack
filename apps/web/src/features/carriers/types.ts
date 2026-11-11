@@ -10,7 +10,8 @@ export type { ApprovalStatusCounts };
 
 export interface Carrier {
   id: string;
-  email: string;
+  // Null for a carrier whose manager account is gone.
+  email: string | null;
   companyName: string;
   document: string;
   status: ApprovalStatus;

@@ -1,5 +1,6 @@
 'use client';
 
+import { RateCell } from '@/components/common/rate-cell';
 import type { StatusFilter } from '@/components/common/view-tabs';
 import {
   APPROVAL_FILTER_VALUES,
@@ -7,7 +8,6 @@ import {
   statsColumns,
 } from '@/features/companies/components/company-approval-table';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
-import { rateCell } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import type { ApprovalStatus } from '@/types/status';
 import { useCarrierStatusCounts } from '../hooks/use-carrier-status-counts';
@@ -42,8 +42,7 @@ export function CarriersTable() {
         {
           header: 'Failed',
           className: 'text-right tabular-nums',
-          cell: (c) =>
-            c.stats && rateCell(c.stats.failed.rate, c.stats.failed.n),
+          cell: (c) => c.stats && <RateCell {...c.stats.failed} />,
         },
       ]}
     />
