@@ -8,7 +8,6 @@ import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { WindowSelector } from '@/components/common/window-selector';
-import { Badge } from '@/components/ui/badge';
 import {
   CompanyReview,
   TenantHeader,
@@ -23,6 +22,7 @@ import {
 } from '@/features/sellers/hooks/use-seller';
 import { sellerDetails } from '@/features/sellers/lib/seller-details';
 import type { Seller } from '@/features/sellers/types';
+import { RecentShipments } from '@/features/shipments/components/recent-shipments';
 import {
   useAdminMetrics,
   useAdminShipmentStatusCounts,
@@ -161,21 +161,25 @@ function ApprovedSeller({
               </div>
             )}
           </QueryState>
+          {/* The last right-hand panel fills the column, so both columns end together. */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
-            <QueryState
-              query={counts}
-              skeleton={<QuerySkeleton />}
-              errorMessage="Couldn't load the status counts."
-            >
-              {(data) => (
-                <StatusDistribution
-                  counts={data}
-                  title={`Status · ${scope}`}
-                  emptyMessage="No shipments in this window."
-                />
-              )}
-            </QueryState>
-            <SellerModalities id={sellerId} />
+            <RecentShipments scope={{ sellerId }} liveStatus={liveStatus} />
+            <div className="flex flex-col gap-5">
+              <QueryState
+                query={counts}
+                skeleton={<QuerySkeleton />}
+                errorMessage="Couldn't load the status counts."
+              >
+                {(data) => (
+                  <StatusDistribution
+                    counts={data}
+                    title={`Status · ${scope}`}
+                    emptyMessage="No shipments in this window."
+                  />
+                )}
+              </QueryState>
+              <SellerModalities id={sellerId} />
+            </div>
           </div>
         </>
       )}
@@ -183,29 +187,30 @@ function ApprovedSeller({
   );
 }
 
+// The whole catalog in words, so the admin also sees what the seller left off.
 function SellerModalities({ id }: { id: string }) {
   const query = useSellerModalities(id);
 
   return (
-    <Panel
-      title="Modalities"
-      isEmpty={query.data?.every((modality) => !modality.enabled)}
-      emptyMessage="No modality enabled."
-    >
+    <Panel title="Modalities" className="flex-1">
       <QueryState
         query={query}
         skeleton={<QuerySkeleton variant="lines" />}
         errorMessage="Couldn't load the modalities."
       >
         {(modalities) => (
-          <ul className="flex flex-wrap gap-2" aria-label="Enabled modalities">
-            {modalities
-              .filter((modality) => modality.enabled)
-              .map((modality) => (
-                <li key={modality.id}>
-                  <Badge variant="secondary">{modality.name}</Badge>
-                </li>
-              ))}
+          <ul aria-label="Modalities" className="text-sm">
+            {modalities.map((modality) => (
+              <li
+                key={modality.id}
+                className="flex justify-between gap-3 border-t border-muted py-2"
+              >
+                {modality.name}
+                <span className="text-muted-foreground">
+                  {modality.enabled ? 'Enabled' : 'Off'}
+                </span>
+              </li>
+            ))}
           </ul>
         )}
       </QueryState>

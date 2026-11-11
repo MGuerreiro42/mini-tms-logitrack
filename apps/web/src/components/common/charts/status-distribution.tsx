@@ -27,6 +27,7 @@ export function StatusDistribution({
       description={plural(sumRecord(counts), 'shipment')}
       isEmpty={entries.length === 0}
       emptyMessage={emptyMessage}
+      className="@container"
     >
       <div
         role="img"
@@ -41,7 +42,8 @@ export function StatusDistribution({
           />
         ))}
       </div>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3">
+      {/* Sized by the panel, not the viewport: one column in a narrow side panel. */}
+      <ul className="grid gap-x-4 gap-y-2.5 @md:grid-cols-2 @2xl:grid-cols-3">
         {entries.map(([status, count]) => (
           <li key={status} className="flex items-center gap-2 text-[13px]">
             <span
