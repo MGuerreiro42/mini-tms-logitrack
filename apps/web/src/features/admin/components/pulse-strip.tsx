@@ -60,8 +60,12 @@ function PulseItems({ pulse }: { pulse?: Pulse }) {
       </Item>
       <Item label="Simulator">
         {pulse?.chaos ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-2 rounded-full bg-warning" />
+          // Inline, so a wrapped label keeps the dot on its first line.
+          <span>
+            <span
+              aria-hidden
+              className="mr-1.5 inline-block size-2 rounded-full bg-warning align-middle"
+            />
             Chaos · {pulse.chaos.label}
           </span>
         ) : (
