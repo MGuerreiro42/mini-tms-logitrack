@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavItem } from '@/components/common/nav-list';
+import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { getMySeller } from '@/features/sellers/api';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
@@ -29,6 +30,7 @@ export default async function SellerLayout({
 
   return (
     <AppShell
+      banner={<GlobalBanner />}
       navItems={SELLER_NAV}
       user={{
         name: seller.companyName,

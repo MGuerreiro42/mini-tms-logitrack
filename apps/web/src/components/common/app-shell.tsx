@@ -8,10 +8,12 @@ import { Toaster } from '@/components/ui/sonner';
 interface AppShellProps {
   navItems: NavItem[];
   user: { name: string; role: string; initials: string };
+  // Full width between the header and the page, e.g. the demo's GlobalBanner.
+  banner?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function AppShell({ navItems, user, children }: AppShellProps) {
+export function AppShell({ navItems, user, banner, children }: AppShellProps) {
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
       <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-safe-4 shadow-nav short:static lg:h-16 lg:px-8">
@@ -36,6 +38,7 @@ export function AppShell({ navItems, user, children }: AppShellProps) {
           />
         </div>
       </header>
+      {banner}
       <main className="flex-1 px-safe-4 pt-5 pb-24 max-lg:not-short:has-data-pinned-action:pb-44 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
         <PageTransition>{children}</PageTransition>
       </main>
