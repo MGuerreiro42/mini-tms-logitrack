@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SellerListStatsDto } from '../../shipments/metrics/list-stats.dto';
 
 export class SellerResponseDto {
   @ApiProperty()
@@ -18,4 +19,10 @@ export class SellerResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiPropertyOptional({
+    type: SellerListStatsDto,
+    description: 'Only with include=stats: the last 30 days',
+  })
+  stats?: SellerListStatsDto;
 }

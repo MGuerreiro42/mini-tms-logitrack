@@ -101,7 +101,11 @@ function ApprovedCarrier({
         focusTitle={justApproved}
         description={
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <CopyText value={carrier.email} label="Copy manager e-mail" />
+            {carrier.email ? (
+              <CopyText value={carrier.email} label="Copy manager e-mail" />
+            ) : (
+              'No manager'
+            )}
             {plural(carrier.userCount, 'user')}
           </span>
         }

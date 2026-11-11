@@ -9,6 +9,7 @@ import {
 export interface MetricRow {
   createdAt: Date;
   carrierId: string;
+  sellerId: string;
   ownerId: string | null;
   status: ShipmentStatus;
   dueAt: Date | null;

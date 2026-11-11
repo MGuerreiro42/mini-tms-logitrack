@@ -14,6 +14,7 @@ const seller = {
   document: '12345678000199',
   status: 'PENDING',
   createdAt: '2026-01-01T00:00:00.000Z',
+  stats: { shipments: 14, onTime: { n: 3, count: 3, rate: 100 } },
 };
 
 describe('SellersTable', () => {
@@ -54,5 +55,16 @@ describe('SellersTable', () => {
     await user.click(screen.getByRole('menuitemradio', { name: 'All' }));
 
     await waitFor(() => expect(requestedUrls.at(-1)).not.toContain('status='));
+  });
+
+  it('scores each row over 30 d from the same response', async () => {
+    renderWithQueryClient(<SellersTable />);
+
+    expect(
+      await screen.findByRole('cell', { name: 'Not enough deliveries (n=3)' }),
+    ).toBeVisible();
+    expect(screen.getByRole('cell', { name: '14' })).toBeVisible();
+    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls[0]).toContain('include=stats');
   });
 });

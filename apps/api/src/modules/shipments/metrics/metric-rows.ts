@@ -10,6 +10,7 @@ const SHIPMENT_SELECT = {
   id: true,
   createdAt: true,
   carrierId: true,
+  sellerId: true,
   ownerId: true,
   status: true,
   dueAt: true,

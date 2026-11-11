@@ -139,9 +139,10 @@ describe('CarriersController', () => {
       status: 'PENDING',
       page: 2,
       limit: 10,
+      include: 'stats',
     });
 
-    expect(findAll).toHaveBeenCalledWith('PENDING', 2, 10);
+    expect(findAll).toHaveBeenCalledWith('PENDING', 2, 10, true);
     expect(result).toEqual({ data: [], meta: {} });
   });
 

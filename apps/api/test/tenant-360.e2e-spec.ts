@@ -129,4 +129,45 @@ describe('Tenant 360 (e2e)', () => {
       await get(admin, `/carriers/${randomUUID()}/${part}`).expect(404);
     },
   );
+
+  it('gives each list row the numbers of its 360 at 30 d', async () => {
+    // This suite's tenants are the newest, so they are on the first page.
+    const rowOf = async (path: string, id: string) => {
+      const { body } = await get(admin, path, { include: 'stats' }).expect(200);
+      const row = body.data.find((r: { id: string }) => r.id === id);
+      expect(row).toBeDefined();
+      return row.stats;
+    };
+    const [sellerRow, carrierRow, seller360, carrier360] = await Promise.all([
+      rowOf('/sellers', sellerId),
+      rowOf('/carriers', tenants.carrierId),
+      get(admin, '/admin/metrics', { sellerId, window: '30d' }).expect(200),
+      get(admin, `/carriers/${tenants.carrierId}/performance`, {
+        window: '30d',
+      }).expect(200),
+    ]);
+    const { n, count, rate } = seller360.body.onTime;
+    const first = carrier360.body.firstAttempt;
+
+    expect(sellerRow).toEqual({
+      shipments: seller360.body.shipments,
+      onTime: { n, count, rate },
+    });
+    const { trend: _trend, ...carrierOnTime } = carrier360.body.onTime;
+    expect(carrierRow).toEqual({
+      shipments: carrier360.body.totalShipments,
+      onTime: carrierOnTime,
+      failed: {
+        n: first.n,
+        rate: first.rate === null ? null : 100 - first.rate,
+      },
+    });
+  });
+
+  it('adds stats only when asked and only for admins', async () => {
+    const { body } = await get(admin, '/sellers').expect(200);
+    expect(body.data[0]).not.toHaveProperty('stats');
+    await get(admin, '/carriers', { include: 'everything' }).expect(400);
+    await get(tenants.sellerA, '/sellers', { include: 'stats' }).expect(403);
+  });
 });
