@@ -12,3 +12,9 @@ export function formatDuration(hours: number): string {
   if (hours < HOURS_PER_DAY) return `${oneDecimal(hours)} h`;
   return `${oneDecimal(hours / HOURS_PER_DAY)} d`;
 }
+
+// A ticking "m:ss"; a partial second still counts, so it reads 0:01 until the end.
+export function formatCountdown(ms: number): string {
+  const seconds = Math.max(Math.ceil(ms / 1000), 0);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}

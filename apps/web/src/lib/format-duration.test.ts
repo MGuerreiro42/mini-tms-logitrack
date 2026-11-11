@@ -1,4 +1,15 @@
-import { formatDuration } from './format-duration';
+import { formatCountdown, formatDuration } from './format-duration';
+
+describe('formatCountdown', () => {
+  it.each([
+    [180_000, '3:00'],
+    [61_500, '1:02'],
+    [400, '0:01'],
+    [-5, '0:00'],
+  ])('formats %s ms as %s', (ms, expected) => {
+    expect(formatCountdown(ms)).toBe(expected);
+  });
+});
 
 describe('formatDuration', () => {
   it.each([
