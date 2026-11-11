@@ -88,5 +88,6 @@ describe('Tenant 360 (e2e)', () => {
     await get(tenants.sellerA, `/sellers/${sellerId}/modalities`).expect(403);
     await get(tenants.manager, `/sellers/${sellerId}/modalities`).expect(403);
     await get(admin, `/sellers/${randomUUID()}/modalities`).expect(404);
+    await get(admin, '/sellers/not-a-uuid/modalities').expect(400);
   });
 });
