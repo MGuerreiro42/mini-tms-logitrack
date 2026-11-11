@@ -97,7 +97,13 @@ export function PublicPage({
             </ul>
           )}
         </div>
-        <p className="hidden text-[13px] text-muted-foreground lg:block">
+        {/* With the picker, the reset time also sits under the cards on a phone. */}
+        <p
+          className={cn(
+            'text-[13px] text-muted-foreground',
+            aside ? 'block' : 'hidden lg:block',
+          )}
+        >
           Portfolio project · demo data only
           {aside && ', reset daily at 04:00 (São Paulo)'}
         </p>
