@@ -85,7 +85,8 @@ export class PulseResponseDto {
   @ApiProperty({
     type: ChaosPulseDto,
     nullable: true,
-    description: 'The running Chaos Mode scenario; null with the simulator off',
+    description:
+      'The running Chaos Mode scenario; null when none runs, with the simulator off or when Redis could not be read',
   })
   chaos: ChaosPulseDto | null;
 }

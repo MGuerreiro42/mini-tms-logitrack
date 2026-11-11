@@ -21,6 +21,7 @@ import {
   createShipment,
   createTenants,
   type E2eContext,
+  randomIp,
   startApp,
 } from './support/e2e-app';
 import { truncateAllTables } from './support/e2e-database';
@@ -44,6 +45,23 @@ describe('Chaos scenarios (e2e)', () => {
   const inboxFailing = async (token: string) =>
     (await http().get('/webhooks/inbox').auth(token, bearer).expect(200)).body
       .failRequests as boolean;
+
+  const setFailing = (token: string, failRequests: boolean) =>
+    http()
+      .patch('/webhooks/inbox')
+      .auth(token, bearer)
+      .send({ failRequests })
+      .expect(200);
+  const runWebhookDown = async (whileRunning: () => Promise<void>) => {
+    await http()
+      .post('/admin/demo/chaos')
+      .auth(admin, bearer)
+      .send({ scenario: 'webhook-down' })
+      .expect(201);
+    await whileRunning();
+    await http().delete('/admin/demo/chaos').auth(admin, bearer).expect(204);
+    await redis.del(CHAOS_COOLDOWN_KEY);
+  };
 
   // Everything a scenario could touch on the other tenant, as stored.
   const otherTenantSnapshot = async () => {
@@ -94,8 +112,8 @@ describe('Chaos scenarios (e2e)', () => {
         .send({ status })
         .expect(200);
     }
-    // Creates the other seller's webhook endpoint before the first snapshot.
-    await http().get('/webhooks/endpoint').auth(tenants.sellerA, bearer);
+    // Its own switch on: no scenario may turn it off.
+    await setFailing(tenants.sellerA, true);
   }, 60_000);
 
   afterAll(async () => {
@@ -110,22 +128,34 @@ describe('Chaos scenarios (e2e)', () => {
     await truncateAllTables(process.env);
   });
 
-  it('turns the demo inboxes to 500 only while webhook-down runs', async () => {
-    await http()
-      .post('/admin/demo/chaos')
-      .auth(admin, bearer)
-      .send({ scenario: 'webhook-down' })
-      .expect(201);
-    await vi.waitFor(async () =>
-      expect(await inboxFailing(demoSeller)).toBe(true),
-    );
+  it('answers 500 from the demo inboxes only while webhook-down runs', async () => {
+    const inboxId = (
+      await http().get('/webhooks/endpoint').auth(demoSeller, bearer)
+    ).body.url
+      .split('/')
+      .at(-1);
+    const deliver = () =>
+      http()
+        .post(`/webhook-inbox/${inboxId}`)
+        .set('X-Forwarded-For', randomIp())
+        .send({});
 
-    await http().delete('/admin/demo/chaos').auth(admin, bearer).expect(204);
+    await runWebhookDown(async () => {
+      await deliver().expect(500);
+      // The scenario never writes the seller's own switch.
+      expect(await inboxFailing(demoSeller)).toBe(false);
+    });
 
-    await vi.waitFor(async () =>
-      expect(await inboxFailing(demoSeller)).toBe(false),
-    );
-    await redis.del(CHAOS_COOLDOWN_KEY);
+    await deliver().expect(200);
+  });
+
+  it("keeps a demo seller's own Fail requests switch through webhook-down", async () => {
+    await setFailing(demoSeller, true);
+
+    await runWebhookDown(async () => {});
+
+    expect(await inboxFailing(demoSeller)).toBe(true);
+    await setFailing(demoSeller, false);
   });
 
   it('leaves a non-demo tenant untouched through every scenario', async () => {
@@ -148,6 +178,7 @@ describe('Chaos scenarios (e2e)', () => {
     }
 
     expect(await otherTenantSnapshot()).toEqual(before);
+    expect(before.inboxFailing).toBe(true);
     socket.close();
   }, 60_000);
 });
