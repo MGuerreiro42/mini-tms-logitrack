@@ -358,7 +358,8 @@ export class CarriersService {
   private toResponseDto(carrier: CarrierWithManager): CarrierResponseDto {
     return {
       id: carrier.id,
-      email: carrier.users[0].user.email,
+      // A carrier whose manager account is gone has no e-mail to show, not a 500.
+      email: carrier.users[0]?.user.email ?? null,
       companyName: carrier.companyName,
       document: carrier.document,
       status: carrier.status,

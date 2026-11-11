@@ -1,8 +1,9 @@
 'use client';
 
 import { CopyText } from '@/components/common/copy-field';
+import { EmptyState } from '@/components/common/feedback-state';
 import { OnTimeTile } from '@/components/common/on-time-tile';
-import { QueryState } from '@/components/common/query-state';
+import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { WindowSelector } from '@/components/common/window-selector';
 import { CarrierCoveragePanel } from '@/features/carriers/components/carrier-coverage-panel';
@@ -19,6 +20,7 @@ import {
 import { useCarrier } from '@/features/carriers/hooks/use-carrier';
 import { useCarrierPerformance } from '@/features/carriers/hooks/use-carrier-performance';
 import { useOperatorRanking } from '@/features/carriers/hooks/use-operator-ranking';
+import { usePerformanceRefresh } from '@/features/carriers/hooks/use-performance-live';
 import { carrierDetails } from '@/features/carriers/lib/carrier-details';
 import type { Carrier } from '@/features/carriers/types';
 import {
@@ -26,7 +28,10 @@ import {
   TenantHeader,
 } from '@/features/companies/components/company-cards';
 import { RecentShipments } from '@/features/shipments/components/recent-shipments';
-import { useAdminMetrics } from '@/features/shipments/hooks/use-admin-shipments';
+import {
+  useAdminMetrics,
+  useRecentShipments,
+} from '@/features/shipments/hooks/use-admin-shipments';
 import { useShipmentTracking } from '@/features/shipments/hooks/use-shipment-tracking';
 import { useStatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { formatDateTime } from '@/lib/format-date';
@@ -49,7 +54,7 @@ export function Carrier360({ id }: { id: string }) {
     >
       {(carrier) =>
         carrier.status === 'APPROVED' ? (
-          <ApprovedCarrier carrier={carrier} />
+          <ApprovedCarrier carrier={carrier} justApproved={approve.isSuccess} />
         ) : (
           <CompanyReview
             company={carrier}
@@ -64,18 +69,28 @@ export function Carrier360({ id }: { id: string }) {
   );
 }
 
-function ApprovedCarrier({ carrier }: { carrier: Carrier }) {
+function ApprovedCarrier({
+  carrier,
+  justApproved,
+}: {
+  carrier: Carrier;
+  justApproved: boolean;
+}) {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
   const scope = windowLabel(statsWindow);
+  const carrierId = carrier.id;
+  // Throttled like carrier Performance, so both pages pick up a status change alike.
   const { status: liveStatus } = useShipmentTracking({
     subscribeToMonitoring: true,
+    onEvent: usePerformanceRefresh(carrierId),
   });
-  const carrierId = carrier.id;
   // The manager's own endpoints by id, so every number equals their Performance page.
   const performance = useCarrierPerformance(statsWindow, liveStatus, carrierId);
   const team = useOperatorRanking(statsWindow, liveStatus, carrierId);
-  const active = useAdminMetrics({ carrierId }, liveStatus).data?.active;
+  const active = useAdminMetrics({ carrierId }, liveStatus);
+  const recent = useRecentShipments({ carrierId }, liveStatus);
+  const total = recent.data?.meta.total;
   const loadingNext = performance.isPlaceholderData || team.isPlaceholderData;
 
   return (
@@ -83,54 +98,82 @@ function ApprovedCarrier({ carrier }: { carrier: Carrier }) {
       <TenantHeader
         company={carrier}
         back={BACK}
+        focusTitle={justApproved}
         description={
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <CopyText value={carrier.email} label="Copy manager e-mail" />
+            {carrier.email ? (
+              <CopyText value={carrier.email} label="Copy manager e-mail" />
+            ) : (
+              'No manager'
+            )}
             {plural(carrier.userCount, 'user')}
           </span>
         }
         action={
-          <WindowSelector value={statsWindow} onChange={setStatsWindow} />
+          total !== 0 && (
+            <WindowSelector value={statsWindow} onChange={setStatsWindow} />
+          )
         }
       />
-      <QueryState
-        query={performance}
-        errorMessage="Couldn't load the performance."
-      >
-        {(data) => (
-          <div
-            aria-busy={loadingNext}
-            className={cn(
-              'flex flex-col gap-5 transition-opacity',
-              loadingNext && 'opacity-60',
-            )}
+      {/* Nothing until the total is known, so a carrier without shipments never flashes zero tiles. */}
+      {total === undefined && !recent.error ? (
+        <QuerySkeleton />
+      ) : total === 0 ? (
+        <EmptyState
+          title="No shipments yet"
+          description="Metrics appear once a seller sends this carrier a shipment."
+        />
+      ) : (
+        <>
+          <QueryState
+            query={performance}
+            errorMessage="Couldn't load the performance."
           >
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <OnTimeTile onTime={data.onTime} scope={scope} />
-              <MedianDeliveryTile metric={data.medianDelivery} scope={scope} />
-              <FirstAttemptTile metric={data.firstAttempt} scope={scope} />
-              <StatTile
-                label="Active"
-                scope="now"
-                value={active ?? '—'}
-                href={`${ROUTES.adminMonitoring}?carrierId=${carrierId}&view=active`}
-                linkLabel="View active shipments"
-              />
-            </div>
-            <StageDurationChart stages={data.stages} />
-          </div>
-        )}
-      </QueryState>
-      {/* Team and coverage stack beside the ten recent rows, so both columns end close. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:items-start">
-        <RecentShipments scope={{ carrierId }} liveStatus={liveStatus} />
-        <div className="flex flex-col gap-5">
-          <QueryState query={team} errorMessage="Couldn't load the team.">
-            {(members) => <TeamTable members={members} scope={scope} />}
+            {(data) => (
+              <div
+                aria-busy={loadingNext}
+                className={cn(
+                  'flex flex-col gap-5 transition-opacity',
+                  loadingNext && 'opacity-60',
+                )}
+              >
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <OnTimeTile onTime={data.onTime} scope={scope} />
+                  <MedianDeliveryTile
+                    metric={data.medianDelivery}
+                    scope={scope}
+                  />
+                  <FirstAttemptTile metric={data.firstAttempt} scope={scope} />
+                  <StatTile
+                    label="Active"
+                    scope="now"
+                    value={active.data?.active ?? '—'}
+                    note={
+                      active.error
+                        ? "Couldn't load the active count."
+                        : undefined
+                    }
+                    href={`${ROUTES.adminMonitoring}?carrierId=${carrierId}&view=active`}
+                    linkLabel="View active shipments"
+                  />
+                </div>
+                <StageDurationChart stages={data.stages} />
+              </div>
+            )}
           </QueryState>
-          <CarrierCoveragePanel id={carrierId} />
-        </div>
-      </div>
+          {/* Team and coverage sit beside the ten recent rows from 1280 px and below them
+              otherwise; the last panel fills its column so both columns end together. */}
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
+            <RecentShipments scope={{ carrierId }} liveStatus={liveStatus} />
+            <div className="flex flex-col gap-5">
+              <QueryState query={team} errorMessage="Couldn't load the team.">
+                {(members) => <TeamTable members={members} scope={scope} />}
+              </QueryState>
+              <CarrierCoveragePanel id={carrierId} className="flex-1" />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

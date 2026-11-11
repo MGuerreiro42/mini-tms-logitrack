@@ -30,6 +30,9 @@ export function RecentShipments({
   const query = useRecentShipments(scope, liveStatus);
   const now = useNow(SLA_REFRESH_MS);
   const total = query.data?.meta.total;
+  // Monitoring lands on Active: view=ALL is every shipment, as the total counts. The detail
+  // keeps the same query, so its breadcrumb returns to this Monitoring scope.
+  const search = new URLSearchParams({ ...scope, view: 'ALL' }).toString();
 
   return (
     <section aria-labelledby="recent-shipments" className="flex flex-col gap-3">
@@ -39,7 +42,7 @@ export function RecentShipments({
         </h2>
         {total !== undefined && total > 0 && (
           <TextLink
-            href={`${ROUTES.adminMonitoring}?${new URLSearchParams(scope)}`}
+            href={`${ROUTES.adminMonitoring}?${search}`}
             className="text-[13px]"
           >
             All {total} in Monitoring →
@@ -57,7 +60,7 @@ export function RecentShipments({
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
             getRowClassName={riskRowClassName}
-            getRowHref={(s) => ROUTES.adminShipment(s.id)}
+            getRowHref={(s) => `${ROUTES.adminShipment(s.id)}?${search}`}
             emptyMessage="No shipments yet."
             columns={[
               shipmentColumns.trackingCode,

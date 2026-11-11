@@ -88,6 +88,7 @@ describe('Tenant 360 (e2e)', () => {
     await get(tenants.sellerA, `/sellers/${sellerId}/modalities`).expect(403);
     await get(tenants.manager, `/sellers/${sellerId}/modalities`).expect(403);
     await get(admin, `/sellers/${randomUUID()}/modalities`).expect(404);
+    await get(admin, '/sellers/not-a-uuid/modalities').expect(400);
   });
 
   it.each(['7d', '30d', '90d'])(
@@ -130,11 +131,13 @@ describe('Tenant 360 (e2e)', () => {
   );
 
   it('gives each list row the numbers of its 360 at 30 d', async () => {
-    // This suite's tenants are the newest: other suites leave carriers without a manager behind.
-    const rowOf = async (path: string, id: string) =>
-      (
-        await get(admin, path, { include: 'stats', limit: 5 }).expect(200)
-      ).body.data.find((row: { id: string }) => row.id === id).stats;
+    // This suite's tenants are the newest, so they are on the first page.
+    const rowOf = async (path: string, id: string) => {
+      const { body } = await get(admin, path, { include: 'stats' }).expect(200);
+      const row = body.data.find((r: { id: string }) => r.id === id);
+      expect(row).toBeDefined();
+      return row.stats;
+    };
     const [sellerRow, carrierRow, seller360, carrier360] = await Promise.all([
       rowOf('/sellers', sellerId),
       rowOf('/carriers', tenants.carrierId),
@@ -150,12 +153,10 @@ describe('Tenant 360 (e2e)', () => {
       shipments: seller360.body.shipments,
       onTime: { n, count, rate },
     });
-    expect(carrierRow).toMatchObject({
+    const { trend: _trend, ...carrierOnTime } = carrier360.body.onTime;
+    expect(carrierRow).toEqual({
       shipments: carrier360.body.totalShipments,
-      onTime: {
-        n: carrier360.body.onTime.n,
-        rate: carrier360.body.onTime.rate,
-      },
+      onTime: carrierOnTime,
       failed: {
         n: first.n,
         rate: first.rate === null ? null : 100 - first.rate,

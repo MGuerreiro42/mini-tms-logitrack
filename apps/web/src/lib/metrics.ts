@@ -32,12 +32,6 @@ export function trendDirection(values: (number | null)[]): string {
 export const notEnoughNote = (n: number, noun: 'deliveries' | 'data') =>
   `Not enough ${noun} (n=${n})`;
 
-// A table cell has no room for a note: the rate, or how few samples it rests on (FR-034).
-export const rateCell = (rate: number | null, n: number) =>
-  hasEnoughData(n) && rate !== null
-    ? `${rate.toFixed(1)}%`
-    : `n=${n}, not enough`;
-
 // The admin lists' 30-day scorecard per tenant (spec 07 FR-033).
 export interface ListStats {
   shipments: number;

@@ -50,7 +50,7 @@ export function Seller360({ id }: { id: string }) {
     >
       {(seller) =>
         seller.status === 'APPROVED' ? (
-          <ApprovedSeller seller={seller} />
+          <ApprovedSeller seller={seller} justApproved={approve.isSuccess} />
         ) : (
           <CompanyReview
             company={seller}
@@ -65,7 +65,13 @@ export function Seller360({ id }: { id: string }) {
   );
 }
 
-function ApprovedSeller({ seller }: { seller: Seller }) {
+function ApprovedSeller({
+  seller,
+  justApproved,
+}: {
+  seller: Seller;
+  justApproved: boolean;
+}) {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
   const scope = windowLabel(statsWindow);
@@ -81,7 +87,8 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
     { sellerId, window: statsWindow },
     liveStatus,
   );
-  const total = useRecentShipments({ sellerId }, liveStatus).data?.meta.total;
+  const recent = useRecentShipments({ sellerId }, liveStatus);
+  const total = recent.data?.meta.total;
   const monitoring = (search: string) =>
     `${ROUTES.adminMonitoring}?sellerId=${sellerId}&${search}`;
   const dimmed = metrics.isPlaceholderData && 'opacity-60';
@@ -91,6 +98,7 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
       <TenantHeader
         company={seller}
         back={BACK}
+        focusTitle={justApproved}
         description={
           <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <CopyText value={seller.email} label="Copy e-mail" />
@@ -108,7 +116,10 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
           )
         }
       />
-      {total === 0 ? (
+      {/* Nothing until the total is known, so a seller without shipments never flashes zero tiles. */}
+      {total === undefined && !recent.error ? (
+        <QuerySkeleton />
+      ) : total === 0 ? (
         <EmptyState
           title="No shipments yet"
           description="Metrics appear once this seller creates a shipment."
@@ -128,7 +139,7 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
                   label="Shipments"
                   scope={scope}
                   value={data.shipments}
-                  href={monitoring(`window=${statsWindow}`)}
+                  href={monitoring(`view=ALL&window=${statsWindow}`)}
                   linkLabel="View in Monitoring"
                 />
                 <OnTimeTile onTime={data.onTime} scope={scope} />
@@ -150,8 +161,8 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
               </div>
             )}
           </QueryState>
-          {/* Each column stacks on its own; neither stretches to meet the other. */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] lg:items-start">
+          {/* The last right-hand panel fills the column, so both columns end together. */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
             <RecentShipments scope={{ sellerId }} liveStatus={liveStatus} />
             <div className="flex flex-col gap-5">
               <QueryState
@@ -163,6 +174,7 @@ function ApprovedSeller({ seller }: { seller: Seller }) {
                   <StatusDistribution
                     counts={data}
                     title={`Status · ${scope}`}
+                    emptyMessage="No shipments in this window."
                   />
                 )}
               </QueryState>
@@ -180,7 +192,7 @@ function SellerModalities({ id }: { id: string }) {
   const query = useSellerModalities(id);
 
   return (
-    <Panel title="Modalities">
+    <Panel title="Modalities" className="flex-1">
       <QueryState
         query={query}
         skeleton={<QuerySkeleton variant="lines" />}

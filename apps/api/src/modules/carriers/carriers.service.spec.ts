@@ -236,6 +236,15 @@ describe('CarriersService', () => {
       });
     });
 
+    it('reads a null e-mail for a carrier without a manager', async () => {
+      carrierFindMany.mockResolvedValue([{ ...carrierWithManager, users: [] }]);
+      carrierCount.mockResolvedValue(1);
+
+      const { data } = await carriersService.findAll();
+
+      expect(data[0].email).toBeNull();
+    });
+
     it('filters by status and paginates when provided', async () => {
       carrierFindMany.mockResolvedValue([]);
       carrierCount.mockResolvedValue(45);

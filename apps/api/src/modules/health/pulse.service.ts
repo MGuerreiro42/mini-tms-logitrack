@@ -2,10 +2,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaHealthIndicator } from '@nestjs/terminus';
 import type { Queue } from 'bullmq';
-import { WebhookDeliveryStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { percentage, percentile } from '../../shared/stats/stats';
-import { RedisHealthIndicator } from '../health/redis.health';
+import { percentage } from '../../shared/stats/stats';
 import { WEBHOOKS_QUEUE } from '../integrations/webhook-queue';
 import { DEMO_QUEUE } from '../simulator/simulator.constants';
 import {
@@ -17,7 +15,8 @@ import type {
   QueuePulseDto,
   SimulatorState,
   WebhookPulseDto,
-} from './metrics/pulse-response.dto';
+} from './dto/pulse-response.dto';
+import { RedisHealthIndicator } from './redis.health';
 
 const MINUTE_MS = 60_000;
 const EVENT_MINUTES = 15;
@@ -55,7 +54,7 @@ export class PulseService {
     private readonly prismaHealth: PrismaHealthIndicator,
     private readonly redisHealth: RedisHealthIndicator,
     @InjectQueue(WEBHOOKS_QUEUE) private readonly webhooksQueue: Queue,
-    // Registered only when the simulator module is loaded (DEMO_SIMULATOR=true).
+    // Exported by the simulator module, which is only loaded with DEMO_SIMULATOR=true.
     @Optional() @InjectQueue(DEMO_QUEUE) private readonly demoQueue?: Queue,
   ) {}
 
@@ -89,43 +88,40 @@ export class PulseService {
     };
   }
 
+  // Counted per minute in Postgres, on the createdAt index; the oldest minute comes first.
   private async eventsPerMinute(now: Date): Promise<number[]> {
-    const start = now.getTime() - EVENT_MINUTES * MINUTE_MS;
-    const events = await this.prisma.trackingEvent.findMany({
-      where: { createdAt: { gte: new Date(start), lte: now } },
-      select: { createdAt: true },
-    });
+    const start = new Date(now.getTime() - EVENT_MINUTES * MINUTE_MS);
+    const minutes = await this.prisma.$queryRaw<
+      { minute: number; n: number }[]
+    >`
+      SELECT floor((extract(epoch FROM "createdAt") * 1000 - ${start.getTime()}) / ${MINUTE_MS})::int AS minute,
+             count(*)::int AS n
+      FROM "TrackingEvent"
+      WHERE "createdAt" >= ${start} AND "createdAt" <= ${now}
+      GROUP BY 1`;
     const perMinute = Array<number>(EVENT_MINUTES).fill(0);
-    for (const { createdAt } of events) {
-      const minute = Math.floor((createdAt.getTime() - start) / MINUTE_MS);
-      perMinute[Math.min(minute, EVENT_MINUTES - 1)]++;
+    // An event at exactly now falls one past the last minute; it belongs to it.
+    for (const { minute, n } of minutes) {
+      perMinute[Math.min(minute, EVENT_MINUTES - 1)] += n;
     }
     return perMinute;
   }
 
+  // percentile_disc is the nearest rank, as every percentile of the metrics core.
   private async webhooks(now: Date): Promise<WebhookPulseDto> {
-    const deliveries = await this.prisma.webhookDelivery.findMany({
-      where: {
-        createdAt: { gte: new Date(now.getTime() - WEBHOOK_WINDOW_MS) },
-        status: {
-          in: [WebhookDeliveryStatus.SUCCEEDED, WebhookDeliveryStatus.FAILED],
-        },
-      },
-      select: { status: true, durationMs: true },
-    });
-    const succeeded = deliveries.filter(
-      (delivery) => delivery.status === WebhookDeliveryStatus.SUCCEEDED,
-    ).length;
+    const since = new Date(now.getTime() - WEBHOOK_WINDOW_MS);
+    const [row] = await this.prisma.$queryRaw<
+      { n: number; succeeded: number; p95: number | null }[]
+    >`
+      SELECT count(*)::int AS n,
+             (count(*) FILTER (WHERE status = 'SUCCEEDED'))::int AS succeeded,
+             percentile_disc(0.95) WITHIN GROUP (ORDER BY "durationMs") AS p95
+      FROM "WebhookDelivery"
+      WHERE "createdAt" >= ${since} AND status IN ('SUCCEEDED', 'FAILED')`;
     return {
-      n: deliveries.length,
-      successRate:
-        deliveries.length > 0 ? percentage(succeeded, deliveries.length) : null,
-      p95Ms: percentile(
-        deliveries.flatMap(({ durationMs }) =>
-          durationMs === null ? [] : [durationMs],
-        ),
-        95,
-      ),
+      n: row.n,
+      successRate: row.n > 0 ? percentage(row.succeeded, row.n) : null,
+      p95Ms: row.p95,
     };
   }
 

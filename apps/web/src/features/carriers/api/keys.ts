@@ -21,6 +21,6 @@ export const carrierKeys = {
     [...carrierKeys.detail(carrierId), 'modalities'] as const,
 };
 
-function carrierScope(carrierId?: string) {
+export function carrierScope(carrierId?: string) {
   return carrierId ? carrierKeys.detail(carrierId) : carrierKeys.me();
 }

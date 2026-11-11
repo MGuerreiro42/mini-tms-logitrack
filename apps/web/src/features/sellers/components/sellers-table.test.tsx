@@ -61,7 +61,7 @@ describe('SellersTable', () => {
     renderWithQueryClient(<SellersTable />);
 
     expect(
-      await screen.findByRole('cell', { name: 'n=3, not enough' }),
+      await screen.findByRole('cell', { name: 'Not enough deliveries (n=3)' }),
     ).toBeVisible();
     expect(screen.getByRole('cell', { name: '14' })).toBeVisible();
     expect(requestedUrls).toHaveLength(1);

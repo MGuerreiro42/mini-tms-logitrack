@@ -1,6 +1,5 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AdminShipmentsController } from './admin-shipments.controller';
-import { PulseService } from './pulse.service';
 import { ShipmentsService } from './shipments.service';
 
 describe('AdminShipmentsController', () => {
@@ -16,7 +15,6 @@ describe('AdminShipmentsController', () => {
           provide: ShipmentsService,
           useValue: { countsByStatusForAdmin },
         },
-        { provide: PulseService, useValue: {} },
       ],
     }).compile();
 
