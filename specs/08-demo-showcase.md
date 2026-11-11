@@ -31,9 +31,9 @@ A visitor on `/login` reads "Explore the demo · one click, no signup", sees fou
 
 The seeded account `admin@demo.minitms.dev` signs in with the public demo password and has the platform admin role, so a visitor sees approvals, monitoring, the pulse, the demo reset and Chaos Mode. Visitors who sign up on the demo deployment are told their data is visible to other visitors.
 
-**Why this priority**: the admin is the only role that sees the whole live system and the only one that can start Chaos Mode (US 3). The user accepted that a demo admin can decide real signups on the demo deployment.
+**Why this priority**: the admin is the only role that sees the whole live system and the only one that can start Chaos Mode (US 3). Because its password is public, the demo admin reads every signup but cannot approve or reject one (FR-002).
 
-**Independent test**: seed with `SEED_DEMO=true`, sign in as the demo admin, approve a pending seller, call `POST /admin/demo/reset` twice within a minute and receive `429` on the second call; seed without `SEED_DEMO` and confirm the account does not exist.
+**Independent test**: seed with `SEED_DEMO=true`, sign in as the demo admin, try to approve a pending seller and receive `403`, call `POST /admin/demo/reset` twice within a minute and receive `429` on the second call; seed without `SEED_DEMO` and confirm the account does not exist.
 
 **Acceptance scenarios**:
 
@@ -97,8 +97,8 @@ A visitor signed in with a demo account reads one dismissible line "You're using
 - Two admins press Start at the same moment: the atomic write admits one; the other receives `409` and its card refetches.
 - The demo admin is one account shared by every visitor: any visitor signed in as it can end a scenario another visitor started, and the per-user reset limit is shared by all of them.
 - A visitor signed in as the demo operator keeps claiming and advancing during "carrier outage": the scenario pauses only the simulator; human actions follow the normal rules.
-- A visitor pointed a demo seller's webhook endpoint at another URL: "webhook endpoints down" flips that seller's inbox flag, which has no visible effect until the endpoint points back at the inbox (the next reset restores it).
-- A demo seller turned "Fail requests" on by hand before "webhook endpoints down": the scenario's end turns it off.
+- A visitor pointed a demo seller's webhook endpoint at another URL: "webhook endpoints down" has no visible effect for that seller, because only the inbox answers 500.
+- A demo seller turned "Fail requests" on by hand before "webhook endpoints down": the flag is never written by the scenario, so it is still on after the scenario ends.
 - The client's clock runs ahead of or behind the server's by a few seconds: the countdown hides the banner at its local `endsAt`; the `demo:chaos` null event hides it in any case.
 - The socket is disconnected when the scenario ends: the banner hides at `endsAt` and the status refetches on reconnect.
 - Failures and late shipments produced during a scenario are real domain events: they stay in the metrics windows and lists until the next reset. The Demo card's reset restores the dataset.
@@ -158,7 +158,7 @@ A visitor signed in with a demo account reads one dismissible line "You're using
 - **FR-020**: Every effect MUST be limited to the demo tenant: shipments through `demoShipmentsWhere`, endpoints of the demo sellers only. `tick` and `drive` MUST read the state once per job.
 - **FR-021**: `failed-deliveries`: the failure probability from `OUT_FOR_DELIVERY` (spec 01 FR-007) MUST be 0.5 while active.
 - **FR-022**: `carrier-outage`: ticks MUST skip claims and advances of shipments whose carrier is Transportadora Demo; creation and the drive job continue, so road-stage vehicles stay parked at the end of their segment and new shipments wait in Pending. Rápido Paulista and EconoLog are unaffected.
-- **FR-023**: `webhook-down`: on `DEMO_CHAOS_CHANGED`, `WebhooksService` MUST set the inbox "Fail requests" flag on every demo seller's endpoint when this scenario starts and clear it when it ends, through `WebhookInboxService.setFailing`.
+- **FR-023**: `webhook-down`: the webhook inbox MUST answer 500 for a demo seller's inbox while a `webhook-down` run is active (read from `demo:chaos` at request time, inactive past `endsAt`), in addition to the seller's own "Fail requests" flag. The scenario never writes the flag, so a manual flag survives the scenario and a failed end can't leave inboxes failing.
 - **FR-024**: `GET /admin/pulse` MUST add `chaos: { scenario, label, endsAt } | null`, read from `demo:chaos` with the existing per-part fallback (`null` on failure or with the simulator off). Metrics are not adjusted: scenario outcomes are real events and appear in every metric of spec 07 like any other.
 
 ### Global banner (web)
@@ -200,7 +200,7 @@ A visitor signed in with a demo account reads one dismissible line "You're using
 
 - **API (`apps/api`)**:
   - `src/modules/simulator/`: `demo-dataset.ts` (`DEMO_ADMIN`), `chaos-scenarios.ts` (catalog, FR-010), `chaos.service.ts` (start, end, state, cooldown, runs; FR-011–FR-015), `chaos-events.ts` (`DEMO_CHAOS_CHANGED`), `simulator.constants.ts` (`CHAOS_END_JOB`), `simulator.processor.ts` (dispatches `chaos-end`), `demo-reset.service.ts` (ends the run first), `simulator.service.ts` (reads the state per job; FR-021, FR-022), `demo.controller.ts` (`GET /demo/status`) and `demo-reset.controller.ts` grown into the admin demo controller (`GET /admin/demo`, `POST`/`DELETE /admin/demo/chaos`, reset rate limit), DTOs under `dto/`.
-  - `src/modules/integrations/webhooks.service.ts`: `@OnEvent(DEMO_CHAOS_CHANGED)` for `webhook-down` (FR-023).
+  - `src/modules/integrations/webhooks.service.ts`: inbox answer checks the active `webhook-down` run (FR-023).
   - `src/modules/tracking/tracking.listener.ts`: `demo:chaos` emit (FR-019).
   - `src/modules/health/pulse.service.ts` and `dto/pulse-response.dto.ts`: `chaos` (FR-024), read from Redis by a small exported reader in `chaos.service.ts`, so the health module does not need the conditional simulator module.
   - `prisma/seed.ts`: demo admin.
