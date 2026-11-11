@@ -147,6 +147,18 @@ describe('TrackingListener', () => {
       expect(publicBroadcast).not.toHaveBeenCalled();
     });
 
+    it('names a scenario missing from the catalog by its id', () => {
+      listener.handleDemoChaos({
+        run: { ...run, scenario: 'retired' as never },
+        active: true,
+      });
+
+      expect(broadcast).toHaveBeenCalledWith(
+        'demo:chaos',
+        expect.objectContaining({ label: 'retired' }),
+      );
+    });
+
     it('sends null when the run ends', () => {
       listener.handleDemoChaos({ run, active: false });
 

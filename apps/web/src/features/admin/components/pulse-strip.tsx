@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 import { type Pulse, usePulse } from '../hooks/use-pulse';
 
 const SIMULATOR_WORDS = { off: 'Off', running: 'Running', idle: 'Idle' };
-const UNAVAILABLE = 'Unavailable';
+export const UNAVAILABLE = 'Unavailable';
 
-// Before the first answer it reads "—"; the Demo card shows the same word.
+// Before the first answer it reads "—". The Demo card shows this word even during Chaos Mode,
+// whose label the strip shows in its place.
 export function simulatorWord(pulse?: Pulse): string {
   if (!pulse) return '—';
   return pulse.simulator ? SIMULATOR_WORDS[pulse.simulator] : UNAVAILABLE;

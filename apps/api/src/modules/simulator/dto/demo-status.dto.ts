@@ -1,21 +1,27 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional } from 'class-validator';
-import type { ChaosRun, ChaosState } from '../chaos.service';
+import {
+  CHAOS_END_REASONS,
+  type ChaosRun,
+  type ChaosState,
+} from '../chaos.service';
 import {
   CHAOS_DURATIONS_SEC,
   CHAOS_SCENARIO_IDS,
   CHAOS_SCENARIOS,
   type ChaosScenarioId,
+  DEFAULT_CHAOS_DURATION_SEC,
 } from '../chaos-scenarios';
-
-const CHAOS_END_REASONS = ['expired', 'admin', 'reset'] as const;
 
 export class StartChaosDto {
   @ApiProperty({ enum: CHAOS_SCENARIO_IDS })
   @IsIn(CHAOS_SCENARIO_IDS)
   scenario: ChaosScenarioId;
 
-  @ApiPropertyOptional({ enum: CHAOS_DURATIONS_SEC, default: 180 })
+  @ApiPropertyOptional({
+    enum: CHAOS_DURATIONS_SEC,
+    default: DEFAULT_CHAOS_DURATION_SEC,
+  })
   @IsOptional()
   @IsIn(CHAOS_DURATIONS_SEC)
   durationSec?: number;
@@ -108,10 +114,14 @@ export const toChaosStatusDto = ({
   scenario,
   endsAt,
 }: ChaosState): ChaosStatusDto => {
-  const { label, description } = CHAOS_SCENARIOS.find(
-    ({ id }) => id === scenario,
-  ) as ChaosScenarioDto;
-  return { scenario, label, description, endsAt };
+  const known = CHAOS_SCENARIOS.find(({ id }) => id === scenario);
+  // A run stored before a scenario was renamed still reads, under its id.
+  return {
+    scenario,
+    label: known?.label ?? scenario,
+    description: known?.description ?? '',
+    endsAt,
+  };
 };
 
 export const toAdminChaosDto = (state: ChaosState): AdminChaosDto => ({

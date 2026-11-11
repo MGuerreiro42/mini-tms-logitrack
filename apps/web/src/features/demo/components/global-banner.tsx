@@ -1,32 +1,32 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { XIcon, ZapIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNow } from '@/hooks/use-now';
 import { useSession } from '@/hooks/use-session';
+import { DEMO_EMAIL_DOMAIN } from '@/lib/demo';
 import { formatLocalTime } from '@/lib/format-date';
 import { formatCountdown } from '@/lib/format-duration';
+import { demoKeys } from '../api';
 import { useDemoStatus } from '../hooks/use-demo-status';
 import { useEndChaos } from '../hooks/use-end-chaos';
 import type { ChaosStatus } from '../types';
 
-const DEMO_EMAIL_DOMAIN = '@demo.minitms.dev';
 const INFO_DISMISSED_KEY = 'tms:demo-info-dismissed';
 const TICK_MS = 1_000;
 
 function ChaosBanner({
   chaos,
+  left,
   canEnd,
 }: {
   chaos: ChaosStatus;
+  left: number;
   canEnd: boolean;
 }) {
-  const now = useNow(TICK_MS);
   const endChaos = useEndChaos();
-  const left = Date.parse(chaos.endsAt) - now.getTime();
-  // The server's null event hides it too; this covers a socket that is down at the end.
-  if (left <= 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-warning px-safe-4 py-2.5 text-[13px] text-warning-foreground md:flex-nowrap md:px-safe-10 lg:px-8">
@@ -93,8 +93,16 @@ function DemoInfo({ nextResetAt }: { nextResetAt: string | null }) {
 // Mounted in every app shell; renders nothing off the demo deployment or when the API has no simulator.
 export function GlobalBanner() {
   const session = useSession();
+  const queryClient = useQueryClient();
   const { data } = useDemoStatus();
-  const chaos = data?.chaos ?? null;
+  const now = useNow(TICK_MS).getTime();
+  const stored = data?.chaos ?? null;
+  // Over at its local end even if the socket missed the end event; the refetch confirms it.
+  const chaos = stored && Date.parse(stored.endsAt) > now ? stored : null;
+  const expired = stored !== null && chaos === null;
+  useEffect(() => {
+    if (expired) void queryClient.invalidateQueries({ queryKey: demoKeys.all });
+  }, [expired, queryClient]);
   // Announce the end only after a start was seen, never on a page that opens with none running.
   const [sawChaos, setSawChaos] = useState(false);
   if (chaos && !sawChaos) setSawChaos(true);
@@ -112,8 +120,13 @@ export function GlobalBanner() {
         {announcement}
       </p>
       {chaos ? (
-        <ChaosBanner chaos={chaos} canEnd={session.role === 'ADMIN'} />
+        <ChaosBanner
+          chaos={chaos}
+          left={Date.parse(chaos.endsAt) - now}
+          canEnd={session.role === 'ADMIN'}
+        />
       ) : (
+        !stored &&
         session.email.endsWith(DEMO_EMAIL_DOMAIN) && (
           <DemoInfo nextResetAt={data.nextResetAt} />
         )

@@ -10,7 +10,10 @@ import type { GlobalRole } from '@/types/auth';
 import type { DemoStatus } from '../types';
 import { GlobalBanner } from './global-banner';
 
-vi.mock('@/lib/demo', () => ({ DEMO_LOGIN_ENABLED: true }));
+vi.mock('@/lib/demo', async (importOriginal) => ({
+  ...(await importOriginal()),
+  DEMO_LOGIN_ENABLED: true,
+}));
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
@@ -86,6 +89,31 @@ describe('GlobalBanner', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Chaos Mode ended'),
     );
     expect(screen.queryByText(/Chaos Mode:/)).toBeNull();
+  });
+
+  it('hides at its local end and announces it when the socket misses the end', async () => {
+    signIn('SELLER');
+    let calls = 0;
+    server.use(
+      http.get(`${API_URL}/demo/status`, () =>
+        HttpResponse.json(
+          calls++ === 0 ? running(1_200) : { chaos: null, nextResetAt: null },
+        ),
+      ),
+    );
+    renderWithQueryClient(<GlobalBanner />);
+    await screen.findByText('Chaos Mode: Storm: failed deliveries.');
+
+    await waitFor(
+      () =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Chaos Mode ended',
+        ),
+      { timeout: 3_000 },
+    );
+    expect(screen.queryByText(/Chaos Mode:/)).toBeNull();
+    // The expiry refetched the status.
+    expect(calls).toBe(2);
   });
 
   it('appears when a run starts over the socket', async () => {
