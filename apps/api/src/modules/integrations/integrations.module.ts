@@ -30,5 +30,7 @@ import { WebhooksService } from './webhooks.service';
     WebhookDispatcher,
     WebhookDeliveryProcessor,
   ],
+  // The admin pulse reads this module's queue counts.
+  exports: [BullModule],
 })
 export class IntegrationsModule {}

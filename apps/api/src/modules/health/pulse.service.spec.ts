@@ -1,13 +1,11 @@
 import type { PrismaHealthIndicator } from '@nestjs/terminus';
 import type { Queue } from 'bullmq';
 import type { PrismaService } from '../../shared/prisma/prisma.service';
-import type { RedisHealthIndicator } from '../health/redis.health';
 import type { TrackingPresence } from '../tracking/tracking-presence';
 import { PulseService } from './pulse.service';
+import type { RedisHealthIndicator } from './redis.health';
 
 const NOW = new Date('2026-11-10T12:00:00Z');
-const minutesAgo = (minutes: number) =>
-  new Date(NOW.getTime() - minutes * 60_000);
 
 describe('PulseService', () => {
   const trackingEvents = vi.fn();
@@ -18,12 +16,15 @@ describe('PulseService', () => {
   const queue = (name: string, getJobCounts = vi.fn()) =>
     ({ name, getJobCounts }) as unknown as Queue;
 
+  // One tagged $queryRaw per part, told apart by the table it reads.
+  const queryRaw = (strings: TemplateStringsArray) =>
+    strings.join('').includes('"TrackingEvent"')
+      ? trackingEvents()
+      : webhookDeliveries();
+
   const service = (demoQueue?: Queue, webhooksQueue = queue('webhooks')) =>
     new PulseService(
-      {
-        trackingEvent: { findMany: trackingEvents },
-        webhookDelivery: { findMany: webhookDeliveries },
-      } as unknown as PrismaService,
+      { $queryRaw: queryRaw } as unknown as PrismaService,
       { socketCounts } as unknown as TrackingPresence,
       { pingCheck: databasePing } as unknown as PrismaHealthIndicator,
       { pingCheck: redisPing } as unknown as RedisHealthIndicator,
@@ -33,7 +34,7 @@ describe('PulseService', () => {
 
   beforeEach(() => {
     trackingEvents.mockResolvedValue([]);
-    webhookDeliveries.mockResolvedValue([]);
+    webhookDeliveries.mockResolvedValue([{ n: 0, succeeded: 0, p95: null }]);
     socketCounts.mockResolvedValue({ internal: 0, public: 0 });
     databasePing.mockResolvedValue({ database: { status: 'up' } });
     redisPing.mockResolvedValue({ redis: { status: 'up' } });
@@ -43,12 +44,12 @@ describe('PulseService', () => {
     vi.useRealTimers();
   });
 
-  it('counts tracking events per minute, oldest first', async () => {
+  it('spreads the per-minute counts over 15 minutes, oldest first', async () => {
     trackingEvents.mockResolvedValue([
-      { createdAt: minutesAgo(15) },
-      { createdAt: minutesAgo(14.5) },
-      { createdAt: minutesAgo(0.5) },
-      { createdAt: NOW },
+      { minute: 0, n: 2 },
+      { minute: 14, n: 1 },
+      // An event at exactly now lands one past the last minute.
+      { minute: 15, n: 1 },
     ]);
 
     const { eventsPerMinute } = await service().pulse(NOW);
@@ -63,12 +64,7 @@ describe('PulseService', () => {
       p95Ms: null,
     });
 
-    webhookDeliveries.mockResolvedValue([
-      { status: 'SUCCEEDED', durationMs: 100 },
-      { status: 'SUCCEEDED', durationMs: 300 },
-      { status: 'SUCCEEDED', durationMs: null },
-      { status: 'FAILED', durationMs: 900 },
-    ]);
+    webhookDeliveries.mockResolvedValue([{ n: 4, succeeded: 3, p95: 900 }]);
     expect((await service().pulse(NOW)).webhooks).toEqual({
       n: 4,
       successRate: 75,
