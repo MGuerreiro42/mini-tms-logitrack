@@ -1,13 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useIsMutating, useMutationState } from '@tanstack/react-query';
+import { useMutationState } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { FormError } from '@/components/common/form-error';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
-import { LOGIN_MUTATION_KEY, useLoginMutation } from '../hooks/use-login';
+import {
+  LOGIN_MUTATION_KEY,
+  useLoginMutation,
+  useSigningIn,
+} from '../hooks/use-login';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -24,7 +28,7 @@ export function LoginForm({ next }: { next?: string }) {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
   const loginMutation = useLoginMutation(next);
   // Any login attempt on the page, the demo picker's included.
-  const signingIn = useIsMutating({ mutationKey: LOGIN_MUTATION_KEY }) > 0;
+  const signingIn = useSigningIn();
   const lastError = useMutationState({
     filters: { mutationKey: LOGIN_MUTATION_KEY },
     select: (mutation) => mutation.state.error,
@@ -54,7 +58,9 @@ export function LoginForm({ next }: { next?: string }) {
       />
       <FormError error={lastError} />
       <Button type="submit" className="w-full" disabled={signingIn}>
-        {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
+        {loginMutation.isPending || loginMutation.isSuccess
+          ? 'Signing in…'
+          : 'Sign in'}
       </Button>
     </form>
   );

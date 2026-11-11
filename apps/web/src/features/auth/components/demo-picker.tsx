@@ -1,14 +1,13 @@
 'use client';
 
-import { useIsMutating } from '@tanstack/react-query';
-import { LOGIN_MUTATION_KEY, useLoginMutation } from '../hooks/use-login';
+import { useLoginMutation, useSigningIn } from '../hooks/use-login';
 import { DEMO_ACCOUNTS } from '../lib/demo-accounts';
 import { DemoRoleCard } from './demo-role-card';
 
 // A failed sign-in shows in the login form's error, which reads every login attempt.
 export function DemoPicker({ next }: { next?: string }) {
   const login = useLoginMutation(next);
-  const signingIn = useIsMutating({ mutationKey: LOGIN_MUTATION_KEY }) > 0;
+  const signingIn = useSigningIn();
 
   return (
     <section
@@ -23,7 +22,11 @@ export function DemoPicker({ next }: { next?: string }) {
           <DemoRoleCard
             key={email}
             {...account}
-            pending={login.isPending && login.variables?.email === email}
+            pending={
+              !login.isIdle &&
+              !login.isError &&
+              login.variables?.email === email
+            }
             disabled={signingIn}
             onSelect={() => login.mutate({ email, password })}
           />

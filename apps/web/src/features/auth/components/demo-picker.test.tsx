@@ -65,6 +65,26 @@ describe('DemoPicker', () => {
     });
   });
 
+  it('keeps every card and the form off while the signed-in page loads', async () => {
+    server.use(
+      http.post(`${API_URL}/auth/login`, () =>
+        signedIn('seller@demo.minitms.dev', 'SELLER'),
+      ),
+    );
+    renderWithQueryClient(
+      <>
+        <DemoPicker />
+        <LoginForm />
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Seller' }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/seller'));
+
+    expect(screen.getByRole('button', { name: 'Admin' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+  });
+
   it.each([
     ['/carrier/queue/abc?tab=events', '/carrier/queue/abc?tab=events'],
     ['https://evil.example', '/carrier/queue'],
