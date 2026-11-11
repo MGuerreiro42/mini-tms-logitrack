@@ -13,6 +13,11 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import {
+  DEMO_CHAOS_CHANGED,
+  type DemoChaosChangedEvent,
+} from '../simulator/chaos-events';
+import { DEMO_SELLERS } from '../simulator/demo-dataset';
 import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
@@ -167,6 +172,25 @@ export class WebhooksService {
         }),
       ),
     ]);
+  }
+
+  // The demo sellers' endpoints only, created if missing, so every one of them goes down.
+  @OnEvent(DEMO_CHAOS_CHANGED)
+  async toggleDemoInboxes({
+    run,
+    active,
+  }: DemoChaosChangedEvent): Promise<void> {
+    if (run.scenario !== 'webhook-down') return;
+    const sellers = await this.prisma.seller.findMany({
+      where: {
+        user: { email: { in: DEMO_SELLERS.map(({ email }) => email) } },
+      },
+      select: { id: true },
+    });
+    for (const seller of sellers) {
+      const endpoint = await this.dispatcher.findOrCreateEndpoint(seller.id);
+      await this.inbox.setFailing(endpoint.inboxId, active);
+    }
   }
 
   private async findOrCreateEndpoint(userId: string): Promise<WebhookEndpoint> {
