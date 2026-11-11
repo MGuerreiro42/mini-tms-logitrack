@@ -1,7 +1,10 @@
 'use client';
 
+import { useId } from 'react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { useSession } from '@/hooks/use-session';
+import { DEMO_ADMIN_DECISION_NOTE, DEMO_ADMIN_EMAIL } from '@/lib/demo';
 import type { ApprovalStatus } from '@/types/status';
 
 interface ApproveRejectActionsProps {
@@ -20,11 +23,19 @@ export function ApproveRejectActions({
   isRejecting,
 }: ApproveRejectActionsProps) {
   const isPending = status === 'PENDING';
+  const isDemoAdmin = useSession()?.email === DEMO_ADMIN_EMAIL;
+  const noteId = useId();
+  const disabled = isApproving || isRejecting || isDemoAdmin;
+  const describedBy = isDemoAdmin ? noteId : undefined;
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {isPending && (
-        <Button onClick={onApprove} disabled={isApproving || isRejecting}>
+        <Button
+          onClick={onApprove}
+          disabled={disabled}
+          aria-describedby={describedBy}
+        >
           {isApproving ? 'Approving…' : 'Approve'}
         </Button>
       )}
@@ -32,7 +43,11 @@ export function ApproveRejectActions({
         available={isPending}
         unavailableMessage="This application was already reviewed."
         trigger={
-          <Button variant="destructive" disabled={isApproving || isRejecting}>
+          <Button
+            variant="destructive"
+            disabled={disabled}
+            aria-describedby={describedBy}
+          >
             Reject
           </Button>
         }
@@ -42,6 +57,11 @@ export function ApproveRejectActions({
         variant="destructive"
         onConfirm={onReject}
       />
+      {isPending && isDemoAdmin && (
+        <p id={noteId} className="text-[13px] text-muted-foreground">
+          {DEMO_ADMIN_DECISION_NOTE}
+        </p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { clearSession, setSession } from '@/lib/session';
 import { ApproveRejectActions } from './approve-reject-actions';
 
 describe('ApproveRejectActions', () => {
@@ -31,6 +32,31 @@ describe('ApproveRejectActions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Approve' }));
     expect(onApprove).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the demo admin both actions disabled, with the reason', () => {
+    setSession({
+      token: 't',
+      role: 'ADMIN',
+      userId: 'u',
+      email: 'admin@demo.minitms.dev',
+    });
+    render(
+      <ApproveRejectActions
+        status="PENDING"
+        onApprove={vi.fn()}
+        onReject={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    for (const name of ['Approve', 'Reject']) {
+      const button = screen.getByRole('button', { name });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription(
+        "The demo admin can't approve or reject sign-ups",
+      );
+    }
+    clearSession();
   });
 
   it('requires confirmation before calling onReject', async () => {
