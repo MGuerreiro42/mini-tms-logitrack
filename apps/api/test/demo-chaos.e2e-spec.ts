@@ -156,7 +156,37 @@ describe('Demo chaos (e2e)', () => {
     await (await queue.getJob(`${CHAOS_END_JOB}-${runId}`))?.promote();
 
     await vi.waitFor(() => expect(chaosEvents).toHaveLength(2));
+    // Long enough for a duplicate end to show if there were one.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(chaosEvents).toHaveLength(2);
     expect(chaosEvents[1]).toBeNull();
+    expect((await overview()).runs).toEqual([
+      expect.objectContaining({ reason: 'expired' }),
+    ]);
+  });
+
+  it('admits one of two concurrent starts', async () => {
+    const statuses = await Promise.all([
+      as(admin).post('/admin/demo/chaos', STORM),
+      as(admin).post('/admin/demo/chaos', { scenario: 'carrier-outage' }),
+    ]);
+
+    expect(statuses.map(({ status }) => status).sort()).toEqual([201, 409]);
+  });
+
+  it('ends a run left past its end by a late end job', async () => {
+    await as(admin).post('/admin/demo/chaos', STORM).expect(201);
+    const run = await storedRun();
+    await redis.set(
+      CHAOS_KEY,
+      JSON.stringify({
+        ...run,
+        endsAt: new Date(Date.now() - 1_000).toISOString(),
+      }),
+    );
+
+    await as(admin).delete('/admin/demo/chaos').expect(204);
+
     expect((await overview()).runs).toEqual([
       expect.objectContaining({ reason: 'expired' }),
     ]);
