@@ -5,7 +5,7 @@ export function PublicDemoNotice() {
   if (!DEMO_LOGIN_ENABLED) return null;
 
   return (
-    <p className="mb-5 rounded-md bg-notice px-3 py-2 text-sm text-notice-foreground">
+    <p className="rounded-md bg-notice px-3 py-2 text-sm text-notice-foreground">
       This is a public demo. Anything you enter can be read by other visitors
       signed in as the demo admin. Don't use real company data.
     </p>
