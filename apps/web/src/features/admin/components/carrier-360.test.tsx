@@ -37,7 +37,7 @@ const performance = {
   ],
 };
 
-function answer(status: string) {
+function answer(status: string, total = 7) {
   server.use(
     http.get(CARRIER, () => HttpResponse.json(carrier(status))),
     http.get(`${CARRIER}/performance`, () => HttpResponse.json(performance)),
@@ -63,14 +63,20 @@ function answer(status: string) {
     ),
     http.get(`${CARRIER}/modalities`, () =>
       HttpResponse.json([
-        { id: 'm-1', code: 'STANDARD', name: 'Standard', enabled: true },
-        { id: 'm-2', code: 'EXPRESS', name: 'Express', enabled: false },
-      ]),
-    ),
-    http.get(`${API_URL}/delivery-modalities`, () =>
-      HttpResponse.json([
-        { id: 'm-1', code: 'STANDARD', name: 'Standard', slaHours: 72 },
-        { id: 'm-2', code: 'EXPRESS', name: 'Express', slaHours: 24 },
+        {
+          id: 'm-1',
+          code: 'STANDARD',
+          name: 'Standard',
+          slaHours: 72,
+          enabled: true,
+        },
+        {
+          id: 'm-2',
+          code: 'EXPRESS',
+          name: 'Express',
+          slaHours: 24,
+          enabled: false,
+        },
       ]),
     ),
     http.get(`${API_URL}/admin/metrics`, () =>
@@ -79,7 +85,7 @@ function answer(status: string) {
     http.get(`${API_URL}/admin/shipments`, () =>
       HttpResponse.json({
         data: [],
-        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+        meta: { total, page: 1, limit: 10, totalPages: 1 },
       }),
     ),
   );
@@ -130,6 +136,14 @@ describe('Carrier360', () => {
     expect(screen.getByRole('list', { name: 'Modalities' })).toHaveTextContent(
       /^Standard · 72 h$/,
     );
+  });
+
+  it('says so instead of zero tiles when the carrier has no shipment', async () => {
+    answer('APPROVED', 0);
+    renderWithQueryClient(<Carrier360 id="c-1" />);
+
+    expect(await screen.findByText('No shipments yet')).toBeVisible();
+    expect(screen.queryByText('Median delivery')).toBeNull();
   });
 
   it('keeps the review and its actions for a pending carrier', async () => {

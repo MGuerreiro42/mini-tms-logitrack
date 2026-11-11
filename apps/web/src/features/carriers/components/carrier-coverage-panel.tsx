@@ -10,14 +10,20 @@ import {
 } from '../hooks/use-carrier';
 
 // Read-only: where the carrier delivers and which modalities it runs, for the admin.
-export function CarrierCoveragePanel({ id }: { id: string }) {
+export function CarrierCoveragePanel({
+  id,
+  className,
+}: {
+  id: string;
+  className?: string;
+}) {
   const query = combineQueries(
     [useCarrierCoverageAreas(id), useCarrierModalities(id)] as const,
     ([areas, modalities]) => ({ areas, modalities }),
   );
 
   return (
-    <Panel title="Coverage & modalities">
+    <Panel title="Coverage & modalities" className={className}>
       <QueryState
         query={query}
         skeleton={<QuerySkeleton variant="lines" />}
@@ -38,13 +44,15 @@ export function CarrierCoveragePanel({ id }: { id: string }) {
             <Chips
               label="Modalities"
               empty="No modality enabled."
-              items={modalities.map((modality) => ({
-                key: modality.id,
-                text:
-                  modality.slaHours === null
-                    ? modality.name
-                    : `${modality.name} · ${modality.slaHours} h`,
-              }))}
+              items={modalities
+                .filter((modality) => modality.enabled)
+                .map((modality) => ({
+                  key: modality.id,
+                  text:
+                    modality.slaHours === null
+                      ? modality.name
+                      : `${modality.name} · ${modality.slaHours} h`,
+                }))}
             />
           </div>
         )}
