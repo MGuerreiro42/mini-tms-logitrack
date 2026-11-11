@@ -6,6 +6,7 @@ import { pointAt, segmentFor } from '../shipments/route-geometry';
 import { findRoute } from '../shipments/routes';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { TrackingPresence } from '../tracking/tracking-presence';
+import { ChaosService } from './chaos.service';
 import { DEMO_SELLERS } from './demo-dataset';
 import {
   DemoTenantService,
@@ -63,6 +64,7 @@ describe('SimulatorService', () => {
   const findEligibleCarriers = vi.fn();
   const reportPosition = vi.fn();
   const random = vi.fn();
+  const activeChaos = vi.fn();
 
   // advanceOne lists the candidates, then claimOne picks one pending shipment.
   const givenShipments = (toAdvance: unknown, toClaim: unknown = null) => {
@@ -96,6 +98,7 @@ describe('SimulatorService', () => {
         },
         { provide: TrackingPresence, useValue: { hasViewers } },
         { provide: DemoTenantService, useValue: { load } },
+        { provide: ChaosService, useValue: { active: activeChaos } },
         { provide: SIMULATOR_RANDOM, useValue: random },
       ],
     }).compile();
@@ -156,6 +159,32 @@ describe('SimulatorService', () => {
       status: ShipmentStatus.FAILED_DELIVERY,
       note: 'Recipient not at home',
     });
+  });
+
+  it('fails about half of the deliveries during the storm', async () => {
+    activeChaos.mockResolvedValue({ scenario: 'failed-deliveries' });
+    random.mockReturnValueOnce(0.4);
+    givenShipments(owned(ShipmentStatus.OUT_FOR_DELIVERY));
+
+    await simulator.tick();
+
+    expect(updateStatus).toHaveBeenCalledWith(
+      'operator-user-1',
+      'shipment-1',
+      expect.objectContaining({ status: ShipmentStatus.FAILED_DELIVERY }),
+    );
+    expect(activeChaos).toHaveBeenCalledOnce();
+  });
+
+  it('neither claims nor advances for Transportadora Demo during its outage', async () => {
+    activeChaos.mockResolvedValue({ scenario: 'carrier-outage' });
+    givenShipments(null);
+
+    await simulator.tick();
+
+    const worked = { in: ['carrier-2'] };
+    expect(findMany.mock.calls[0][0].where.carrierId).toEqual(worked);
+    expect(findFirst.mock.calls[0][0].where.carrierId).toEqual(worked);
   });
 
   it('returns a failed delivery to the sender', async () => {
