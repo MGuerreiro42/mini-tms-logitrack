@@ -30,6 +30,17 @@ export function getSeller(id: string, token: string): Promise<Seller> {
   return apiClient<Seller>(`/sellers/${id}`, undefined, token);
 }
 
+export function getSellerModalities(
+  id: string,
+  token: string,
+): Promise<ModalityToggle[]> {
+  return apiClient<ModalityToggle[]>(
+    `/sellers/${id}/modalities`,
+    undefined,
+    token,
+  );
+}
+
 export function getSellerStatusCounts(
   token: string,
 ): Promise<ApprovalStatusCounts> {
