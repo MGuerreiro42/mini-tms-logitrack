@@ -1,5 +1,6 @@
 import type { PrismaHealthIndicator } from '@nestjs/terminus';
 import type { Queue } from 'bullmq';
+import type { Redis } from 'ioredis';
 import type { PrismaService } from '../../shared/prisma/prisma.service';
 import type { TrackingPresence } from '../tracking/tracking-presence';
 import { PulseService } from './pulse.service';
@@ -13,6 +14,7 @@ describe('PulseService', () => {
   const socketCounts = vi.fn();
   const databasePing = vi.fn();
   const redisPing = vi.fn();
+  const redisGet = vi.fn();
   const queue = (name: string, getJobCounts = vi.fn()) =>
     ({ name, getJobCounts }) as unknown as Queue;
 
@@ -28,6 +30,7 @@ describe('PulseService', () => {
       { socketCounts } as unknown as TrackingPresence,
       { pingCheck: databasePing } as unknown as PrismaHealthIndicator,
       { pingCheck: redisPing } as unknown as RedisHealthIndicator,
+      { get: redisGet } as unknown as Redis,
       webhooksQueue,
       demoQueue,
     );
@@ -38,6 +41,7 @@ describe('PulseService', () => {
     socketCounts.mockResolvedValue({ internal: 0, public: 0 });
     databasePing.mockResolvedValue({ database: { status: 'up' } });
     redisPing.mockResolvedValue({ redis: { status: 'up' } });
+    redisGet.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -107,7 +111,22 @@ describe('PulseService', () => {
     },
   );
 
+  it('reads the running chaos scenario, and none with the simulator off', async () => {
+    const endsAt = new Date(Date.now() + 60_000).toISOString();
+    redisGet.mockResolvedValue(
+      JSON.stringify({ runId: 'run-1', scenario: 'carrier-outage', endsAt }),
+    );
+
+    expect((await service(queue('demo')).pulse(NOW)).chaos).toEqual({
+      scenario: 'carrier-outage',
+      label: 'Transportadora Demo outage',
+      endsAt,
+    });
+    expect((await service().pulse(NOW)).chaos).toBeNull();
+  });
+
   it('degrades each failing part on its own', async () => {
+    redisGet.mockRejectedValue(new Error('redis down'));
     trackingEvents.mockRejectedValue(new Error('db down'));
     socketCounts.mockRejectedValue(new Error('adapter down'));
     databasePing.mockResolvedValue({ database: { status: 'down' } });
@@ -124,6 +143,7 @@ describe('PulseService', () => {
       webhooks: { n: 0 },
       queues: [],
       services: { database: false, redis: false },
+      chaos: null,
     });
   });
 

@@ -125,4 +125,44 @@ describe('TrackingListener', () => {
     expect(broadcast).toHaveBeenCalledWith('demo:reset');
     expect(publicBroadcast).toHaveBeenCalledWith('demo:reset');
   });
+
+  describe('handleDemoChaos', () => {
+    const run = {
+      runId: 'run-1',
+      scenario: 'webhook-down' as const,
+      startedAt: '2026-01-01T12:00:00.000Z',
+      endsAt: '2026-01-01T12:03:00.000Z',
+      startedBy: 'admin@minitms.dev',
+    };
+
+    it('tells every signed-in client which scenario started, without who started it', () => {
+      listener.handleDemoChaos({ run, active: true });
+
+      expect(broadcast).toHaveBeenCalledWith('demo:chaos', {
+        scenario: 'webhook-down',
+        label: 'Webhook endpoints down',
+        description: expect.any(String),
+        endsAt: run.endsAt,
+      });
+      expect(publicBroadcast).not.toHaveBeenCalled();
+    });
+
+    it('names a scenario missing from the catalog by its id', () => {
+      listener.handleDemoChaos({
+        run: { ...run, scenario: 'retired' as never },
+        active: true,
+      });
+
+      expect(broadcast).toHaveBeenCalledWith(
+        'demo:chaos',
+        expect.objectContaining({ label: 'retired' }),
+      );
+    });
+
+    it('sends null when the run ends', () => {
+      listener.handleDemoChaos({ run, active: false });
+
+      expect(broadcast).toHaveBeenCalledWith('demo:chaos', null);
+    });
+  });
 });
