@@ -90,4 +90,43 @@ describe('Tenant 360 (e2e)', () => {
     await get(admin, `/sellers/${randomUUID()}/modalities`).expect(404);
     await get(admin, '/sellers/not-a-uuid/modalities').expect(400);
   });
+
+  it.each(['7d', '30d', '90d'])(
+    'gives the Carrier 360 at %s the numbers its manager sees',
+    async (window) => {
+      const carrier = `/carriers/${tenants.carrierId}`;
+      for (const part of ['performance', 'operator-ranking']) {
+        const [admin360, mine] = await Promise.all([
+          get(admin, `${carrier}/${part}`, { window }).expect(200),
+          get(tenants.manager, `/carriers/me/${part}`, { window }).expect(200),
+        ]);
+        expect(admin360.body).toEqual(mine.body);
+      }
+    },
+  );
+
+  it.each(['coverage-areas', 'modalities'])(
+    'gives the Carrier 360 the %s its manager sees',
+    async (part) => {
+      const { body } = await get(
+        admin,
+        `/carriers/${tenants.carrierId}/${part}`,
+      ).expect(200);
+      const mine = await get(tenants.manager, `/carriers/me/${part}`).expect(
+        200,
+      );
+      expect(body).toEqual(mine.body);
+    },
+  );
+
+  it.each(['performance', 'operator-ranking', 'coverage-areas', 'modalities'])(
+    'keeps /carriers/:id/%s to admins and answers 404 for an unknown carrier',
+    async (part) => {
+      const path = `/carriers/${tenants.carrierId}/${part}`;
+      await get(tenants.sellerA, path).expect(403);
+      await get(tenants.manager, path).expect(403);
+      await get(tenants.operator, path).expect(403);
+      await get(admin, `/carriers/${randomUUID()}/${part}`).expect(404);
+    },
+  );
 });
