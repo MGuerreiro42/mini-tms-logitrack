@@ -20,11 +20,14 @@ export function useDemoStatus() {
   useEffect(() => {
     if (!live) return;
     const socket = getSocket();
-    const handleChaos = (chaos: ChaosStatus | null) =>
+    const handleChaos = (chaos: ChaosStatus | null) => {
       queryClient.setQueryData<DemoStatus>(
         demoKeys.status(),
         (status) => status && { ...status, chaos },
       );
+      // The admin card also needs the runs and the cooldown, which the event doesn't carry.
+      void queryClient.invalidateQueries({ queryKey: demoKeys.admin() });
+    };
     // An event missed while offline is caught up on a reconnect; the first connect follows the
     // query's own fetch.
     let connected = socket.connected;
