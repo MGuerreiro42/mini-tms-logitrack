@@ -1,13 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutationState } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { FormError } from '@/components/common/form-error';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
-import { useLoginMutation } from '../hooks/use-login';
-import { DEMO_ACCOUNTS } from '../lib/demo-accounts';
+import {
+  LOGIN_MUTATION_KEY,
+  useLoginMutation,
+  useSigningIn,
+} from '../hooks/use-login';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -16,19 +20,19 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm({
-  showDemoAccounts = false,
-  next,
-}: {
-  showDemoAccounts?: boolean;
-  next?: string;
-}) {
+export function LoginForm({ next }: { next?: string }) {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
   const loginMutation = useLoginMutation(next);
+  // Any login attempt on the page, the demo picker's included.
+  const signingIn = useSigningIn();
+  const lastError = useMutationState({
+    filters: { mutationKey: LOGIN_MUTATION_KEY },
+    select: (mutation) => mutation.state.error,
+  }).at(-1);
 
   return (
     <form
@@ -52,35 +56,12 @@ export function LoginForm({
         error={errors.password?.message}
         {...register('password')}
       />
-      <FormError error={loginMutation.error} />
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={loginMutation.isPending}
-      >
-        {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
+      <FormError error={lastError} />
+      <Button type="submit" className="w-full" disabled={signingIn}>
+        {loginMutation.isPending || loginMutation.isSuccess
+          ? 'Signing in…'
+          : 'Sign in'}
       </Button>
-      {showDemoAccounts && (
-        <div className="flex flex-col gap-2.5 pt-1">
-          <p className="text-center text-xs text-muted-foreground">
-            Or try the demo as
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_ACCOUNTS.map(({ label, email, password }) => (
-              <Button
-                key={email}
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={loginMutation.isPending}
-                onClick={() => loginMutation.mutate({ email, password })}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
     </form>
   );
 }

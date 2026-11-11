@@ -15,6 +15,8 @@ interface PublicPageProps {
   description?: ReactNode;
   footer?: ReactNode;
   layout?: 'split' | 'single';
+  // Split layout: replaces the facts beside the panel and shows at every width (the demo picker).
+  aside?: ReactNode;
   children?: ReactNode;
 }
 
@@ -23,6 +25,7 @@ export function PublicPage({
   description,
   footer,
   layout = 'split',
+  aside,
   children,
 }: PublicPageProps) {
   const panel = (
@@ -71,24 +74,38 @@ export function PublicPage({
     <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <section className="flex flex-col justify-between gap-10 px-5 pt-7 lg:px-18 lg:py-14">
         <Brand />
-        <div className="hidden max-w-140 flex-col gap-5.5 lg:flex">
-          <p className="text-[56px] leading-[1.02] font-semibold tracking-[-0.035em]">
+        <div
+          className={cn(
+            'max-w-140 flex-col gap-5.5',
+            aside ? 'flex' : 'hidden lg:flex',
+          )}
+        >
+          <p className="text-[36px] leading-[1.02] font-semibold tracking-[-0.035em] lg:text-[56px]">
             Every shipment, live, from claim to doorstep.
           </p>
-          <ul className="flex flex-col gap-3 text-[17px] leading-normal text-muted-foreground">
-            {FACTS.map((fact) => (
-              <li key={fact} className="flex gap-3">
-                <span
-                  aria-hidden
-                  className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary"
-                />
-                {fact}
-              </li>
-            ))}
-          </ul>
+          {aside ?? (
+            <ul className="flex flex-col gap-3 text-[17px] leading-normal text-muted-foreground">
+              {FACTS.map((fact) => (
+                <li key={fact} className="flex gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary"
+                  />
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <p className="hidden text-[13px] text-muted-foreground lg:block">
+        {/* With the picker, the reset time also sits under the cards on a phone. */}
+        <p
+          className={cn(
+            'text-[13px] text-muted-foreground',
+            aside ? 'block' : 'hidden lg:block',
+          )}
+        >
           Portfolio project · demo data only
+          {aside && ', reset daily at 04:00 (São Paulo)'}
         </p>
       </section>
       <main className="flex justify-center px-4 py-6 lg:items-center lg:p-14">
