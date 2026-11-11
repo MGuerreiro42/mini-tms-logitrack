@@ -40,7 +40,7 @@ async function upsertUser(
 ) {
   return prisma.user.upsert({
     where: { email },
-    update: { name },
+    update: { name, role },
     create: { email, name, passwordHash: hash, role },
   });
 }
@@ -206,6 +206,11 @@ async function seedShipments(tenant: DemoTenant) {
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@minitms.dev';
+  if (adminEmail === DEMO_ADMIN.email) {
+    throw new Error(
+      'ADMIN_EMAIL must differ from the demo admin, whose password is public',
+    );
+  }
   const adminHash = await bcrypt.hash(resolveAdminPassword(), 10);
   const admin = await upsertUser(adminEmail, 'Admin', 'ADMIN', adminHash);
   console.log(`Admin seeded: ${admin.email}`);

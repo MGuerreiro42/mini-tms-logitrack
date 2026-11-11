@@ -116,8 +116,9 @@ describe('Demo reset (e2e)', () => {
 
   it('lets only the admin trigger a reset, once a minute per admin', async () => {
     await resetAs(demoSellerToken).expect(403);
-    // The first test spent this admin's reset.
-    await resetAs(adminToken).expect(429);
+    const admin = await newAdminToken(ctx);
+    await resetAs(admin).expect(204);
+    await resetAs(admin).expect(429);
   });
 
   it('tells connected clients that the demo was reset', async () => {

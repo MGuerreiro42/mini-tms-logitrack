@@ -3,7 +3,6 @@
 import { useId, useState } from 'react';
 import { SegmentedControl } from '@/components/common/segmented-control';
 import { Button } from '@/components/ui/button';
-import { useNow } from '@/hooks/use-now';
 import { formatTime } from '@/lib/format-date';
 import { formatCountdown } from '@/lib/format-duration';
 import { useStartChaos } from '../hooks/use-admin-demo';
@@ -23,21 +22,21 @@ const END_REASONS: Record<ChaosRun['reason'], string> = {
   reset: 'Ended by the reset',
 };
 
-const TICK_MS = 1_000;
-
-export function ChaosControls({ demo }: { demo: AdminDemo }) {
-  const now = useNow(TICK_MS).getTime();
+// `now` ticks in the Demo card, which derives the same Ending… state for its ring.
+export function ChaosControls({ demo, now }: { demo: AdminDemo; now: number }) {
   const [duration, setDuration] = useState<Duration>('180');
   const start = useStartChaos();
   const blockedId = useId();
-  // Past its end the run is over here too, before the refetch that follows the server's end.
-  const chaos =
-    demo.chaos && Date.parse(demo.chaos.endsAt) > now ? demo.chaos : null;
+  const { chaos } = demo;
+  // Past its end until the server ends it: still blocking, so Start can't meet a 409.
+  const ending = !!chaos && Date.parse(chaos.endsAt) <= now;
   const coolingMs = demo.cooldownUntil
     ? Date.parse(demo.cooldownUntil) - now
     : 0;
   const blocked = chaos
-    ? 'One scenario at a time'
+    ? ending
+      ? 'Ending…'
+      : 'One scenario at a time'
     : coolingMs > 0
       ? `Available in ${formatCountdown(coolingMs)}`
       : null;
@@ -51,7 +50,7 @@ export function ChaosControls({ demo }: { demo: AdminDemo }) {
     >
       <h3 className="text-sm font-semibold">Chaos Mode</h3>
       {chaos ? (
-        <RunningScenario chaos={chaos} now={now} />
+        <RunningScenario chaos={chaos} now={now} ending={ending} />
       ) : (
         <SegmentedControl
           label="Duration"
@@ -114,7 +113,15 @@ export function ChaosControls({ demo }: { demo: AdminDemo }) {
   );
 }
 
-function RunningScenario({ chaos, now }: { chaos: AdminChaos; now: number }) {
+function RunningScenario({
+  chaos,
+  now,
+  ending,
+}: {
+  chaos: AdminChaos;
+  now: number;
+  ending: boolean;
+}) {
   const endChaos = useEndChaos();
   const startedAt = Date.parse(chaos.startedAt);
   const progress = (now - startedAt) / (Date.parse(chaos.endsAt) - startedAt);
@@ -125,14 +132,14 @@ function RunningScenario({ chaos, now }: { chaos: AdminChaos; now: number }) {
         <p className="text-sm font-semibold">{chaos.label}</p>
         <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold">
           <span aria-hidden className="size-2 rounded-full bg-warning" />
-          Running
+          {ending ? 'Ending…' : 'Running'}
         </span>
       </div>
       {/* The times below carry the same information in words. */}
       <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-card">
         <div
           className="h-full bg-warning"
-          style={{ width: `${Math.min(progress, 1) * 100}%` }}
+          style={{ width: `${Math.min(Math.max(progress, 0), 1) * 100}%` }}
         />
       </div>
       <p className="text-[13px] text-muted-foreground">

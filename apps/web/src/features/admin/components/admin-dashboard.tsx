@@ -39,7 +39,7 @@ import {
   usePendingApplications,
 } from '../hooks/use-pending-applications';
 import { usePulse } from '../hooks/use-pulse';
-import { PulseStrip, simulatorWord } from './pulse-strip';
+import { PulseStrip, simulatorWord, UNAVAILABLE } from './pulse-strip';
 
 const KINDS = {
   seller: {
@@ -104,8 +104,8 @@ export function AdminDashboard() {
           </div>
         )}
       </QueryState>
-      {/* Grid items stretch to the row, so both columns end flush. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
+      {/* The columns stack on their own; no panel stretches to the other's height (spec 07 FR-021). */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
         <Panel
           title={`On time by carrier · ${scope}`}
           className={cn(
@@ -148,7 +148,9 @@ export function AdminDashboard() {
               `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
             }
           />
-          <DemoCard simulator={simulatorWord(pulse.data)} />
+          <DemoCard
+            simulator={pulse.isError ? UNAVAILABLE : simulatorWord(pulse.data)}
+          />
         </div>
       </div>
     </div>

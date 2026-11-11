@@ -1,15 +1,20 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { Panel } from '@/components/common/panel';
 import { Button } from '@/components/ui/button';
+import { useNow } from '@/hooks/use-now';
 import { formatTime, formatWeekdayTime } from '@/lib/format-date';
 import { HTTP_STATUS } from '@/lib/http-status';
 import { cn } from '@/lib/utils';
 import { ApiError, hasStatus } from '@/services/api-client';
+import { demoKeys } from '../api';
 import { useAdminDemo, useResetDemo } from '../hooks/use-admin-demo';
 import { ChaosControls } from './chaos-controls';
 
+const TICK_MS = 1_000;
 const RESET_TOO_SOON =
   'The demo was reset a moment ago. Try again in a minute.';
 
@@ -17,6 +22,14 @@ const RESET_TOO_SOON =
 export function DemoCard({ simulator }: { simulator: string }) {
   const { data } = useAdminDemo();
   const reset = useResetDemo();
+  const queryClient = useQueryClient();
+  const now = useNow(TICK_MS).getTime();
+  // Past its end but not yet ended on the server: the card says Ending… and refetches.
+  const ending = !!data?.chaos && Date.parse(data.chaos.endsAt) <= now;
+  useEffect(() => {
+    if (ending)
+      void queryClient.invalidateQueries({ queryKey: demoKeys.admin() });
+  }, [ending, queryClient]);
   if (!data) return null;
 
   const resetDemo = () =>
@@ -53,7 +66,7 @@ export function DemoCard({ simulator }: { simulator: string }) {
         variant="destructive"
         onConfirm={resetDemo}
       />
-      <ChaosControls demo={data} />
+      <ChaosControls demo={data} now={now} />
     </Panel>
   );
 }
