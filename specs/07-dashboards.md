@@ -2,7 +2,7 @@
 
 **Feature**: `dashboards` — `ShipmentsModule` (window, `late` view, seller and admin metrics, pulse), `CarriersModule` (performance and team by carrier id, admin carrier reads), `SellersModule` (admin seller reads, list stats) and `apps/web` (window selector, KPI tile, sparkline, pipeline bar, on-time rows, stage chart, the four dashboards and the two 360 pages)
 **Created**: 2026-11-09
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §9 (URL state), §16 (dashboards, carrier performance); `SCREENS.md` (Dashboard (Seller), Carrier Performance, General Dashboard, Sellers List, Seller Detail, Carriers List, Carrier Detail); `.claude/research/ux-briefs.md` §0, §2.2, §2.4, §2.7, §3.1, §4.3, §5.1, §5.4–§5.6, §8.2–§8.3, §9 step 7, §10.11; `po-seller.md` O1, O2, O5, O7; `po-carrier.md` P1–P4; `po-admin-public.md` A1, A3, A4, L3, S1, C1–C3; prototypes `Overview`, `Performance`, `AdminOverview`, `Seller360`, `Seller360Pending`, `Carrier360`, `SellersList` and `CarriersList` in the approved design canvas
 
 ## Summary
@@ -293,6 +293,8 @@ Stacked pull requests, merged in order; each passes the verification of the Note
 
 PRs 1, 4 and 11 have no dependency and can be opened in parallel; 16 only needs 2. If PR 8 exceeds the budget, the team half (FR-023) moves into PR 9's API side as its own PR before 9.
 
+**Merge and deploy together:** the four carrier Performance PRs (performance API, team API, performance web, performance polish — #125, #126, #128, #129) change the performance response shape; `/carrier/performance` only works again once all four are in.
+
 ## Out of Scope
 
 - The Chaos Mode scenario, the Demo card and the global banner (demo showcase phase).
@@ -331,3 +333,5 @@ PRs 1, 4 and 11 have no dependency and can be opened in parallel; 16 only needs 
 | Date | Change |
 |------|--------|
 | 2026-11-09 | Spec created from the UX briefs (§2.2, §2.4, §2.7, §3.1, §4.3, §5.1, §5.4–§5.6, §9 step 7, §10.11), the PO reports and the approved prototypes; every item verified against `docs/spec-06-wrapup` |
+| 2026-11-10 | Implemented as one linear stack (#116–#134, then the branches below). Deviations: rows split to stay under 500 lines — PR 2 (+ `sla-summary-metrics`), 6 (`seller-metrics`, `seller-metrics-web`), 8 (`carrier-performance-api`, `carrier-team-api`), 9 (`on-time-tile`, `carrier-performance-web`, `carrier-performance-polish`), 10 (`admin-metrics-api`, `admin-metrics`), 11 (`admin-pulse-api`, `admin-pulse-hardening`), 13 (`seller-360-api`, `tenant-header`, `seller-360`, `recent-shipments`), 15 (`carrier-by-id-web`, `carrier-360-web`); Recharts removed entirely once its last chart was replaced (`drop-metric-bar-chart`, `drop-chart-ui`, `drop-recharts`), where this spec kept it; both 360 pages live in `features/admin` (the feature import rules let only `admin` compose sellers or carriers with shipments); the Carrier 360 puts the stage chart full width and stacks Team over Coverage beside Recent shipments, and the Seller 360 lists the whole modality catalog with Enabled/Off, to bring the columns' ends close (the review then stretched the last right-hand panel, below); a pulse part that cannot be read is `null` (sockets, simulator, events, webhooks) or left out (a queue); the Carrier 360 performance and team refresh on window change and refocus, not on each socket event |
+| 2026-11-11 | Review changes: count links that mean every shipment open Monitoring on `view=ALL` (FR-012) and recent rows keep that scope for the detail breadcrumb; the pulse counts events per minute and the webhook rate and p95 in SQL on new `createdAt` indexes of `TrackingEvent` and `WebhookDelivery` (new migration), lives in the health module and reads the queues the integrations and simulator modules export; concurrent socket counts share one round trip; modality toggles carry `slaHours`, so the Carrier 360 reads its modalities in one request; `GET /carriers` maps a carrier without a manager to a `null` e-mail instead of a `500`; a list rate under five samples reads "—" with the sample size in its title and for screen readers; the Carrier 360 refreshes like Performance, puts team and coverage beside the recent rows only from 1280 px, and both 360 pages stretch their last right-hand panel so the columns end together |
