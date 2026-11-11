@@ -110,12 +110,12 @@ A visitor signed in with a demo account reads one dismissible line "You're using
 ### Demo admin and access
 
 - **FR-001**: `demo-dataset.ts` MUST define `DEMO_ADMIN` (`admin@demo.minitms.dev`, name "Demo admin"); `prisma/seed.ts` MUST upsert it with role `ADMIN` and `DEMO_PASSWORD`, updating `name` on an existing row, only when `SEED_DEMO=true`. It MUST stay out of `DEMO_EMAILS`, which loads the demo tenant, and separate from the `ADMIN_EMAIL` account, whose password stays private.
-- **FR-002**: The demo admin MUST have the unrestricted `ADMIN` role (user decision; the briefs' optional `demo` JWT claim is not built). Its reach is documented in `DESIGN.md` §11 as follows:
+- **FR-002**: The demo admin MUST have the `ADMIN` role but MUST NOT decide signups (user decision): `PATCH /sellers/:id/approve|reject` and `PATCH /carriers/:id/approve|reject` MUST answer `403` ("The demo admin can't approve or reject sign-ups") when the caller is `DEMO_ADMIN`, checked by e-mail in one shared guard; the web MUST render the review card's Approve/Reject disabled for the demo admin, with that sentence as a note. The briefs' optional `demo` JWT claim is not built. Its reach is documented in `DESIGN.md` §11 as follows:
 
   | It can | It cannot |
   |---|---|
-  | read every seller and carrier, including visitor signups (company, e-mail, tax ID), and every shipment with its address, through the existing admin reads | approve or reject a decision already taken: decisions are final (`decide-approval.ts`) and the daily reset does not revert them |
-  | approve or reject pending signups | change any password, user or tenant setting: no admin route exists for it |
+  | read every seller and carrier, including visitor signups (company, e-mail, tax ID), and every shipment with its address, through the existing admin reads | approve or reject any signup: decisions are final (`decide-approval.ts`) and the daily reset does not revert them |
+  | see pending signups and their review card | change any password, user or tenant setting: no admin route exists for it |
   | reset the demo, start and end Chaos Mode, read the pulse | read API keys or webhook secrets, which only their seller reaches, or act as a seller or carrier |
   | — | touch the real admin account or any non-demo shipment through Chaos Mode (FR-020) |
 
@@ -220,7 +220,7 @@ Each row is one pull request, stacked on its dependencies, at most about 500 cha
 
 | # | Branch | Content | FRs | Apps | Size | Depends on |
 |---|---|---|---|---|---|---|
-| 1 | `feat/demo-admin-account` | `DEMO_ADMIN`, seed, reset rate limit, signup notice, e2e on `429` | FR-001–FR-004 | api, web | ~180 | — |
+| 1 | `feat/demo-admin-account` | `DEMO_ADMIN`, seed, decision guard (403 + disabled review actions), reset rate limit, signup notice, e2e on `403`/`429` | FR-001–FR-004 | api, web | ~260 | — |
 | 2 | `feat/demo-picker` | `DEMO_ACCOUNTS`, `DemoRoleCard`, picker, `PublicPage` slot, login desktop and mobile, form buttons removed | FR-005–FR-009 | web | ~380 | 1 |
 | 3 | `feat/chaos-state` | catalog, `ChaosService`, `chaos-end` job and processor dispatch, reset ends the run, domain event; unit tests on one-at-a-time, cooldown, idempotent end | FR-010–FR-015 | api | ~450 | — |
 | 4 | `feat/demo-routes` | `GET /demo/status`, `GET /admin/demo`, `POST`/`DELETE /admin/demo/chaos`, DTOs, `demo:chaos` emit, pulse `chaos`; e2e on codes, `403`, `404` with the simulator off | FR-016–FR-019, FR-024 | api | ~430 | 3 |
@@ -248,7 +248,7 @@ PRs 1–2 and 3–5 form two independent chains; 6 and 7 can be reviewed in para
 ## Assumptions and Dependencies
 
 - Built on `docs/spec-07-wrapup` (PR stack #95–#146): demo reset and `demo:reset`, demo login buttons behind `NEXT_PUBLIC_DEMO_LOGIN`, extra demo carriers and their managers, the simulator driving all three demo carriers, the admin pulse and the metrics core.
-- The deployment with `NEXT_PUBLIC_DEMO_LOGIN=true` is the public demo; signups there are visitors, so the demo admin deciding them is accepted (user decision). Visitors are warned before entering data (FR-004).
+- The deployment with `NEXT_PUBLIC_DEMO_LOGIN=true` is the public demo; signups there may be real, so the demo admin reads them but never decides them (user decision, FR-002). Visitors are warned before entering data (FR-004).
 - Decision: Every signed-in user on the demo deployment, including visitor-created tenants, by broadcasting like `demo:reset`; targeting only demo accounts would need a new room joined at connection, for no visible gain on a demo-only deployment.
 - A 60 s cooldown and 1–5 min durations keep the shared demo usable when several visitors hold the demo admin at once.
 - The demo admin's e-mail is the reset limit's key, so all visitors on it share one reset per minute; the real admin has its own quota.
