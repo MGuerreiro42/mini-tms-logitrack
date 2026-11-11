@@ -128,6 +128,15 @@ describe('AdminDashboard', () => {
     expect(metricsWindows).toEqual(['30d']);
   });
 
+  it('opens a carrier 360 on the window being read', async () => {
+    resetNavigation('/admin?window=7d');
+    renderWithQueryClient(<AdminDashboard />);
+
+    expect(
+      await screen.findByRole('link', { name: 'Transportadora Demo' }),
+    ).toHaveAttribute('href', '/admin/carriers/c-9?window=7d');
+  });
+
   it('approves an application inline', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(<AdminDashboard />);

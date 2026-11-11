@@ -35,13 +35,17 @@ export function TeamTable({
       title="Team"
       titleId={titleId}
       description={`Owned shipments · ${scope}`}
+      // Claimed drops below 26rem of panel: a phone or the Carrier 360 side column, not Performance.
+      className="@container"
     >
       <Table aria-labelledby={titleId}>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead className="text-right">Active</TableHead>
-            <TableHead className="text-right max-sm:hidden">Claimed</TableHead>
+            <TableHead className="text-right @max-[26rem]:hidden">
+              Claimed
+            </TableHead>
             <TableHead className="text-right">Delivered</TableHead>
             <TableHead className="text-right">On time</TableHead>
           </TableRow>
@@ -74,7 +78,7 @@ export function TeamTable({
                     </span>
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>{member.active}</TableCell>
-                  <TableCell className={cn(NUMBER_CELL, 'max-sm:hidden')}>
+                  <TableCell className={cn(NUMBER_CELL, '@max-[26rem]:hidden')}>
                     {member.claimed}
                   </TableCell>
                   <TableCell className={NUMBER_CELL}>
