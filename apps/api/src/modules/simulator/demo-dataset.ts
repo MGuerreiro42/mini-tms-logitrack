@@ -21,6 +21,13 @@ export const DEMO_SELLERS = [
   },
 ] as const;
 
+// A platform admin whose password is public: it reads every tenant but never decides a
+// sign-up (spec 08 FR-002). Kept out of DEMO_EMAILS, which loads the demo tenant.
+export const DEMO_ADMIN = {
+  email: 'admin@demo.minitms.dev',
+  name: 'Demo admin',
+} as const;
+
 export const DEMO_CARRIER = {
   companyName: 'Transportadora Demo',
   document: '98765432000199',

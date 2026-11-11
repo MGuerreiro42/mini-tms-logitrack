@@ -19,6 +19,7 @@ import { SIGNUP_RATE_LIMIT } from '../../shared/throttling/rate-limits';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SignupDecisionAuth } from '../auth/guards/signup-decision.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { CarriersService } from './carriers.service';
@@ -250,7 +251,7 @@ export class CarriersController {
   @ApiResponse({ status: 200, type: CarrierResponseDto })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @ApiResponse({ status: 409, description: 'Carrier is not pending' })
-  @Auth(GlobalRole.ADMIN)
+  @SignupDecisionAuth()
   @Patch(':id/approve')
   approve(@Param('id') id: string) {
     return this.carriersService.approve(id);
@@ -260,7 +261,7 @@ export class CarriersController {
   @ApiResponse({ status: 200, type: CarrierResponseDto })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @ApiResponse({ status: 409, description: 'Carrier is not pending' })
-  @Auth(GlobalRole.ADMIN)
+  @SignupDecisionAuth()
   @Patch(':id/reject')
   reject(@Param('id') id: string) {
     return this.carriersService.reject(id);

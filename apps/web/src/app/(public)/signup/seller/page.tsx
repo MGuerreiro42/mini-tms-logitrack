@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { PublicDemoNotice } from '@/components/common/public-demo-notice';
 import { PublicPage } from '@/components/common/public-page';
 import { TextLink } from '@/components/common/text-link';
 import { SellerSignupForm } from '@/features/sellers/components/seller-signup-form';
@@ -20,6 +21,7 @@ export default function SellerSignupPage() {
         </p>
       }
     >
+      <PublicDemoNotice />
       <SellerSignupForm />
     </PublicPage>
   );

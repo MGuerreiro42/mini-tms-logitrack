@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { PublicDemoNotice } from '@/components/common/public-demo-notice';
 import { PublicPage } from '@/components/common/public-page';
 import { TextLink } from '@/components/common/text-link';
 import { CarrierSignupForm } from '@/features/carriers/components/carrier-signup-form';
@@ -18,6 +19,7 @@ export default function CarrierSignupPage() {
         </p>
       }
     >
+      <PublicDemoNotice />
       <CarrierSignupForm />
     </PublicPage>
   );
