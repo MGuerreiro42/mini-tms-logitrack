@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 import {
@@ -64,12 +65,13 @@ async function upsertCarrierUser(
 async function seedCoverage(
   carrierId: string,
   cities: readonly string[] | null,
+  state: string = DEMO_STATE,
 ) {
   if (cities) {
     await prisma.carrierCoverageArea.createMany({
       data: cities.map((city) => ({
         carrierId,
-        state: DEMO_STATE,
+        state,
         city,
         cityKey: cityKey(city),
       })),
@@ -79,11 +81,11 @@ async function seedCoverage(
   }
   // Unique on (carrierId, state, cityKey) doesn't dedupe a NULL city, so check first.
   const coversState = await prisma.carrierCoverageArea.findFirst({
-    where: { carrierId, state: DEMO_STATE, cityKey: null },
+    where: { carrierId, state, cityKey: null },
   });
   if (!coversState) {
     await prisma.carrierCoverageArea.create({
-      data: { carrierId, state: DEMO_STATE },
+      data: { carrierId, state },
     });
   }
 }
@@ -157,6 +159,7 @@ async function seedCarrier(modalities: DeliveryModality[], hash: string) {
 }
 
 async function seedExtraCarriers(modalities: DeliveryModality[], hash: string) {
+  const extraCarriers: DemoTenant['extraCarriers'] = {};
   for (const extra of DEMO_EXTRA_CARRIERS) {
     const carrier = await prisma.carrier.upsert({
       where: { document: extra.document },
@@ -167,12 +170,20 @@ async function seedExtraCarriers(modalities: DeliveryModality[], hash: string) {
         status: 'APPROVED',
       },
     });
-    await upsertCarrierUser(
+    const manager = await upsertCarrierUser(
       { ...extra.manager, role: 'MANAGER' },
       carrier.id,
       hash,
     );
+    extraCarriers[extra.companyName] = {
+      carrierId: carrier.id,
+      ownerId: manager.id,
+      ownerUserId: manager.userId,
+    };
     await seedCoverage(carrier.id, extra.cities);
+    for (const state of extra.farStates) {
+      await seedCoverage(carrier.id, null, state);
+    }
     await seedCarrierModalities(
       carrier.id,
       modalities.filter((m) =>
@@ -180,27 +191,38 @@ async function seedExtraCarriers(modalities: DeliveryModality[], hash: string) {
       ),
     );
   }
+  return extraCarriers;
 }
 
 async function seedShipments(tenant: DemoTenant) {
   const shipments = buildDemoShipments(tenant, Date.now());
-  let created = 0;
+  const present = await prisma.shipment.findMany({
+    where: {
+      trackingCode: {
+        in: shipments.map(({ shipment }) => shipment.trackingCode),
+      },
+    },
+    select: { trackingCode: true },
+  });
+  const presentCodes = new Set(present.map((s) => s.trackingCode));
+  const missing = shipments
+    .filter(({ shipment }) => !presentCodes.has(shipment.trackingCode))
+    .map((demo) => ({ ...demo, id: randomUUID() }));
 
-  for (const { shipment, events } of shipments) {
-    const exists = await prisma.shipment.findUnique({
-      where: { trackingCode: shipment.trackingCode },
-      select: { id: true },
-    });
-    if (exists) continue;
-
-    await prisma.shipment.create({
-      data: { ...shipment, trackingEvents: { create: events } },
-    });
-    created += 1;
-  }
+  // Batched as in the daily reset: one statement per table.
+  await prisma.$transaction([
+    prisma.shipment.createMany({
+      data: missing.map(({ id, shipment }) => ({ ...shipment, id })),
+    }),
+    prisma.trackingEvent.createMany({
+      data: missing.flatMap(({ id, events }) =>
+        events.map((event) => ({ ...event, shipmentId: id })),
+      ),
+    }),
+  ]);
 
   console.log(
-    `Demo shipments: ${created} created, ${shipments.length - created} already present`,
+    `Demo shipments: ${missing.length} created, ${presentCodes.size} already present`,
   );
 }
 
@@ -226,7 +248,7 @@ async function main() {
   const demoHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const sellers = await seedSellers(modalities, demoHash);
   const carrier = await seedCarrier(modalities, demoHash);
-  await seedExtraCarriers(modalities, demoHash);
+  const extraCarriers = await seedExtraCarriers(modalities, demoHash);
   await upsertUser(DEMO_ADMIN.email, DEMO_ADMIN.name, 'ADMIN', demoHash);
   console.log(
     `Demo accounts seeded: ${sellers.sellerIds.length} sellers, ${1 + DEMO_EXTRA_CARRIERS.length} carriers`,
@@ -236,6 +258,7 @@ async function main() {
   await seedShipments({
     ...sellers,
     ...carrier,
+    extraCarriers,
     modalities: { STANDARD: standard, FULL: full, EXPRESS: express },
   });
 }

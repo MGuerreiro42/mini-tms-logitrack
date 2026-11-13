@@ -57,17 +57,21 @@ export class DemoTenantService {
     const sellers = sellerUsers.map((user) => user?.seller);
     const carrierUsers = memberUsers.map((user) => user?.carrierUser);
     // A missing extra carrier only drops out of the simulation; the core tenant and the reset go on.
-    const extraManagers = DEMO_EXTRA_CARRIERS.flatMap(
-      ({ companyName, manager }) => {
-        const carrierUser = userByEmail.get(manager.email)?.carrierUser;
-        if (!carrierUser) {
-          this.logger.error(
-            `Demo carrier ${companyName} not found; run the seed with SEED_DEMO=true`,
-          );
-        }
-        return carrierUser ? [carrierUser] : [];
-      },
-    );
+    const extraCarriers: DemoTenant['extraCarriers'] = {};
+    for (const { companyName, manager } of DEMO_EXTRA_CARRIERS) {
+      const carrierUser = userByEmail.get(manager.email)?.carrierUser;
+      if (carrierUser) {
+        extraCarriers[companyName] = {
+          carrierId: carrierUser.carrierId,
+          ownerId: carrierUser.id,
+          ownerUserId: carrierUser.userId,
+        };
+      } else {
+        this.logger.error(
+          `Demo carrier ${companyName} not found; run the seed with SEED_DEMO=true`,
+        );
+      }
+    }
     const demoModalities = DEMO_MODALITY_CODES.map((code) =>
       modalityByCode.get(code),
     );
@@ -93,9 +97,13 @@ export class DemoTenantService {
           .filter((carrierUser) => carrierUser.role === CarrierRole.OPERATOR)
           .map((carrierUser) => carrierUser.userId),
         ...Object.fromEntries(
-          extraManagers.map((manager) => [manager.carrierId, [manager.userId]]),
+          Object.values(extraCarriers).map((extra) => [
+            extra.carrierId,
+            [extra.ownerUserId],
+          ]),
         ),
       },
+      extraCarriers,
       modalities: { STANDARD: standard, FULL: full, EXPRESS: express },
     };
   }

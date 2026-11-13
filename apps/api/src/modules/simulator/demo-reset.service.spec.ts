@@ -22,6 +22,7 @@ const tenant = {
     'operator1@demo.minitms.dev': 'operator-user-1',
     'operator2@demo.minitms.dev': 'operator-user-2',
   },
+  extraCarriers: {},
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
     FULL: { id: 'full', slaHours: 48 },

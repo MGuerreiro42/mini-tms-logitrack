@@ -75,6 +75,13 @@ describe('DemoTenantService', () => {
       core: ['member-user-1', 'member-user-2'],
       'extra-0': ['extra-user-0'],
     });
+    expect(tenant?.extraCarriers).toEqual({
+      'Rápido Paulista': {
+        carrierId: 'extra-0',
+        ownerId: 'extra-cu-0',
+        ownerUserId: 'extra-user-0',
+      },
+    });
     expect(error).toHaveBeenCalledWith(expect.stringContaining('EconoLog'));
   });
 
