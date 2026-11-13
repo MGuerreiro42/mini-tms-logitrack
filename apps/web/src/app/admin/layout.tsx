@@ -7,6 +7,7 @@ import {
 import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
+import { AdminNavCounts } from '@/features/shipments/components/nav-counts-provider';
 import { requireSegment } from '@/lib/server-session';
 
 const ADMIN_NAV: NavSection[] = [
@@ -67,12 +68,14 @@ export default async function AdminLayout({
   const session = await requireSegment('admin');
 
   return (
-    <AppShell
-      banner={<GlobalBanner />}
-      nav={ADMIN_NAV}
-      user={{ name: session.email, role: 'Administrator', initials: 'AD' }}
-    >
-      {children}
-    </AppShell>
+    <AdminNavCounts>
+      <AppShell
+        banner={<GlobalBanner />}
+        nav={ADMIN_NAV}
+        user={{ name: session.email, role: 'Administrator', initials: 'AD' }}
+      >
+        {children}
+      </AppShell>
+    </AdminNavCounts>
   );
 }

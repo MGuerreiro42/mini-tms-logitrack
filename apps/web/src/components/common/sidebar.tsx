@@ -4,6 +4,7 @@ import { ChevronDownIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useId, useState } from 'react';
+import { CountPill, useNavCounts } from '@/components/common/nav-counts';
 import {
   type CurrentNav,
   currentNav,
@@ -15,6 +16,7 @@ import {
 import { RailTooltip } from '@/components/common/rail-tooltip';
 import { useSidebar } from '@/components/common/sidebar-context';
 import { Button } from '@/components/ui/button';
+import { plural } from '@/lib/plural';
 import { cn } from '@/lib/utils';
 
 export const SIDEBAR_NAV_ID = 'sidebar-nav';
@@ -176,19 +178,39 @@ function NavRow({
 }) {
   const isLink = current.link === link;
   const state = !isLink ? 'rest' : current.view ? 'parent' : 'current';
+  const { compact } = useSidebar();
+  const exceptions = useNavCounts().counts?.exceptions ?? 0;
+  // In the rail the views are hidden, so the owning icon carries the open exceptions.
+  const railExceptions =
+    compact &&
+    exceptions > 0 &&
+    link.views?.some((view) => view.countKey === 'exceptions')
+      ? `, ${plural(exceptions, 'exception')}`
+      : undefined;
   return (
     <li>
       <div className="flex items-center gap-0.5">
-        <RailTooltip label={link.name}>
+        <RailTooltip
+          label={railExceptions ? `${link.name}${railExceptions}` : link.name}
+        >
           <Link
             href={link.href}
             aria-current={state === 'current' ? 'page' : undefined}
-            className={rowClassName(state)}
+            className={cn(rowClassName(state), 'relative')}
           >
             {link.icon}
             <span className="truncate transition-opacity duration-100 rail:opacity-0">
               {link.name}
+              {railExceptions && (
+                <span className="sr-only">{railExceptions}</span>
+              )}
             </span>
+            {railExceptions && (
+              <span
+                aria-hidden
+                className="absolute top-1.5 left-6 size-2 rounded-full bg-destructive ring-2 ring-nav"
+              />
+            )}
           </Link>
         </RailTooltip>
         {views && (
@@ -226,6 +248,7 @@ function NavRow({
                   )}
                 >
                   <span className="truncate">{view.name}</span>
+                  {view.countKey && <CountPill countKey={view.countKey} />}
                 </Link>
               </li>
             );

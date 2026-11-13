@@ -2,6 +2,7 @@
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { ExceptionsAnnouncer } from '@/components/common/nav-counts';
 import type { NavSection } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
@@ -102,6 +103,7 @@ export function SidebarFrame({
           </div>
         </div>
         {children}
+        <ExceptionsAnnouncer />
       </div>
     </SidebarContext>
   );

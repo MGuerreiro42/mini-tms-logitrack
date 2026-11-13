@@ -11,6 +11,7 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { getMySeller } from '@/features/sellers/api';
+import { SellerNavCounts } from '@/features/shipments/components/nav-counts-provider';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
@@ -91,16 +92,18 @@ export default async function SellerLayout({
   }
 
   return (
-    <AppShell
-      banner={<GlobalBanner />}
-      nav={SELLER_NAV}
-      user={{
-        name: seller.companyName,
-        role: 'Seller',
-        initials: initialsFor(seller.companyName),
-      }}
-    >
-      {children}
-    </AppShell>
+    <SellerNavCounts>
+      <AppShell
+        banner={<GlobalBanner />}
+        nav={SELLER_NAV}
+        user={{
+          name: seller.companyName,
+          role: 'Seller',
+          initials: initialsFor(seller.companyName),
+        }}
+      >
+        {children}
+      </AppShell>
+    </SellerNavCounts>
   );
 }
