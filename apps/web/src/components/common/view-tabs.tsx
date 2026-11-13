@@ -87,7 +87,7 @@ export function ViewTabs<F extends Record<string, string>>({
         if (option) onChange(changesFor(option));
       }}
     >
-      <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:thin] max-md:snap-x max-md:[scrollbar-width:none]">
+      <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:thin] max-md:snap-x max-md:[scrollbar-width:none]">
         {options.map((option) => (
           <TabsTrigger
             key={idOf(option)}
