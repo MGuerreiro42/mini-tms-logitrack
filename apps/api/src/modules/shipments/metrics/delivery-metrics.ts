@@ -5,6 +5,7 @@ import {
   MS_PER_HOUR,
   percentage,
   percentile,
+  startOfDay,
 } from '../../../shared/stats/stats';
 import { TERMINAL_STATUSES } from '../shipment-status.util';
 
@@ -96,18 +97,22 @@ export const isMature = (rows: MetricRow[], now: Date): boolean =>
   ).length >=
   MATURE_SHARE * rows.length;
 
-// Created per day (or week past 30 days) from since, coloured by status now; cancelled left out.
+// Created per calendar day (or per week from since, past 30 days), coloured by status now;
+// cancelled left out.
 export function volumeSeries(
   rows: MetricRow[],
   { since, now }: { since: Date; now: Date },
 ) {
-  const span = now.getTime() - since.getTime();
-  const bucket = span > VOLUME_DAILY_UP_TO_MS ? 'week' : 'day';
-  const size = bucket === 'week' ? 7 * DAY_MS : DAY_MS;
+  const daily = now.getTime() - since.getTime() <= VOLUME_DAILY_UP_TO_MS;
+  const bucket = daily ? 'day' : 'week';
+  const size = daily ? DAY_MS : 7 * DAY_MS;
+  const origin = daily ? startOfDay(since) : since;
   const points = Array.from(
-    { length: Math.max(1, Math.ceil(span / size)) },
+    {
+      length: Math.max(1, Math.ceil((now.getTime() - origin.getTime()) / size)),
+    },
     (_, i) => ({
-      start: new Date(since.getTime() + i * size),
+      start: new Date(origin.getTime() + i * size),
       delivered: 0,
       problem: 0,
       open: 0,
@@ -115,7 +120,7 @@ export function volumeSeries(
   );
   for (const row of rows) {
     const segment = VOLUME_SEGMENT[row.status];
-    const offset = row.createdAt.getTime() - since.getTime();
+    const offset = row.createdAt.getTime() - origin.getTime();
     if (!segment || offset < 0) continue;
     points[Math.min(Math.floor(offset / size), points.length - 1)][segment]++;
   }
