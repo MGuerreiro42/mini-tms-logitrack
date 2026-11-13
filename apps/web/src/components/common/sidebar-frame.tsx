@@ -6,8 +6,9 @@ import { ExceptionsAnnouncer } from '@/components/common/nav-counts';
 import { type NavSection, SIDEBAR_COOKIE } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
-import { ConnectionStatusRow } from '@/components/common/sidebar-status-row';
+import { SidebarFooter } from '@/components/common/sidebar-status-row';
 import { useNavShortcuts } from '@/components/common/use-nav-shortcuts';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -55,8 +56,15 @@ export function SidebarFrame({
   useNavShortcuts(nav, toggle);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return;
-    // The overlay sits above the peek sheet, so it takes Esc first.
+    // A modal dialog or a menu above keeps its own Esc; the non-modal peek sheet sits below the overlay.
+    if (
+      event.key !== 'Escape' ||
+      document.querySelector(
+        '[role="dialog"]:not([aria-modal="false"]), [role="menu"]',
+      )
+    ) {
+      return;
+    }
     event.stopPropagation();
     closeOverlay();
   });
@@ -82,34 +90,33 @@ export function SidebarFrame({
         className="flex flex-1 flex-col duration-(--duration-base) ease-(--ease-standard) lg:grid lg:grid-cols-[4rem_minmax(0,1fr)] lg:transition-[grid-template-columns] xl:grid-cols-[15rem_minmax(0,1fr)] xl:data-[rail=true]:grid-cols-[4rem_minmax(0,1fr)]"
       >
         <div className="max-lg:hidden">
-          <div
-            ref={panel}
-            // Any link inside closes the overlay, including one to the current page.
-            onClickCapture={(event) => {
-              if (overlay && (event.target as Element).closest('a')) {
-                closeOverlay();
-              }
-            }}
-            className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh max-xl:in-data-[overlay=true]:fixed max-xl:in-data-[overlay=true]:z-30 max-xl:in-data-[overlay=true]:w-60 max-xl:in-data-[overlay=true]:animate-sidebar-in max-xl:in-data-[overlay=true]:shadow-panel"
-          >
-            <SidebarNav nav={nav} />
-            <div className="mt-auto flex flex-col gap-0.5 pt-3 shadow-[0_-1px_0_var(--nav-line)]">
-              <ConnectionStatusRow />
-              {footer}
-            </div>
-            <button
-              ref={toggleButton}
-              type="button"
-              aria-label="Sidebar"
-              aria-expanded={!compact}
-              aria-keyshortcuts="["
-              onClick={toggle}
-              className="flex size-10 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset [&_svg]:size-4 [&_svg]:stroke-[1.75]"
+          <TooltipProvider delayDuration={300}>
+            <div
+              ref={panel}
+              // Any link inside closes the overlay, including one to the current page.
+              onClickCapture={(event) => {
+                if (overlay && (event.target as Element).closest('a')) {
+                  closeOverlay();
+                }
+              }}
+              className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh max-xl:in-data-[overlay=true]:fixed max-xl:in-data-[overlay=true]:z-30 max-xl:in-data-[overlay=true]:w-60 max-xl:in-data-[overlay=true]:animate-sidebar-in max-xl:in-data-[overlay=true]:shadow-panel"
             >
-              <PanelLeftCloseIcon aria-hidden className="rail:hidden" />
-              <PanelLeftOpenIcon aria-hidden className="hidden rail:block" />
-            </button>
-          </div>
+              <SidebarNav nav={nav} />
+              <SidebarFooter>{footer}</SidebarFooter>
+              <button
+                ref={toggleButton}
+                type="button"
+                aria-label="Sidebar"
+                aria-expanded={!compact}
+                aria-keyshortcuts="["
+                onClick={toggle}
+                className="flex size-10 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset [&_svg]:size-4 [&_svg]:stroke-[1.75]"
+              >
+                <PanelLeftCloseIcon aria-hidden className="rail:hidden" />
+                <PanelLeftOpenIcon aria-hidden className="hidden rail:block" />
+              </button>
+            </div>
+          </TooltipProvider>
         </div>
         {children}
         <ExceptionsAnnouncer />

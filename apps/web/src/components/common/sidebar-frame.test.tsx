@@ -99,4 +99,31 @@ describe('SidebarFrame', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveFocus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Overview');
   });
+
+  it('shows no tooltip while expanded', async () => {
+    const user = userEvent.setup();
+    renderFrame();
+
+    await user.tab();
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveFocus();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('leaves Esc to an open dialog or menu', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+    await user.click(toggle);
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.append(dialog);
+    const reached = vi.fn();
+    document.addEventListener('keydown', reached);
+
+    await user.keyboard('{Escape}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(reached).toHaveBeenCalled();
+    document.removeEventListener('keydown', reached);
+    dialog.remove();
+  });
 });

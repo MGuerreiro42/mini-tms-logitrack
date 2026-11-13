@@ -34,4 +34,13 @@ describe('AdminOpsStatus', () => {
     expect(screen.getByText('Simulator · unavailable')).toBeInTheDocument();
     expect(screen.getByText('Webhooks · unavailable')).toBeInTheDocument();
   });
+
+  it('reads No deliveries as the pulse strip does', () => {
+    vi.mocked(usePulse).mockReturnValue({
+      data: { simulator: 'idle', webhooks: { n: 0, successRate: null } },
+    } as never);
+    render(<AdminOpsStatus />);
+
+    expect(screen.getByText('Webhooks · No deliveries')).toBeInTheDocument();
+  });
 });
