@@ -30,7 +30,6 @@ export async function AppShell({
   sidebarFooter,
   children,
 }: AppShellProps) {
-  const navItems = navLinks(nav);
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
       <a href="#main" className={skipLinkClassName}>
@@ -55,7 +54,7 @@ export async function AppShell({
           </span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <CommandMenu items={navItems} />
+          <CommandMenu items={navLinks(nav)} />
           <UserMenu
             name={user.name}
             role={user.role}
@@ -78,7 +77,8 @@ export async function AppShell({
         </main>
       </SidebarFrame>
       <NavList
-        items={navItems}
+        nav={nav}
+        footer={sidebarFooter}
         className="fixed inset-x-0 bottom-0 z-40 short:static lg:hidden"
       />
       <Toaster

@@ -64,7 +64,6 @@ function carrierNav(defaultView: string): NavSection[] {
         },
         {
           name: 'Modalities & coverage',
-          shortName: 'Coverage',
           href: '/carrier/settings',
           icon: <MapPinnedIcon />,
         },
