@@ -10,14 +10,13 @@ import {
   type NavLink,
   type NavSection,
   navLinks,
+  SIDEBAR_NAV_ID,
   viewHref,
 } from '@/components/common/nav-tree';
 import { RailTooltip } from '@/components/common/rail-tooltip';
 import { useSidebar } from '@/components/common/sidebar-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-export const SIDEBAR_NAV_ID = 'sidebar-nav';
 
 export function SidebarNav({ nav }: { nav: NavSection[] }) {
   return (

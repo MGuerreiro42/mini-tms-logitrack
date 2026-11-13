@@ -1,10 +1,13 @@
 import { cookies } from 'next/headers';
 import { CommandMenu } from '@/components/common/command-menu';
 import { NavList } from '@/components/common/nav-list';
-import { type NavSection, navLinks } from '@/components/common/nav-tree';
+import {
+  type NavSection,
+  navLinks,
+  SIDEBAR_NAV_ID,
+} from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
-import { SIDEBAR_NAV_ID } from '@/components/common/sidebar';
 import {
   SIDEBAR_COOKIE,
   SidebarFrame,
