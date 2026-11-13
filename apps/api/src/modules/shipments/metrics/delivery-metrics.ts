@@ -1,9 +1,12 @@
 import { ShipmentStatus } from '../../../../generated/prisma/client';
 import {
+  groupBy,
   hoursBetween,
+  MS_PER_HOUR,
   percentage,
   percentile,
 } from '../../../shared/stats/stats';
+import { TERMINAL_STATUSES } from '../shipment-status.util';
 
 // One shipment created in the window, with what its history tells (see metric-rows.ts).
 export interface MetricRow {
@@ -11,6 +14,7 @@ export interface MetricRow {
   carrierId: string;
   sellerId: string;
   ownerId: string | null;
+  addressState: string;
   status: ShipmentStatus;
   dueAt: Date | null;
   deliveredAt: Date | null;
@@ -28,6 +32,23 @@ export interface Rate {
 }
 
 export const TREND_BUCKETS = 12;
+// Spec 10 FR-008: a window compares once 80 % of its shipments are terminal or past due.
+const MATURE_SHARE = 0.8;
+const DAY_MS = 24 * MS_PER_HOUR;
+const VOLUME_DAILY_UP_TO_MS = 30 * DAY_MS;
+
+const VOLUME_SEGMENT: Partial<
+  Record<ShipmentStatus, 'delivered' | 'problem' | 'open'>
+> = {
+  [ShipmentStatus.DELIVERED]: 'delivered',
+  [ShipmentStatus.FAILED_DELIVERY]: 'problem',
+  [ShipmentStatus.RETURNED]: 'problem',
+  [ShipmentStatus.PENDING]: 'open',
+  [ShipmentStatus.ACCEPTED]: 'open',
+  [ShipmentStatus.COLLECTED]: 'open',
+  [ShipmentStatus.IN_TRANSIT]: 'open',
+  [ShipmentStatus.OUT_FOR_DELIVERY]: 'open',
+};
 
 // Each happy-path stage, named by the status a shipment sits in, in lifecycle order, with its
 // budget as a share of the window's median slaHours (spec 07 FR-016).
@@ -62,6 +83,45 @@ export function onTime(rows: MetricRow[]): Rate {
   return rate(count, sampled.length);
 }
 
+export const onTimeByState = (rows: MetricRow[]) =>
+  [...groupBy(rows.filter(isOnTimeSample), (row) => row.addressState)].map(
+    ([uf, group]) => ({ uf, ...onTime(group) }),
+  );
+
+export const isMature = (rows: MetricRow[], now: Date): boolean =>
+  rows.filter(
+    (row) =>
+      TERMINAL_STATUSES.includes(row.status) ||
+      (row.dueAt !== null && row.dueAt < now),
+  ).length >=
+  MATURE_SHARE * rows.length;
+
+// Created per day (or week past 30 days) from since, coloured by status now; cancelled left out.
+export function volumeSeries(
+  rows: MetricRow[],
+  { since, now }: { since: Date; now: Date },
+) {
+  const span = now.getTime() - since.getTime();
+  const bucket = span > VOLUME_DAILY_UP_TO_MS ? 'week' : 'day';
+  const size = bucket === 'week' ? 7 * DAY_MS : DAY_MS;
+  const points = Array.from(
+    { length: Math.max(1, Math.ceil(span / size)) },
+    (_, i) => ({
+      start: new Date(since.getTime() + i * size),
+      delivered: 0,
+      problem: 0,
+      open: 0,
+    }),
+  );
+  for (const row of rows) {
+    const segment = VOLUME_SEGMENT[row.status];
+    const offset = row.createdAt.getTime() - since.getTime();
+    if (!segment || offset < 0) continue;
+    points[Math.min(Math.floor(offset / size), points.length - 1)][segment]++;
+  }
+  return { bucket, points };
+}
+
 function trend(rows: MetricRow[], since: Date, now: Date): (number | null)[] {
   const span = now.getTime() - since.getTime();
   const buckets: MetricRow[][] = Array.from(
@@ -89,6 +149,17 @@ const minutesBetween = (from: Date, to: Date) => hoursBetween(from, to) * 60;
 const isDelivered = (row: MetricRow) =>
   row.status === ShipmentStatus.DELIVERED && row.deliveredAt !== null;
 
+const outcomesOf = (rows: MetricRow[]) =>
+  rows.filter((row) => isDelivered(row) || row.everFailed);
+
+export function firstAttempt(rows: MetricRow[]): Rate {
+  const outcomes = outcomesOf(rows);
+  return rate(
+    outcomes.filter((row) => !row.everFailed).length,
+    outcomes.length,
+  );
+}
+
 export function deliveryMetrics(
   rows: MetricRow[],
   { since, now }: { since: Date; now: Date },
@@ -98,7 +169,6 @@ export function deliveryMetrics(
   const deliveredCount = rows.filter(
     (row) => row.status === ShipmentStatus.DELIVERED,
   ).length;
-  const outcomes = rows.filter((row) => isDelivered(row) || row.everFailed);
   const claimMinutes = rows.flatMap((row) =>
     row.acceptedAt ? [minutesBetween(row.createdAt, row.acceptedAt)] : [],
   );
@@ -113,31 +183,33 @@ export function deliveryMetrics(
     ),
     50,
   );
-  const first = rate(
-    outcomes.filter((row) => !row.everFailed).length,
-    outcomes.length,
-  );
+  const first = firstAttempt(rows);
 
   return {
     shipments: rows.length,
     delivered: deliveredCount,
+    cancelled: rows.filter((row) => row.status === ShipmentStatus.CANCELLED)
+      .length,
     onTime: { ...onTime(rows), trend: trend(rows, since, now) },
     medianDelivery: {
       hours: percentile(deliveryHours, 50),
+      p90Hours: percentile(deliveryHours, 90),
       n: deliveryHours.length,
     },
     firstAttempt: {
       rate: first.rate,
       n: first.n,
       failed: first.n - first.count,
-      returned: outcomes.filter((row) => row.status === ShipmentStatus.RETURNED)
-        .length,
+      returned: outcomesOf(rows).filter(
+        (row) => row.status === ShipmentStatus.RETURNED,
+      ).length,
     },
     claim: {
       p50Minutes: percentile(claimMinutes, 50),
       p90Minutes: percentile(claimMinutes, 90),
       n: claimMinutes.length,
     },
+    slaMedianHours: slaMedian,
     stages: STAGE_STATUSES.map((status) => {
       const hours = rows.flatMap((row) =>
         row.stages.filter((s) => s.status === status).map((s) => s.hours),
