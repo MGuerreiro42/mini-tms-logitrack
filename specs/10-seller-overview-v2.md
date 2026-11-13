@@ -165,7 +165,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
   - status: 150 delivered (13 late), 3 failed, 6 returned, 5 cancelled, 16 open, with the open ones split Pending 3 · Accepted 3 · Collected 2 · In transit 5 · Out for delivery 3, of which 2 are late (7 h and 2 h past due) and 3 due soon;
   - modality: Standard 80 / Full 40 / Express 30 delivered, with 74 / 36 / 27 on time;
   - destination UF: SP 96 / RJ 27 / MG 18 / PR 9 delivered, with 90 / 24 / 16 / 7 on time.
-  - Casa & Cia Demo keeps a set the size of today's (about 12 shipments, the same mix) on the same builder.
+  - Casa & Cia Demo gets about 30 shipments on the same builder (a small mix of every status, no 90-day history).
   - `SeededRandom(42)` stays, so the seed and the reset produce the same rows.
 - **FR-002**: Carriers MUST be assigned by coverage and modality:
   - RJ, MG and PR shipments go to EconoLog (Standard and Full only);
@@ -218,7 +218,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
   - `type` is an open string, so phase 4's `at_risk` and `stalled`, and reason `code`s, are added without a reshape.
   - Group order is late > failed > waiting.
-  - `waiting` is PENDING, no owner, `createdAt` older than 2 h (`WAITING_AFTER_HOURS = 2`).
+  - `waiting` is PENDING, no owner, `createdAt` older than 2 h (`WAITING_AFTER_HOURS = 2`), the same for every modality. Per-modality limits come in phase 4.
   - `counts` gains `waiting`.
   - The response gains `oldestPendingAt` (min `createdAt` over PENDING, or null).
 - **FR-010**: The `exceptions` seller view MUST become failed, late or waiting, so "Exceptions N" equals the list it opens.
@@ -246,10 +246,11 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
   | `uf` | a Brazilian UF (`UF_CODES`) | `addressState = uf` | On time by · Destination rows; Paraná insight |
   | `modality` | a modality code | `modality.code = modality` | On time by · Modality rows |
   | `sla` | `on-time` \| `late` | DELIVERED with `dueAt`, and `deliveredAt ≤ dueAt` \| `>` (Prisma field reference) | On time tile, "held back by on time", delta insight |
-  | `view=due-soon` | new seller view | open, `dueAt ≥ now`, `dueAt − now ≤ max(0.25 × (dueAt − createdAt), 6 h)`. It is the web `slaState` rule, through a raw id query (shortcut: one raw `SELECT id` per request; upgrade to a stored `dueSoonAt` column if the open set grows past a few thousand) | Flow legend "Due soon"; Due-soon marks |
+  | `view=on-track` | new seller view | open, `dueAt` set and before its due-soon boundary (the complement of `due-soon` and `late` among open shipments with a `dueAt`), through the same raw id query | Flow legend "On track" |
+| `view=due-soon` | new seller view | open, `dueAt ≥ now`, `dueAt − now ≤ max(0.25 × (dueAt − createdAt), 6 h)`. It is the web `slaState` rule, through a raw id query (shortcut: one raw `SELECT id` per request; upgrade to a stored `dueSoonAt` column if the open set grows past a few thousand) | Flow legend "Due soon"; Due-soon marks |
   | `view=waiting` | new seller view | PENDING, no owner, `createdAt < now − 2 h` | Exceptions "Waiting for a carrier" |
 
-- **FR-014**: Existing filters cover the other links: `view=late`, `view=active`, `view=exceptions`, `status=…`, `window=…`. The On track legend count is plain text, not a link (no `view=on-track`). Volume columns, slow-tail rows and Promise segments are not links (see Out of Scope).
+- **FR-014**: Existing filters cover the other links: `view=late`, `view=active`, `view=exceptions`, `status=…`, `window=…`. Every flow legend count is a link: On track to `view=on-track`, Due soon to `view=due-soon`, Late to `view=late`. Volume columns, slow-tail rows and Promise segments are not links (see Out of Scope).
 
 ### Layout and shell
 
@@ -310,7 +311,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
   - Stages are proportional segments on today's `status-*-bg`.
   - Marks are 10 px with a 2 px card ring, shaped by `slaState` (ring, half disc `--sla-soon`, filled `--sla-late`).
   - Each mark is a link to the shipment, with a tooltip "TMS-… Ribeirão Preto/SP · Standard · Late 7 h · due 07:31".
-  - The legend reads "On track N · Due soon N (link) · Late N (link)".
+  - The legend reads "On track N (link) · Due soon N (link) · Late N (link)".
   - The desktop hint reads "Hover a dot for its code and due time · a dot slides right when a carrier scans it".
   - The empty state is "No open shipments." with no bar and no zero segments.
 - **FR-021**: Motion is a FLIP keyed by shipment id. When a mark changes stage between two renders it slides 400 ms `cubic-bezier(.16,1,.3,1)` and pulses once. The animation is on a wrapper `div`, not on SVG. Under reduced motion the mark moves without a tween. Moves are never announced.
@@ -361,7 +362,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
   The level is the worst input's band. "Held back by" names the first input in that band in the order on time, first attempt, returns, cancelled. Below 10 delivered it shows "Building your score · N of 10 deliveries".
 
-  The thermometer has 5 segments with only the active one filled (`--sla-late`, `--sla-soon`, `status-pending-dot`, `status-delivered-dot`, `status-delivered-fg`), and a caret that steps once (300 ms; reduced motion jumps). Its text reads "Good · held back by on time 91.3% (n=150)". The band rule shows on hover or focus. The bands are a proposal (`suggestions.md` S1), labelled "benchmark, not your goal" in the explain text.
+  The thermometer has 5 segments with only the active one filled (`--sla-late`, `--sla-soon`, `status-pending-dot`, `status-delivered-dot`, `status-delivered-fg`), and a caret that steps once (300 ms; reduced motion jumps). Its text reads "Good · held back by on time 91.3% (n=150)". The band rule shows on hover or focus. The bands and the tie-break order are accepted as written (`suggestions.md` S1), labelled "benchmark, not your goal" in the explain text, and revisited once real data exists.
 
 ### On time by and Volume
 
@@ -486,7 +487,7 @@ Each row is one pull request, stacked on the row before it, at most about 500 ch
 |---|---|---|---|---|---|---|
 | 1 | `feat/demo-seed-90d` | 180-shipment plan over 90 days, 3 carriers, SP/RJ/MG/PR far addresses, failure notes, EconoLog coverage, reset unchanged; dataset spec with exact counts | FR-001–FR-005 | api | ~460 | — |
 | 2 | `feat/seller-metrics-v2` | `p90Hours`, `cancelled`, `slaMedianHours`, `byState`, `volume`, stages with events, `comparison` + `mature`; DTOs, unit tests and e2e | FR-006–FR-008 | api | ~480 | 1 |
-| 3 | `feat/seller-list-filters` | `uf`, `modality`, `sla`, `view=due-soon`, `view=waiting`, widened `exceptions`; DTO validation; web URL values and toolbar chips; count-equality e2e | FR-010, FR-013, FR-014 | api, web | ~470 | 2 |
+| 3 | `feat/seller-list-filters` | `uf`, `modality`, `sla`, `view=on-track`, `view=due-soon`, `view=waiting`, widened `exceptions`; DTO validation; web URL values and toolbar chips; count-equality e2e | FR-010, FR-013, FR-014 | api, web | ~470 | 2 |
 | 4 | `feat/attention-groups` | `groups`, `reason`, `waiting`, `oldestPendingAt`; activity `since`, `limit` 200 and `dueAt`; e2e | FR-009, FR-011 | api | ~400 | 3 |
 | 5 | `feat/webhook-health` | `GET /webhooks/health` (states, rate, p95, failing run); e2e; `useWebhookHealth` and socket invalidation | FR-012 | api, web | ~330 | 4 |
 | 6 | `feat/overview-shell` | SLA tokens; split the page into `overview/`; container layout and order; `WindowSelector` range; `StatTile` `figure`/`delta`; tiles moved to common; six tiles with figures and low-n states | FR-015–FR-019, FR-035 | web | ~490 | 5 |
@@ -504,7 +505,7 @@ The plan is one linear stack, as asked. Rows 7–13 only add sections to the she
 ## Out of Scope
 
 These items are cut from the board or not built. Mock series are either made real or cut:
-- **"Drag to replay the day".** The replay handle, ← → in 5-minute steps, and the feed and flow rewinding together are cut. Rewinding the flow needs the open set reconstructed per minute from events, a second state model the page has nowhere else. The 4 h strip stays, as a static, real event density (FR-029).
+- **"Drag to replay the day".** The replay handle, ← → in 5-minute steps, and the feed and flow rewinding together are cut. Rewinding the flow needs the open set reconstructed per minute from events, a second state model the page has nowhere else. The 4 h strip stays, as a static, real event density (FR-029). Replay may come as its own later spec.
 - **"1st attempt" on failed rows.** Cut: `FAILED_DELIVERY → RETURNED` is the only transition, so there is never a 2nd attempt.
 - **"fix the address first" advice.** Cut until phase 4 reason codes. Today only the note text is shown.
 - **Drill-through on volume columns, slow-tail rows and Promise segments.** Cut (no `createdFrom`/`createdTo`, `stageOver=` or `deliveredWeek=` filters). These have tooltips and tables only.
@@ -541,16 +542,18 @@ These items are cut from the board or not built. Mock series are either made rea
 - Mandatory verification before reporting done, in each touched app: `pnpm lint:ci`, `pnpm test`, `pnpm build`; plus `pnpm test:e2e` in `apps/api`.
 - On completion: update `Status` at the top of this file and fill in the Changelog below.
 
-## Open Questions
+## Resolved
 
-1. **Delivery health bands** (rates ≥ 95/90/85/80; returns and cancelled ≤ 2/4/6/8 %) and the tie-break order (on time > first attempt > returns > cancelled) are a proposal. Confirm them, or give other values.
-2. **Replay cut**: is the static 4 h strip enough, or should replay be its own later spec?
-3. **On track** is not a link (no `view=on-track`). Is that OK, or should every legend count be a door?
-4. **Casa & Cia Demo**: is keeping it at about 12 shipments OK, or should it get its own 90-day history?
-5. **Waiting threshold**: 2 h, fixed for every modality. Should Express use a shorter one?
+Answered by the user on 2026-11-13:
+1. **Delivery health bands** and the tie-break order: accepted as written (FR-026). The level is the worst input's band, and "held back by" names it. Revisit after real data.
+2. **Replay**: the 4 h strip is static. Replay is a later spec (Out of Scope).
+3. **On track**: a link to the active, on-time shipments, through the new `view=on-track` (FR-013, FR-014, row 3 and its count-equality e2e).
+4. **Casa & Cia Demo**: about 30 shipments, no 90-day history (FR-001). Loja Demo keeps the ~180-shipment, 90-day set.
+5. **Waiting threshold**: 2 h for every modality (FR-009). Per-modality limits move to phase 4.
 
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | 2026-11-11 | Draft from the chosen board "Overview · reimagined components · 1440 light", its 390 variant, the components sheet and States, mapped to `final.md`, `fe.md`, `suggestions.md`, `ux-ideas.md`, `visual-ideas.md` and `design-notes.md`; API shapes checked against `origin/docs/spec-08-wrapup` |
+| 2026-11-13 | Open questions resolved: bands accepted, replay left to a later spec, `view=on-track` added to row 3, Casa & Cia Demo at about 30 shipments, waiting fixed at 2 h |
