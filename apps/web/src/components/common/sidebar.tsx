@@ -12,20 +12,20 @@ import {
   navLinks,
   viewHref,
 } from '@/components/common/nav-tree';
+import { RailTooltip } from '@/components/common/rail-tooltip';
+import { useSidebar } from '@/components/common/sidebar-context';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export const SIDEBAR_NAV_ID = 'sidebar-nav';
 
-export function Sidebar({ nav }: { nav: NavSection[] }) {
+export function SidebarNav({ nav }: { nav: NavSection[] }) {
   return (
-    <div className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh">
-      <nav id={SIDEBAR_NAV_ID} aria-label="Main" tabIndex={-1}>
-        <Suspense fallback={<NavTree nav={nav} search={null} />}>
-          <NavTreeWithSearch nav={nav} />
-        </Suspense>
-      </nav>
-    </div>
+    <nav id={SIDEBAR_NAV_ID} aria-label="Main" tabIndex={-1}>
+      <Suspense fallback={<NavTree nav={nav} search={null} />}>
+        <NavTreeWithSearch nav={nav} />
+      </Suspense>
+    </nav>
   );
 }
 
@@ -42,26 +42,29 @@ export function NavTree({
 }) {
   const current = currentNav(nav, usePathname(), search);
   const disclosure = useDisclosures(nav, current);
+  // The rail has no section labels, so it shows every section's icons.
+  const { compact } = useSidebar();
 
   return (
     <div className="flex flex-col gap-4">
       {navLinks(nav)
         .filter((link) => link.primary)
         .map((link) => (
-          <Button
-            key={link.href}
-            asChild
-            variant="outline"
-            className="w-full justify-start gap-2"
-          >
-            <Link
-              href={link.href}
-              aria-current={current.link === link ? 'page' : undefined}
+          <RailTooltip key={link.href} label={link.name}>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start gap-2 rail:justify-center rail:px-0"
             >
-              {link.icon}
-              {link.name}
-            </Link>
-          </Button>
+              <Link
+                href={link.href}
+                aria-current={current.link === link ? 'page' : undefined}
+              >
+                {link.icon}
+                <span className="rail:sr-only">{link.name}</span>
+              </Link>
+            </Button>
+          </RailTooltip>
         ))}
       {nav.map((section) => {
         const items = section.items.filter((link) => !link.primary);
@@ -89,13 +92,13 @@ export function NavTree({
               onClick={onToggle}
               className={cn(
                 rowFocus,
-                'flex h-6 items-center justify-between rounded-sm px-2 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground hover:text-foreground',
+                'flex h-6 items-center justify-between rounded-sm px-2 text-[11px] rail:hidden font-semibold tracking-[0.04em] text-muted-foreground hover:text-foreground',
               )}
             >
               {section.label}
               <Chevron open={open} />
             </button>
-            <div id={controls} hidden={!open}>
+            <div id={controls} hidden={!open && !compact}>
               {list}
             </div>
           </div>
@@ -152,7 +155,7 @@ const rowFocus =
 function rowClassName(state: 'rest' | 'parent' | 'current') {
   return cn(
     rowFocus,
-    'flex h-8 min-w-0 flex-1 items-center gap-2 rounded-sm px-2 text-[13px] font-medium transition-colors duration-(--duration-fast) pointer-coarse:h-9 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
+    'flex h-8 min-w-0 flex-1 items-center gap-2 rounded-sm px-2 text-[13px] rail:px-3 font-medium transition-colors duration-(--duration-fast) pointer-coarse:h-9 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]',
     state === 'rest' &&
       'text-muted-foreground hover:bg-accent hover:text-foreground',
     state === 'parent' &&
@@ -176,14 +179,18 @@ function NavRow({
   return (
     <li>
       <div className="flex items-center gap-0.5">
-        <Link
-          href={link.href}
-          aria-current={state === 'current' ? 'page' : undefined}
-          className={rowClassName(state)}
-        >
-          {link.icon}
-          <span className="truncate">{link.name}</span>
-        </Link>
+        <RailTooltip label={link.name}>
+          <Link
+            href={link.href}
+            aria-current={state === 'current' ? 'page' : undefined}
+            className={rowClassName(state)}
+          >
+            {link.icon}
+            <span className="truncate transition-opacity duration-100 rail:opacity-0">
+              {link.name}
+            </span>
+          </Link>
+        </RailTooltip>
         {views && (
           <button
             type="button"
@@ -193,7 +200,7 @@ function NavRow({
             onClick={views.onToggle}
             className={cn(
               rowFocus,
-              'flex size-8 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9',
+              'flex size-8 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9 rail:hidden',
             )}
           >
             <Chevron open={views.open} />
@@ -204,7 +211,7 @@ function NavRow({
         <ul
           id={views.controls}
           hidden={!views.open}
-          className="mt-0.5 flex flex-col gap-0.5"
+          className="mt-0.5 flex flex-col gap-0.5 rail:hidden"
         >
           {link.views.map((view) => {
             const active = isLink && current.view === view;

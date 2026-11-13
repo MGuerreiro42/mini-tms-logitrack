@@ -1,9 +1,14 @@
+import { cookies } from 'next/headers';
 import { CommandMenu } from '@/components/common/command-menu';
 import { NavList } from '@/components/common/nav-list';
 import { type NavSection, navLinks } from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
-import { SIDEBAR_NAV_ID, Sidebar } from '@/components/common/sidebar';
+import { SIDEBAR_NAV_ID } from '@/components/common/sidebar';
+import {
+  SIDEBAR_COOKIE,
+  SidebarFrame,
+} from '@/components/common/sidebar-frame';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -16,7 +21,7 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ nav, user, banner, children }: AppShellProps) {
+export async function AppShell({ nav, user, banner, children }: AppShellProps) {
   const navItems = navLinks(nav);
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
@@ -51,10 +56,10 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
         </div>
       </header>
       {banner}
-      <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <div className="max-lg:hidden">
-          <Sidebar nav={nav} />
-        </div>
+      <SidebarFrame
+        nav={nav}
+        rail={(await cookies()).get(SIDEBAR_COOKIE)?.value === 'rail'}
+      >
         <main
           id="main"
           tabIndex={-1}
@@ -62,7 +67,7 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
         >
           <PageTransition>{children}</PageTransition>
         </main>
-      </div>
+      </SidebarFrame>
       <NavList
         items={navItems}
         className="fixed inset-x-0 bottom-0 z-40 short:static lg:hidden"

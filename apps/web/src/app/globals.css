@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant short (@media (max-height: 30rem));
+/* The sidebar is a rail at 1024-1279 px unless its overlay is open, and from 1280 px when the user collapsed it. */
+@custom-variant rail {
+  @media (width < 80rem) {
+    &:where([data-overlay="false"] *) {
+      @slot;
+    }
+  }
+  @media (width >= 80rem) {
+    &:where([data-rail="true"] *) {
+      @slot;
+    }
+  }
+}
 
 @utility px-safe-* {
   padding-left: max(
@@ -113,6 +126,8 @@
   --animate-glow: glow var(--duration-glow) var(--ease-standard);
   --animate-fill-in: fill-in var(--duration-slow) var(--ease-enter) backwards;
   --animate-pop: pop 250ms var(--ease-standard);
+  --animate-sidebar-in: sidebar-in var(--duration-fast) var(--ease-enter)
+    backwards;
   /* Two identical animations: swapping the name restarts it without remounting the element. */
   --animate-row-flash-a: row-flash-a var(--duration-glow) var(--ease-standard);
   --animate-row-flash-b: row-flash-b var(--duration-glow) var(--ease-standard);
@@ -121,6 +136,12 @@
     from {
       opacity: 0;
       transform: translateY(-8px);
+    }
+  }
+  @keyframes sidebar-in {
+    from {
+      opacity: 0;
+      transform: translateX(-6px);
     }
   }
   @keyframes value-in {
