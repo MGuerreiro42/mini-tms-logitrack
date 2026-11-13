@@ -87,7 +87,7 @@ export function ViewTabs<F extends Record<string, string>>({
         if (option) onChange(changesFor(option));
       }}
     >
-      <TabsList className="max-w-full max-md:snap-x max-md:justify-start max-md:overflow-x-auto max-md:[scrollbar-width:none]">
+      <TabsList className="max-w-full justify-start overflow-x-auto [scrollbar-width:thin] max-md:snap-x max-md:[scrollbar-width:none]">
         {options.map((option) => (
           <TabsTrigger
             key={idOf(option)}
@@ -97,7 +97,7 @@ export function ViewTabs<F extends Record<string, string>>({
                 ? undefined
                 : `${option.label}, ${option.count}`
             }
-            className="pointer-coarse:px-3 max-md:flex-none max-md:snap-start"
+            className="flex-none pointer-coarse:px-3 max-md:snap-start"
           >
             {option.label}
             {option.count !== undefined && (
