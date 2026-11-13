@@ -1,6 +1,7 @@
 import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
 import {
   daysAgo,
+  MS_PER_HOUR,
   type StatsWindow,
   WINDOW_DAYS,
 } from '../../shared/stats/stats';
@@ -16,6 +17,15 @@ export const OPEN_STATUSES: ShipmentStatus[] = [
 ];
 
 export const SELLER_VIEWS = ['active', 'late', 'exceptions', 'done'] as const;
+// Opened from the seller Overview: listed, never counted as tabs (spec 10 FR-013).
+export const SLA_STATE_VIEWS = ['on-track', 'due-soon'] as const;
+export const SELLER_LIST_VIEWS = [
+  ...SELLER_VIEWS,
+  ...SLA_STATE_VIEWS,
+  'waiting',
+] as const;
+export const SLA_OUTCOMES = ['on-time', 'late'] as const;
+export const WAITING_AFTER_HOURS = 2;
 export const ADMIN_VIEWS = SELLER_VIEWS;
 export const CARRIER_VIEWS = [
   'mine',
@@ -28,13 +38,24 @@ export const CARRIER_VIEWS = [
 
 export type ShipmentView =
   | (typeof CARRIER_VIEWS)[number]
-  | (typeof SELLER_VIEWS)[number];
+  | (typeof SELLER_LIST_VIEWS)[number];
+export type SlaStateView = (typeof SLA_STATE_VIEWS)[number];
+
+export const isSlaStateView = (view?: ShipmentView): view is SlaStateView =>
+  (SLA_STATE_VIEWS as readonly string[]).includes(view ?? '');
 
 export interface ViewContext {
   now: Date;
   // Null outside the carrier lists, where "mine" has no meaning.
   carrierUserId: string | null;
+  // An SLA-state view's ids, resolved by the caller's raw query.
+  slaStateIds?: string[];
 }
+
+const slaStateWhere = ({ slaStateIds }: ViewContext) => {
+  if (!slaStateIds) throw new Error('An SLA-state view needs its ids first');
+  return { id: { in: slaStateIds } };
+};
 
 const VIEW_WHERE: Record<
   ShipmentView,
@@ -42,10 +63,23 @@ const VIEW_WHERE: Record<
 > = {
   active: () => ({ status: { in: OPEN_STATUSES } }),
   late: ({ now }) => ({ status: { in: OPEN_STATUSES }, dueAt: { lt: now } }),
-  // The rule of attentionForSeller: failed, or late.
+  // Failed, late or waiting: what the seller Overview counts as exceptions.
   exceptions: (ctx) => ({
-    OR: [{ status: ShipmentStatus.FAILED_DELIVERY }, VIEW_WHERE.late(ctx)],
+    OR: [
+      { status: ShipmentStatus.FAILED_DELIVERY },
+      VIEW_WHERE.late(ctx),
+      VIEW_WHERE.waiting(ctx),
+    ],
   }),
+  waiting: ({ now }) => ({
+    status: ShipmentStatus.PENDING,
+    ownerId: null,
+    createdAt: {
+      lt: new Date(now.getTime() - WAITING_AFTER_HOURS * MS_PER_HOUR),
+    },
+  }),
+  'on-track': slaStateWhere,
+  'due-soon': slaStateWhere,
   done: () => ({ status: { in: TERMINAL_STATUSES } }),
   mine: ({ carrierUserId }) => {
     // A null owner would match every unclaimed shipment instead of none.
@@ -95,6 +129,15 @@ export interface ListFilters {
   view?: ShipmentView;
   q?: string;
   window?: StatsWindow;
+  uf?: string;
+  modality?: string;
+  sla?: (typeof SLA_OUTCOMES)[number];
+}
+
+export interface ListContext extends ViewContext {
+  includeSeller: boolean;
+  // prisma.shipment.fields.dueAt: on time compares two columns of one row.
+  dueAt: Prisma.DateTimeFieldRefInput<'Shipment'>;
 }
 
 export const windowWhere = (
@@ -103,16 +146,24 @@ export const windowWhere = (
 ): Prisma.ShipmentWhereInput =>
   window ? { createdAt: { gte: daysAgo(WINDOW_DAYS[window], now) } } : {};
 
-// Scope, status, view, window and search narrow by AND; the scope always carries the tenant.
+// Every filter narrows by AND; the scope always carries the tenant.
 export function listWhere(
   scope: Prisma.ShipmentWhereInput,
-  { status, view, q, window }: ListFilters,
-  ctx: ViewContext & { includeSeller: boolean },
+  { status, view, q, window, uf, modality, sla }: ListFilters,
+  ctx: ListContext,
 ): Prisma.ShipmentWhereInput {
   const parts = [{ ...scope, ...windowWhere(window, ctx.now) }];
   if (status) parts.push({ status });
   if (view) parts.push(viewWhere(view, ctx));
   if (q) parts.push(searchWhere(q, ctx));
+  if (uf) parts.push({ addressState: uf });
+  if (modality) parts.push({ modality: { code: modality } });
+  if (sla) {
+    parts.push({
+      status: ShipmentStatus.DELIVERED,
+      deliveredAt: sla === 'late' ? { gt: ctx.dueAt } : { lte: ctx.dueAt },
+    });
+  }
   return { AND: parts };
 }
 

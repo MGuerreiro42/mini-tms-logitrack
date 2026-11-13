@@ -11,6 +11,7 @@ import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { usePeek } from '@/hooks/use-peek';
 import { STATS_WINDOWS, type StatsWindow } from '@/hooks/use-stats-window';
+import { BR_STATES } from '@/lib/br-states';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
@@ -18,7 +19,13 @@ import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
 import { useSellerViewCounts } from '../hooks/use-view-counts';
-import type { ListView, Shipment, ShipmentStatus } from '../types';
+import type {
+  LinkView,
+  ListView,
+  Shipment,
+  ShipmentStatus,
+  SlaOutcome,
+} from '../types';
 import { BulkActionBar } from './bulk-action-bar';
 import {
   partyColumns,
@@ -28,14 +35,21 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
-import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
+import {
+  listScope,
+  type ShipmentListLinkFilter,
+  ShipmentListToolbar,
+} from './shipment-list-toolbar';
 import { ListPeek, SellerShipmentPeek } from './shipment-peek';
 
 type SellerFilters = {
-  view: ListView | typeof ALL;
+  view: ListView | LinkView | typeof ALL;
   status: StatusFilter<ShipmentStatus>;
   q: string;
   window: StatsWindow | typeof ALL;
+  uf: (typeof BR_STATES)[number] | typeof ALL;
+  modality: string;
+  sla: SlaOutcome | typeof ALL;
 };
 
 const DEFAULT_FILTERS: SellerFilters = {
@@ -43,7 +57,31 @@ const DEFAULT_FILTERS: SellerFilters = {
   status: ALL,
   q: '',
   window: ALL,
+  uf: ALL,
+  modality: '',
+  sla: ALL,
 };
+
+const LINK_VIEW_LABELS: Record<LinkView, string> = {
+  'on-track': 'On track',
+  'due-soon': 'Due soon',
+  waiting: 'Waiting for a carrier',
+};
+const LINK_FILTERS: ShipmentListLinkFilter<SellerFilters>[] = [
+  {
+    key: 'view',
+    label: (view) =>
+      view in LINK_VIEW_LABELS
+        ? `View: ${LINK_VIEW_LABELS[view as LinkView]}`
+        : undefined,
+  },
+  { key: 'uf', label: (uf) => `Destination: ${uf}` },
+  { key: 'modality', label: (modality) => `Modality: ${modality}` },
+  {
+    key: 'sla',
+    label: (sla) => (sla === 'late' ? 'Delivered late' : 'Delivered on time'),
+  },
+];
 const VIEW_KEYS: (keyof SellerFilters)[] = ['view', 'status'];
 
 const SLA_REFRESH_MS = 60_000;
@@ -53,10 +91,21 @@ export function ShipmentsTable() {
   const list = useFilteredPagination(
     DEFAULT_FILTERS,
     {
-      view: [ALL, 'active', 'late', 'exceptions'],
+      view: [
+        ALL,
+        'active',
+        'late',
+        'exceptions',
+        'on-track',
+        'due-soon',
+        'waiting',
+      ],
       status: [ALL, ...SHIPMENT_STATUSES],
       q: FREE_TEXT,
       window: [ALL, ...STATS_WINDOWS],
+      uf: [ALL, ...BR_STATES],
+      modality: FREE_TEXT,
+      sla: [ALL, 'on-time', 'late'],
     },
     { viewKeys: VIEW_KEYS },
   );
@@ -106,7 +155,7 @@ export function ShipmentsTable() {
   const { isFiltered, view } = listScope(list, tabs);
   const query = useShipmentsList({
     ...list.params,
-    view: view as ListView | undefined,
+    view: view as ListView | LinkView | undefined,
   });
   const inView = list.filters.view !== ALL || list.filters.status !== ALL;
   const rows = query.data?.data ?? [];
@@ -126,6 +175,7 @@ export function ShipmentsTable() {
       <ShipmentListToolbar
         list={list}
         tabs={tabs}
+        linkFilters={LINK_FILTERS}
         placeholder="Code, city or zip"
         total={query.data?.meta.total}
         replacement={

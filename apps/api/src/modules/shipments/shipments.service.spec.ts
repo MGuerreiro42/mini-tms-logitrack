@@ -179,6 +179,7 @@ describe('ShipmentsService', () => {
               findUniqueOrThrow: shipmentFindUniqueOrThrow,
               count: shipmentCount,
               groupBy: shipmentGroupBy,
+              fields: { dueAt: 'dueAt-field' },
             },
             trackingEvent: {
               create: trackingEventCreate,

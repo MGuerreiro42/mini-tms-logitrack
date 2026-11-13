@@ -161,11 +161,18 @@ export type ListView = 'active' | 'late' | 'exceptions';
 // The API also counts done, which no tab shows.
 export type ViewCounts = Record<ListView | 'done', number>;
 
+// Seller views opened from the Overview; no tab shows them.
+export type LinkView = 'on-track' | 'due-soon' | 'waiting';
+export type SlaOutcome = 'on-time' | 'late';
+
 export interface ListShipmentsQuery extends PaginationQuery {
   status?: ShipmentStatus;
-  view?: ListView;
+  view?: ListView | LinkView;
   q?: string;
   window?: StatsWindow;
+  uf?: string;
+  modality?: string;
+  sla?: SlaOutcome;
 }
 
 export const CARRIER_VIEWS = [

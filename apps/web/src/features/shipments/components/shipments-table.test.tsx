@@ -236,4 +236,46 @@ describe('ShipmentsTable', () => {
       screen.getByRole('checkbox', { name: 'Select all on this page' }),
     ).toHaveFocus();
   });
+
+  it('opens an Overview link with its filters as chips, each removable', async () => {
+    resetNavigation(
+      '/seller/shipments?view=due-soon&uf=PR&modality=FULL&sla=late',
+    );
+    const user = userEvent.setup();
+    renderWithQueryClient(<ShipmentsTable />);
+
+    await waitFor(() => {
+      const params = listUrls.at(-1)?.searchParams;
+      expect(params?.get('view')).toBe('due-soon');
+      expect(params?.get('uf')).toBe('PR');
+      expect(params?.get('modality')).toBe('FULL');
+      expect(params?.get('sla')).toBe('late');
+    });
+    const chips = screen.getByRole('list', { name: 'Active filters' });
+    expect(
+      within(chips)
+        .getAllByRole('listitem')
+        .map((chip) => chip.textContent),
+    ).toEqual([
+      'View: Due soon',
+      'Destination: PR',
+      'Modality: FULL',
+      'Delivered late',
+    ]);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove Destination: PR' }),
+    );
+
+    expect(currentUrl()).toBe(
+      '/seller/shipments?view=due-soon&modality=FULL&sla=late',
+    );
+  });
+
+  it('drops a UF or an SLA outcome it does not know', async () => {
+    resetNavigation('/seller/shipments?uf=XX&sla=early');
+    renderWithQueryClient(<ShipmentsTable />);
+
+    await waitFor(() => expect(currentUrl()).toBe('/seller/shipments'));
+  });
 });

@@ -113,12 +113,14 @@ import {
 import {
   ADMIN_VIEWS,
   CARRIER_VIEWS,
+  isSlaStateView,
   type ListFilters,
   listOrderBy,
   listWhere,
   OPEN_STATUSES,
   SELLER_VIEWS,
   type ShipmentView,
+  type SlaStateView,
   type ViewContext,
   viewWhere,
   windowWhere,
@@ -298,14 +300,35 @@ export class ShipmentsService {
     query: ListQuery,
   ): Promise<PaginatedResult<ShipmentResponseDto>> {
     const seller = await this.findSellerOrThrow(userId);
+    const slaStateIds = isSlaStateView(query.view)
+      ? await this.slaStateIds(seller.id, query.view)
+      : undefined;
 
     return this.findShipmentPage(
       { sellerId: seller.id },
       query,
-      { carrierUserId: null, includeSeller: false },
+      { carrierUserId: null, includeSeller: false, slaStateIds },
       sellerShipmentInclude,
       toShipmentResponseDto,
     );
+  }
+
+  // The web slaState rule: due soon within max(25 % of the SLA window, 6 h) of dueAt.
+  // shortcut: one raw SELECT id per request, since the rule needs column arithmetic; upgrade to
+  // a stored dueSoonAt column if the open set grows past a few thousand.
+  private async slaStateIds(
+    sellerId: string,
+    view: SlaStateView,
+  ): Promise<string[]> {
+    const now = new Date();
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Shipment"
+      WHERE "sellerId" = ${sellerId}
+        AND status::text = ANY(${OPEN_STATUSES})
+        AND "dueAt" >= ${now}::timestamp
+        AND ("dueAt" - ${now}::timestamp
+          <= GREATEST(("dueAt" - "createdAt") / 4, interval '6 hours')) = ${view === 'due-soon'}`;
+    return rows.map((row) => row.id);
   }
 
   async viewCountsForSeller(
@@ -347,7 +370,12 @@ export class ShipmentsService {
     carrierUserId: string | null,
     window?: StatsWindow,
   ): Promise<Record<V, number>> {
-    const ctx = { now: new Date(), carrierUserId, includeSeller: false };
+    const ctx = {
+      now: new Date(),
+      carrierUserId,
+      includeSeller: false,
+      dueAt: this.prisma.shipment.fields.dueAt,
+    };
     const counts = await Promise.all(
       views.map((view) =>
         this.prisma.shipment.count({
@@ -985,7 +1013,11 @@ export class ShipmentsService {
     include: I,
     toDto: (shipment: Prisma.ShipmentGetPayload<{ include: I }>) => R,
   ): Promise<PaginatedResult<R>> {
-    const where = listWhere(scope, filters, { ...ctx, now: new Date() });
+    const where = listWhere(scope, filters, {
+      ...ctx,
+      now: new Date(),
+      dueAt: this.prisma.shipment.fields.dueAt,
+    });
     const [shipments, total] = await Promise.all([
       this.prisma.shipment.findMany({
         where,
