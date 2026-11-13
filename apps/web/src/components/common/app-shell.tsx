@@ -3,6 +3,7 @@ import { NavList } from '@/components/common/nav-list';
 import { type NavSection, navLinks } from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
+import { SIDEBAR_NAV_ID, Sidebar } from '@/components/common/sidebar';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -19,6 +20,15 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
   const navItems = navLinks(nav);
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
+      <a href="#main" className={skipLinkClassName}>
+        Skip to content
+      </a>
+      <a
+        href={`#${SIDEBAR_NAV_ID}`}
+        className={`${skipLinkClassName} max-lg:hidden`}
+      >
+        Skip to navigation
+      </a>
       <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-safe-4 shadow-nav short:static lg:h-16 lg:px-8">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-primary font-mono text-[10px] font-semibold text-primary-foreground">
@@ -31,7 +41,6 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
             / {user.name}
           </span>
         </div>
-        <NavList items={navItems} className="hidden lg:flex" />
         <div className="ml-auto flex items-center gap-3">
           <CommandMenu items={navItems} />
           <UserMenu
@@ -42,12 +51,20 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
         </div>
       </header>
       {banner}
-      <main className="flex-1 px-safe-4 pt-5 pb-24 max-lg:not-short:has-data-pinned-action:pb-44 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10">
-        <PageTransition>{children}</PageTransition>
-      </main>
+      <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="max-lg:hidden">
+          <Sidebar nav={nav} />
+        </div>
+        <main
+          id="main"
+          tabIndex={-1}
+          className="flex-1 px-safe-4 outline-none pt-5 pb-24 max-lg:not-short:has-data-pinned-action:pb-44 short:pb-5 md:px-safe-10 md:pt-7 lg:pb-10"
+        >
+          <PageTransition>{children}</PageTransition>
+        </main>
+      </div>
       <NavList
         items={navItems}
-        variant="tabs"
         className="fixed inset-x-0 bottom-0 z-40 short:static lg:hidden"
       />
       <Toaster
@@ -58,3 +75,6 @@ export function AppShell({ nav, user, banner, children }: AppShellProps) {
     </div>
   );
 }
+
+const skipLinkClassName =
+  'sr-only rounded-sm bg-background px-3 py-2 text-sm font-semibold focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:ring-3 focus:ring-ring/50';
