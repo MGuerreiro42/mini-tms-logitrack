@@ -1,8 +1,9 @@
 'use client';
 
+import { ChevronDownIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useId, useState } from 'react';
 import {
   type CurrentNav,
   currentNav,
@@ -40,6 +41,7 @@ export function NavTree({
   search: URLSearchParams | null;
 }) {
   const current = currentNav(nav, usePathname(), search);
+  const disclosure = useDisclosures(nav, current);
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,23 +66,84 @@ export function NavTree({
       {nav.map((section) => {
         const items = section.items.filter((link) => !link.primary);
         if (items.length === 0) return null;
+        const list = (
+          <ul className="flex flex-col gap-0.5">
+            {items.map((link) => (
+              <NavRow
+                key={link.href}
+                link={link}
+                current={current}
+                views={link.views && disclosure(viewsKey(link))}
+              />
+            ))}
+          </ul>
+        );
+        if (!section.label) return <div key="">{list}</div>;
+        const { open, controls, onToggle } = disclosure(section.label);
         return (
-          <div key={section.label ?? ''} className="flex flex-col gap-1">
-            {section.label && (
-              <span className="flex h-6 items-center px-2 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground">
-                {section.label}
-              </span>
-            )}
-            <ul className="flex flex-col gap-0.5">
-              {items.map((link) => (
-                <NavRow key={link.href} link={link} current={current} />
-              ))}
-            </ul>
+          <div key={section.label} className="flex flex-col gap-1">
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={controls}
+              onClick={onToggle}
+              className={cn(
+                rowFocus,
+                'flex h-6 items-center justify-between rounded-sm px-2 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {section.label}
+              <Chevron open={open} />
+            </button>
+            <div id={controls} hidden={!open}>
+              {list}
+            </div>
           </div>
         );
       })}
     </div>
   );
+}
+
+const viewsKey = (link: NavLink) => `views:${link.href}`;
+
+interface Disclosure {
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}
+
+// Collapsed sections live for the layout's lifetime; navigating into one opens it again.
+function useDisclosures(nav: NavSection[], current: CurrentNav) {
+  const id = useId();
+  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
+  const [shownHref, setShownHref] = useState(current.link?.href);
+
+  const update = (change: (keys: Set<string>) => void) =>
+    setClosed((keys) => {
+      const next = new Set(keys);
+      change(next);
+      return next;
+    });
+
+  if (current.link && current.link.href !== shownHref) {
+    const { link } = current;
+    setShownHref(link.href);
+    const section = nav.find((s) => s.items.includes(link))?.label;
+    update((keys) => {
+      keys.delete(viewsKey(link));
+      if (section) keys.delete(section);
+    });
+  }
+
+  return (key: string): Disclosure => ({
+    open: !closed.has(key),
+    controls: `${id}-${key.replace(/\W/g, '-')}`,
+    onToggle: () =>
+      update((keys) => {
+        if (!keys.delete(key)) keys.add(key);
+      }),
+  });
 }
 
 const rowFocus =
@@ -99,21 +162,50 @@ function rowClassName(state: 'rest' | 'parent' | 'current') {
   );
 }
 
-function NavRow({ link, current }: { link: NavLink; current: CurrentNav }) {
+function NavRow({
+  link,
+  current,
+  views,
+}: {
+  link: NavLink;
+  current: CurrentNav;
+  views?: Disclosure;
+}) {
   const isLink = current.link === link;
   const state = !isLink ? 'rest' : current.view ? 'parent' : 'current';
   return (
     <li>
-      <Link
-        href={link.href}
-        aria-current={state === 'current' ? 'page' : undefined}
-        className={rowClassName(state)}
-      >
-        {link.icon}
-        <span className="truncate">{link.name}</span>
-      </Link>
-      {link.views && (
-        <ul className="mt-0.5 flex flex-col gap-0.5">
+      <div className="flex items-center gap-0.5">
+        <Link
+          href={link.href}
+          aria-current={state === 'current' ? 'page' : undefined}
+          className={rowClassName(state)}
+        >
+          {link.icon}
+          <span className="truncate">{link.name}</span>
+        </Link>
+        {views && (
+          <button
+            type="button"
+            aria-expanded={views.open}
+            aria-controls={views.controls}
+            aria-label={`${views.open ? 'Hide' : 'Show'} ${link.name} views`}
+            onClick={views.onToggle}
+            className={cn(
+              rowFocus,
+              'flex size-8 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground pointer-coarse:size-9',
+            )}
+          >
+            <Chevron open={views.open} />
+          </button>
+        )}
+      </div>
+      {link.views && views && (
+        <ul
+          id={views.controls}
+          hidden={!views.open}
+          className="mt-0.5 flex flex-col gap-0.5"
+        >
           {link.views.map((view) => {
             const active = isLink && current.view === view;
             return (
@@ -134,5 +226,17 @@ function NavRow({ link, current }: { link: NavLink; current: CurrentNav }) {
         </ul>
       )}
     </li>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <ChevronDownIcon
+      aria-hidden
+      className={cn(
+        'size-3.5 transition-transform duration-(--duration-fast)',
+        !open && '-rotate-90',
+      )}
+    />
   );
 }
