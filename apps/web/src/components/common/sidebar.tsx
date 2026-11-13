@@ -11,6 +11,7 @@ import {
   type NavLink,
   type NavSection,
   navLinks,
+  SIDEBAR_NAV_ID,
   viewHref,
 } from '@/components/common/nav-tree';
 import { RailTooltip } from '@/components/common/rail-tooltip';
@@ -19,8 +20,6 @@ import { keyShortcut } from '@/components/common/use-nav-shortcuts';
 import { Button } from '@/components/ui/button';
 import { plural } from '@/lib/plural';
 import { cn } from '@/lib/utils';
-
-export const SIDEBAR_NAV_ID = 'sidebar-nav';
 
 export function SidebarNav({ nav }: { nav: NavSection[] }) {
   return (
