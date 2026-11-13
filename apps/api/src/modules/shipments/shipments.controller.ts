@@ -307,7 +307,7 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "Delivery metrics of the authenticated seller's own shipments created in the window (default 90 days): delivered, on time with a 12-bucket trend, and on time by modality",
+      "Delivery metrics of the authenticated seller's own shipments created in the window (default 90 days): counts, on time with a 12-bucket trend, delivery time, first attempt, stages, on time by modality and by UF, volume, and the previous equal window's rates",
   })
   @ApiResponse({ status: 200, type: SellerMetricsResponseDto })
   @ApiResponse({ status: 403, description: 'Seller is not approved' })
@@ -318,7 +318,7 @@ export class ShipmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.shipmentsService.metricsForSeller(user.id, windowSince(query));
+    return this.shipmentsService.metricsForSeller(user.id, query);
   }
 
   @ApiOperation({

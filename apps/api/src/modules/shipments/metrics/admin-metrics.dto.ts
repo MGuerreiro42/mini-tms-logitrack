@@ -5,8 +5,9 @@ import {
   ClaimDto,
   FirstAttemptDto,
   MedianDeliveryDto,
-} from '../../carriers/dto/carrier-performance-response.dto';
-import { OnTimeTrendDto, RateDto } from './metrics-response.dto';
+  OnTimeTrendDto,
+  RateDto,
+} from './metrics-response.dto';
 
 export class AdminMetricsQueryDto extends StatsWindowQueryDto {
   @ApiPropertyOptional()

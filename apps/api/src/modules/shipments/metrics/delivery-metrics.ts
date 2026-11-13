@@ -102,7 +102,7 @@ export function volumeSeries(
   { since, now }: { since: Date; now: Date },
 ) {
   const span = now.getTime() - since.getTime();
-  const bucket = span > VOLUME_DAILY_UP_TO_MS ? 'week' : 'day';
+  const bucket: 'day' | 'week' = span > VOLUME_DAILY_UP_TO_MS ? 'week' : 'day';
   const size = bucket === 'week' ? 7 * DAY_MS : DAY_MS;
   const points = Array.from(
     { length: Math.max(1, Math.ceil(span / size)) },
