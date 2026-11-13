@@ -9,12 +9,11 @@ import {
   type NavLink,
   type NavSection,
   navLinks,
+  SIDEBAR_NAV_ID,
   viewHref,
 } from '@/components/common/nav-tree';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-export const SIDEBAR_NAV_ID = 'sidebar-nav';
 
 export function Sidebar({ nav }: { nav: NavSection[] }) {
   return (
