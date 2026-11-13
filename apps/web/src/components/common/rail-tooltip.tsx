@@ -4,7 +4,6 @@ import { useSidebar } from '@/components/common/sidebar-context';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
@@ -17,12 +16,11 @@ export function RailTooltip({
   children: React.ReactNode;
 }) {
   const { compact } = useSidebar();
+  if (!compact) return children;
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip open={compact ? undefined : false}>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side="right">{label}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
