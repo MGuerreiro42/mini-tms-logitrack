@@ -1,4 +1,22 @@
 export const MS_PER_HOUR = 60 * 60 * 1000;
+// The zone every date is read in, on the web too (lib/format-date.ts).
+export const APP_TIME_ZONE = 'America/Sao_Paulo';
+
+const clock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: APP_TIME_ZONE,
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+  hourCycle: 'h23',
+});
+
+// Midnight of the instant's day in APP_TIME_ZONE.
+export function startOfDay(at: Date): Date {
+  const [hours, minutes, seconds] = clock.format(at).split(':').map(Number);
+  const elapsedMs =
+    ((hours * 60 + minutes) * 60 + seconds) * 1000 + at.getMilliseconds();
+  return new Date(at.getTime() - elapsedMs);
+}
 
 export const DEFAULT_STATS_WINDOW_DAYS = 90;
 export const MAX_STATS_WINDOW_DAYS = 365;
