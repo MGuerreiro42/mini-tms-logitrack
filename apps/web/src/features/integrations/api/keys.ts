@@ -5,6 +5,7 @@ export const integrationKeys = {
   apiKeys: () => [...integrationKeys.all, 'api-keys'] as const,
   endpoint: () => [...integrationKeys.all, 'endpoint'] as const,
   inbox: () => [...integrationKeys.all, 'inbox'] as const,
+  health: () => [...integrationKeys.all, 'health'] as const,
   deliveries: (query?: ListWebhookDeliveriesQuery) =>
     query
       ? ([...integrationKeys.all, 'deliveries', query] as const)

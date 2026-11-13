@@ -57,3 +57,13 @@ export interface WebhookInbox {
   failRequests: boolean;
   requests: WebhookInboxRequest[];
 }
+
+// GET /webhooks/health: the seller endpoint over the last 24 h.
+export interface WebhookHealth {
+  state: 'ok' | 'degraded' | 'down' | 'too_few' | 'not_configured';
+  n: number;
+  successRate: number | null;
+  p95Ms: number | null;
+  lastSuccessAt: string | null;
+  failingSince: string | null;
+}

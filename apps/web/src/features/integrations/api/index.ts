@@ -7,6 +7,7 @@ import type {
   UpdateWebhookEndpointInput,
   WebhookDelivery,
   WebhookEndpoint,
+  WebhookHealth,
   WebhookInbox,
 } from '../types';
 
@@ -72,6 +73,10 @@ export function replayWebhookDelivery(
     { method: 'POST' },
     token,
   );
+}
+
+export function getWebhookHealth(token: string): Promise<WebhookHealth> {
+  return apiClient<WebhookHealth>('/webhooks/health', undefined, token);
 }
 
 export function getWebhookInbox(token: string): Promise<WebhookInbox> {

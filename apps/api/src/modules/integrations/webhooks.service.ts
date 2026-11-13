@@ -13,10 +13,12 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { daysAgo } from '../../shared/stats/stats';
 import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
 import type { WebhookEndpointResponseDto } from './dto/webhook-endpoint-response.dto';
+import type { WebhookHealthResponseDto } from './dto/webhook-health-response.dto';
 import type { WebhookInboxResponseDto } from './dto/webhook-inbox-response.dto';
 import { assertPublicHttpsUrl, UnsafeWebhookUrlError } from './ssrf';
 import {
@@ -24,6 +26,7 @@ import {
   toWebhookEndpointResponseDto,
 } from './webhook.mappers';
 import { WebhookDispatcher } from './webhook-dispatcher';
+import { webhookHealth } from './webhook-health';
 import { WebhookInboxService } from './webhook-inbox.service';
 import { generateWebhookSecret } from './webhook-signature';
 
@@ -130,6 +133,28 @@ export class WebhooksService {
       original.payload ?? {},
     );
     return toWebhookDeliveryResponseDto(delivery);
+  }
+
+  // Read only: unlike the other reads, it never creates the endpoint.
+  async health(userId: string): Promise<WebhookHealthResponseDto> {
+    const endpoint = await this.prisma.webhookEndpoint.findFirst({
+      where: { seller: { userId }, active: true },
+      select: { id: true },
+    });
+    if (!endpoint) return { ...webhookHealth([]), state: 'not_configured' };
+
+    const deliveries = await this.prisma.webhookDelivery.findMany({
+      where: {
+        endpointId: endpoint.id,
+        status: {
+          in: [WebhookDeliveryStatus.SUCCEEDED, WebhookDeliveryStatus.FAILED],
+        },
+        createdAt: { gte: daysAgo(1) },
+      },
+      select: { status: true, durationMs: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return webhookHealth(deliveries);
   }
 
   async readInbox(userId: string): Promise<WebhookInboxResponseDto> {
