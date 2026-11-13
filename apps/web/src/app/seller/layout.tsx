@@ -1,19 +1,81 @@
+import {
+  LayoutDashboardIcon,
+  PackageIcon,
+  PlugIcon,
+  PlusIcon,
+  SlidersHorizontalIcon,
+  UserRoundIcon,
+} from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
-import type { NavItem } from '@/components/common/nav-list';
+import type { NavSection } from '@/components/common/nav-tree';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { getMySeller } from '@/features/sellers/api';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
 
-const SELLER_NAV: NavItem[] = [
-  { name: 'Overview', href: ROUTES.seller },
-  { name: 'Shipments', href: ROUTES.sellerShipments },
-  { name: 'Create shipment', shortName: 'Create', href: ROUTES.newShipment },
-  { name: 'Modalities', href: ROUTES.sellerModalities },
-  { name: 'Integrations', href: ROUTES.sellerIntegrations },
-  { name: 'Profile', href: ROUTES.sellerProfile },
+const SELLER_NAV: NavSection[] = [
+  {
+    items: [
+      {
+        name: 'Overview',
+        href: ROUTES.seller,
+        icon: <LayoutDashboardIcon />,
+        shortcut: 'o',
+        tab: true,
+      },
+      {
+        name: 'Shipments',
+        href: ROUTES.sellerShipments,
+        icon: <PackageIcon />,
+        shortcut: 's',
+        tab: true,
+        views: [
+          {
+            name: 'Active',
+            param: 'view',
+            value: 'active',
+            countKey: 'active',
+          },
+          { name: 'Late', param: 'view', value: 'late', countKey: 'late' },
+          {
+            name: 'Exceptions',
+            param: 'view',
+            value: 'exceptions',
+            countKey: 'exceptions',
+          },
+          { name: 'Delivered', param: 'status', value: 'DELIVERED' },
+          { name: 'Cancelled', param: 'status', value: 'CANCELLED' },
+        ],
+      },
+      {
+        name: 'Create shipment',
+        shortName: 'Create',
+        href: ROUTES.newShipment,
+        icon: <PlusIcon />,
+        shortcut: 'c',
+        tab: true,
+        primary: true,
+      },
+    ],
+  },
+  {
+    label: 'Setup',
+    items: [
+      {
+        name: 'Modalities',
+        href: ROUTES.sellerModalities,
+        icon: <SlidersHorizontalIcon />,
+      },
+      {
+        name: 'Integrations',
+        href: ROUTES.sellerIntegrations,
+        icon: <PlugIcon />,
+      },
+      { name: 'Profile', href: ROUTES.sellerProfile, icon: <UserRoundIcon /> },
+    ],
+  },
 ];
 
 export default async function SellerLayout({
@@ -31,7 +93,7 @@ export default async function SellerLayout({
   return (
     <AppShell
       banner={<GlobalBanner />}
-      navItems={SELLER_NAV}
+      nav={SELLER_NAV}
       user={{
         name: seller.companyName,
         role: 'Seller',

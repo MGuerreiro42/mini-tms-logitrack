@@ -1,12 +1,13 @@
 import { CommandMenu } from '@/components/common/command-menu';
-import { type NavItem, NavList } from '@/components/common/nav-list';
+import { NavList } from '@/components/common/nav-list';
+import { type NavSection, navLinks } from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
 interface AppShellProps {
-  navItems: NavItem[];
+  nav: NavSection[];
   user: { name: string; role: string; initials: string };
   // Full width between the header and the page; each layout (admin, seller, carrier) passes
   // the demo's GlobalBanner here, since shared code can't import a feature.
@@ -14,7 +15,8 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ navItems, user, banner, children }: AppShellProps) {
+export function AppShell({ nav, user, banner, children }: AppShellProps) {
+  const navItems = navLinks(nav);
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
       <header className="sticky top-0 z-40 flex h-14 items-center gap-8 bg-nav px-safe-4 shadow-nav short:static lg:h-16 lg:px-8">

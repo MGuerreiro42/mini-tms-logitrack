@@ -3,7 +3,7 @@
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent, useState } from 'react';
-import type { NavItem } from '@/components/common/nav-list';
+import type { NavLink } from '@/components/common/nav-tree';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -23,7 +23,11 @@ function isShortcut(event: KeyboardEvent): boolean {
   );
 }
 
-export function CommandMenu({ items }: { items: NavItem[] }) {
+export function CommandMenu({
+  items,
+}: {
+  items: Pick<NavLink, 'name' | 'href'>[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
