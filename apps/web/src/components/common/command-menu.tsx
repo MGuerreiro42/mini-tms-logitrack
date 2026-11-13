@@ -20,6 +20,7 @@ import {
   CommandList,
   CommandShortcut,
 } from '@/components/ui/command';
+import { useRecents } from '@/hooks/use-recents';
 import { isTrackingCode, publicTrackingPath } from '@/lib/public-tracking-path';
 
 function isShortcut(event: KeyboardEvent): boolean {
@@ -44,6 +45,7 @@ function destinations(nav: NavSection[]) {
 export function CommandMenu({ nav }: { nav: NavSection[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const recents = useRecents();
   const [query, setQuery] = useState('');
   const code = query.trim().toUpperCase();
 
@@ -113,6 +115,20 @@ export function CommandMenu({ nav }: { nav: NavSection[] }) {
                 >
                   Track <span className="font-mono">{code}</span>
                 </CommandItem>
+              </CommandGroup>
+            )}
+            {recents.length > 0 && (
+              <CommandGroup heading="Recent">
+                {recents.map((recent) => (
+                  <CommandItem
+                    key={recent.href}
+                    value={`Recent ${recent.code}`}
+                    onSelect={() => go(recent.href)}
+                    className="min-h-11 font-mono"
+                  >
+                    {recent.code}
+                  </CommandItem>
+                ))}
               </CommandGroup>
             )}
             <CommandGroup heading="Go to">

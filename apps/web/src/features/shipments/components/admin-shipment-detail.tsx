@@ -7,6 +7,7 @@ import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
+import { useRememberRecent } from '@/hooks/use-recents';
 import type { LiveConnection } from '@/lib/live-status';
 import { ROUTES } from '@/lib/routes';
 import { useAdminShipment } from '../hooks/use-admin-shipments';
@@ -22,6 +23,7 @@ import {
 export function AdminShipmentDetail({ id }: { id: string }) {
   const live = useShipmentTracking({ subscribeToMonitoring: true });
   const query = useAdminShipment(id, live.status);
+  useRememberRecent(query.data?.trackingCode);
   // The monitoring row passes its filters along, so the way back lands on the same page.
   const filters = useSearchParams().toString();
   const back = {

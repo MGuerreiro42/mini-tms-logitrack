@@ -1,5 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { rememberRecent } from '@/hooks/use-recents';
+import { setSession } from '@/lib/session';
 import { resetNavigation, router } from '@/test/navigation';
 import { NavCountsContext } from './nav-counts';
 import type { NavSection } from './nav-tree';
@@ -120,5 +122,21 @@ describe('SidebarNav', () => {
     expect(link('Shipments')).toBeInTheDocument();
     rerender(tree(true));
     expect(link('Shipments, 3 exceptions')).toBeInTheDocument();
+  });
+
+  it('lists recent shipments only when there are some', () => {
+    setSession({ token: 't', role: 'SELLER', userId: 'u1', email: 'e' });
+    resetNavigation('/seller');
+    const { unmount } = render(<SidebarNav nav={nav} />);
+    expect(screen.queryByRole('list', { name: 'Recent' })).toBeNull();
+    unmount();
+
+    act(() => rememberRecent({ href: '/seller/shipments/1', code: 'TMS-1' }));
+    render(<SidebarNav nav={nav} />);
+    expect(
+      within(screen.getByRole('list', { name: 'Recent' })).getByRole('link', {
+        name: 'TMS-1',
+      }),
+    ).toHaveAttribute('href', '/seller/shipments/1');
   });
 });

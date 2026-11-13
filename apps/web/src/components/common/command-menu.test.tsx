@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { rememberRecent } from '@/hooks/use-recents';
+import { setSession } from '@/lib/session';
 import { router } from '@/test/navigation';
 import { CommandMenu } from './command-menu';
 import type { NavSection } from './nav-tree';
@@ -97,5 +99,17 @@ describe('CommandMenu', () => {
     await user.click(screen.getByRole('option', { name: 'Shipments · Late' }));
 
     expect(router.push).toHaveBeenCalledWith('/seller/shipments?view=late');
+  });
+
+  it('lists the recent shipments by code', async () => {
+    setSession({ token: 't', role: 'SELLER', userId: 'u1', email: 'e' });
+    rememberRecent({ href: '/seller/shipments/1', code: 'TMS-1' });
+    const user = userEvent.setup();
+    render(<CommandMenu nav={nav} />);
+
+    await user.keyboard('{Control>}k{/Control}');
+    await user.click(screen.getByRole('option', { name: 'TMS-1' }));
+
+    expect(router.push).toHaveBeenCalledWith('/seller/shipments/1');
   });
 });

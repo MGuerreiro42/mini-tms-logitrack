@@ -9,6 +9,7 @@ import { QueryState } from '@/components/common/query-state';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRememberRecent } from '@/hooks/use-recents';
 import { useSession } from '@/hooks/use-session';
 import type { LiveConnection } from '@/lib/live-status';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
@@ -54,6 +55,7 @@ function getActionState(
 export function CarrierShipmentDetail({ id }: { id: string }) {
   const live = useShipmentTracking({ shipmentId: id });
   const query = useQueueShipment(id, live.status);
+  useRememberRecent(query.data?.trackingCode);
 
   return (
     <QueryState
