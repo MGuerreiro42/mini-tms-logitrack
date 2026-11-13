@@ -57,7 +57,12 @@ describe('Seller list filters (e2e)', () => {
     await shipment(sellerA, 72, 48, delivered(-2, 'PR'));
     await shipment(sellerA, 72, 48, delivered(3, 'PR'));
     await shipment(sellerA, 72, 48, delivered(1));
-    await shipment(sellerA, 72, 48, { status: 'FAILED_DELIVERY' });
+    await shipment(sellerA, 72, 48, {
+      status: 'FAILED_DELIVERY',
+      trackingEvents: {
+        create: { status: 'FAILED_DELIVERY', note: 'Address not found' },
+      },
+    });
     await shipment(sellerA, 3, 24); // waiting for a carrier, on track
     await shipment(sellerA, 1, 24); // pending, not waiting yet
     await shipment(sellerA, 30, 24); // pending and late: late, not waiting
@@ -95,6 +100,32 @@ describe('Seller list filters (e2e)', () => {
     expect(await total({ view: 'waiting' })).toBe(1);
     // Failed, late and waiting, each once.
     expect(await total({ view: 'exceptions' })).toBe(4);
+  });
+
+  it('opens each attention group as a list of its count, together the exceptions', async () => {
+    const { body } = await request(ctx.app.getHttpServer())
+      .get('/shipments/attention')
+      .auth(tenants.sellerA, { type: 'bearer' })
+      .expect(200);
+    const groups: { type: string; count: number; href: string }[] = body.groups;
+
+    expect(groups.map((g) => [g.type, g.count])).toEqual([
+      ['late', 2],
+      ['failed', 1],
+      ['waiting', 1],
+    ]);
+    for (const { href, count } of groups) {
+      expect(await total(Object.fromEntries(new URLSearchParams(href)))).toBe(
+        count,
+      );
+    }
+    expect(await total({ view: 'exceptions' })).toBe(4);
+    expect(body.groups[1].items[0].reason).toEqual({
+      code: null,
+      text: 'Address not found',
+    });
+    expect(body.counts.waiting).toBe(1);
+    expect(body.oldestPendingAt).toEqual(expect.any(String));
   });
 
   it('splits on track from due soon at the 6 h floor and at 25 % of the SLA', async () => {

@@ -366,8 +366,12 @@ describe('ShipmentsService', () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
       shipmentFindMany
         .mockResolvedValueOnce([failed])
-        .mockResolvedValueOnce([late('late-1'), late('late-2')]);
-      shipmentCount.mockResolvedValueOnce(1).mockResolvedValueOnce(7);
+        .mockResolvedValueOnce([late('late-1'), late('late-2')])
+        .mockResolvedValueOnce([]);
+      shipmentCount
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(7)
+        .mockResolvedValueOnce(0);
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
@@ -403,7 +407,53 @@ describe('ShipmentsService', () => {
         'late-1',
         'late-2',
       ]);
-      expect(result.counts).toEqual({ failed: 1, late: 7 });
+      expect(result.counts).toEqual({ failed: 1, late: 7, waiting: 0 });
+      expect(result.groups.map((g) => [g.type, g.count])).toEqual([
+        ['late', 7],
+        ['failed', 1],
+      ]);
+    });
+
+    it('dates each group item and gives a failure its last note as the reason', async () => {
+      const failedAt = new Date('2026-01-05T10:00:00Z');
+      const waiting = { ...shipmentWithRelations, id: 'waiting-1' };
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany
+        .mockResolvedValueOnce([
+          {
+            ...failed,
+            trackingEvents: [
+              { createdAt: failedAt, note: 'Address not found' },
+            ],
+          },
+        ])
+        .mockResolvedValueOnce([late('late-1')])
+        .mockResolvedValueOnce([waiting]);
+      shipmentCount.mockResolvedValue(1);
+      shipmentFindFirst.mockResolvedValue({ createdAt: waiting.createdAt });
+
+      const result = await shipmentsService.attentionForSeller('user-1');
+      const items = Object.fromEntries(
+        result.groups.map((g) => [g.type, g.items[0]]),
+      );
+
+      expect(shipmentFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { sellerId: 'seller-1', status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+        }),
+      );
+      expect(result.oldestPendingAt).toEqual(waiting.createdAt);
+      expect(items.late).toMatchObject({
+        since: late('late-1').dueAt,
+        reason: null,
+      });
+      expect(items.failed).toMatchObject({
+        since: failedAt,
+        reason: { code: null, text: 'Address not found' },
+      });
+      expect(items.waiting).toMatchObject({ since: waiting.createdAt });
+      expect(items.waiting.shipment.id).toBe('waiting-1');
     });
 
     it('caps the list at 5, failures first, still counting the late ones', async () => {
@@ -412,15 +462,19 @@ describe('ShipmentsService', () => {
         .mockResolvedValueOnce(
           Array.from({ length: 5 }, (_, i) => ({ ...failed, id: `f-${i}` })),
         )
-        .mockResolvedValueOnce([late('late-1')]);
-      shipmentCount.mockResolvedValueOnce(8).mockResolvedValueOnce(1);
+        .mockResolvedValueOnce([late('late-1')])
+        .mockResolvedValueOnce([]);
+      shipmentCount
+        .mockResolvedValueOnce(8)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
       expect(result.shipments.map((s) => s.status)).toEqual(
         Array(5).fill('FAILED_DELIVERY'),
       );
-      expect(result.counts).toEqual({ failed: 8, late: 1 });
+      expect(result.counts).toEqual({ failed: 8, late: 1, waiting: 0 });
       // The late row is capped off the list but still dates the oldest late.
       expect(result.oldestLateDueAt).toEqual(late('late-1').dueAt);
     });
@@ -434,8 +488,10 @@ describe('ShipmentsService', () => {
 
       expect(result).toEqual({
         shipments: [],
-        counts: { failed: 0, late: 0 },
+        counts: { failed: 0, late: 0, waiting: 0 },
         oldestLateDueAt: null,
+        oldestPendingAt: null,
+        groups: [],
       });
     });
   });
@@ -453,11 +509,14 @@ describe('ShipmentsService', () => {
             id: 'shipment-1',
             trackingCode: 'TMS-ABC123',
             addressCity: 'Sorocaba',
+            dueAt: null,
           },
         },
       ]);
 
-      const result = await shipmentsService.activityForSeller('user-1', 8);
+      const result = await shipmentsService.activityForSeller('user-1', {
+        limit: 8,
+      });
 
       expect(trackingEventFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -473,16 +532,35 @@ describe('ShipmentsService', () => {
           trackingCode: 'TMS-ABC123',
           status: 'COLLECTED',
           city: 'Sorocaba',
+          dueAt: null,
           createdAt,
         },
       ]);
+    });
+
+    it('reads only the events since the given moment', async () => {
+      const since = new Date('2026-11-03T08:00:00Z');
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      trackingEventFindMany.mockResolvedValue([]);
+
+      await shipmentsService.activityForSeller('user-1', { limit: 200, since });
+
+      expect(trackingEventFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            shipment: { sellerId: 'seller-1' },
+            createdAt: { gte: since },
+          },
+          take: 200,
+        }),
+      );
     });
 
     it('rejects a user with no seller profile', async () => {
       sellerFindUnique.mockResolvedValue(null);
 
       await expect(
-        shipmentsService.activityForSeller('user-1', 8),
+        shipmentsService.activityForSeller('user-1', { limit: 8 }),
       ).rejects.toThrow(NotFoundException);
       expect(trackingEventFindMany).not.toHaveBeenCalled();
     });

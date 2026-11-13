@@ -30,6 +30,7 @@ import {
   windowSince,
 } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
+import { attentionGroups } from './attention-groups';
 import type {
   AdminShipmentDetailResponseDto,
   AdminShipmentResponseDto,
@@ -543,16 +544,31 @@ export class ShipmentsService {
     const now = new Date();
     // The late view's own rule and window, so this count equals the Late tab.
     const scope = { sellerId: seller.id, ...windowWhere(window, now) };
+    const ctx = { now, carrierUserId: null };
     const failedWhere = { ...scope, status: ShipmentStatus.FAILED_DELIVERY };
-    const lateWhere = {
-      ...scope,
-      ...viewWhere('late', { now, carrierUserId: null }),
-    };
+    const lateWhere = { ...scope, ...viewWhere('late', ctx) };
+    const waitingWhere = { ...scope, ...viewWhere('waiting', ctx) };
 
-    const [failed, failedCount, late, lateCount] = await Promise.all([
+    const [
+      failed,
+      failedCount,
+      late,
+      lateCount,
+      waiting,
+      waitingCount,
+      oldestPending,
+    ] = await Promise.all([
       this.prisma.shipment.findMany({
         where: failedWhere,
-        include: sellerShipmentInclude,
+        include: {
+          ...sellerShipmentInclude,
+          trackingEvents: {
+            where: { status: ShipmentStatus.FAILED_DELIVERY },
+            select: { createdAt: true, note: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
         orderBy: { updatedAt: 'desc' },
         take: ATTENTION_LIMIT,
       }),
@@ -564,6 +580,18 @@ export class ShipmentsService {
         take: ATTENTION_LIMIT,
       }),
       this.prisma.shipment.count({ where: lateWhere }),
+      this.prisma.shipment.findMany({
+        where: waitingWhere,
+        include: sellerShipmentInclude,
+        orderBy: { createdAt: 'asc' },
+        take: ATTENTION_LIMIT,
+      }),
+      this.prisma.shipment.count({ where: waitingWhere }),
+      this.prisma.shipment.findFirst({
+        where: { ...scope, status: ShipmentStatus.PENDING },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true },
+      }),
     ]);
 
     return {
@@ -571,25 +599,63 @@ export class ShipmentsService {
         ...failed,
         ...late.slice(0, ATTENTION_LIMIT - failed.length),
       ].map(toShipmentResponseDto),
-      counts: { failed: failedCount, late: lateCount },
+      counts: { failed: failedCount, late: lateCount, waiting: waitingCount },
       // From the late query itself, whatever the cap and the failed-first order leave on screen.
       oldestLateDueAt: late[0]?.dueAt ?? null,
+      oldestPendingAt: oldestPending?.createdAt ?? null,
+      groups: attentionGroups(
+        {
+          late: {
+            count: lateCount,
+            items: late.map((shipment) => ({
+              shipment: toShipmentResponseDto(shipment),
+              since: shipment.dueAt as Date,
+              reason: null,
+            })),
+          },
+          failed: {
+            count: failedCount,
+            items: failed.map(({ trackingEvents: [failure], ...shipment }) => ({
+              shipment: toShipmentResponseDto(shipment),
+              since: failure?.createdAt ?? shipment.updatedAt,
+              reason: failure?.note ? { code: null, text: failure.note } : null,
+            })),
+          },
+          waiting: {
+            count: waitingCount,
+            items: waiting.map((shipment) => ({
+              shipment: toShipmentResponseDto(shipment),
+              since: shipment.createdAt,
+              reason: null,
+            })),
+          },
+        },
+        window,
+      ),
     };
   }
 
   async activityForSeller(
     userId: string,
-    limit: number,
+    { limit, since }: { limit: number; since?: Date },
   ): Promise<ShipmentActivityResponseDto[]> {
     const seller = await this.findSellerOrThrow(userId);
     const events = await this.prisma.trackingEvent.findMany({
-      where: { shipment: { sellerId: seller.id } },
+      where: {
+        shipment: { sellerId: seller.id },
+        ...(since ? { createdAt: { gte: since } } : {}),
+      },
       select: {
         id: true,
         status: true,
         createdAt: true,
         shipment: {
-          select: { id: true, trackingCode: true, addressCity: true },
+          select: {
+            id: true,
+            trackingCode: true,
+            addressCity: true,
+            dueAt: true,
+          },
         },
       },
       orderBy: { createdAt: 'desc' },

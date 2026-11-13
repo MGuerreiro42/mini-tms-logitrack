@@ -10,10 +10,13 @@ describe('Shipment activity (e2e)', () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
 
-  const activityAs = (token: string) =>
+  const activityAs = (token: string, query: object = {}) =>
     request(ctx.app.getHttpServer())
       .get('/shipments/activity')
+      .query(query)
       .auth(token, { type: 'bearer' });
+  const hoursAgo = (hours: number) =>
+    new Date(Date.now() - hours * 3_600_000).toISOString();
 
   beforeAll(async () => {
     ctx = await startApp();
@@ -45,6 +48,36 @@ describe('Shipment activity (e2e)', () => {
     });
     expect(others.body).toEqual([]);
   });
+
+  it('reads the events since a moment of the last 24 h, with each due time', async () => {
+    const seller = await tenants.sellerToken();
+    const shipment = await createShipment(ctx, seller, tenants);
+    await ctx.prisma.trackingEvent.updateMany({
+      where: { shipmentId: shipment.id },
+      data: { createdAt: hoursAgo(5) },
+    });
+    const { dueAt } = await ctx.prisma.shipment.findUniqueOrThrow({
+      where: { id: shipment.id },
+    });
+
+    const recent = await activityAs(seller, { since: hoursAgo(4) });
+    const wider = await activityAs(seller, { since: hoursAgo(6), limit: 200 });
+
+    expect(recent.body).toEqual([]);
+    expect(wider.body).toEqual([
+      expect.objectContaining({
+        shipmentId: shipment.id,
+        dueAt: dueAt?.toISOString(),
+      }),
+    ]);
+  });
+
+  it.each([{ since: hoursAgo(25) }, { limit: 201 }])(
+    'rejects %o',
+    async (query) => {
+      await activityAs(tenants.sellerA, query).expect(400);
+    },
+  );
 
   it('is reserved to sellers', async () => {
     await activityAs(tenants.operator).expect(403);
