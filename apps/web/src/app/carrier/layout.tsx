@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
 import { getMyCarrier } from '@/features/carriers/api';
+import { ChaosStatusRow } from '@/features/demo/components/chaos-status-row';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { CarrierNavCounts } from '@/features/shipments/components/nav-counts-provider';
 import { initialsFor } from '@/lib/initials';
@@ -90,6 +91,7 @@ export default async function CarrierLayout({
     <CarrierNavCounts>
       <AppShell
         banner={<GlobalBanner />}
+        sidebarFooter={<ChaosStatusRow />}
         nav={carrierNav(isManager ? 'unclaimed' : 'mine')}
         user={{
           name: carrier.companyName,

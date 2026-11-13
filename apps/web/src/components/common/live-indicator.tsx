@@ -9,7 +9,7 @@ import type { LiveConnection, LiveStatus } from '@/lib/live-status';
 import { cn } from '@/lib/utils';
 import { reconnectSockets } from '@/services/websocket-client';
 
-const STATES: Record<LiveStatus, { label: string; dot: string }> = {
+export const LIVE_STATES: Record<LiveStatus, { label: string; dot: string }> = {
   connecting: { label: 'Connecting…', dot: 'bg-chart-2' },
   live: { label: 'Live', dot: 'bg-live' },
   offline: { label: 'Offline', dot: 'bg-offline' },
@@ -44,7 +44,7 @@ export function LiveIndicator({
   className?: string;
 }) {
   const status = useSteadyStatus(live.status);
-  const { label, dot } = STATES[status];
+  const { label, dot } = LIVE_STATES[status];
   const flash = useChangeSignal(live.lastEventAt?.getTime() ?? null);
   const now = useNow(UPDATED_REFRESH_MS);
   const note =

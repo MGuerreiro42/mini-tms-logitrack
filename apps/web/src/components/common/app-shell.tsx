@@ -18,10 +18,18 @@ interface AppShellProps {
   // Full width between the header and the page; each layout (admin, seller, carrier) passes
   // the demo's GlobalBanner here, since shared code can't import a feature.
   banner?: React.ReactNode;
+  // Feature status lines under the sidebar's connection line, composed by each layout.
+  sidebarFooter?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export async function AppShell({ nav, user, banner, children }: AppShellProps) {
+export async function AppShell({
+  nav,
+  user,
+  banner,
+  sidebarFooter,
+  children,
+}: AppShellProps) {
   const navItems = navLinks(nav);
   return (
     <div className="flex min-h-dvh w-full flex-col [--toast-bottom:calc(4.5rem+env(safe-area-inset-bottom))] lg:[--toast-bottom:24px] max-lg:not-short:has-data-pinned-action:[--toast-bottom:calc(9rem+env(safe-area-inset-bottom))] short:[--toast-bottom:24px]">
@@ -58,6 +66,7 @@ export async function AppShell({ nav, user, banner, children }: AppShellProps) {
       {banner}
       <SidebarFrame
         nav={nav}
+        footer={sidebarFooter}
         rail={(await cookies()).get(SIDEBAR_COOKIE)?.value === 'rail'}
       >
         <main
