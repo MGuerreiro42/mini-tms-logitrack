@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
 
+// Here rather than in the client sidebar, so the server shell's skip link gets the string.
+export const SIDEBAR_NAV_ID = 'sidebar-nav';
+
 export interface NavView {
   name: string;
   param: 'view' | 'status';
