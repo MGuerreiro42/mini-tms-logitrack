@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { resetNavigation, router } from '@/test/navigation';
 import { NavCountsContext } from './nav-counts';
 import type { NavSection } from './nav-tree';
@@ -110,7 +111,9 @@ describe('SidebarNav', () => {
     const tree = (compact: boolean) => (
       <SidebarContext value={{ compact, toggle: () => {} }}>
         <NavCountsContext value={{ counts, status: 'live' }}>
-          <SidebarNav nav={nav} />
+          <TooltipProvider>
+            <SidebarNav nav={nav} />
+          </TooltipProvider>
         </NavCountsContext>
       </SidebarContext>
     );
