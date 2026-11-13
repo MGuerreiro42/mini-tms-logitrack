@@ -6,7 +6,7 @@ import { ExceptionsAnnouncer } from '@/components/common/nav-counts';
 import { type NavSection, SIDEBAR_COOKIE } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
-import { ConnectionStatusRow } from '@/components/common/sidebar-status-row';
+import { SidebarFooter } from '@/components/common/sidebar-status-row';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -99,10 +99,7 @@ export function SidebarFrame({
               className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh max-xl:in-data-[overlay=true]:fixed max-xl:in-data-[overlay=true]:z-30 max-xl:in-data-[overlay=true]:w-60 max-xl:in-data-[overlay=true]:animate-sidebar-in max-xl:in-data-[overlay=true]:shadow-panel"
             >
               <SidebarNav nav={nav} />
-              <div className="mt-auto flex flex-col gap-0.5 pt-3 shadow-[0_-1px_0_var(--nav-line)]">
-                <ConnectionStatusRow />
-                {footer}
-              </div>
+              <SidebarFooter>{footer}</SidebarFooter>
               <button
                 ref={toggleButton}
                 type="button"
