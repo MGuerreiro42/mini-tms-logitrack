@@ -2,12 +2,11 @@
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import type { NavSection } from '@/components/common/nav-tree';
+import { type NavSection, SIDEBAR_COOKIE } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
-export const SIDEBAR_COOKIE = 'tms-sidebar';
 const YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 function saveRail(rail: boolean) {

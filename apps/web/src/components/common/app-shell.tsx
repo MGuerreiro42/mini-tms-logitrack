@@ -4,14 +4,12 @@ import { NavList } from '@/components/common/nav-list';
 import {
   type NavSection,
   navLinks,
+  SIDEBAR_COOKIE,
   SIDEBAR_NAV_ID,
 } from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
-import {
-  SIDEBAR_COOKIE,
-  SidebarFrame,
-} from '@/components/common/sidebar-frame';
+import { SidebarFrame } from '@/components/common/sidebar-frame';
 import { UserMenu } from '@/components/common/user-menu';
 import { Toaster } from '@/components/ui/sonner';
 
