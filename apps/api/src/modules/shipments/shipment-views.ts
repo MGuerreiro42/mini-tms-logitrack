@@ -71,12 +71,14 @@ const VIEW_WHERE: Record<
       VIEW_WHERE.waiting(ctx),
     ],
   }),
+  // Not late: a late shipment is counted there, so the exception groups never overlap.
   waiting: ({ now }) => ({
     status: ShipmentStatus.PENDING,
     ownerId: null,
     createdAt: {
       lt: new Date(now.getTime() - WAITING_AFTER_HOURS * MS_PER_HOUR),
     },
+    OR: [{ dueAt: null }, { dueAt: { gte: now } }],
   }),
   'on-track': slaStateWhere,
   'due-soon': slaStateWhere,

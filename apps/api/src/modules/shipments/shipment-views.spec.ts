@@ -42,11 +42,12 @@ describe('shipment views', () => {
     });
   });
 
-  it('waits 2 hours before a pending shipment counts as waiting for a carrier', () => {
+  it('counts a pending shipment as waiting after 2 hours, until it is late', () => {
     expect(viewWhere('waiting', ctx)).toEqual({
       status: 'PENDING',
       ownerId: null,
       createdAt: { lt: new Date('2026-01-31T10:00:00Z') },
+      OR: [{ dueAt: null }, { dueAt: { gte: now } }],
     });
   });
 

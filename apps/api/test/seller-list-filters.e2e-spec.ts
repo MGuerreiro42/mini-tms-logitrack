@@ -60,6 +60,7 @@ describe('Seller list filters (e2e)', () => {
     await shipment(sellerA, 72, 48, { status: 'FAILED_DELIVERY' });
     await shipment(sellerA, 3, 24); // waiting for a carrier, on track
     await shipment(sellerA, 1, 24); // pending, not waiting yet
+    await shipment(sellerA, 30, 24); // pending and late: late, not waiting
     await shipment(sellerA, 20, 24, { status: 'IN_TRANSIT' }); // due soon
     await shipment(sellerA, 30, 24, { status: 'IN_TRANSIT' }); // late
     await shipment(sellerA, 2, 72, { status: 'ACCEPTED' }); // on track
@@ -90,10 +91,10 @@ describe('Seller list filters (e2e)', () => {
     );
     expect(await total({ view: 'on-track' })).toBe(3);
     expect(await total({ view: 'due-soon' })).toBe(1);
-    expect(await total({ view: 'late' })).toBe(1);
+    expect(await total({ view: 'late' })).toBe(2);
     expect(await total({ view: 'waiting' })).toBe(1);
-    // Failed, late and waiting.
-    expect(await total({ view: 'exceptions' })).toBe(3);
+    // Failed, late and waiting, each once.
+    expect(await total({ view: 'exceptions' })).toBe(4);
   });
 
   it('splits on track from due soon at the 6 h floor and at 25 % of the SLA', async () => {
