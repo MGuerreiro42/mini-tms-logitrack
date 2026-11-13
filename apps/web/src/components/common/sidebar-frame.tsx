@@ -7,6 +7,7 @@ import type { NavSection } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
 import { ConnectionStatusRow } from '@/components/common/sidebar-status-row';
+import { useNavShortcuts } from '@/components/common/use-nav-shortcuts';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 export const SIDEBAR_COOKIE = 'tms-sidebar';
@@ -51,6 +52,8 @@ export function SidebarFrame({
     } else if (overlay) closeOverlay();
     else setOverlay(true);
   }
+
+  useNavShortcuts(nav, toggle);
 
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.key !== 'Escape') return;

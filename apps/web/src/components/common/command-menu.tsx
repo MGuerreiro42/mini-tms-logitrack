@@ -3,7 +3,12 @@
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent, useState } from 'react';
-import type { NavLink } from '@/components/common/nav-tree';
+import {
+  type NavSection,
+  navLinks,
+  viewHref,
+} from '@/components/common/nav-tree';
+import { keyShortcut } from '@/components/common/use-nav-shortcuts';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -13,6 +18,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from '@/components/ui/command';
 import { isTrackingCode, publicTrackingPath } from '@/lib/public-tracking-path';
 
@@ -23,11 +29,19 @@ function isShortcut(event: KeyboardEvent): boolean {
   );
 }
 
-export function CommandMenu({
-  items,
-}: {
-  items: Pick<NavLink, 'name' | 'href'>[];
-}) {
+// Every level-1 item and every view, as "<parent> · <view>", so a search finds either word.
+function destinations(nav: NavSection[]) {
+  return navLinks(nav).flatMap((link) => [
+    { label: link.name, href: link.href, shortcut: link.shortcut },
+    ...(link.views ?? []).map((view) => ({
+      label: `${link.name} · ${view.name}`,
+      href: viewHref(link, view),
+      shortcut: undefined,
+    })),
+  ]);
+}
+
+export function CommandMenu({ nav }: { nav: NavSection[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -102,14 +116,19 @@ export function CommandMenu({
               </CommandGroup>
             )}
             <CommandGroup heading="Go to">
-              {items.map((item) => (
+              {destinations(nav).map((item) => (
                 <CommandItem
                   key={item.href}
-                  value={item.name}
+                  value={item.label}
                   onSelect={() => go(item.href)}
                   className="min-h-11"
                 >
-                  {item.name}
+                  {item.label}
+                  {item.shortcut && (
+                    <CommandShortcut>
+                      {keyShortcut(item.shortcut)}
+                    </CommandShortcut>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

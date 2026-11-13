@@ -2,10 +2,20 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { router } from '@/test/navigation';
 import { CommandMenu } from './command-menu';
+import type { NavSection } from './nav-tree';
 
-const items = [
-  { name: 'Overview', href: '/seller' },
-  { name: 'Shipments', href: '/seller/shipments' },
+const nav: NavSection[] = [
+  {
+    items: [
+      { name: 'Overview', href: '/seller', icon: null, shortcut: 'o' },
+      {
+        name: 'Shipments',
+        href: '/seller/shipments',
+        icon: null,
+        views: [{ name: 'Late', param: 'view', value: 'late' }],
+      },
+    ],
+  },
 ];
 
 beforeAll(() => {
@@ -20,7 +30,7 @@ beforeAll(() => {
 describe('CommandMenu', () => {
   it('opens on Ctrl+K and jumps to a page', async () => {
     const user = userEvent.setup();
-    render(<CommandMenu items={items} />);
+    render(<CommandMenu nav={nav} />);
 
     await user.keyboard('{Control>}k{/Control}');
     await user.type(screen.getByRole('combobox'), 'ship');
@@ -32,7 +42,7 @@ describe('CommandMenu', () => {
 
   it('offers public tracking only for a full tracking code', async () => {
     const user = userEvent.setup();
-    render(<CommandMenu items={items} />);
+    render(<CommandMenu nav={nav} />);
 
     await user.click(
       screen.getByRole('button', { name: /search or jump to/i }),
@@ -50,7 +60,7 @@ describe('CommandMenu', () => {
 
   it('opens a pasted tracking code on Enter, with no empty message', async () => {
     const user = userEvent.setup();
-    render(<CommandMenu items={items} />);
+    render(<CommandMenu nav={nav} />);
 
     await user.keyboard('{Control>}k{/Control}');
     await user.click(screen.getByRole('combobox'));
@@ -64,7 +74,7 @@ describe('CommandMenu', () => {
 
   it('closes on the shortcut and starts empty next time', async () => {
     const user = userEvent.setup();
-    render(<CommandMenu items={items} />);
+    render(<CommandMenu nav={nav} />);
 
     await user.keyboard('{Control>}k{/Control}');
     await user.type(screen.getByRole('combobox'), 'ship');
@@ -73,5 +83,19 @@ describe('CommandMenu', () => {
 
     await user.keyboard('{Control>}k{/Control}');
     expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
+  it('lists the views with their parent and the shortcut hints', async () => {
+    const user = userEvent.setup();
+    render(<CommandMenu nav={nav} />);
+
+    await user.keyboard('{Control>}k{/Control}');
+    expect(screen.getByRole('option', { name: /^Overview/ })).toHaveTextContent(
+      'G O',
+    );
+    await user.type(screen.getByRole('combobox'), 'late');
+    await user.click(screen.getByRole('option', { name: 'Shipments · Late' }));
+
+    expect(router.push).toHaveBeenCalledWith('/seller/shipments?view=late');
   });
 });

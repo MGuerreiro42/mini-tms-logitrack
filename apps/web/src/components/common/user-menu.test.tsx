@@ -49,4 +49,19 @@ describe('UserMenu', () => {
 
     expect(document.documentElement).toHaveClass('dark');
   });
+
+  it('turns the keyboard shortcuts off and keeps the choice', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<UserMenu {...props} />);
+
+    await user.click(screen.getByRole('button', { name: /seller/i }));
+    const item = await screen.findByRole('menuitemcheckbox', {
+      name: 'Keyboard shortcuts',
+    });
+    expect(item).toBeChecked();
+    await user.click(item);
+
+    expect(item).not.toBeChecked();
+    expect(localStorage.getItem('tms:shortcuts')).toBe('off');
+  });
 });

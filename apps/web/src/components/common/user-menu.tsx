@@ -3,6 +3,7 @@
 import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -12,6 +13,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLogout } from '@/hooks/use-logout';
+import {
+  setShortcutsEnabled,
+  useShortcutsEnabled,
+} from '@/hooks/use-shortcuts-enabled';
 
 const THEMES = [
   { value: 'system', label: 'System' },
@@ -30,6 +35,7 @@ export function UserMenu({
 }) {
   const logout = useLogout();
   const { theme = 'system', setTheme } = useTheme();
+  const shortcuts = useShortcutsEnabled();
 
   return (
     <DropdownMenu>
@@ -66,6 +72,16 @@ export function UserMenu({
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={shortcuts}
+          onCheckedChange={setShortcutsEnabled}
+          // Keeps the menu open, so the change is visible.
+          onSelect={(event) => event.preventDefault()}
+          className="pointer-coarse:min-h-11"
+        >
+          Keyboard shortcuts
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className="pointer-coarse:min-h-11">
           Log out

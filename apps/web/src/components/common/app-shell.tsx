@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { CommandMenu } from '@/components/common/command-menu';
 import { NavList } from '@/components/common/nav-list';
-import { type NavSection, navLinks } from '@/components/common/nav-tree';
+import type { NavSection } from '@/components/common/nav-tree';
 import { PageTransition } from '@/components/common/page-transition';
 import { SessionSync } from '@/components/common/session-sync';
 import { SIDEBAR_NAV_ID } from '@/components/common/sidebar';
@@ -54,7 +54,7 @@ export async function AppShell({
           </span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <CommandMenu items={navLinks(nav)} />
+          <CommandMenu nav={nav} />
           <UserMenu
             name={user.name}
             role={user.role}

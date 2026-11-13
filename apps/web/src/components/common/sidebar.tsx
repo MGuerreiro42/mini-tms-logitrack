@@ -15,6 +15,7 @@ import {
 } from '@/components/common/nav-tree';
 import { RailTooltip } from '@/components/common/rail-tooltip';
 import { useSidebar } from '@/components/common/sidebar-context';
+import { keyShortcut } from '@/components/common/use-nav-shortcuts';
 import { Button } from '@/components/ui/button';
 import { plural } from '@/lib/plural';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ export function NavTree({
               <Link
                 href={link.href}
                 aria-current={current.link === link ? 'page' : undefined}
+                aria-keyshortcuts={link.shortcut && keyShortcut(link.shortcut)}
               >
                 {link.icon}
                 <span className="rail:sr-only">{link.name}</span>
@@ -203,6 +205,7 @@ function NavRow({
           <Link
             href={link.href}
             aria-current={state === 'current' ? 'page' : undefined}
+            aria-keyshortcuts={link.shortcut && keyShortcut(link.shortcut)}
             className={cn(rowClassName(state), 'relative')}
           >
             {link.icon}
