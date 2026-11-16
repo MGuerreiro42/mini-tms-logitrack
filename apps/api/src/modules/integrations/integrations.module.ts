@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ShipmentsModule } from '../shipments/shipments.module';
+import { DemoTenantService } from '../simulator/demo-tenant.service';
 import { ApiKeysController } from './api-keys.controller';
 import { ApiKeysService } from './api-keys.service';
 import { PublicApiController } from './public-api.controller';
@@ -29,6 +30,8 @@ import { WebhooksService } from './webhooks.service';
     WebhookInboxService,
     WebhookDispatcher,
     WebhookDeliveryProcessor,
+    // Only Prisma behind it, so the inbox can tell demo sellers without the simulator module.
+    DemoTenantService,
   ],
   // The admin pulse reads this module's queue counts.
   exports: [BullModule],

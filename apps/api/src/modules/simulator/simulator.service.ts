@@ -10,6 +10,8 @@ import {
 } from '../shipments/shipment-status.util';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { TrackingPresence } from '../tracking/tracking-presence';
+import { ChaosService } from './chaos.service';
+import type { ChaosScenarioId } from './chaos-scenarios';
 import { DEMO_ADDRESSES, STATUS_NOTES, toAddressFields } from './demo-dataset';
 import {
   DemoTenantService,
@@ -24,6 +26,7 @@ import {
 
 const ACTIVE_SHIPMENT_CAP = 24;
 const FAILURE_RATE = 0.08;
+const STORM_FAILURE_RATE = 0.5;
 const CREATE_CHANCE = 1 / 3;
 
 // Cancelling is the seller's call (DESIGN.md § 14), so the simulator only moves forward.
@@ -62,6 +65,22 @@ const stageProgress = (shipment: StagedShipment, now: number) => {
   return Math.min(Math.max((now - stageStartedAt(shipment)) / duration, 0), 1);
 };
 
+// During the outage the simulator stops working for Transportadora Demo; visitors still can.
+const workedShipmentsWhere = (
+  tenant: LoadedDemoTenant,
+  scenario: ChaosScenarioId | undefined,
+): Prisma.ShipmentWhereInput =>
+  scenario === 'carrier-outage'
+    ? {
+        ...demoShipmentsWhere(tenant),
+        carrierId: {
+          in: Object.keys(tenant.claimUserIds).filter(
+            (id) => id !== tenant.carrierId,
+          ),
+        },
+      }
+    : demoShipmentsWhere(tenant);
+
 @Injectable()
 export class SimulatorService {
   private readonly logger = new Logger(SimulatorService.name);
@@ -72,6 +91,7 @@ export class SimulatorService {
     private readonly shipmentsService: ShipmentsService,
     private readonly presence: TrackingPresence,
     private readonly demoTenantService: DemoTenantService,
+    private readonly chaosService: ChaosService,
     @Inject(SIMULATOR_RANDOM) private readonly random: RandomSource,
   ) {}
 
@@ -79,8 +99,14 @@ export class SimulatorService {
     const tenant = await this.watchedTenant();
     if (!tenant) return;
 
-    await this.advanceReady(tenant);
-    await this.attempt(() => this.claimOne(tenant));
+    // Read once, so a scenario that ends mid-tick never applies to half of it.
+    const scenario = (await this.chaosService.active())?.scenario;
+    const worked = workedShipmentsWhere(tenant, scenario);
+    await this.advanceReady(
+      worked,
+      scenario === 'failed-deliveries' ? STORM_FAILURE_RATE : FAILURE_RATE,
+    );
+    await this.attempt(() => this.claimOne(tenant, worked));
     if (this.random() < CREATE_CHANCE) {
       await this.attempt(() => this.createOne(tenant));
     }
@@ -139,10 +165,13 @@ export class SimulatorService {
 
   // Every vehicle that has arrived ends its road stage, so none waits parked at the end of its
   // segment; off the road, the shipment that has waited longest moves one step.
-  private async advanceReady(tenant: LoadedDemoTenant): Promise<void> {
+  private async advanceReady(
+    worked: Prisma.ShipmentWhereInput,
+    failureRate: number,
+  ): Promise<void> {
     const candidates = await this.prisma.shipment.findMany({
       where: {
-        ...demoShipmentsWhere(tenant),
+        ...worked,
         status: { in: ADVANCEABLE_STATUSES },
         ownerId: { not: null },
       },
@@ -165,7 +194,7 @@ export class SimulatorService {
     for (const shipment of [...arrived, longestWaiting]) {
       if (shipment?.owner) {
         const { userId } = shipment.owner;
-        const status = this.nextStatus(shipment.status);
+        const status = this.nextStatus(shipment.status, failureRate);
         await this.attempt(() =>
           this.shipmentsService.updateStatus(userId, shipment.id, {
             status,
@@ -176,10 +205,13 @@ export class SimulatorService {
     }
   }
 
-  private async claimOne(tenant: LoadedDemoTenant): Promise<void> {
+  private async claimOne(
+    tenant: LoadedDemoTenant,
+    worked: Prisma.ShipmentWhereInput,
+  ): Promise<void> {
     const shipment = await this.prisma.shipment.findFirst({
       where: {
-        ...demoShipmentsWhere(tenant),
+        ...worked,
         status: ShipmentStatus.PENDING,
         ownerId: null,
       },
@@ -223,9 +255,12 @@ export class SimulatorService {
     });
   }
 
-  private nextStatus(status: ShipmentStatus): ShipmentStatus {
+  private nextStatus(
+    status: ShipmentStatus,
+    failureRate: number,
+  ): ShipmentStatus {
     if (status === ShipmentStatus.OUT_FOR_DELIVERY) {
-      return this.random() < FAILURE_RATE
+      return this.random() < failureRate
         ? ShipmentStatus.FAILED_DELIVERY
         : ShipmentStatus.DELIVERED;
     }
