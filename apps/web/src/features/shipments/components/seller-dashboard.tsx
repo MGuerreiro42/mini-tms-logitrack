@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/common/feedback-state';
 import { LiveIndicator } from '@/components/common/live-indicator';
 import { Panel } from '@/components/common/panel';
 import { QueryState } from '@/components/common/query-state';
+import { RiskBadge } from '@/components/common/risk-badge';
 import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
 import { TrackingCode } from '@/components/common/tracking-code';
@@ -174,7 +175,6 @@ function AttentionPanel({
 
 function AttentionReason({ shipment, now }: { shipment: Shipment; now: Date }) {
   const failed = shipment.status === 'FAILED_DELIVERY';
-  const sla = slaState({ dueAt: shipment.dueAt, status: shipment.status, now });
 
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
@@ -182,9 +182,14 @@ function AttentionReason({ shipment, now }: { shipment: Shipment; now: Date }) {
         {failed ? 'Delivery attempt failed' : 'Past its SLA'}
       </span>
       <span className="truncate text-[13px] text-muted-foreground">
-        {failed
-          ? `${place(shipment)} · ${shipment.carrierName}`
-          : `${place(shipment)} · ${shipment.modalityName} · ${sla.label}`}
+        {failed ? (
+          `${place(shipment)} · ${shipment.carrierName}`
+        ) : (
+          <>
+            {place(shipment)} · {shipment.modalityName} ·{' '}
+            <RiskBadge state={slaState({ ...shipment, now })} />
+          </>
+        )}
       </span>
     </span>
   );

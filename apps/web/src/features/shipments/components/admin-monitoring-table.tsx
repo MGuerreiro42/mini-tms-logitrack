@@ -35,8 +35,8 @@ import {
 import { useShipmentTracking } from '../hooks/use-shipment-tracking';
 import type { AdminShipment } from '../types';
 import {
-  lateRowClassName,
   partyColumns,
+  riskRowClassName,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -137,7 +137,7 @@ export function AdminMonitoringTable({
             data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
-            getRowClassName={lateRowClassName}
+            getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
             getRowHref={(s) =>

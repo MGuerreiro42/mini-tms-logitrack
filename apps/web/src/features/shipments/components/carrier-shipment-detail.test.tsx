@@ -353,7 +353,7 @@ describe('CarrierShipmentDetail', () => {
 
     await screen.findByRole('heading', { name: 'TMS-AAA111' });
     expect(screen.getByText('Owned by you')).toBeInTheDocument();
-    expect(screen.getByText('2 h late')).toBeInTheDocument();
+    expect(screen.getByText('Late 2 h')).toBeInTheDocument();
   });
 
   it('offers no claim or advance for an unclaimed cancelled shipment', async () => {

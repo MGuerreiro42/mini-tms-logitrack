@@ -5,8 +5,8 @@ import {
   LiveIndicator,
   OfflineBanner,
 } from '@/components/common/live-indicator';
+import { RiskBadge } from '@/components/common/risk-badge';
 import { ShipmentStepper } from '@/components/common/shipment-stepper';
-import { SlaCell } from '@/components/common/sla-cell';
 import { TrackingCode } from '@/components/common/tracking-code';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
@@ -15,7 +15,7 @@ import { useNow } from '@/hooks/use-now';
 import { formatCep } from '@/lib/br-documents';
 import { formatShortDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
-import { hasSlaVerdict, slaState } from '@/lib/sla';
+import { slaState } from '@/lib/sla';
 import type { ShipmentStatus, TimelineEvent } from '@/types/status';
 import type { ShipmentAddress, ShipmentBase } from '../types';
 
@@ -60,14 +60,14 @@ export function ShipmentDueLine({
 }: {
   shipment: Pick<
     ShipmentBase,
-    'modalityName' | 'dueAt' | 'deliveredAt' | 'status'
+    'modalityName' | 'dueAt' | 'deliveredAt' | 'createdAt' | 'status'
   >;
 }) {
   const now = useNow(SLA_REFRESH_MS);
-  const { modalityName, dueAt, deliveredAt, status } = shipment;
+  const { modalityName, dueAt, status } = shipment;
 
   if (!dueAt) return <>{modalityName} · No SLA</>;
-  if (!hasSlaVerdict(status)) {
+  if (status === 'CANCELLED') {
     return (
       <>
         {modalityName} · Due {formatShortDateTime(dueAt)}
@@ -76,8 +76,7 @@ export function ShipmentDueLine({
   }
   return (
     <>
-      {modalityName} ·{' '}
-      <SlaCell state={slaState({ dueAt, deliveredAt, status, now })} /> ·{' '}
+      {modalityName} · <RiskBadge state={slaState({ ...shipment, now })} /> ·{' '}
       {formatShortDateTime(dueAt)}
     </>
   );

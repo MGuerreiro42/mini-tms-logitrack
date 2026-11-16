@@ -27,8 +27,8 @@ import {
   type ShipmentStatus,
 } from '../types';
 import {
-  lateRowClassName,
   partyColumns,
+  riskRowClassName,
   shipmentColumns,
   slaColumn,
   type WithSla,
@@ -79,7 +79,7 @@ export function CarrierQueueTable() {
             data={withSla(result.data, now)}
             meta={result.meta}
             onPageChange={setPage}
-            getRowClassName={lateRowClassName}
+            getRowClassName={riskRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
             getRowHref={(s) => `/carrier/queue/${s.id}`}
