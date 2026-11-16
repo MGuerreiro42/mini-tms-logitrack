@@ -1,6 +1,7 @@
 import request from 'supertest';
 import type { Prisma } from '../generated/prisma/client';
 import {
+  adminToken,
   createShipment,
   createTenants,
   type E2eContext,
@@ -14,15 +15,19 @@ describe('Seller list filters (e2e)', () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
 
-  const list = (token: string, query: object) =>
+  const list = (token: string, query: object, path = '/shipments') =>
     request(ctx.app.getHttpServer())
-      .get('/shipments')
+      .get(path)
       .query({ limit: 100, ...query })
       .auth(token, { type: 'bearer' });
   const total = async (query: object) =>
     (await list(tenants.sellerA, query).expect(200)).body.meta.total;
-  const ids = async (token: string, query: object): Promise<string[]> =>
-    (await list(token, query).expect(200)).body.data.map(
+  const ids = async (
+    token: string,
+    query: object,
+    path?: string,
+  ): Promise<string[]> =>
+    (await list(token, query, path).expect(200)).body.data.map(
       (s: { id: string }) => s.id,
     );
   // A shipment created hoursAgo with an SLA of slaHours, then moved as data says.
@@ -126,6 +131,23 @@ describe('Seller list filters (e2e)', () => {
     });
     expect(body.counts.waiting).toBe(1);
     expect(body.oldestPendingAt).toEqual(expect.any(String));
+  });
+
+  it('counts a shipment waiting for a carrier as an exception for its seller only', async () => {
+    const [waiting] = await ids(tenants.sellerA, { view: 'waiting' });
+    const admin = await adminToken(ctx);
+    const queue = (view: string) =>
+      ids(tenants.operator, { view }, '/shipments/queue');
+    const adminView = (view: string) =>
+      ids(admin, { view, carrierId: tenants.carrierId }, '/admin/shipments');
+
+    expect(await ids(tenants.sellerA, { view: 'exceptions' })).toContain(
+      waiting,
+    );
+    expect(await queue('unclaimed')).toContain(waiting);
+    expect(await queue('exceptions')).not.toContain(waiting);
+    expect(await adminView('active')).toContain(waiting);
+    expect(await adminView('exceptions')).not.toContain(waiting);
   });
 
   it('splits on track from due soon at the 6 h floor and at 25 % of the SLA', async () => {

@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import request from 'supertest';
 import {
   DEMO_PASSWORD,
@@ -11,7 +10,7 @@ import {
   randomIp,
   startApp,
 } from './support/e2e-app';
-import { truncateAllTables } from './support/e2e-database';
+import { seedDemo, truncateAllTables } from './support/e2e-database';
 
 const HOUR_MS = 3_600_000;
 const inHours = (hours: number) => new Date(Date.now() + hours * HOUR_MS);
@@ -100,10 +99,7 @@ describe('Seller metrics (e2e)', () => {
   });
 
   it('reads the reference numbers of spec 10 on the seeded demo seller', async () => {
-    execSync('pnpm exec prisma db seed', {
-      env: { ...process.env, SEED_DEMO: 'true' },
-      stdio: 'ignore',
-    });
+    seedDemo();
     const login = await request(ctx.app.getHttpServer())
       .post('/auth/login')
       .set('X-Forwarded-For', randomIp())
@@ -139,8 +135,13 @@ describe('Seller metrics (e2e)', () => {
           p.delivered + p.problem + p.open,
       ),
     ).toEqual([11, 12, 12, 13, 12, 13, 13, 14, 14, 14, 16, 15, 16]);
-    // The seed script starts its own Prisma client and hashes the demo passwords.
   }, 20_000);
+
+  it('refuses a since beyond the longest window', async () => {
+    await get(tenants.sellerA, '/shipments/metrics', {
+      since: '2000-01-01T00:00:00Z',
+    }).expect(400);
+  });
 
   it('refuses a seller still under review', async () => {
     const email = `pending-${Date.now()}@e2e.test`;

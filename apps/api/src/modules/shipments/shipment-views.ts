@@ -48,6 +48,8 @@ export interface ViewContext {
   now: Date;
   // Null outside the carrier lists, where "mine" has no meaning.
   carrierUserId: string | null;
+  // Seller lists only: a shipment waiting for a carrier is the seller's exception (spec 10 FR-010).
+  waitingIsException?: boolean;
   // An SLA-state view's ids, resolved by the caller's raw query.
   slaStateIds?: string[];
 }
@@ -68,7 +70,7 @@ const VIEW_WHERE: Record<
     OR: [
       { status: ShipmentStatus.FAILED_DELIVERY },
       VIEW_WHERE.late(ctx),
-      VIEW_WHERE.waiting(ctx),
+      ...(ctx.waitingIsException ? [VIEW_WHERE.waiting(ctx)] : []),
     ],
   }),
   // Not late: a late shipment is counted there, so the exception groups never overlap.

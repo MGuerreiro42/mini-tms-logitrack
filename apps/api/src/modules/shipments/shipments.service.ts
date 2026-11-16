@@ -308,7 +308,12 @@ export class ShipmentsService {
     return this.findShipmentPage(
       { sellerId: seller.id },
       query,
-      { carrierUserId: null, includeSeller: false, slaStateIds },
+      {
+        carrierUserId: null,
+        includeSeller: false,
+        waitingIsException: true,
+        slaStateIds,
+      },
       sellerShipmentInclude,
       toShipmentResponseDto,
     );
@@ -322,12 +327,13 @@ export class ShipmentsService {
     view: SlaStateView,
   ): Promise<string[]> {
     const now = new Date();
+    // dueAt holds UTC without a zone: read as UTC, it compares instants whatever the session zone.
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Shipment"
       WHERE "sellerId" = ${sellerId}
         AND status::text = ANY(${OPEN_STATUSES})
-        AND "dueAt" >= ${now}::timestamp
-        AND ("dueAt" - ${now}::timestamp
+        AND "dueAt" AT TIME ZONE 'UTC' >= ${now}::timestamptz
+        AND ("dueAt" AT TIME ZONE 'UTC' - ${now}::timestamptz
           <= GREATEST(("dueAt" - "createdAt") / 4, interval '6 hours')) = ${view === 'due-soon'}`;
     return rows.map((row) => row.id);
   }
@@ -337,7 +343,12 @@ export class ShipmentsService {
     window?: StatsWindow,
   ): Promise<SellerViewCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    return this.countViews(SELLER_VIEWS, { sellerId: seller.id }, null, window);
+    return this.countViews(
+      SELLER_VIEWS,
+      { sellerId: seller.id },
+      { carrierUserId: null, waitingIsException: true },
+      window,
+    );
   }
 
   async viewCountsForCarrier(
@@ -347,7 +358,7 @@ export class ShipmentsService {
     return this.countViews(
       CARRIER_VIEWS,
       { carrierId: carrierUser.carrierId },
-      carrierUser.id,
+      { carrierUserId: carrierUser.id },
     );
   }
 
@@ -359,7 +370,7 @@ export class ShipmentsService {
     return this.countViews(
       ADMIN_VIEWS,
       adminScope(carrierId, sellerId),
-      null,
+      { carrierUserId: null },
       window,
     );
   }
@@ -368,12 +379,12 @@ export class ShipmentsService {
   private async countViews<V extends ShipmentView>(
     views: readonly V[],
     scope: Prisma.ShipmentWhereInput,
-    carrierUserId: string | null,
+    viewCtx: Omit<ViewContext, 'now'>,
     window?: StatsWindow,
   ): Promise<Record<V, number>> {
     const ctx = {
+      ...viewCtx,
       now: new Date(),
-      carrierUserId,
       includeSeller: false,
       dueAt: this.prisma.shipment.fields.dueAt,
     };

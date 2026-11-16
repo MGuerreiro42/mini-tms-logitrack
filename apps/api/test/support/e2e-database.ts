@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { Client } from 'pg';
 
 type DatabaseEnv = Partial<Record<'E2E_DATABASE_URL' | 'DATABASE_URL', string>>;
@@ -29,3 +30,10 @@ export async function truncateAllTables(env: DatabaseEnv): Promise<void> {
     await client.end();
   }
 }
+
+// The seed script, with the demo tenant, as SEED_DEMO=true deploys run it.
+export const seedDemo = () =>
+  execSync('pnpm exec prisma db seed', {
+    env: { ...process.env, SEED_DEMO: 'true' },
+    stdio: 'ignore',
+  });

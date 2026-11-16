@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import { getQueueToken } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -21,13 +20,7 @@ import {
   adminToken as newAdminToken,
   startApp,
 } from './support/e2e-app';
-import { truncateAllTables } from './support/e2e-database';
-
-const seedDemo = () =>
-  execSync('pnpm exec prisma db seed', {
-    env: { ...process.env, SEED_DEMO: 'true' },
-    stdio: 'ignore',
-  });
+import { seedDemo, truncateAllTables } from './support/e2e-database';
 
 // AppModule decides whether to load the simulator when it is imported, before any hook runs.
 vi.hoisted(() => {
@@ -131,7 +124,6 @@ describe('Demo reset (e2e)', () => {
     expect(coverage).toEqual(
       ['MG', 'PR', 'RJ', 'SP'].map((state) => ({ state, city: null })),
     );
-    // The seed script starts its own Prisma client and hashes the demo passwords.
   }, 20_000);
 
   it('lets only the admin trigger a reset, once a minute per admin', async () => {
