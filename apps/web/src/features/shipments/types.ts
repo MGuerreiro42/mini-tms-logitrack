@@ -3,6 +3,7 @@ import type {
   LngLat,
   PositionEvent,
 } from '@/features/tracking/types';
+import type { StatsWindow } from '@/hooks/use-stats-window';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ShipmentStatus,
@@ -104,6 +105,7 @@ export interface AdminShipmentDetail extends AdminShipment {
 export interface AdminStatusCountsQuery {
   carrierId?: string;
   sellerId?: string;
+  window?: StatsWindow;
 }
 
 export interface ListAdminShipmentsQuery
@@ -138,7 +140,7 @@ export interface EligibleCarrier {
 }
 
 // The seller and admin views (the carrier has its own).
-export type ListView = 'active' | 'exceptions';
+export type ListView = 'active' | 'late' | 'exceptions';
 
 // The API also counts done, which no tab shows.
 export type ViewCounts = Record<ListView | 'done', number>;
@@ -147,6 +149,7 @@ export interface ListShipmentsQuery extends PaginationQuery {
   status?: ShipmentStatus;
   view?: ListView;
   q?: string;
+  window?: StatsWindow;
 }
 
 export const CARRIER_VIEWS = [

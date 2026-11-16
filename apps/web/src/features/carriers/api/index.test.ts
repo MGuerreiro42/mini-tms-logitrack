@@ -124,11 +124,11 @@ describe('carriers api', () => {
     );
   });
 
-  it('getMyCarrierPerformance gets /carriers/me/performance', async () => {
-    await getMyCarrierPerformance('token');
+  it('getMyCarrierPerformance gets /carriers/me/performance for the window', async () => {
+    await getMyCarrierPerformance('7d', 'token');
 
     expect(apiClient).toHaveBeenCalledWith(
-      '/carriers/me/performance',
+      '/carriers/me/performance?window=7d',
       undefined,
       'token',
     );

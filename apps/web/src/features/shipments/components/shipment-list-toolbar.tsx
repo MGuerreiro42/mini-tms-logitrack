@@ -9,6 +9,7 @@ import {
 } from '@/components/common/filter-toolbar';
 import { SearchField } from '@/components/common/search-field';
 import { type ViewTabOption, ViewTabs } from '@/components/common/view-tabs';
+import { type StatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { ALL } from '@/lib/filters';
 import { plural } from '@/lib/plural';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
@@ -105,6 +106,15 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
             },
           ];
     }),
+    ...(filters.window !== defaults.window
+      ? [
+          {
+            id: 'window',
+            label: `Created in the last ${windowLabel(filters.window as StatsWindow)}`,
+            onRemove: () => reset('window'),
+          },
+        ]
+      : []),
     ...(filters.q
       ? [
           {
@@ -141,6 +151,7 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
                       'q',
                       ...menuKeys,
                       ...(strayStatus ? (['status'] as const) : []),
+                      'window',
                     )
                 : undefined
             }

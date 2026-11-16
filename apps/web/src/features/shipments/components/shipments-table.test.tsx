@@ -22,9 +22,11 @@ const STATUS_COUNTS = {
 
 describe('ShipmentsTable', () => {
   let listUrls: URL[] = [];
+  let viewCountUrls: URL[] = [];
 
   beforeEach(() => {
     listUrls = [];
+    viewCountUrls = [];
     setSession({
       token: 'signed.jwt.token',
       role: 'SELLER',
@@ -42,9 +44,15 @@ describe('ShipmentsTable', () => {
       http.get(`${API_URL}/shipments/status-counts`, () =>
         HttpResponse.json(STATUS_COUNTS),
       ),
-      http.get(`${API_URL}/shipments/view-counts`, () =>
-        HttpResponse.json({ active: 3, exceptions: 2, done: 5 }),
-      ),
+      http.get(`${API_URL}/shipments/view-counts`, ({ request }) => {
+        viewCountUrls.push(new URL(request.url));
+        return HttpResponse.json({
+          active: 3,
+          late: 1,
+          exceptions: 2,
+          done: 5,
+        });
+      }),
     );
   });
 
@@ -84,6 +92,27 @@ describe('ShipmentsTable', () => {
 
     expect(currentUrl()).toBe('/seller/shipments?view=active');
     expect(screen.getByRole('searchbox')).toHaveValue('');
+  });
+
+  it('narrows the list and its counts to the window chip, removable', async () => {
+    resetNavigation('/seller/shipments?view=late&window=7d');
+    const user = userEvent.setup();
+    renderWithQueryClient(<ShipmentsTable />);
+
+    expect(await screen.findByRole('tab', { name: 'Late, 1' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(listUrls.at(-1)?.searchParams.get('window')).toBe('7d');
+    expect(viewCountUrls.at(-1)?.searchParams.get('window')).toBe('7d');
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Remove Created in the last 7 d',
+      }),
+    );
+
+    expect(currentUrl()).toBe('/seller/shipments?view=late');
   });
 
   it('treats a status without a tab as a removable filter', async () => {
