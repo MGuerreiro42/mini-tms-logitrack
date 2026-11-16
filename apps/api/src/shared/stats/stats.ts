@@ -13,11 +13,14 @@ export const createdSince = (since?: Date): { createdAt: { gte: Date } } => ({
   createdAt: { gte: since ?? daysAgo(DEFAULT_STATS_WINDOW_DAYS) },
 });
 
-// A named window wins over an explicit since; neither keeps createdSince's default.
+// A named window wins over an explicit since; neither falls back to the default window.
 export const windowSince = (
   { window, since }: { window?: StatsWindow; since?: Date },
   now = new Date(),
-): Date | undefined => (window ? daysAgo(WINDOW_DAYS[window], now) : since);
+): Date =>
+  window
+    ? daysAgo(WINDOW_DAYS[window], now)
+    : (since ?? daysAgo(DEFAULT_STATS_WINDOW_DAYS, now));
 
 export const hoursBetween = (from: Date, to: Date): number =>
   (to.getTime() - from.getTime()) / MS_PER_HOUR;

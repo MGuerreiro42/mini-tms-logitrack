@@ -87,6 +87,10 @@ export function deliveryMetrics(
   { since, now }: { since: Date; now: Date },
 ) {
   const delivered = rows.filter(isDelivered);
+  // The tile counts every DELIVERED row, so it equals the list it opens.
+  const deliveredCount = rows.filter(
+    (row) => row.status === ShipmentStatus.DELIVERED,
+  ).length;
   const outcomes = rows.filter((row) => isDelivered(row) || row.everFailed);
   const claimMinutes = rows.flatMap((row) =>
     row.acceptedAt ? [minutesBetween(row.createdAt, row.acceptedAt)] : [],
@@ -101,7 +105,7 @@ export function deliveryMetrics(
 
   return {
     shipments: rows.length,
-    delivered: delivered.length,
+    delivered: deliveredCount,
     onTime: { ...onTime(rows), trend: trend(rows, since, now) },
     medianDelivery: {
       hours: percentile(deliveryHours, 50),

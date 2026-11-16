@@ -420,6 +420,8 @@ describe('ShipmentsService', () => {
         Array(5).fill('FAILED_DELIVERY'),
       );
       expect(result.counts).toEqual({ failed: 8, late: 1 });
+      // The late row is capped off the list but still dates the oldest late.
+      expect(result.oldestLateDueAt).toEqual(late('late-1').dueAt);
     });
 
     it('reports zero late shipments when none are overdue', async () => {
@@ -429,7 +431,11 @@ describe('ShipmentsService', () => {
 
       const result = await shipmentsService.attentionForSeller('user-1');
 
-      expect(result).toEqual({ shipments: [], counts: { failed: 0, late: 0 } });
+      expect(result).toEqual({
+        shipments: [],
+        counts: { failed: 0, late: 0 },
+        oldestLateDueAt: null,
+      });
     });
   });
 
@@ -740,6 +746,63 @@ describe('ShipmentsService', () => {
       await expect(
         shipmentsService.slaSummaryForSeller('user-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('metricsForSeller', () => {
+    const since = new Date('2026-01-01T00:00:00Z');
+
+    it('refuses a seller that is not approved', async () => {
+      sellerFindUnique.mockResolvedValue({
+        ...approvedSeller,
+        status: 'PENDING',
+      });
+
+      await expect(
+        shipmentsService.metricsForSeller('user-1', since),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('reads the window without events and groups on time by modality', async () => {
+      sellerFindUnique.mockResolvedValue(approvedSeller);
+      shipmentFindMany.mockResolvedValue([
+        {
+          id: 'a',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+          status: 'DELIVERED',
+          dueAt: new Date('2026-01-03T00:00:00Z'),
+          deliveredAt: new Date('2026-01-02T12:00:00Z'),
+          modality: { code: 'EXPRESS', name: 'Express' },
+        },
+        {
+          id: 'b',
+          createdAt: new Date('2026-01-02T00:00:00Z'),
+          status: 'IN_TRANSIT',
+          dueAt: null,
+          deliveredAt: null,
+          modality: { code: 'STANDARD', name: 'Standard' },
+        },
+      ]);
+
+      const result = await shipmentsService.metricsForSeller('user-1', since);
+
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { sellerId: 'seller-1', createdAt: { gte: since } },
+        }),
+      );
+      expect(trackingEventFindMany).not.toHaveBeenCalled();
+      expect(result.delivered).toBe(1);
+      expect(result.onTime).toMatchObject({ n: 1, count: 1, rate: 100 });
+      expect(result.byModality).toEqual([
+        {
+          modalityCode: 'EXPRESS',
+          modalityName: 'Express',
+          n: 1,
+          count: 1,
+          rate: 100,
+        },
+      ]);
     });
   });
 

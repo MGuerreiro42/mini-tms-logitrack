@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  type HttpException,
   Injectable,
   Logger,
   NotFoundException,
@@ -58,8 +59,14 @@ import type {
   CarrierViewCountsResponseDto,
   SellerViewCountsResponseDto,
 } from './dto/view-counts-response.dto';
-import { isOnTimeSample, onTime } from './metrics/delivery-metrics';
+import {
+  deliveryMetrics,
+  isOnTimeSample,
+  type MetricRow,
+  onTime,
+} from './metrics/delivery-metrics';
 import { loadMetricRows } from './metrics/metric-rows';
+import type { SellerMetricsResponseDto } from './metrics/metrics-response.dto';
 import { isPublicPosition } from './route-geometry';
 import {
   findRoute,
@@ -145,6 +152,16 @@ const adminScope = (
 
 type ListQuery = ListFilters & { page: number; limit: number };
 
+// Grouping only the samples keeps the modality order of the first on-time sample.
+const onTimeByModality = (rows: MetricRow[]) =>
+  [...groupBy(rows.filter(isOnTimeSample), (row) => row.modality.code)].map(
+    ([modalityCode, group]) => ({
+      modalityCode,
+      modalityName: group[0].modality.name,
+      ...onTime(group),
+    }),
+  );
+
 @Injectable()
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
@@ -205,12 +222,10 @@ export class ShipmentsService {
     userId: string,
     dto: CreateShipmentDto,
   ): Promise<ShipmentResponseDto> {
-    const seller = await this.findSellerOrThrow(userId);
-    if (seller.status !== ApprovalStatus.APPROVED) {
-      throw new BadRequestException(
-        'Only an approved seller can create shipments',
-      );
-    }
+    const seller = await this.findApprovedSellerOrThrow(
+      userId,
+      new BadRequestException('Only an approved seller can create shipments'),
+    );
 
     // Re-validate the eligible-carriers preview: nothing forces the client to have used it.
     const [sellerModality, carrier] = await Promise.all([
@@ -384,22 +399,36 @@ export class ShipmentsService {
       { events: false },
     );
 
-    // Grouping only the samples keeps the modality order of the first on-time sample.
-    const byModality = groupBy(
-      rows.filter(isOnTimeSample),
-      (row) => row.modality.code,
-    );
-
-    return [...byModality.entries()].map(([modalityCode, group]) => {
-      const { n, count, rate } = onTime(group);
-      return {
+    return onTimeByModality(rows).map(
+      ({ modalityCode, modalityName, n, count, rate }) => ({
         modalityCode,
-        modalityName: group[0].modality.name,
+        modalityName,
         deliveredCount: n,
         onTimeCount: count,
         onTimeRate: rate as number,
-      };
+      }),
+    );
+  }
+
+  async metricsForSeller(
+    userId: string,
+    since: Date,
+  ): Promise<SellerMetricsResponseDto> {
+    const seller = await this.findApprovedSellerOrThrow(
+      userId,
+      new ForbiddenException('Seller is not approved'),
+    );
+    // Delivered and on-time read no history, so the event query is skipped.
+    const rows = await loadMetricRows(
+      this.prisma,
+      { sellerId: seller.id, ...createdSince(since) },
+      { events: false },
+    );
+    const { delivered, onTime } = deliveryMetrics(rows, {
+      since,
+      now: new Date(),
     });
+    return { delivered, onTime, byModality: onTimeByModality(rows) };
   }
 
   async attentionForSeller(
@@ -439,6 +468,8 @@ export class ShipmentsService {
         ...late.slice(0, ATTENTION_LIMIT - failed.length),
       ].map(toShipmentResponseDto),
       counts: { failed: failedCount, late: lateCount },
+      // From the late query itself, whatever the cap and the failed-first order leave on screen.
+      oldestLateDueAt: late[0]?.dueAt ?? null,
     };
   }
 
@@ -897,6 +928,16 @@ export class ShipmentsService {
     if (!seller) {
       throw new NotFoundException('Seller not found');
     }
+    return seller;
+  }
+
+  // Each caller keeps its own status code for a seller still under review.
+  private async findApprovedSellerOrThrow(
+    userId: string,
+    notApproved: HttpException,
+  ) {
+    const seller = await this.findSellerOrThrow(userId);
+    if (seller.status !== ApprovalStatus.APPROVED) throw notApproved;
     return seller;
   }
 
