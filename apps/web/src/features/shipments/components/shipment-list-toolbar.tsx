@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { type FilterChip, FilterChips } from '@/components/common/filter-chips';
 import {
   type FilterChoice,
@@ -61,6 +62,8 @@ interface ShipmentListToolbarProps<F extends ShipmentListFilters> {
   menus?: ShipmentListMenu<F>[];
   placeholder: string;
   total?: number;
+  // Shown instead of the search row, e.g. a bulk bar while rows are selected.
+  replacement?: ReactNode;
 }
 
 export function ShipmentListToolbar<F extends ShipmentListFilters>({
@@ -69,6 +72,7 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
   menus = [],
   placeholder,
   total,
+  replacement,
 }: ShipmentListToolbarProps<F>) {
   const { filters, defaults, setFilters } = list;
   const { strayStatus, isFiltered } = listScope(list, tabs);
@@ -127,38 +131,42 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
           setFilters({ ...changes, status: changes.status ?? defaults.status })
         }
       />
-      <FilterToolbar
-        onClear={
-          isFiltered
-            ? () =>
-                reset(
-                  'q',
-                  ...menuKeys,
-                  ...(strayStatus ? (['status'] as const) : []),
-                )
-            : undefined
-        }
-        summary={total !== undefined && plural(total, 'shipment')}
-      >
-        <SearchField
-          value={filters.q}
-          onChange={(q) => setFilters({ q } as Partial<F>)}
-          placeholder={placeholder}
-        />
-        {menus.map((menu) => (
-          <FilterMenu
-            key={menu.key}
-            label={menu.label}
-            value={filters[menu.key]}
-            defaultValue={defaults[menu.key]}
-            options={menu.options}
-            onChange={(value) =>
-              setFilters({ [menu.key]: value } as Partial<F>)
+      {replacement ?? (
+        <>
+          <FilterToolbar
+            onClear={
+              isFiltered
+                ? () =>
+                    reset(
+                      'q',
+                      ...menuKeys,
+                      ...(strayStatus ? (['status'] as const) : []),
+                    )
+                : undefined
             }
-          />
-        ))}
-      </FilterToolbar>
-      <FilterChips chips={chips} />
+            summary={total !== undefined && plural(total, 'shipment')}
+          >
+            <SearchField
+              value={filters.q}
+              onChange={(q) => setFilters({ q } as Partial<F>)}
+              placeholder={placeholder}
+            />
+            {menus.map((menu) => (
+              <FilterMenu
+                key={menu.key}
+                label={menu.label}
+                value={filters[menu.key]}
+                defaultValue={defaults[menu.key]}
+                options={menu.options}
+                onChange={(value) =>
+                  setFilters({ [menu.key]: value } as Partial<F>)
+                }
+              />
+            ))}
+          </FilterToolbar>
+          <FilterChips chips={chips} />
+        </>
+      )}
     </>
   );
 }

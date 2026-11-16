@@ -115,7 +115,7 @@ A seller ticks rows and a bulk bar replaces the toolbar: "3 selected · Copy tra
 
 **Why this priority**: cancelling or sharing a batch takes one action per shipment today (po-seller L7; prototype `SellerShipmentsBulk`).
 
-**Independent test**: select one `PENDING` and two `IN_TRANSIT` shipments, read "2 can't be cancelled: they are already with the carrier", confirm, and see the pending one cancelled and the selection cleared.
+**Independent test**: select one `PENDING` and two `IN_TRANSIT` shipments, read "2 can't be cancelled at this stage", confirm, and see the pending one cancelled and the selection cleared.
 
 **Acceptance scenarios**:
 
@@ -199,8 +199,8 @@ On the seller and admin overviews, the count tiles are links to the table filter
 
 ### Seller bulk bar (web)
 
-- **FR-024**: `PaginatedTable` MUST accept an optional selection (`selectedKeys`, `onSelectionChange`) rendering a leading checkbox column (native checkboxes labelled "Select <code>", plus a header "Select all on this page"); cards below 768 px do not show it.
-- **FR-025**: With one or more rows selected, Seller Shipments MUST replace the toolbar with a `BulkActionBar`: "<n> selected", "Copy tracking links" (absolute public tracking URLs from `publicTrackingPath`, newline-separated), "Cancel <k>…" (only when `k > 0` cancellable rows, `isCancellableBySeller`) and a clear button. The cancel confirmation (`ConfirmDialog`) states how many cannot be cancelled and why ("already with the carrier"), then calls `PATCH /shipments/:id/cancel` for each cancellable id, at most 4 at a time, and reports the outcome in one toast. Export selected is out of scope.
+- **FR-024**: `PaginatedTable` MUST accept an optional `selection: { keys, onChange, getLabel }` rendering a leading checkbox column (native checkboxes labelled "Select <code>", plus a header "Select all on this page"); cards below 768 px do not show it.
+- **FR-025**: With one or more rows selected, Seller Shipments MUST replace the toolbar with a `BulkActionBar`: "<n> selected", "Copy tracking links" (absolute public tracking URLs from `publicTrackingPath`, newline-separated), "Cancel <k>…" (only when `k > 0` cancellable rows, `isCancellableBySeller`) and a clear button. The cancel confirmation (`ConfirmDialog`) states how many cannot be cancelled ("<n> can't be cancelled at this stage") and that the carrier is told, freezing the selection it confirms, then calls `PATCH /shipments/:id/cancel` for each cancellable id, at most 4 at a time, and reports the outcome in one toast (failed codes truncated, "TMS-1, TMS-2 and 5 more"); failed rows stay selected for a retry, and clearing returns focus to "Select all on this page". Export selected is out of scope.
 
 ### KPI links (web)
 
