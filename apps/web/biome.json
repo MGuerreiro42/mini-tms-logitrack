@@ -396,9 +396,10 @@
                       "@/app/**",
                       "@/features/**",
                       "!@/features/shipments/**",
-                      "!@/features/tracking/**"
+                      "!@/features/tracking/**",
+                      "!@/features/integrations/**"
                     ],
-                    "message": "features/shipments may import tracking; compose anything else in app/."
+                    "message": "features/shipments may import tracking or integrations; compose anything else in app/."
                   },
                   {
                     "group": [

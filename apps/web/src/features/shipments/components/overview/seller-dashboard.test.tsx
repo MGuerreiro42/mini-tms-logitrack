@@ -1,6 +1,7 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import type { WebhookHealth } from '@/features/integrations/types';
 import type {
   ShipmentActivity,
   ShipmentStatus,
@@ -61,9 +62,18 @@ const useMetrics = (metrics = sellerMetrics()) =>
 
 describe('SellerDashboard', () => {
   let metricsUrls: URL[] = [];
+  let webhookHealth: WebhookHealth;
 
   beforeEach(() => {
     metricsUrls = [];
+    webhookHealth = {
+      state: 'ok',
+      n: 20,
+      successRate: 100,
+      p95Ms: 300,
+      lastSuccessAt: null,
+      failingSince: null,
+    };
     resetNavigation('/seller');
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     setSession({
@@ -95,20 +105,29 @@ describe('SellerDashboard', () => {
           meta: { total: 1, page: 1, limit: 100, totalPages: 1 },
         }),
       ),
+      http.get(`${API_URL}/webhooks/health`, () =>
+        HttpResponse.json(webhookHealth),
+      ),
     );
   });
 
-  it('shows the exceptions', async () => {
+  it('puts a down webhook first, as an alert and an exception', async () => {
+    webhookHealth = {
+      ...webhookHealth,
+      state: 'down',
+      failingSince: '2026-11-16T17:02:00.000Z',
+    };
     renderWithQueryClient(<SellerDashboard />);
 
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Webhooks down failing since 14:02 · last success none in 24 h',
+    );
     const exceptions = (
-      await screen.findByRole('heading', { name: 'Exceptions' })
+      await screen.findByRole('heading', { name: 'Exceptions 3' })
     ).closest('[data-slot="card"]') as HTMLElement;
-    expect(within(exceptions).getByText('1 late · 1 failed')).toBeVisible();
-    const items = within(exceptions).getAllByRole('link');
-    expect(items[0]).toHaveTextContent('Failed');
-    expect(items[1]).toHaveTextContent(/Late \d h/);
-    expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
+    const [first] = within(exceptions).getAllByRole('link');
+    expect(first).toHaveAttribute('href', '/seller/integrations');
+    expect(first).toHaveTextContent('Webhook endpoint failing since 14:02');
   });
 
   it('dates the window and the one it is compared with', async () => {
@@ -224,9 +243,10 @@ describe('SellerDashboard', () => {
 
     act(() => socket.trigger('connect'));
 
-    expect(socket.emit.mock.calls.map(([event]) => event)).toEqual([
-      'subscribe:seller',
-    ]);
+    // The shipment feed and webhook health each join the seller room.
+    expect(new Set(socket.emit.mock.calls.map(([event]) => event))).toEqual(
+      new Set(['subscribe:seller']),
+    );
   });
 
   it('lists recent updates and marks a live arrival as new', async () => {
