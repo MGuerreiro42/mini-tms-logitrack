@@ -4,7 +4,12 @@ import type {
   PositionEvent,
 } from '@/features/tracking/types';
 import type { StatsWindow } from '@/hooks/use-stats-window';
-import type { ClaimMetric, OnTimeTrend, Rate } from '@/lib/metrics';
+import type {
+  ClaimMetric,
+  OnTimeTrend,
+  Rate,
+  StageDuration,
+} from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ShipmentStatus,
@@ -30,9 +35,33 @@ export interface AdminMetrics {
 }
 
 export interface SellerMetrics {
+  shipments: number;
+  cancelled: number;
   delivered: number;
   onTime: OnTimeTrend;
   byModality: (Rate & { modalityCode: string; modalityName: string })[];
+  medianDelivery: { hours: number | null; p90Hours: number | null; n: number };
+  firstAttempt: AdminMetrics['firstAttempt'];
+  stages: StageDuration[];
+  slaMedianHours: number | null;
+  byState: (Rate & { uf: string })[];
+  volume: {
+    bucket: 'day' | 'week';
+    points: {
+      start: string;
+      delivered: number;
+      problem: number;
+      open: number;
+    }[];
+  };
+  // The previous window's rates; the web applies MIN_SAMPLE and maturity (spec 10 FR-008).
+  comparison: {
+    since: string;
+    previousSince: string;
+    mature: boolean;
+    onTime: Rate;
+    firstAttempt: Rate;
+  };
 }
 
 export interface ShipmentActivity {
@@ -44,10 +73,26 @@ export interface ShipmentActivity {
   createdAt: string;
 }
 
+// `type` stays open: the API may add groups (phase 4) the web has no entry for.
+export interface AttentionGroup {
+  type: string;
+  label: string;
+  owner: 'carrier' | 'seller' | 'recipient' | 'unknown';
+  count: number;
+  href: string;
+  items: {
+    shipment: Shipment;
+    since: string;
+    reason: { code: string | null; text: string } | null;
+  }[];
+}
+
 export interface ShipmentAttention {
   shipments: Shipment[];
-  counts: { failed: number; late: number };
+  counts: { failed: number; late: number; waiting: number };
   oldestLateDueAt: string | null;
+  oldestPendingAt: string | null;
+  groups: AttentionGroup[];
 }
 
 export interface ShipmentAddress {

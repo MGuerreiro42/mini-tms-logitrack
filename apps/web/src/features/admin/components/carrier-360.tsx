@@ -1,16 +1,16 @@
 'use client';
 
 import { CopyText } from '@/components/common/copy-field';
+import {
+  FirstAttemptTile,
+  MedianDeliveryTile,
+} from '@/components/common/delivery-tiles';
 import { EmptyState } from '@/components/common/feedback-state';
 import { OnTimeTile } from '@/components/common/on-time-tile';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { StatTile } from '@/components/common/stat-tile';
 import { WindowSelector } from '@/components/common/window-selector';
 import { CarrierCoveragePanel } from '@/features/carriers/components/carrier-coverage-panel';
-import {
-  FirstAttemptTile,
-  MedianDeliveryTile,
-} from '@/features/carriers/components/delivery-tiles';
 import { StageDurationChart } from '@/features/carriers/components/stage-duration-chart';
 import { TeamTable } from '@/features/carriers/components/team-table';
 import {

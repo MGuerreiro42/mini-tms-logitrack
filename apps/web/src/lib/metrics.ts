@@ -1,3 +1,5 @@
+import type { ShipmentStatus } from '@/types/status';
+
 // n is the denominator; rate is null at n = 0 (spec 07 FR-008).
 export interface Rate {
   n: number;
@@ -36,4 +38,13 @@ export const notEnoughNote = (n: number, noun: 'deliveries' | 'data') =>
 export interface ListStats {
   shipments: number;
   onTime: Rate;
+}
+
+// Medians and p90 are nearest-rank, null without samples (spec 07 FR-022).
+export interface StageDuration {
+  status: ShipmentStatus;
+  p50Hours: number | null;
+  p90Hours: number | null;
+  budgetHours: number | null;
+  n: number;
 }

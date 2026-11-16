@@ -1,7 +1,7 @@
 import { StageChart } from '@/components/common/charts/stage-chart';
 import { Panel } from '@/components/common/panel';
+import type { StageDuration } from '@/lib/metrics';
 import type { ShipmentStatus } from '@/types/status';
-import type { StageDuration } from '../types';
 
 // Each stage is named by the status the shipment sits in (spec 07 FR-016).
 const STAGE_LABEL: Partial<Record<ShipmentStatus, string>> = {

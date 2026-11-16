@@ -27,6 +27,21 @@ describe('StatTile', () => {
     expect(getByText('10')).toHaveClass('animate-value-in');
   });
 
+  it('draws its figure hidden from assistive tech', () => {
+    const { getByTestId } = render(
+      <StatTile
+        label="Active"
+        value={3}
+        figure={<span data-testid="figure" />}
+      />,
+    );
+
+    expect(getByTestId('figure').parentElement).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  });
+
   it('is a link to its filtered list only when given an href, named with its target', () => {
     const { getByRole, queryByRole, rerender } = render(
       <StatTile label="On time" value="98%" />,
