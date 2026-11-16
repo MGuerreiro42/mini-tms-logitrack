@@ -50,6 +50,7 @@ import {
   CarrierViewCountsResponseDto,
   SellerViewCountsResponseDto,
 } from './dto/view-counts-response.dto';
+import { SellerMetricsResponseDto } from './metrics/metrics-response.dto';
 import { ShipmentsService } from './shipments.service';
 
 @ApiTags('shipments')
@@ -302,6 +303,22 @@ export class ShipmentsController {
     @Query() query: WindowQueryDto,
   ) {
     return this.shipmentsService.countsByStatusForSeller(user.id, query.window);
+  }
+
+  @ApiOperation({
+    summary:
+      "Delivery metrics of the authenticated seller's own shipments created in the window (default 90 days): delivered, on time with a 12-bucket trend, and on time by modality",
+  })
+  @ApiResponse({ status: 200, type: SellerMetricsResponseDto })
+  @ApiResponse({ status: 403, description: 'Seller is not approved' })
+  @ApiResponse({ status: 404, description: 'Seller not found' })
+  @Auth(GlobalRole.SELLER)
+  @Get('metrics')
+  metrics(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    return this.shipmentsService.metricsForSeller(user.id, windowSince(query));
   }
 
   @ApiOperation({

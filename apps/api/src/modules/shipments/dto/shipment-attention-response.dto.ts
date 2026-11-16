@@ -20,4 +20,12 @@ export class ShipmentAttentionResponseDto {
 
   @ApiProperty({ type: ShipmentAttentionCountsDto })
   counts: ShipmentAttentionCountsDto;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description: 'dueAt of the most overdue late shipment; null when none',
+  })
+  oldestLateDueAt: Date | null;
 }
