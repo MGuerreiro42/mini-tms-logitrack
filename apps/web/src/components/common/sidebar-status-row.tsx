@@ -67,3 +67,13 @@ export function ConnectionStatusRow() {
     />
   );
 }
+
+// The connection line first, then the feature lines a layout composes in.
+export function SidebarFooter({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="mt-auto flex flex-col gap-0.5 pt-3 shadow-[0_-1px_0_var(--nav-line)]">
+      <ConnectionStatusRow />
+      {children}
+    </div>
+  );
+}

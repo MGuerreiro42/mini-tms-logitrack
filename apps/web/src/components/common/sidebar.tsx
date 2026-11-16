@@ -43,7 +43,7 @@ function NavTreeWithSearch({ nav }: { nav: NavSection[] }) {
   return <NavTree nav={nav} search={useSearchParams()} />;
 }
 
-export function NavTree({
+function NavTree({
   nav,
   search,
 }: {

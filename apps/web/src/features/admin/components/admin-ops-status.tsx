@@ -3,15 +3,9 @@
 import { SidebarStatusRow } from '@/components/common/sidebar-status-row';
 import { ChaosStatusRow } from '@/features/demo/components/chaos-status-row';
 import { usePulse } from '../hooks/use-pulse';
-import { UNAVAILABLE } from './pulse-strip';
+import { UNAVAILABLE, webhooksText } from './pulse-strip';
 
-function webhooksText(webhooks: { n: number; successRate: number | null }) {
-  return webhooks.successRate === null
-    ? 'no deliveries'
-    : `${webhooks.successRate.toFixed(1)}% · n ${webhooks.n}`;
-}
-
-// Reads the pulse the admin Overview already polls; no request of its own.
+// The admin Overview's pulse query: on other admin pages this footer is what keeps its 5 s poll running.
 export function AdminOpsStatus() {
   const { data } = usePulse();
   const unavailable = UNAVAILABLE.toLowerCase();
@@ -25,7 +19,7 @@ export function AdminOpsStatus() {
           />
           <SidebarStatusRow
             tone="neutral"
-            label={`Webhooks · ${data.webhooks ? webhooksText(data.webhooks) : unavailable}`}
+            label={`Webhooks · ${data.webhooks ? webhooksText(data.webhooks, `n ${data.webhooks.n}`) : unavailable}`}
             href="/admin/monitoring"
           />
         </>
