@@ -12,7 +12,12 @@ import {
   VEHICLE_POSITION_REPORTED,
   type VehiclePositionReportedEvent,
 } from '../shipments/shipment-events';
+import {
+  DEMO_CHAOS_CHANGED,
+  type DemoChaosChangedEvent,
+} from '../simulator/chaos-events';
 import { DEMO_RESET } from '../simulator/demo-events';
+import { toChaosStatusDto } from '../simulator/dto/demo-status.dto';
 import { PublicTrackingGateway } from './public-tracking.gateway';
 import { TrackingGateway } from './tracking.gateway';
 import {
@@ -102,5 +107,14 @@ export class TrackingListener {
   handleDemoReset(): void {
     this.gateway.server.emit('demo:reset');
     this.publicGateway.server.emit('demo:reset');
+  }
+
+  // Signed-in clients only: public tracking shows no banner (spec 08, Out of Scope).
+  @OnEvent(DEMO_CHAOS_CHANGED)
+  handleDemoChaos({ run, active }: DemoChaosChangedEvent): void {
+    this.gateway.server.emit(
+      'demo:chaos',
+      active ? toChaosStatusDto(run) : null,
+    );
   }
 }

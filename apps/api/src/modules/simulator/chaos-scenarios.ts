@@ -20,3 +20,7 @@ export const CHAOS_SCENARIOS = [
 
 export type ChaosScenario = (typeof CHAOS_SCENARIOS)[number];
 export type ChaosScenarioId = ChaosScenario['id'];
+
+export const CHAOS_SCENARIO_IDS = CHAOS_SCENARIOS.map(({ id }) => id);
+export const CHAOS_DURATIONS_SEC = [60, 180, 300] as const;
+export const DEFAULT_CHAOS_DURATION_SEC = 180;
