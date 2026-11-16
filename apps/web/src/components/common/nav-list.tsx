@@ -2,124 +2,79 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  currentNav,
+  type NavSection,
+  navLinks,
+} from '@/components/common/nav-tree';
+import { LiveNavTree } from '@/components/common/sidebar';
+import { SidebarFooter } from '@/components/common/sidebar-status-row';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-export interface NavItem {
-  name: string;
-  shortName?: string;
-  href: string;
-  // Other route roots this item owns, e.g. Monitoring owns /admin/shipments.
-  owns?: string[];
-}
-
-const MAX_TABS = 4;
-
-function useActiveHref(items: NavItem[]): string | undefined {
-  const pathname = usePathname();
-
-  const matches = (root: string) =>
-    pathname === root || pathname.startsWith(`${root}/`);
-  // Longest match wins, otherwise the section root (/seller) is active on every nested route.
-  return items
-    .flatMap((item) =>
-      [item.href, ...(item.owns ?? [])]
-        .filter(matches)
-        .map((root) => ({ href: item.href, length: root.length })),
-    )
-    .sort((a, b) => b.length - a.length)[0]?.href;
-}
-
+// Below 1024 px: the tab items plus More, a bottom sheet holding the whole sidebar.
 export function NavList({
-  items,
-  variant = 'bar',
+  nav,
+  footer,
   className,
 }: {
-  items: NavItem[];
-  variant?: 'bar' | 'tabs';
+  nav: NavSection[];
+  footer?: React.ReactNode;
   className?: string;
 }) {
-  const activeHref = useActiveHref(items);
-
-  if (variant === 'tabs') {
-    const overflows = items.length > MAX_TABS;
-    const tabs = overflows ? items.slice(0, MAX_TABS - 1) : items;
-    const more = overflows ? items.slice(MAX_TABS - 1) : [];
-    const moreActive = more.some((item) => item.href === activeHref);
-
-    return (
-      <nav
-        aria-label="Main"
-        className={cn(
-          'grid auto-cols-fr grid-flow-col bg-nav px-safe-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
-          className,
-        )}
-      >
-        {tabs.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={item.href === activeHref ? 'page' : undefined}
-            className={tabClassName(item.href === activeHref)}
-          >
-            <TabMarker active={item.href === activeHref} />
-            <span className="max-w-full truncate">
-              {item.shortName ?? item.name}
-            </span>
-          </Link>
-        ))}
-        {more.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-current={moreActive ? true : undefined}
-              className={tabClassName(moreActive)}
-            >
-              <TabMarker active={moreActive} />
-              More
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-56">
-              {more.map((item) => (
-                <DropdownMenuItem key={item.href} asChild className="min-h-11">
-                  <Link
-                    href={item.href}
-                    aria-current={item.href === activeHref ? 'page' : undefined}
-                  >
-                    {item.name}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </nav>
-    );
-  }
+  const [open, setOpen] = useState(false);
+  const active = currentNav(nav, usePathname(), null).link;
+  const tabs = navLinks(nav).filter((link) => link.tab);
+  const moreActive = active !== undefined && !active.tab;
 
   return (
-    <nav aria-label="Main" className={cn('flex items-center gap-1', className)}>
-      {items.map((item) => {
-        const active = item.href === activeHref;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'inline-flex h-9 items-center rounded-sm px-3 text-sm whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-              active
-                ? 'bg-muted font-semibold text-foreground'
-                : 'font-medium text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {item.name}
-          </Link>
-        );
-      })}
+    <nav
+      aria-label="Main"
+      className={cn(
+        'grid auto-cols-fr grid-flow-col bg-nav px-safe-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
+        className,
+      )}
+    >
+      {tabs.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          aria-current={item === active ? 'page' : undefined}
+          className={tabClassName(item === active)}
+        >
+          <TabMarker active={item === active} />
+          <span className="max-w-full truncate">
+            {item.shortName ?? item.name}
+          </span>
+        </Link>
+      ))}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger
+          aria-current={moreActive ? true : undefined}
+          className={tabClassName(moreActive)}
+        >
+          <TabMarker active={moreActive} />
+          More
+        </DialogTrigger>
+        <DialogContent
+          aria-describedby={undefined}
+          // Any link inside navigates, so the sheet closes with it.
+          onClickCapture={(event) => {
+            if ((event.target as Element).closest('a')) setOpen(false);
+          }}
+          className="top-auto bottom-0 left-0 max-h-[85dvh] max-w-none translate-x-0 translate-y-0 gap-5 rounded-b-none px-4 pt-6 pb-[max(--spacing(4),env(safe-area-inset-bottom))] sm:max-w-none [&_a]:min-h-11 [&_button]:min-h-11 [&_button]:min-w-11"
+        >
+          <DialogTitle>Navigation</DialogTitle>
+          <LiveNavTree nav={nav} />
+          <SidebarFooter>{footer}</SidebarFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }
