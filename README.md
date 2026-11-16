@@ -17,18 +17,18 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 **Sellers**
 - Create shipments in three steps: destination and modality, a carrier that covers it, review
 - Home focused on what needs attention: failed deliveries and shipments past their SLA, plus a live activity feed
-- Shipment list with status filters, SLA column and comfortable/compact density; cancel before pickup
+- Shipment list with views and counts (Active, Exceptions, …), search, one risk phrase per row, a peek sheet and bulk copy/cancel ([spec](./specs/06-tables-and-search.md))
 - Integrations: signed webhooks with retries, a live test inbox and delivery log with replay, and API keys for the public API
 
 **Carriers**
-- Shared queue: operators claim shipments and move them step by step, with notes for the seller
+- Shared queue with Mine/Unclaimed/On the road views sorted by urgency, owners by name and Claim next; operators move shipments step by step, with notes for the seller
 - Failed delivery and return flows behind confirmation
 - Performance: status distribution, time per stage, operator ranking
 - Own coverage areas (whole states or specific cities) and modalities
 
 **Admins**
 - Approve or reject seller and carrier sign-ups
-- Platform-wide monitoring, filterable by status, seller and carrier, updated live
+- Platform-wide monitoring with views per status, search and a peek, filterable by seller and carrier, updated live; overview tiles open the matching list
 
 **Everyone**
 - Public tracking page per shipment, live over WebSocket
