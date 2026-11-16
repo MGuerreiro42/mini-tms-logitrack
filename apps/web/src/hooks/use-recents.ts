@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect, useSyncExternalStore } from 'react';
+import { createStorageStore } from '@/hooks/storage-store';
 import { useSession } from '@/hooks/use-session';
 import { getSessionFromDocument } from '@/lib/session';
 
@@ -12,7 +13,7 @@ export interface Recent {
 
 const MAX_RECENTS = 5;
 const EMPTY: Recent[] = [];
-const listeners = new Set<() => void>();
+const store = createStorageStore();
 // Storage throws when blocked; the list then lasts for the session only.
 const unsaved = new Map<string, Recent[]>();
 // useSyncExternalStore needs the same array while the stored text is unchanged.
@@ -20,13 +21,16 @@ let parsed: { raw: string; recents: Recent[] } | undefined;
 
 const keyFor = (userId: string) => `tms:recents:${userId}`;
 
-const isRecent = (value: unknown): value is Recent =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as Recent).code === 'string' &&
-  typeof (value as Recent).href === 'string' &&
-  (value as Recent).href.startsWith('/') &&
-  !(value as Recent).href.startsWith('//');
+// Storage is editable, so only same-origin links pass ("/\evil.com" is another host).
+function isRecent(value: unknown): value is Recent {
+  const { href, code } = (value ?? {}) as Partial<Recent>;
+  if (typeof code !== 'string' || typeof href !== 'string') return false;
+  try {
+    return new URL(href, location.origin).origin === location.origin;
+  } catch {
+    return false;
+  }
+}
 
 function read(key: string): Recent[] {
   let raw: string | null;
@@ -49,15 +53,6 @@ function read(key: string): Recent[] {
   return parsed.recents;
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  window.addEventListener('storage', listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener('storage', listener);
-  };
-}
-
 export function rememberRecent(entry: Recent) {
   const userId = getSessionFromDocument()?.userId;
   if (!userId) return;
@@ -70,13 +65,13 @@ export function rememberRecent(entry: Recent) {
   try {
     localStorage.setItem(key, JSON.stringify(recents));
   } catch {}
-  for (const listener of listeners) listener();
+  store.notify();
 }
 
 export function useRecents(): Recent[] {
   const userId = useSession()?.userId;
   return useSyncExternalStore(
-    subscribe,
+    store.subscribe,
     () => (userId ? read(keyFor(userId)) : EMPTY),
     () => EMPTY,
   );
