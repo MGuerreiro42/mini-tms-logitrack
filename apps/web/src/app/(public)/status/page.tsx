@@ -8,6 +8,7 @@ import { getMySeller } from '@/features/sellers/api';
 import { ROUTES } from '@/lib/routes';
 import { getServerSession, withAuthRedirects } from '@/lib/server-session';
 import { isCarrierRole, ROLE_HOME } from '@/lib/session';
+import type { ApprovalStatus } from '@/types/status';
 
 const MESSAGES = {
   PENDING: {
@@ -33,7 +34,7 @@ export default async function StatusPage() {
     );
   }
 
-  const { status } = await withAuthRedirects(
+  const { status } = await withAuthRedirects<{ status: ApprovalStatus }>(
     isCarrierRole(session.role)
       ? getMyCarrier(session.token)
       : getMySeller(session.token),

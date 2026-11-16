@@ -1,13 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CarrierListStatsDto } from '../../shipments/metrics/list-stats.dto';
 
 export class CarrierResponseDto {
   @ApiProperty()
   id: string;
 
   @ApiProperty({
-    description: "The manager's email (User.email via CarrierUser)",
+    type: String,
+    nullable: true,
+    description:
+      "The manager's email (User.email via CarrierUser); null without a manager",
   })
-  email: string;
+  email: string | null;
 
   @ApiProperty()
   companyName: string;
@@ -25,4 +29,10 @@ export class CarrierResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiPropertyOptional({
+    type: CarrierListStatsDto,
+    description: 'Only with include=stats: the last 30 days',
+  })
+  stats?: CarrierListStatsDto;
 }

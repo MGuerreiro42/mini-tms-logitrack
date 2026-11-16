@@ -9,6 +9,7 @@ const at = (hours: number) => new Date(since.getTime() + hours * HOUR);
 const row = (overrides: Partial<MetricRow> = {}): MetricRow => ({
   createdAt: at(0),
   carrierId: 'carrier-1',
+  sellerId: 'seller-1',
   ownerId: null,
   status: ShipmentStatus.DELIVERED,
   dueAt: at(24),

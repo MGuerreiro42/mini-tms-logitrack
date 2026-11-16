@@ -1,3 +1,4 @@
+import type { ListStats } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type { ApprovalStatus, ApprovalStatusCounts } from '@/types/status';
 
@@ -10,6 +11,7 @@ export interface Seller {
   document: string;
   status: ApprovalStatus;
   createdAt: string;
+  stats?: ListStats;
 }
 
 export interface SellerSignupInput {
@@ -21,4 +23,5 @@ export interface SellerSignupInput {
 
 export interface ListSellersQuery extends PaginationQuery {
   status?: ApprovalStatus;
+  include?: 'stats';
 }

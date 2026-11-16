@@ -157,13 +157,18 @@ export class CarriersController {
 
   @ApiOperation({
     summary:
-      'List carriers, optionally filtered by status — paginated (default 20/page, max 100)',
+      'List carriers, optionally filtered by status, with include=stats for 30-day delivery stats per row — paginated (default 20/page, max 100)',
   })
   @ApiPaginatedResponse(CarrierResponseDto)
   @Auth(GlobalRole.ADMIN)
   @Get()
   findAll(@Query() query: ListCarriersQueryDto) {
-    return this.carriersService.findAll(query.status, query.page, query.limit);
+    return this.carriersService.findAll(
+      query.status,
+      query.page,
+      query.limit,
+      query.include === 'stats',
+    );
   }
 
   @ApiOperation({

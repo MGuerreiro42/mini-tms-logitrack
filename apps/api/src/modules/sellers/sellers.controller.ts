@@ -85,13 +85,18 @@ export class SellersController {
 
   @ApiOperation({
     summary:
-      'List sellers, optionally filtered by status — paginated (default 20/page, max 100)',
+      'List sellers, optionally filtered by status, with include=stats for 30-day delivery stats per row — paginated (default 20/page, max 100)',
   })
   @ApiPaginatedResponse(SellerResponseDto)
   @Auth(GlobalRole.ADMIN)
   @Get()
   findAll(@Query() query: ListSellersQueryDto) {
-    return this.sellersService.findAll(query.status, query.page, query.limit);
+    return this.sellersService.findAll(
+      query.status,
+      query.page,
+      query.limit,
+      query.include === 'stats',
+    );
   }
 
   @ApiOperation({

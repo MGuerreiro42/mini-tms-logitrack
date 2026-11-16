@@ -1,4 +1,4 @@
-import type { ClaimMetric, OnTimeTrend, Rate } from '@/lib/metrics';
+import type { ClaimMetric, ListStats, OnTimeTrend, Rate } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ApprovalStatus,
@@ -10,12 +10,14 @@ export type { ApprovalStatusCounts };
 
 export interface Carrier {
   id: string;
-  email: string;
+  // Null for a carrier whose manager account is gone.
+  email: string | null;
   companyName: string;
   document: string;
   status: ApprovalStatus;
   userCount: number;
   createdAt: string;
+  stats?: ListStats & { failed: { rate: number | null; n: number } };
 }
 
 export interface CarrierSignupInput {
@@ -27,6 +29,7 @@ export interface CarrierSignupInput {
 
 export interface ListCarriersQuery extends PaginationQuery {
   status?: ApprovalStatus;
+  include?: 'stats';
 }
 
 export interface CoverageArea {

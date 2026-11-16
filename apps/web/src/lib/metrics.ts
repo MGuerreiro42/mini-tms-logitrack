@@ -31,3 +31,9 @@ export function trendDirection(values: (number | null)[]): string {
 
 export const notEnoughNote = (n: number, noun: 'deliveries' | 'data') =>
   `Not enough ${noun} (n=${n})`;
+
+// The admin lists' 30-day scorecard per tenant (spec 07 FR-033).
+export interface ListStats {
+  shipments: number;
+  onTime: Rate;
+}

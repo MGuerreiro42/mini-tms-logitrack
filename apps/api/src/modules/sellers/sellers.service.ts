@@ -16,6 +16,7 @@ import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import { countByStatus } from '../../shared/stats/stats';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
+import { listStatsByTenant } from '../shipments/metrics/list-stats';
 import type { CreateSellerDto } from './dto/create-seller.dto';
 import type { SellerResponseDto } from './dto/seller-response.dto';
 import type { SellerStatusCountsResponseDto } from './dto/status-counts-response.dto';
@@ -81,6 +82,7 @@ export class SellersService {
     status?: ApprovalStatus,
     page = 1,
     limit = 20,
+    withStats = false,
   ): Promise<PaginatedResult<SellerResponseDto>> {
     const where = status ? { status } : undefined;
     const [sellers, total] = await Promise.all([
@@ -94,8 +96,25 @@ export class SellersService {
       this.prisma.seller.count({ where }),
     ]);
 
+    const stats = withStats
+      ? await listStatsByTenant(
+          this.prisma,
+          'sellerId',
+          sellers.map((seller) => seller.id),
+        )
+      : undefined;
+
     return paginate(
-      sellers.map((seller) => this.toResponseDto(seller)),
+      sellers.map((seller) => {
+        // Failed is a carrier column; a seller's row keeps shipments and on time.
+        const row = stats?.get(seller.id);
+        return {
+          ...this.toResponseDto(seller),
+          ...(row && {
+            stats: { shipments: row.shipments, onTime: row.onTime },
+          }),
+        };
+      }),
       total,
       page,
       limit,

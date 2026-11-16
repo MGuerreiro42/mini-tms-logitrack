@@ -1,9 +1,11 @@
 'use client';
 
+import { RateCell } from '@/components/common/rate-cell';
 import type { StatusFilter } from '@/components/common/view-tabs';
 import {
   APPROVAL_FILTER_VALUES,
   CompanyApprovalTable,
+  statsColumns,
 } from '@/features/companies/components/company-approval-table';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { plural } from '@/lib/plural';
@@ -21,7 +23,7 @@ export function CarriersTable() {
 
   return (
     <CompanyApprovalTable<Carrier>
-      query={useCarriersList(params)}
+      query={useCarriersList({ ...params, include: 'stats' })}
       counts={useCarrierStatusCounts().data}
       status={filters.status}
       onStatusChange={(status) => setFilter('status', status)}
@@ -35,6 +37,12 @@ export function CarriersTable() {
           card: 'meta',
           className: 'text-muted-foreground',
           cell: (c) => plural(c.userCount, 'user'),
+        },
+        ...statsColumns<Carrier>(),
+        {
+          header: 'Failed',
+          className: 'text-right tabular-nums',
+          cell: (c) => c.stats && <RateCell {...c.stats.failed} />,
         },
       ]}
     />

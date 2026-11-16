@@ -4,6 +4,7 @@ import type { StatusFilter } from '@/components/common/view-tabs';
 import {
   APPROVAL_FILTER_VALUES,
   CompanyApprovalTable,
+  statsColumns,
 } from '@/features/companies/components/company-approval-table';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import type { ApprovalStatus } from '@/types/status';
@@ -20,7 +21,7 @@ export function SellersTable() {
 
   return (
     <CompanyApprovalTable<Seller>
-      query={useSellersList(params)}
+      query={useSellersList({ ...params, include: 'stats' })}
       counts={useSellerStatusCounts().data}
       status={filters.status}
       onStatusChange={(status) => setFilter('status', status)}
@@ -28,6 +29,7 @@ export function SellersTable() {
       onPageChange={setPage}
       hrefFor={(seller) => `/admin/sellers/${seller.id}`}
       noun="seller"
+      extraColumns={statsColumns()}
     />
   );
 }
