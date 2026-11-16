@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Breadcrumb } from '@/components/common/breadcrumb';
 import { DetailRow } from '@/components/common/detail-row';
 import { PageHeader } from '@/components/common/page-header';
@@ -71,18 +71,31 @@ export function TenantHeader({
   back,
   description,
   action,
+  focusTitle = false,
 }: {
   company: Company;
   back: { href: string; label: string };
   description: ReactNode;
   action?: ReactNode;
+  // After a decision swaps the page, focus lands on the new title instead of the lost button.
+  focusTitle?: boolean;
 }) {
+  const titleRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (focusTitle) titleRef.current?.focus();
+  }, [focusTitle]);
+
   return (
     <div className="flex flex-col gap-3">
       <Breadcrumb parent={back}>{company.companyName}</Breadcrumb>
       <PageHeader
         title={
-          <span className="flex flex-wrap items-center gap-3.5">
+          <span
+            ref={titleRef}
+            tabIndex={-1}
+            className="flex flex-wrap items-center gap-3.5 outline-none"
+          >
             {company.companyName}
             <ApprovalStatusBadge status={company.status} />
           </span>

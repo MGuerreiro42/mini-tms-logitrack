@@ -24,6 +24,19 @@ export function useAdminShipments(
   });
 }
 
+const RECENT_LIMIT = 10;
+
+// A tenant page's newest shipments; the total, over all time, says whether it has any.
+export function useRecentShipments(
+  scope: { sellerId: string } | { carrierId: string },
+  liveStatus: LiveStatus,
+) {
+  return useAdminShipments(
+    { ...scope, page: 1, limit: RECENT_LIMIT },
+    liveStatus,
+  );
+}
+
 export function useAdminShipment(id: string, liveStatus: LiveStatus) {
   return useLiveQuery({
     queryKey: shipmentKeys.adminDetail(id),

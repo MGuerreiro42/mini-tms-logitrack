@@ -5,6 +5,7 @@ export const sellerKeys = {
   list: (query: ListSellersQuery) =>
     [...sellerKeys.all, 'list', query] as const,
   detail: (id: string) => [...sellerKeys.all, 'detail', id] as const,
+  modalities: (id: string) => [...sellerKeys.detail(id), 'modalities'] as const,
   statusCounts: () => [...sellerKeys.all, 'status-counts'] as const,
   me: () => [...sellerKeys.all, 'me'] as const,
   myModalities: () => [...sellerKeys.me(), 'modalities'] as const,
