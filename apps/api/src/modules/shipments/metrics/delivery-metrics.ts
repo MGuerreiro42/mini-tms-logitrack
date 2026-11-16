@@ -8,6 +8,7 @@ import {
 // One shipment created in the window, with what its history tells (see metric-rows.ts).
 export interface MetricRow {
   createdAt: Date;
+  ownerId: string | null;
   status: ShipmentStatus;
   dueAt: Date | null;
   deliveredAt: Date | null;

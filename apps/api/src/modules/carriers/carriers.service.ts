@@ -18,12 +18,13 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
-import { countByStatus, createdSince } from '../../shared/stats/stats';
+import { countByStatus, createdSince, groupBy } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
-import { deliveryMetrics } from '../shipments/metrics/delivery-metrics';
+import { deliveryMetrics, onTime } from '../shipments/metrics/delivery-metrics';
 import { loadMetricRows } from '../shipments/metrics/metric-rows';
+import { OPEN_STATUSES } from '../shipments/shipment-views';
 import type { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
 import type { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
@@ -182,62 +183,62 @@ export class CarriersService {
   }
 
   async operatorRanking(
-    userId: string,
-    since?: Date,
+    carrierId: string,
+    since: Date,
   ): Promise<OperatorRankingItemResponseDto[]> {
-    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
+    const [carrierUsers, rows, openGroups] = await Promise.all([
+      this.prisma.carrierUser.findMany({
+        where: { carrierId },
+        select: {
+          id: true,
+          role: true,
+          user: { select: { name: true, email: true } },
+        },
+      }),
+      loadMetricRows(
+        this.prisma,
+        { carrierId, ownerId: { not: null }, ...createdSince(since) },
+        { events: false },
+      ),
+      this.prisma.shipment.groupBy({
+        by: ['ownerId'],
+        where: { carrierId, status: { in: OPEN_STATUSES } },
+        _count: true,
+      }),
+    ]);
+    // Owners stand for claimers: claiming sets the owner and nothing reassigns it yet.
+    const owned = groupBy(rows, (row) => row.ownerId);
+    const active = new Map(openGroups.map((g) => [g.ownerId, g._count]));
 
-    const groups = await this.prisma.shipment.groupBy({
-      by: ['ownerId', 'status'],
-      where: {
-        carrierId,
-        ownerId: { not: null },
-        status: { not: ShipmentStatus.CANCELLED },
-        ...createdSince(since),
-      },
-      _count: true,
-    });
-
-    const statsByOwnerId = new Map<
-      string,
-      { totalOwned: number; delivered: number }
-    >();
-    for (const group of groups) {
-      if (!group.ownerId) continue;
-      const stats = statsByOwnerId.get(group.ownerId) ?? {
-        totalOwned: 0,
-        delivered: 0,
-      };
-      stats.totalOwned += group._count;
-      if (group.status === ShipmentStatus.DELIVERED) {
-        stats.delivered += group._count;
-      }
-      statsByOwnerId.set(group.ownerId, stats);
-    }
-    if (statsByOwnerId.size === 0) {
-      return [];
-    }
-
-    const carrierUsers = await this.prisma.carrierUser.findMany({
-      where: { id: { in: [...statsByOwnerId.keys()] } },
-      select: { id: true, user: { select: { email: true } } },
-    });
-    const emailById = new Map(
-      carrierUsers.map((carrierUser) => [
-        carrierUser.id,
-        carrierUser.user.email,
-      ]),
+    return (
+      carrierUsers
+        .map(({ id, role, user }) => {
+          const mine = owned.get(id) ?? [];
+          return {
+            carrierUserId: id,
+            name: user.name,
+            email: user.email,
+            role,
+            active: active.get(id) ?? 0,
+            claimed: mine.filter(
+              (row) => row.status !== ShipmentStatus.CANCELLED,
+            ).length,
+            delivered: mine.filter(
+              (row) => row.status === ShipmentStatus.DELIVERED,
+            ).length,
+            onTime: onTime(mine),
+          };
+        })
+        // Operators first, then by active, claimed and name, so equal rows keep one order.
+        .sort(
+          (a, b) =>
+            Number(a.role === CarrierRole.MANAGER) -
+              Number(b.role === CarrierRole.MANAGER) ||
+            b.active - a.active ||
+            b.claimed - a.claimed ||
+            (a.name ?? a.email).localeCompare(b.name ?? b.email),
+        )
     );
-
-    return [...statsByOwnerId]
-      .map(([carrierUserId, stats]) => {
-        const email = emailById.get(carrierUserId);
-        if (!email) {
-          throw new Error(`Shipment owner ${carrierUserId} has no CarrierUser`);
-        }
-        return { carrierUserId, email, ...stats };
-      })
-      .sort((a, b) => b.totalOwned - a.totalOwned);
   }
 
   async getCoverageAreas(userId: string): Promise<CoverageAreaResponseDto[]> {

@@ -9,6 +9,7 @@ import { type MetricRow, STAGE_STATUSES } from './delivery-metrics';
 const SHIPMENT_SELECT = {
   id: true,
   createdAt: true,
+  ownerId: true,
   status: true,
   dueAt: true,
   deliveredAt: true,

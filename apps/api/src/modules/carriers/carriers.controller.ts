@@ -138,17 +138,20 @@ export class CarriersController {
 
   @ApiOperation({
     summary:
-      "Non-cancelled shipments owned per CarrierUser in the window, ranked — read-only for both manager and operator. Today's carriers only ever have one CarrierUser (the manager), since operator invites aren't built yet",
+      'Every CarrierUser of the carrier with active (owned, open now), claimed, delivered and on time over the shipments they own in the window — operators first, then by active; read-only for both manager and operator',
   })
   @ApiResponse({ status: 200, type: [OperatorRankingItemResponseDto] })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @Auth(...CARRIER_ROLES)
   @Get('me/operator-ranking')
-  operatorRanking(
+  async operatorRanking(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.carriersService.operatorRanking(user.id, windowSince(query));
+    const carrierId = await this.carriersService.findCarrierIdForUserOrThrow(
+      user.id,
+    );
+    return this.carriersService.operatorRanking(carrierId, windowSince(query));
   }
 
   @ApiOperation({
