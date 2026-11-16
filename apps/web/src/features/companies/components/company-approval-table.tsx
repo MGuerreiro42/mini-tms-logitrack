@@ -12,6 +12,7 @@ import {
   statusFilterValues,
 } from '@/components/common/status-filter-tabs';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
+import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
 import { plural } from '@/lib/plural';
 import { APPROVAL_STATUS } from '@/lib/status-colors';
@@ -71,7 +72,9 @@ export function CompanyApprovalTable<T extends CompanyRow>({
     {
       header: 'Tax ID',
       card: 'meta',
-      cell: (c) => <span className="font-mono text-[13px]">{c.document}</span>,
+      cell: (c) => (
+        <span className="font-mono text-[13px]">{formatTaxId(c.document)}</span>
+      ),
     },
     ...extraColumns,
     {

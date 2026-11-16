@@ -1,4 +1,5 @@
 import type { CompanyDetail } from '@/features/companies/components/company-cards';
+import { formatTaxId } from '@/lib/br-documents';
 import type { Carrier } from '../types';
 
 export function carrierDetails(
@@ -7,7 +8,7 @@ export function carrierDetails(
 ): CompanyDetail[] {
   return [
     { label: 'Manager email', value: carrier.email },
-    { label: 'Tax ID', value: carrier.document, mono: true },
+    { label: 'Tax ID', value: formatTaxId(carrier.document), mono: true },
     { label: 'Users', value: String(carrier.userCount) },
     { label: 'Created', value: formatCreated(carrier.createdAt) },
   ];

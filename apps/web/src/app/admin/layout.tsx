@@ -6,7 +6,7 @@ const ADMIN_NAV: NavItem[] = [
   { name: 'Overview', href: '/admin' },
   { name: 'Sellers', href: '/admin/sellers' },
   { name: 'Carriers', href: '/admin/carriers' },
-  { name: 'Monitoring', href: '/admin/monitoring' },
+  { name: 'Monitoring', href: '/admin/monitoring', owns: ['/admin/shipments'] },
 ];
 
 export default async function AdminLayout({

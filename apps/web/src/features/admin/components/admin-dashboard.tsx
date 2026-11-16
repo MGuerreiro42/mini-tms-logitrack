@@ -16,6 +16,7 @@ import {
   useApproveSeller,
   useRejectSeller,
 } from '@/features/sellers/hooks/use-approve-reject-seller';
+import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
 import { plural } from '@/lib/plural';
 import { HAPPY_PATH } from '@/lib/shipment-progress';
@@ -207,8 +208,9 @@ function ApplicationRow({ application }: { application: Application }) {
           <Badge variant="secondary">{kind.label}</Badge>
         </div>
         <span className="text-[13px] text-muted-foreground">
-          Tax ID <span className="font-mono">{application.document}</span> ·
-          Signed up {formatDate(application.createdAt)}
+          Tax ID{' '}
+          <span className="font-mono">{formatTaxId(application.document)}</span>{' '}
+          · Signed up {formatDate(application.createdAt)}
         </span>
       </div>
       <ApproveRejectActions

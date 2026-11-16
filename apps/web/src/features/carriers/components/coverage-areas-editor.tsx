@@ -3,16 +3,8 @@
 import { PlusIcon, XIcon } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { FormField } from '@/components/common/form-field';
+import { UfSelect } from '@/components/common/uf-select';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { BR_STATES } from '@/lib/br-states';
 import type { CoverageArea, CoverageAreaInput } from '../types';
 
 interface AreaRow {
@@ -100,30 +92,19 @@ export function CoverageAreasEditor({
                 key={field.id}
                 className="grid grid-cols-[6.5rem_minmax(0,1fr)_auto] items-start gap-3"
               >
-                <div className="space-y-1.5">
-                  <Label htmlFor={stateId}>State</Label>
-                  <Controller
-                    control={control}
-                    name={`areas.${index}.state`}
-                    render={({ field: selectField }) => (
-                      <Select
-                        value={selectField.value}
-                        onValueChange={selectField.onChange}
-                      >
-                        <SelectTrigger id={stateId} className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BR_STATES.map((uf) => (
-                            <SelectItem key={uf} value={uf}>
-                              {uf}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
+                <FormField
+                  id={stateId}
+                  label="State"
+                  control={(wiring) => (
+                    <Controller
+                      control={control}
+                      name={`areas.${index}.state`}
+                      render={({ field: select }) => (
+                        <UfSelect {...wiring} {...select} />
+                      )}
+                    />
+                  )}
+                />
                 <FormField
                   id={`area-${field.id}-city`}
                   label="City"

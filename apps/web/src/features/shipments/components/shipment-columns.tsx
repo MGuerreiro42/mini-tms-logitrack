@@ -1,5 +1,6 @@
 import type { Column } from '@/components/common/paginated-table';
 import { SlaCell } from '@/components/common/sla-cell';
+import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import { type SlaState, slaState } from '@/lib/sla';
@@ -12,18 +13,19 @@ type ShipmentRow = Pick<
 
 export type WithSla<T> = T & { sla: SlaState };
 
-export function withSla<T extends Pick<Shipment, 'dueAt' | 'status'>>(
-  rows: T[],
-  now: Date,
-): WithSla<T>[] {
-  return rows.map((row) => ({
-    ...row,
-    sla: slaState({ dueAt: row.dueAt, status: row.status, now }),
-  }));
+export function withSla<
+  T extends Pick<Shipment, 'dueAt' | 'deliveredAt' | 'status'>,
+>(rows: T[], now: Date): WithSla<T>[] {
+  return rows.map((row) => ({ ...row, sla: slaState({ ...row, now }) }));
 }
 
-export function lateRowClassName(row: { sla: SlaState }): string | undefined {
-  return row.sla.tone === 'late' ? 'bg-late-row' : undefined;
+// The tint asks for action; a delivery that arrived late is history, so only its cell says so.
+export function lateRowClassName(
+  row: WithSla<Pick<Shipment, 'status'>>,
+): string | undefined {
+  return row.sla.tone === 'late' && row.status !== 'DELIVERED'
+    ? 'bg-late-row'
+    : undefined;
 }
 
 export const slaColumn: Column<{ sla: SlaState }> = {
@@ -36,9 +38,7 @@ export const shipmentColumns = {
   trackingCode: {
     header: 'Tracking code',
     card: 'title',
-    cell: (s) => (
-      <span className="font-mono text-[13px]">{s.trackingCode}</span>
-    ),
+    cell: (s) => <TrackingCode code={s.trackingCode} className="text-[13px]" />,
   },
   status: {
     header: 'Status',

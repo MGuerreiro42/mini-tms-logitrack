@@ -12,6 +12,7 @@ const LABELS = {
 export function CarrierSignupForm() {
   return (
     <CompanySignupForm
+      taxId="cnpj"
       labels={LABELS}
       submitLabel="Create account"
       signup={useCarrierSignupMutation()}

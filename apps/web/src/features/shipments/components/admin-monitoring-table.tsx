@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { type RefObject, useEffect, useRef } from 'react';
 import {
   type FilterChoice,
@@ -24,6 +25,7 @@ import { useRecentCount } from '@/hooks/use-recent-count';
 import { ALL } from '@/lib/filters';
 import type { LiveConnection } from '@/lib/live-status';
 import { plural } from '@/lib/plural';
+import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
 import type { ShipmentStatus } from '@/types/status';
 import {
@@ -88,6 +90,7 @@ export function AdminMonitoringTable({
     live.status,
   );
   const now = useNow(SLA_REFRESH_MS);
+  const search = useSearchParams().toString();
   const total = query.data?.meta.total;
 
   return (
@@ -137,6 +140,9 @@ export function AdminMonitoringTable({
             getRowClassName={lateRowClassName}
             getRowKey={(s) => s.id}
             getRowVersion={(s) => s.status}
+            getRowHref={(s) =>
+              `${ROUTES.adminShipment(s.id)}${search && `?${search}`}`
+            }
             emptyMessage={
               isFiltered
                 ? 'No shipments match these filters.'

@@ -9,6 +9,8 @@ import {
   ROLE_HOME,
   SESSION_CHANNEL,
   type Session,
+  safeNext,
+  sessionExpiredPath,
   setSession,
 } from './session';
 
@@ -76,6 +78,40 @@ describe('segments', () => {
     expect(isCarrierRole('CARRIER_MANAGER')).toBe(true);
     expect(isCarrierRole('CARRIER_OPERATOR')).toBe(true);
     expect(isCarrierRole('SELLER')).toBe(false);
+  });
+});
+
+describe('safeNext', () => {
+  it.each([
+    ['/seller/shipments/abc?tab=events', 'SELLER'],
+    ['/carrier/queue/abc', 'CARRIER_OPERATOR'],
+    ['/admin/monitoring?status=PENDING&page=2', 'ADMIN'],
+  ] as const)('keeps %s for %s', (next, role) => {
+    expect(safeNext(next, role)).toBe(next);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['missing', undefined],
+    ['absolute URL', 'https://evil.example/seller'],
+    ['protocol-relative', '//evil.example/seller'],
+    ['backslash', '/\\evil.example/seller'],
+    ['tab-smuggled', '/\t/evil.example/seller'],
+    ['javascript:', 'javascript:alert(1)'],
+    ['relative path', 'seller/shipments'],
+    ['foreign segment', '/admin/monitoring'],
+    ['traversal into a foreign segment', '/seller/../admin'],
+    ['non-role page', '/login'],
+  ])('sends a %s value to the role home', (_, next) => {
+    expect(safeNext(next, 'SELLER')).toBe('/seller');
+  });
+});
+
+describe('sessionExpiredPath', () => {
+  it('keeps the page the user was on', () => {
+    expect(sessionExpiredPath('/seller/shipments?page=2')).toBe(
+      '/login?expired=1&next=%2Fseller%2Fshipments%3Fpage%3D2',
+    );
   });
 });
 

@@ -142,10 +142,9 @@ export function MetricBarChart<T extends object>({
           <LabelList
             dataKey={LABEL_KEY}
             position={horizontal ? 'right' : 'top'}
-            className={cn(
-              'text-xs',
-              horizontal ? 'fill-muted-foreground' : 'fill-foreground',
-            )}
+            // A fill prop, not a class: without it Recharts writes each bar's colour onto its label.
+            fill={horizontal ? 'var(--muted-foreground)' : 'var(--foreground)'}
+            className="text-xs"
           />
         </Bar>
       </BarChart>

@@ -36,10 +36,12 @@ describe('proxy', () => {
     }
   });
 
-  it('sends an anonymous visitor to the login page', () => {
-    const response = proxy(request('/seller/shipments'));
+  it('sends an anonymous visitor to the login page, remembering where to', () => {
+    const response = proxy(request('/seller/shipments?page=2'));
 
-    expect(response.headers.get('location')).toBe('http://localhost/login');
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/login?next=%2Fseller%2Fshipments%3Fpage%3D2',
+    );
   });
 
   it.each([
@@ -101,6 +103,24 @@ describe('proxy', () => {
       const response = proxy(request('/login', role));
 
       expect(response.headers.get('location')).toBe(`http://localhost${home}`);
+    },
+  );
+
+  it.each([
+    ['/carrier/queue/abc', 'CARRIER_MANAGER', '/carrier/queue/abc'],
+    ['/admin', 'SELLER', '/seller'],
+    ['https://evil.example', 'SELLER', '/seller'],
+    ['//evil.example', 'SELLER', '/seller'],
+  ] as const)(
+    'sends a signed-in visitor to next=%s as %s only if it is safe',
+    (next, role, target) => {
+      const response = proxy(
+        request(`/login?next=${encodeURIComponent(next)}`, role),
+      );
+
+      expect(response.headers.get('location')).toBe(
+        `http://localhost${target}`,
+      );
     },
   );
 

@@ -57,6 +57,8 @@ export interface PublicTracking {
   addressCity: string;
   addressState: string;
   modalityName: string;
+  sellerName: string;
+  carrierName: string;
   events: TimelineEvent[];
   map: PublicTrackingMap | null;
   lastPosition: LastPosition | null;

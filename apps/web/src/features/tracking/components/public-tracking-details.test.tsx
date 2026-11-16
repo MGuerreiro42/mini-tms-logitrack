@@ -23,6 +23,8 @@ const tracking: PublicTracking = {
   addressCity: 'São Paulo',
   addressState: 'SP',
   modalityName: 'Standard',
+  sellerName: 'Loja Demo',
+  carrierName: 'Transportadora Demo',
   events: [{ status: 'ACCEPTED', createdAt: '2026-01-01T00:00:00.000Z' }],
   map: null,
   lastPosition: null,
@@ -62,6 +64,14 @@ describe('PublicTrackingDetails', () => {
     socket = makeFakeSocket();
     vi.mocked(getPublicSocket).mockReturnValue(socket as never);
     serveTracking(tracking);
+  });
+
+  it('says who sent and who carries the parcel', () => {
+    renderWithQueryClient(<PublicTrackingDetails initialData={tracking} />);
+
+    expect(
+      screen.getByText('From Loja Demo · carried by Transportadora Demo'),
+    ).toBeInTheDocument();
   });
 
   it('subscribes to the tracking room and goes live once the server acks', async () => {

@@ -32,6 +32,31 @@ describe('TrackingTimeline', () => {
     expect(screen.getByText('Picked up from the seller')).toBeInTheDocument();
   });
 
+  it('names who acted, only when known', () => {
+    render(
+      <TrackingTimeline
+        events={[
+          {
+            status: 'ACCEPTED',
+            actorName: null,
+            createdAt: '2026-01-01T12:00:00.000Z',
+          },
+          {
+            status: 'COLLECTED',
+            actorName: 'Ana Souza',
+            createdAt: '2026-01-02T12:00:00.000Z',
+          },
+        ]}
+        status="COLLECTED"
+      />,
+    );
+
+    expect(screen.getByText('Collected').parentElement).toHaveTextContent(
+      'Collected by Ana Souza',
+    );
+    expect(screen.getByText('Accepted')).toHaveTextContent(/^Accepted$/);
+  });
+
   it('renders each timestamp as a machine-readable time element', () => {
     render(
       <TrackingTimeline

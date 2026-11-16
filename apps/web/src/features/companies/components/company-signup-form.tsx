@@ -6,17 +6,42 @@ import { z } from 'zod';
 import { FormError } from '@/components/common/form-error';
 import { FormField } from '@/components/common/form-field';
 import { Button } from '@/components/ui/button';
+import {
+  formatCnpj,
+  formatTaxId,
+  isCnpj,
+  isCpf,
+  toDigits,
+  withMask,
+} from '@/lib/br-documents';
 
-const schema = z.object({
-  companyName: z.string().min(1, 'Required'),
-  document: z.string().min(1, 'Required'),
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-});
+const TAX_IDS = {
+  cpfOrCnpj: {
+    format: formatTaxId,
+    isValid: (value: string) => isCpf(value) || isCnpj(value),
+    message: 'Enter a valid CPF or CNPJ',
+  },
+  cnpj: { format: formatCnpj, isValid: isCnpj, message: 'Enter a valid CNPJ' },
+};
 
-export type CompanySignupValues = z.infer<typeof schema>;
+type TaxIdKind = keyof typeof TAX_IDS;
+
+function schemaFor(taxId: TaxIdKind) {
+  return z.object({
+    companyName: z.string().min(1, 'Required'),
+    document: z
+      .string()
+      .min(1, 'Required')
+      .refine(TAX_IDS[taxId].isValid, TAX_IDS[taxId].message),
+    email: z.string().email('Enter a valid email'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+  });
+}
+
+export type CompanySignupValues = z.infer<ReturnType<typeof schemaFor>>;
 
 interface CompanySignupFormProps {
+  taxId: TaxIdKind;
   labels: { companyName: string; document: string; email: string };
   submitLabel: string;
   signup: {
@@ -27,6 +52,7 @@ interface CompanySignupFormProps {
 }
 
 export function CompanySignupForm({
+  taxId,
   labels,
   submitLabel,
   signup,
@@ -35,13 +61,15 @@ export function CompanySignupForm({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CompanySignupValues>({ resolver: zodResolver(schema) });
+  } = useForm<CompanySignupValues>({ resolver: zodResolver(schemaFor(taxId)) });
 
   return (
     <form
       className="space-y-4"
       noValidate
-      onSubmit={handleSubmit((values) => signup.mutate(values))}
+      onSubmit={handleSubmit((values) =>
+        signup.mutate({ ...values, document: toDigits(values.document) }),
+      )}
     >
       <FormField
         id="companyName"
@@ -52,8 +80,9 @@ export function CompanySignupForm({
       <FormField
         id="document"
         label={labels.document}
+        inputMode="numeric"
         error={errors.document?.message}
-        {...register('document')}
+        {...withMask(register('document'), TAX_IDS[taxId].format)}
       />
       <FormField
         id="email"

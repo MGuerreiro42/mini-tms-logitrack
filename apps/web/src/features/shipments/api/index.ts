@@ -2,6 +2,7 @@ import { apiClient, toQueryString } from '@/services/api-client';
 import type { Paginated } from '@/types/pagination';
 import type {
   AdminShipment,
+  AdminShipmentDetail,
   AdminShipmentResponse,
   AdminStatusCountsQuery,
   CarrierShipment,
@@ -108,6 +109,13 @@ export function listQueue(
   );
 }
 
+function toAdminShipment<T extends AdminShipmentResponse>({
+  carrierCompanyName,
+  ...row
+}: T) {
+  return { ...row, carrierName: carrierCompanyName };
+}
+
 export async function listAdminShipments(
   query: ListAdminShipmentsQuery,
   token: string,
@@ -119,11 +127,19 @@ export async function listAdminShipments(
   );
   return {
     ...page,
-    data: page.data.map(({ carrierCompanyName, ...row }) => ({
-      ...row,
-      carrierName: carrierCompanyName,
-    })),
+    data: page.data.map(toAdminShipment),
   };
+}
+
+export async function getAdminShipment(
+  id: string,
+  token: string,
+): Promise<AdminShipmentDetail> {
+  return toAdminShipment(
+    await apiClient<
+      AdminShipmentResponse & Pick<AdminShipmentDetail, 'trackingEvents'>
+    >(`/admin/shipments/${id}`, undefined, token),
+  );
 }
 
 export function getAdminShipmentStatusCounts(

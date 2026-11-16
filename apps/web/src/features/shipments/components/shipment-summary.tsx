@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Panel } from '@/components/common/panel';
+import { formatCep } from '@/lib/br-documents';
 import type { ModalityOption, ShipmentAddress } from '../types';
 
 export type SummaryAddress = Omit<ShipmentAddress, 'addressComplement'> & {
@@ -45,7 +46,9 @@ export function ShipmentSummary({
           <span className="block">
             {address.addressNeighborhood}, {address.addressCity},{' '}
             {address.addressState} ·{' '}
-            <span className="font-mono">{address.addressZipCode}</span>
+            <span className="font-mono">
+              {formatCep(address.addressZipCode)}
+            </span>
           </span>
         </SummaryRow>
         <SummaryRow label="Modality">{modalityLabel(modality)}</SummaryRow>

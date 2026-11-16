@@ -5,6 +5,11 @@ export const SESSION_COOKIE = 'tms_session';
 export const SESSION_CHANNEL = 'tms-session';
 export const SESSION_EXPIRED_PARAM = 'expired';
 export const SESSION_EXPIRED_PATH = `${ROUTES.login}?${SESSION_EXPIRED_PARAM}=1`;
+export const NEXT_PARAM = 'next';
+
+export function sessionExpiredPath(next: string): string {
+  return `${SESSION_EXPIRED_PATH}&${NEXT_PARAM}=${encodeURIComponent(next)}`;
+}
 
 export type Segment = 'admin' | 'seller' | 'carrier';
 
@@ -32,6 +37,21 @@ export function isSegment(value: string | undefined): value is Segment {
 
 export function canEnterSegment(role: GlobalRole, segment: string): boolean {
   return isSegment(segment) && SEGMENT_ROLES[segment].includes(role);
+}
+
+const SAME_ORIGIN = 'http://same-origin.invalid';
+
+// Parsed, not pattern-matched: the URL parser decides where `/\\evil` or `/<tab>/evil` really lead.
+export function safeNext(
+  value: string | null | undefined,
+  role: GlobalRole,
+): string {
+  const url = value?.startsWith('/') ? URL.parse(value, SAME_ORIGIN) : null;
+  if (url?.origin !== SAME_ORIGIN) return ROLE_HOME[role];
+  const [, segment] = url.pathname.split('/');
+  return canEnterSegment(role, segment)
+    ? `${url.pathname}${url.search}${url.hash}`
+    : ROLE_HOME[role];
 }
 
 export const FORBIDDEN_AREA_PARAM = 'area';

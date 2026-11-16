@@ -4,16 +4,18 @@ import { TextLink } from '@/components/common/text-link';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { DEMO_LOGIN_ENABLED } from '@/features/auth/lib/demo-accounts';
 import { ROUTES } from '@/lib/routes';
-import { SESSION_EXPIRED_PARAM } from '@/lib/session';
+import { NEXT_PARAM, SESSION_EXPIRED_PARAM } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Sign in · Mini TMS' };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const expired = SESSION_EXPIRED_PARAM in (await searchParams);
+  const params = await searchParams;
+  const expired = SESSION_EXPIRED_PARAM in params;
+  const next = params[NEXT_PARAM];
 
   return (
     <PublicPage
@@ -39,7 +41,10 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm showDemoAccounts={DEMO_LOGIN_ENABLED} />
+      <LoginForm
+        showDemoAccounts={DEMO_LOGIN_ENABLED}
+        next={typeof next === 'string' ? next : undefined}
+      />
     </PublicPage>
   );
 }

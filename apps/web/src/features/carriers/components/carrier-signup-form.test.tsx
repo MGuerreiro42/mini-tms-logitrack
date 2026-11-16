@@ -27,7 +27,7 @@ describe('CarrierSignupForm', () => {
       screen.getByLabelText('Carrier company name'),
       'Fast Freight',
     );
-    await user.type(screen.getByLabelText('Tax ID (CNPJ)'), '12345678000199');
+    await user.type(screen.getByLabelText('Tax ID (CNPJ)'), '11222333000181');
     await user.type(
       screen.getByLabelText('Manager email'),
       'manager@example.com',

@@ -94,6 +94,12 @@ function TimelineItem({
           >
             {isNext && <span className="sr-only">Next expected: </span>}
             {SHIPMENT_STATUS_LABEL[status]}
+            {event?.actorName && (
+              <span className="font-normal text-muted-foreground">
+                {' '}
+                by {event.actorName}
+              </span>
+            )}
           </span>
           {event ? (
             <time

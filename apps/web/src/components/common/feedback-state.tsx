@@ -1,6 +1,11 @@
 import { TriangleAlertIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+export const SERVICE_UNAVAILABLE = {
+  title: "We can't reach the Mini TMS service right now",
+  description: 'Your data is safe; try again in a moment.',
+};
+
 interface ErrorStateProps {
   title: ReactNode;
   description?: ReactNode;

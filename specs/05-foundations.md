@@ -2,7 +2,7 @@
 
 **Feature**: `foundations` — `ShipmentsModule`, `SellersModule`, `CarriersModule`, `IntegrationsModule`, `SimulatorModule` (seed) and `apps/web` (shared lib, auth, error boundaries, shipments and tracking features)
 **Created**: 2026-11-06
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §10 (data model), §11 (auth), §14 (shipments, matching normalization), §15 (tracking), §16 (dashboards, monitoring); `SCREENS.md` (Public Tracking, Shipment Detail, Global Monitoring); `FLOW.md` Frame 23; `.claude/research/ux-briefs.md` §1, §2.4, §9 step 1, §10
 
 ## Summary
@@ -211,7 +211,7 @@ Input borders are visible against cards in both themes, tracking codes never bre
 ### PR B — Web
 
 - **FR-018**: `proxy.ts` MUST add `next=<pathname+search>` when redirecting a signed-out request to login. A shared `safeNext(value, role)` MUST accept only a path starting with a single `/` (not `//`, not `/\`), whose first segment the role may enter (`canEnterSegment`), and otherwise return `ROLE_HOME[role]`. `useLoginMutation` (form and demo buttons) and the signed-in `/login` redirect in `proxy.ts` MUST use it. The client-side session-expiry redirect MUST append the current path as `next`.
-- **FR-019**: `SegmentError` and the root `error.tsx` MUST probe `GET <API_URL>/health` (5 s timeout) on mount; on network failure or `5xx` they MUST render the unavailable state ("We can't reach the Mini TMS service right now. Your data is safe; try again in a moment.") with the existing "Try again" (`unstable_retry`) button. While probing, the generic copy is not flashed (render the shared title only).
+- **FR-019**: `SegmentError` and the root `error.tsx` MUST probe `GET <API_URL>/health` (5 s timeout) on mount; on network failure or `5xx` they MUST render the unavailable state ("We can't reach the Mini TMS service right now. Your data is safe; try again in a moment.") with the existing "Try again" (`retry`, stable since Next 16.3; `unstable_retry` is no longer passed) button. While probing, the generic copy is not flashed (render the shared title only).
 - **FR-020**: `TrackingTimeline` MUST append "by <actorName>" to an event when `actorName` is present (authenticated details only; the public page has no actor).
 - **FR-021**: `slaState` MUST accept `deliveredAt` and, for `DELIVERED` shipments with a `dueAt`, return "On time" (muted) or "Late by <span>" (late tone), keeping the existing `span` formatting. Types MUST add `deliveredAt` and `actorName`.
 - **FR-022**: The address form MUST use a UF select fed by `lib/br-states.ts` and a CEP input masked `00000-000` that validates 8 digits; signup forms MUST mask and validate the tax ID (seller CPF or CNPJ, carrier CNPJ) with the same check-digit rules as FR-010, sending digits only. One `lib/br-documents.ts` MUST hold the format and check helpers used by forms and displays.
@@ -301,3 +301,5 @@ Input borders are visible against cards in both themes, tracking codes never bre
 | Date | Change |
 |------|--------|
 | 2026-11-06 | Spec created from the UX briefs (§1, §9 step 1, §10) and the PO reports; every item verified against `main`. `SCREENS.md` amended for the public sender line and failure-reason visibility |
+| 2026-11-06 | Implemented: PR A (API, FR-001–FR-017) and PR B (web, FR-018–FR-029); `DESIGN.md` §9, §10 and §14 updated (FR-030) |
+| 2026-11-09 | Review fixes: FR-019 names `retry`; one unavailable mapping (network, timeout or `5xx`) also drives client-loaded queries; `FAILED_DELIVERY` stops the SLA countdown. Judgment call: delivered-late rows are not tinted in lists (the tint asks for action), only their SLA cell reads "Late by …" |

@@ -16,13 +16,19 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm({ showDemoAccounts = false }) {
+export function LoginForm({
+  showDemoAccounts = false,
+  next,
+}: {
+  showDemoAccounts?: boolean;
+  next?: string;
+}) {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
-  const loginMutation = useLoginMutation();
+  const loginMutation = useLoginMutation(next);
 
   return (
     <form

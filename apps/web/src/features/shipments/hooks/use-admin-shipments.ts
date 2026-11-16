@@ -2,7 +2,11 @@
 
 import { useLiveQuery } from '@/hooks/use-live-query';
 import type { LiveStatus } from '@/lib/live-status';
-import { getAdminShipmentStatusCounts, listAdminShipments } from '../api';
+import {
+  getAdminShipment,
+  getAdminShipmentStatusCounts,
+  listAdminShipments,
+} from '../api';
 import { shipmentKeys } from '../api/keys';
 import type { AdminStatusCountsQuery, ListAdminShipmentsQuery } from '../types';
 
@@ -15,6 +19,14 @@ export function useAdminShipments(
     queryFn: (token) => listAdminShipments(query, token),
     liveStatus,
     keepPrevious: true,
+  });
+}
+
+export function useAdminShipment(id: string, liveStatus: LiveStatus) {
+  return useLiveQuery({
+    queryKey: shipmentKeys.adminDetail(id),
+    queryFn: (token) => getAdminShipment(id, token),
+    liveStatus,
   });
 }
 

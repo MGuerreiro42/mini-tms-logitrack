@@ -1,4 +1,5 @@
 import type { CompanyDetail } from '@/features/companies/components/company-cards';
+import { formatTaxId } from '@/lib/br-documents';
 import type { Seller } from '../types';
 
 export function sellerDetails(
@@ -7,7 +8,7 @@ export function sellerDetails(
 ): CompanyDetail[] {
   return [
     { label: 'Email', value: seller.email },
-    { label: 'Tax ID', value: seller.document, mono: true },
+    { label: 'Tax ID', value: formatTaxId(seller.document), mono: true },
     { label: 'Created', value: formatCreated(seller.createdAt) },
   ];
 }
