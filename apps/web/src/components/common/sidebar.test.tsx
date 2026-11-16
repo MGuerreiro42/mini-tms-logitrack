@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { resetNavigation, router } from '@/test/navigation';
 import type { NavSection } from './nav-tree';
-import { Sidebar } from './sidebar';
+import { SidebarNav } from './sidebar';
 
 const nav: NavSection[] = [
   {
@@ -33,10 +33,10 @@ const nav: NavSection[] = [
 
 const link = (name: string) => screen.getByRole('link', { name });
 
-describe('Sidebar', () => {
+describe('SidebarNav', () => {
   it('is the Main navigation with the primary item first', () => {
     resetNavigation('/seller');
-    render(<Sidebar nav={nav} />);
+    render(<SidebarNav nav={nav} />);
 
     const main = screen.getByRole('navigation', { name: 'Main' });
     expect(within(main).getAllByRole('link')[0]).toHaveTextContent(
@@ -47,7 +47,7 @@ describe('Sidebar', () => {
 
   it('marks the view row current, not its parent', () => {
     resetNavigation('/seller/shipments?view=late');
-    render(<Sidebar nav={nav} />);
+    render(<SidebarNav nav={nav} />);
 
     expect(link('Late')).toHaveAttribute('aria-current', 'page');
     expect(link('Late')).toHaveAttribute('href', '/seller/shipments?view=late');
@@ -57,7 +57,7 @@ describe('Sidebar', () => {
 
   it('marks the level-1 item current when no view matches', () => {
     resetNavigation('/seller/shipments');
-    render(<Sidebar nav={nav} />);
+    render(<SidebarNav nav={nav} />);
 
     expect(link('Shipments')).toHaveAttribute('aria-current', 'page');
     expect(link('Late')).not.toHaveAttribute('aria-current');
@@ -66,7 +66,7 @@ describe('Sidebar', () => {
   it('collapses a section and a view list from their disclosure buttons', async () => {
     resetNavigation('/seller');
     const user = userEvent.setup();
-    render(<Sidebar nav={nav} />);
+    render(<SidebarNav nav={nav} />);
 
     const setup = screen.getByRole('button', { name: 'Setup' });
     expect(setup).toHaveAttribute('aria-expanded', 'true');
@@ -86,7 +86,7 @@ describe('Sidebar', () => {
   it('reopens a collapsed section when navigating into it', async () => {
     resetNavigation('/seller');
     const user = userEvent.setup();
-    render(<Sidebar nav={nav} />);
+    render(<SidebarNav nav={nav} />);
 
     await user.click(screen.getByRole('button', { name: 'Setup' }));
     router.push('/seller/profile');

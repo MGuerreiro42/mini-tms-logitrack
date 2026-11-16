@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 
-// Here rather than in the client sidebar, so the server shell's skip link gets the string.
+// Here rather than in the client sidebar files, so the server shell reads the strings themselves.
 export const SIDEBAR_NAV_ID = 'sidebar-nav';
+export const SIDEBAR_COOKIE = 'tms-sidebar';
 
 export interface NavView {
   name: string;
