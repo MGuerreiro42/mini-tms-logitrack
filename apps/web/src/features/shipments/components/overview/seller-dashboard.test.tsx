@@ -1,48 +1,29 @@
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import type {
+  ShipmentActivity,
+  ShipmentStatus,
+} from '@/features/shipments/types';
 import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
 import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
-import type { Shipment, ShipmentActivity, ShipmentStatus } from '../types';
+import {
+  API_URL,
+  attention,
+  HOUR_MS,
+  sellerMetrics,
+  shipment,
+} from './overview.fixtures';
 import { SellerDashboard } from './seller-dashboard';
 
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
 }));
-
-const API_URL = 'http://localhost:3333';
-const HOUR_MS = 60 * 60 * 1000;
-
-function shipment(
-  id: string,
-  status: ShipmentStatus,
-  dueInHours: number,
-): Shipment {
-  return {
-    id,
-    trackingCode: `TMS-${id.toUpperCase()}`,
-    status,
-    dueAt: new Date(Date.now() + dueInHours * HOUR_MS).toISOString(),
-    deliveredAt: null,
-    carrierId: 'carrier-1',
-    carrierName: 'Fast Carrier',
-    modalityId: 'modality-1',
-    modalityName: 'Standard',
-    addressStreet: 'Av. Paulista',
-    addressNumber: '1000',
-    addressComplement: null,
-    addressNeighborhood: 'Bela Vista',
-    addressCity: 'Bauru',
-    addressState: 'SP',
-    addressZipCode: '01310-100',
-    createdAt: '2026-10-10T12:00:00.000Z',
-  };
-}
 
 const failed = shipment('failed', 'FAILED_DELIVERY', -6);
 const late = shipment('late', 'IN_TRANSIT', -5);
@@ -73,6 +54,11 @@ function activity(id: string, status: ShipmentStatus): ShipmentActivity {
 const collected = activity('collected', 'COLLECTED');
 const delivered = activity('delivered', 'DELIVERED');
 
+const useMetrics = (metrics = sellerMetrics()) =>
+  server.use(
+    http.get(`${API_URL}/shipments/metrics`, () => HttpResponse.json(metrics)),
+  );
+
 describe('SellerDashboard', () => {
   let metricsUrls: URL[] = [];
 
@@ -92,30 +78,12 @@ describe('SellerDashboard', () => {
       ),
       http.get(`${API_URL}/shipments/metrics`, ({ request }) => {
         metricsUrls.push(new URL(request.url));
-        return HttpResponse.json({
-          delivered: 9,
-          onTime: {
-            n: 10,
-            count: 8,
-            rate: 80,
-            trend: [100, null, 50, 80, 75, 90, 80, 70, 85, 80, 75, 80],
-          },
-          byModality: [
-            {
-              modalityCode: 'STANDARD',
-              modalityName: 'Standard',
-              n: 10,
-              count: 8,
-              rate: 80,
-            },
-          ],
-        });
+        return HttpResponse.json(sellerMetrics());
       }),
       http.get(`${API_URL}/shipments/attention`, () =>
         HttpResponse.json({
-          shipments: [failed, late],
-          counts: { failed: 1, late: 6 },
-          oldestLateDueAt: late.dueAt,
+          ...attention([late], [failed]),
+          oldestPendingAt: new Date(Date.now() - 2 * HOUR_MS).toISOString(),
         }),
       ),
       http.get(`${API_URL}/shipments/activity`, () =>
@@ -124,55 +92,77 @@ describe('SellerDashboard', () => {
     );
   });
 
-  it('shows the exceptions and KPIs', async () => {
+  it('shows the exceptions', async () => {
     renderWithQueryClient(<SellerDashboard />);
 
     const exceptions = (
       await screen.findByRole('heading', { name: 'Exceptions' })
     ).closest('[data-slot="card"]') as HTMLElement;
-    expect(within(exceptions).getByText('6 late · 1 failed')).toBeVisible();
-    expect(within(exceptions).getByText('7 exceptions')).toHaveAttribute(
-      'aria-live',
-      'polite',
-    );
+    expect(within(exceptions).getByText('1 late · 1 failed')).toBeVisible();
     const items = within(exceptions).getAllByRole('link');
-    expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent('Failed');
     expect(items[1]).toHaveTextContent(/Late \d h/);
     expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
-    expect(items[2]).toHaveTextContent('All exceptions');
-    expect(items[2]).toHaveAttribute(
-      'href',
-      '/seller/shipments?view=exceptions',
-    );
+  });
 
-    // The tone colours the value, never the note.
-    expect(screen.getAllByText('80.0%')[0].parentElement).toHaveClass(
-      'text-notice-foreground',
-    );
-    expect(screen.getByText('n=10 · target 90%')).toBeInTheDocument();
-    expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
-    expect(screen.getByText(/^oldest 5 h/)).toBeInTheDocument();
+  it('dates the window and the one it is compared with', async () => {
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(
+      await screen.findByText(/^Aug 13 – .* · compared with May 15 – Aug 12$/),
+    ).toBeVisible();
     expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('30d');
   });
 
-  it('dates the oldest late shipment even when failed ones fill the list', async () => {
-    server.use(
-      http.get(`${API_URL}/shipments/attention`, () =>
-        HttpResponse.json({
-          shipments: Array.from({ length: 5 }, (_, i) => ({
-            ...failed,
-            id: `failed-${i}`,
-          })),
-          counts: { failed: 5, late: 2 },
-          oldestLateDueAt: new Date(Date.now() - 9 * HOUR_MS).toISOString(),
-        }),
-      ),
+  it('reads each tile with its note and delta', async () => {
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText('91.3%')).toBeVisible();
+    expect(
+      screen.getByText('n=150 · ○ prev 88.1% · | 90%'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('3.2 pts', { exact: false })).toHaveTextContent(
+      '▲ 3.2 pts up from 88.1%',
+    );
+    expect(
+      await screen.findByText('1 unclaimed · oldest 2 h'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('past due · 0 to 12 h')).toBeInTheDocument();
+    expect(screen.getByText('of 180 created · per week')).toBeInTheDocument();
+    expect(screen.getByText('p90 2.8 d · SLA 3 d · n=150')).toBeInTheDocument();
+    expect(
+      screen.getByText('3 failed · 6 returned · n=159'),
+    ).toBeInTheDocument();
+  });
+
+  it('holds the comparison back while the window is immature', async () => {
+    useMetrics(
+      sellerMetrics({
+        comparison: { ...sellerMetrics().comparison, mature: false },
+      }),
     );
     renderWithQueryClient(<SellerDashboard />);
 
-    expect(await screen.findByText(/^oldest 9 h/)).toBeVisible();
-    expect(screen.queryByText('Nothing past its due time')).toBeNull();
+    expect(
+      await screen.findAllByText('Comparison once more shipments close'),
+    ).toHaveLength(2);
+    expect(screen.queryByText(/compared with/)).toBeNull();
+    expect(screen.queryByText(/prev 88.1%/)).toBeNull();
+  });
+
+  it('reads low samples as a dash with their n and draws no figure', async () => {
+    useMetrics(
+      sellerMetrics({
+        onTime: { n: 3, count: 3, rate: 100, trend: [] },
+        medianDelivery: { hours: 30, p90Hours: 40, n: 3 },
+        firstAttempt: { rate: 100, n: 3, failed: 0, returned: 0 },
+      }),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText('Not enough history (n=3)')).toBeVisible();
+    expect(screen.getAllByText('Not enough deliveries (n=3)')).toHaveLength(2);
+    expect(screen.getAllByText('—')).toHaveLength(3);
   });
 
   it('keeps the now tiles when the window metrics fail', async () => {
@@ -188,7 +178,9 @@ describe('SellerDashboard', () => {
         .length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getByRole('link', { name: 'Late now, 6. View late shipments' }),
+      await screen.findByRole('link', {
+        name: 'Late now, 1. View late shipments',
+      }),
     ).toBeVisible();
     expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
   });
@@ -202,11 +194,17 @@ describe('SellerDashboard', () => {
     expect(await href('Active now, 2. View active shipments')).toBe(
       '/seller/shipments?view=active',
     );
-    expect(await href('Late now, 6. View late shipments')).toBe(
+    expect(await href('Late now, 1. View late shipments')).toBe(
       '/seller/shipments?view=late',
     );
-    expect(await href('Delivered 7 d, 9. View delivered shipments')).toBe(
+    expect(await href('On time 7 d, 91.3%. View late deliveries')).toBe(
+      '/seller/shipments?status=DELIVERED&window=7d&sla=late',
+    );
+    expect(await href('Delivered 7 d, 150. View delivered shipments')).toBe(
       '/seller/shipments?status=DELIVERED&window=7d',
+    );
+    expect(await href('First attempt 7 d, 94.3%. View exceptions')).toBe(
+      '/seller/shipments?view=exceptions',
     );
     expect(await href('1 In transit')).toBe(
       '/seller/shipments?status=IN_TRANSIT',
