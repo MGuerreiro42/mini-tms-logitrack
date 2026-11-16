@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -183,6 +184,61 @@ export class CarriersController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.carriersService.findOne(id);
+  }
+
+  @ApiOperation({
+    summary:
+      "One carrier's delivery metrics for the window, as its manager sees them — admin only",
+  })
+  @ApiResponse({ status: 200, type: CarrierPerformanceResponseDto })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @Auth(GlobalRole.ADMIN)
+  @Get(':id/performance')
+  async performanceById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    await this.carriersService.assertExists(id);
+    return this.carriersService.performance(id, windowSince(query));
+  }
+
+  @ApiOperation({
+    summary:
+      "One carrier's team for the window, as its manager sees it — admin only",
+  })
+  @ApiResponse({ status: 200, type: [OperatorRankingItemResponseDto] })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @Auth(GlobalRole.ADMIN)
+  @Get(':id/operator-ranking')
+  async operatorRankingById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: StatsWindowQueryDto,
+  ) {
+    await this.carriersService.assertExists(id);
+    return this.carriersService.operatorRanking(id, windowSince(query));
+  }
+
+  @ApiOperation({ summary: "One carrier's coverage areas — admin only" })
+  @ApiResponse({ status: 200, type: [CoverageAreaResponseDto] })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @Auth(GlobalRole.ADMIN)
+  @Get(':id/coverage-areas')
+  async coverageAreasById(@Param('id', ParseUUIDPipe) id: string) {
+    await this.carriersService.assertExists(id);
+    return this.carriersService.listCoverageAreas(id);
+  }
+
+  @ApiOperation({
+    summary:
+      'List the modality catalog with an enabled flag for one carrier — admin only',
+  })
+  @ApiResponse({ status: 200, type: [ModalityToggleResponseDto] })
+  @ApiResponse({ status: 404, description: 'Carrier not found' })
+  @Auth(GlobalRole.ADMIN)
+  @Get(':id/modalities')
+  async modalitiesById(@Param('id', ParseUUIDPipe) id: string) {
+    await this.carriersService.assertExists(id);
+    return this.carriersService.buildModalityToggles(id);
   }
 
   @ApiOperation({ summary: 'Approve a pending carrier' })

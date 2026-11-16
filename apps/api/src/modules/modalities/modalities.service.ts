@@ -38,6 +38,7 @@ export class ModalitiesService {
       id: modality.id,
       code: modality.code,
       name: modality.name,
+      slaHours: modality.slaHours,
       enabled: enabledIds.has(modality.id),
     }));
   }

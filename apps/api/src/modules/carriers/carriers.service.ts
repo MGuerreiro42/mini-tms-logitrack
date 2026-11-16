@@ -268,7 +268,7 @@ export class CarriersService {
     return this.listCoverageAreas(carrierId);
   }
 
-  private async listCoverageAreas(
+  async listCoverageAreas(
     carrierId: string,
   ): Promise<CoverageAreaResponseDto[]> {
     const areas = await this.prisma.carrierCoverageArea.findMany({
@@ -282,7 +282,7 @@ export class CarriersService {
     }));
   }
 
-  private async buildModalityToggles(
+  async buildModalityToggles(
     carrierId: string,
   ): Promise<ModalityToggleResponseDto[]> {
     const enabled = await this.prisma.carrierModality.findMany({
@@ -326,6 +326,11 @@ export class CarriersService {
       () => this.findCarrierOrThrow(id),
     );
     return this.toResponseDto(carrier);
+  }
+
+  // The admin's by-id reads: 404 first, then the same methods the carrier's me/* routes use.
+  async assertExists(id: string): Promise<void> {
+    await this.findCarrierOrThrow(id);
   }
 
   private async findCarrierOrThrow(id: string): Promise<CarrierWithManager> {

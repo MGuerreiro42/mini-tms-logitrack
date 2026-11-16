@@ -71,7 +71,7 @@ describe('ModalitiesService', () => {
   });
 
   describe('findToggles', () => {
-    it('flags each catalog modality as enabled or not, ordered by code', async () => {
+    it('flags each catalog modality as enabled or not with its SLA, ordered by code', async () => {
       findMany.mockResolvedValue([
         { id: 'modality-2', code: 'EXPRESS', name: 'Express', slaHours: 24 },
         { id: 'modality-1', code: 'STANDARD', name: 'Standard', slaHours: 48 },
@@ -81,8 +81,20 @@ describe('ModalitiesService', () => {
 
       expect(findMany).toHaveBeenCalledWith({ orderBy: { code: 'asc' } });
       expect(result).toEqual([
-        { id: 'modality-2', code: 'EXPRESS', name: 'Express', enabled: false },
-        { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
+        {
+          id: 'modality-2',
+          code: 'EXPRESS',
+          name: 'Express',
+          slaHours: 24,
+          enabled: false,
+        },
+        {
+          id: 'modality-1',
+          code: 'STANDARD',
+          name: 'Standard',
+          slaHours: 48,
+          enabled: true,
+        },
       ]);
     });
   });
