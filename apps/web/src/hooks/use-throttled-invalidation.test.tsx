@@ -30,10 +30,10 @@ describe('useThrottledInvalidation', () => {
     vi.advanceTimersByTime(1000);
     expect(invalidate).toHaveBeenCalledTimes(2);
 
-    result.current();
+    // Inside the wait that the trailing refetch opened: only queued, then dropped.
     result.current();
     unmount();
     vi.advanceTimersByTime(1000);
-    expect(invalidate).toHaveBeenCalledTimes(3);
+    expect(invalidate).toHaveBeenCalledTimes(2);
   });
 });
