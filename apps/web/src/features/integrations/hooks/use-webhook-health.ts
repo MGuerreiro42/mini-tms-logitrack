@@ -1,14 +1,14 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useSession } from '@/hooks/use-session';
 import { useSocketSubscription } from '@/hooks/use-socket-subscription';
-import { throttle } from '@/lib/throttle';
+import { useThrottledInvalidation } from '@/hooks/use-throttled-invalidation';
 import { getSocket } from '@/services/websocket-client';
 import { getWebhookHealth } from '../api';
 import { integrationKeys } from '../api/keys';
+import { SELLER_ROOM } from './use-webhook-live';
 
 // A 24 h rate moves slowly: one refetch per 10 s however busy the deliveries, and a 60 s
 // poll for when the socket is down.
@@ -17,21 +17,15 @@ const POLL_MS = 60_000;
 
 export function useWebhookHealth() {
   const { token, enabled } = useAuthToken();
-  const queryClient = useQueryClient();
-  const [refresh] = useState(() =>
-    throttle(
-      () =>
-        queryClient.invalidateQueries({ queryKey: integrationKeys.health() }),
-      REFRESH_THROTTLE_MS,
-    ),
+  const refresh = useThrottledInvalidation(
+    integrationKeys.health(),
+    REFRESH_THROTTLE_MS,
   );
-
-  useEffect(() => refresh.cancel, [refresh]);
 
   useSocketSubscription({
     getSocket,
     connectionKey: useSession()?.token,
-    subscriptions: [{ event: 'subscribe:seller' }],
+    subscriptions: SELLER_ROOM,
     updateEvent: 'webhook:delivery',
     onUpdate: refresh,
   });

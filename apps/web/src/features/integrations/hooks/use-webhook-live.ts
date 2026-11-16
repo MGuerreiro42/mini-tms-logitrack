@@ -1,14 +1,14 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSession } from '@/hooks/use-session';
 import {
   type SocketSubscription,
   useSocketSubscription,
 } from '@/hooks/use-socket-subscription';
+import { useThrottledInvalidation } from '@/hooks/use-throttled-invalidation';
 import type { LiveConnection, LiveStatus } from '@/lib/live-status';
-import { throttle } from '@/lib/throttle';
 import { getSocket } from '@/services/websocket-client';
 import type { Paginated } from '@/types/pagination';
 import { integrationKeys } from '../api/keys';
@@ -20,7 +20,9 @@ import type {
 
 const INBOX_LIMIT = 50;
 const REFRESH_THROTTLE_MS = 300;
-const SELLER_ROOM: SocketSubscription[] = [{ event: 'subscribe:seller' }];
+export const SELLER_ROOM: SocketSubscription[] = [
+  { event: 'subscribe:seller' },
+];
 
 function bothLive(a: LiveStatus, b: LiveStatus): LiveStatus {
   if (a === 'live' && b === 'live') return 'live';
@@ -30,18 +32,11 @@ function bothLive(a: LiveStatus, b: LiveStatus): LiveStatus {
 export function useWebhookLive(): LiveConnection {
   const queryClient = useQueryClient();
   const connectionKey = useSession()?.token;
-  const [refreshDeliveries] = useState(() =>
-    throttle(
-      () =>
-        queryClient.invalidateQueries({
-          queryKey: integrationKeys.deliveries(),
-        }),
-      REFRESH_THROTTLE_MS,
-    ),
+  const refreshDeliveries = useThrottledInvalidation(
+    integrationKeys.deliveries(),
+    REFRESH_THROTTLE_MS,
   );
   const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
-
-  useEffect(() => refreshDeliveries.cancel, [refreshDeliveries]);
 
   // A delivery on screen is patched in place; a new one (or a replay) needs its page refetched,
   // and so does a status change, which can move it in or out of a status filter.
