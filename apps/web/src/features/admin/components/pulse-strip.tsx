@@ -6,7 +6,14 @@ import { cn } from '@/lib/utils';
 import { type Pulse, usePulse } from '../hooks/use-pulse';
 
 const SIMULATOR_WORDS = { off: 'Off', running: 'Running', idle: 'Idle' };
-const UNAVAILABLE = 'Unavailable';
+export const UNAVAILABLE = 'Unavailable';
+
+// Before the first answer it reads "—". The Demo card shows this word even during Chaos Mode,
+// whose label the strip shows in its place.
+export function simulatorWord(pulse?: Pulse): string {
+  if (!pulse) return '—';
+  return pulse.simulator ? SIMULATOR_WORDS[pulse.simulator] : UNAVAILABLE;
+}
 
 const sum = (values: number[]) =>
   values.reduce((total, value) => total + value, 0);
@@ -53,7 +60,18 @@ function PulseItems({ pulse }: { pulse?: Pulse }) {
         )}
       </Item>
       <Item label="Simulator">
-        {pending(pulse?.simulator && SIMULATOR_WORDS[pulse.simulator])}
+        {pulse?.chaos ? (
+          // Inline, so a wrapped label keeps the dot on its first line.
+          <span>
+            <span
+              aria-hidden
+              className="mr-1.5 inline-block size-2 rounded-full bg-warning align-middle"
+            />
+            Chaos · {pulse.chaos.label}
+          </span>
+        ) : (
+          simulatorWord(pulse)
+        )}
       </Item>
       <Item label="Webhooks · 1 h">
         {pending(

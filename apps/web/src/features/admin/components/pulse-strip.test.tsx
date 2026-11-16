@@ -18,6 +18,7 @@ const PULSE: Pulse = {
     { name: 'demo', waiting: 3, failed: 0 },
   ],
   services: { database: true, redis: true },
+  chaos: null,
 };
 
 const answer = (pulse: Partial<Pulse>) =>
@@ -68,6 +69,22 @@ describe('PulseStrip', () => {
     expect(item('Queues')).toHaveTextContent('Unavailable');
     expect(item('Simulator')).toHaveTextContent('Off');
     expect(item('Webhooks · 1 h')).toHaveTextContent('No deliveries');
+  });
+
+  it('names the running chaos scenario in place of the simulator state', async () => {
+    answer({
+      chaos: {
+        scenario: 'carrier-outage',
+        label: 'Transportadora Demo outage',
+        endsAt: '2026-01-01T12:03:00.000Z',
+      },
+    });
+    renderWithQueryClient(<PulseStrip />);
+    await screen.findByText('Postgres up');
+
+    expect(item('Simulator')).toHaveTextContent(
+      'Chaos · Transportadora Demo outage',
+    );
   });
 
   it('says so in place when the pulse request fails', async () => {

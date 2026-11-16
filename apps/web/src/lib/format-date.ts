@@ -38,6 +38,11 @@ export function formatWeekdayTime(iso: string): string {
   return `${weekday} ${hour}:${minute}`;
 }
 
+export function formatTime(iso: string): string {
+  const { hour, minute } = partsOf(iso);
+  return `${hour}:${minute}`;
+}
+
 export function formatMonthDay(iso: string): string {
   const { month, day } = partsOf(iso);
   return `${month} ${day}`;

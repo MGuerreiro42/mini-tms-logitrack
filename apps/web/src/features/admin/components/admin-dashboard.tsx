@@ -15,6 +15,7 @@ import {
   useRejectCarrier,
 } from '@/features/carriers/hooks/use-approve-reject-carrier';
 import { ApproveRejectActions } from '@/features/companies/components/approve-reject-actions';
+import { DemoCard } from '@/features/demo/components/demo-card';
 import {
   useApproveSeller,
   useRejectSeller,
@@ -37,7 +38,8 @@ import {
   type ApplicationKind,
   usePendingApplications,
 } from '../hooks/use-pending-applications';
-import { PulseStrip } from './pulse-strip';
+import { usePulse } from '../hooks/use-pulse';
+import { PulseStrip, simulatorWord, UNAVAILABLE } from './pulse-strip';
 
 const KINDS = {
   seller: {
@@ -58,6 +60,8 @@ export function AdminDashboard() {
   // One reader of the window per page: the selector and the queries share it.
   const [statsWindow, setStatsWindow] = useStatsWindow();
   const { approvals, metrics } = useAdminDashboard(statsWindow);
+  // The same polled query as the strip's, read again for the Demo card.
+  const pulse = usePulse();
   const counts = approvals.data;
   const waiting = counts ? counts.sellers.PENDING + counts.carriers.PENDING : 0;
   const scope = windowLabel(statsWindow);
@@ -100,8 +104,8 @@ export function AdminDashboard() {
           </div>
         )}
       </QueryState>
-      {/* Grid items stretch to the row, so both columns end flush. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
+      {/* The columns stack on their own; no panel stretches to the other's height (spec 07 FR-021). */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
         <Panel
           title={`On time by carrier · ${scope}`}
           className={cn(
@@ -136,13 +140,18 @@ export function AdminDashboard() {
             )}
           </QueryState>
         </Panel>
-        <PendingApplications
-          waiting={waiting}
-          tenants={
-            counts &&
-            `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
-          }
-        />
+        <div className="flex flex-col gap-5">
+          <PendingApplications
+            waiting={waiting}
+            tenants={
+              counts &&
+              `${plural(counts.sellers.APPROVED, 'seller')} · ${plural(counts.carriers.APPROVED, 'carrier')}`
+            }
+          />
+          <DemoCard
+            simulator={pulse.isError ? UNAVAILABLE : simulatorWord(pulse.data)}
+          />
+        </div>
       </div>
     </div>
   );
