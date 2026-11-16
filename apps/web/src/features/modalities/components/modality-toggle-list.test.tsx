@@ -4,8 +4,20 @@ import type { ModalityToggle } from '../types';
 import { ModalityToggleList } from './modality-toggle-list';
 
 const items: ModalityToggle[] = [
-  { id: 'modality-1', code: 'STANDARD', name: 'Standard', enabled: true },
-  { id: 'modality-2', code: 'EXPRESS', name: 'Express', enabled: false },
+  {
+    id: 'modality-1',
+    code: 'STANDARD',
+    name: 'Standard',
+    slaHours: 72,
+    enabled: true,
+  },
+  {
+    id: 'modality-2',
+    code: 'EXPRESS',
+    name: 'Express',
+    slaHours: 24,
+    enabled: false,
+  },
 ];
 
 describe('ModalityToggleList', () => {

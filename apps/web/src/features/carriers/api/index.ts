@@ -94,23 +94,50 @@ export function getMyCoverageAreas(token: string): Promise<CoverageArea[]> {
   );
 }
 
-export function getMyCarrierPerformance(
+// Without a carrier id, the signed-in user's own carrier (me/*); with one, the admin's read.
+const carrierPath = (carrierId?: string) => `/carriers/${carrierId ?? 'me'}`;
+
+export function getCarrierPerformance(
   statsWindow: StatsWindow,
   token: string,
+  carrierId?: string,
 ): Promise<CarrierPerformance> {
   return apiClient<CarrierPerformance>(
-    `/carriers/me/performance${toQueryString({ window: statsWindow })}`,
+    `${carrierPath(carrierId)}/performance${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );
 }
 
-export function getMyOperatorRanking(
+export function getOperatorRanking(
   statsWindow: StatsWindow,
   token: string,
+  carrierId?: string,
 ): Promise<TeamMember[]> {
   return apiClient<TeamMember[]>(
-    `/carriers/me/operator-ranking${toQueryString({ window: statsWindow })}`,
+    `${carrierPath(carrierId)}/operator-ranking${toQueryString({ window: statsWindow })}`,
+    undefined,
+    token,
+  );
+}
+
+export function getCarrierCoverageAreas(
+  carrierId: string,
+  token: string,
+): Promise<CoverageArea[]> {
+  return apiClient<CoverageArea[]>(
+    `${carrierPath(carrierId)}/coverage-areas`,
+    undefined,
+    token,
+  );
+}
+
+export function getCarrierModalities(
+  carrierId: string,
+  token: string,
+): Promise<ModalityToggle[]> {
+  return apiClient<ModalityToggle[]>(
+    `${carrierPath(carrierId)}/modalities`,
     undefined,
     token,
   );

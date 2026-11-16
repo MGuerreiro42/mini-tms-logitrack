@@ -2,10 +2,10 @@ import { apiClient } from '@/services/api-client';
 import {
   approveCarrier,
   getCarrier,
+  getCarrierPerformance,
   getCarrierStatusCounts,
   getMyCarrier,
   getMyCarrierModalities,
-  getMyCarrierPerformance,
   getMyCoverageAreas,
   listCarriers,
   rejectCarrier,
@@ -124,11 +124,21 @@ describe('carriers api', () => {
     );
   });
 
-  it('getMyCarrierPerformance gets /carriers/me/performance for the window', async () => {
-    await getMyCarrierPerformance('7d', 'token');
+  it('getCarrierPerformance gets /carriers/me/performance for the window', async () => {
+    await getCarrierPerformance('7d', 'token');
 
     expect(apiClient).toHaveBeenCalledWith(
       '/carriers/me/performance?window=7d',
+      undefined,
+      'token',
+    );
+  });
+
+  it('getCarrierPerformance reads one carrier by id for the admin', async () => {
+    await getCarrierPerformance('30d', 'token', 'c-1');
+
+    expect(apiClient).toHaveBeenCalledWith(
+      '/carriers/c-1/performance?window=30d',
       undefined,
       'token',
     );
