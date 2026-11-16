@@ -9,7 +9,7 @@ import {
   navLinks,
 } from '@/components/common/nav-tree';
 import { LiveNavTree } from '@/components/common/sidebar';
-import { ConnectionStatusRow } from '@/components/common/sidebar-status-row';
+import { SidebarFooter } from '@/components/common/sidebar-status-row';
 import {
   Dialog,
   DialogContent,
@@ -72,10 +72,7 @@ export function NavList({
         >
           <DialogTitle>Navigation</DialogTitle>
           <LiveNavTree nav={nav} />
-          <div className="flex flex-col gap-0.5 pt-3 shadow-[0_-1px_0_var(--nav-line)]">
-            <ConnectionStatusRow />
-            {footer}
-          </div>
+          <SidebarFooter>{footer}</SidebarFooter>
         </DialogContent>
       </Dialog>
     </nav>

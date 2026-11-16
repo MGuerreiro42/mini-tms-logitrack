@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { resetNavigation } from '@/test/navigation';
+import { resetNavigation, router } from '@/test/navigation';
 import { setViewportWidth } from '@/test/viewport';
 import type { NavSection } from './nav-tree';
 import { SidebarFrame } from './sidebar-frame';
@@ -9,7 +9,12 @@ const nav: NavSection[] = [
   {
     items: [
       { name: 'Overview', href: '/seller', icon: null },
-      { name: 'Profile', href: '/seller/profile', icon: null },
+      {
+        name: 'Profile',
+        href: '/seller/profile',
+        icon: null,
+        shortcut: 'p',
+      },
     ],
   },
 ];
@@ -65,7 +70,7 @@ describe('SidebarFrame', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await user.click(screen.getByRole('link', { name: 'Profile' }));
+    act(() => router.push('/seller/profile'));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(toggle);
@@ -98,5 +103,44 @@ describe('SidebarFrame', () => {
     await user.tab();
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveFocus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Overview');
+  });
+
+  it('shows no tooltip while expanded', async () => {
+    const user = userEvent.setup();
+    renderFrame();
+
+    await user.tab();
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveFocus();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('leaves Esc to an open dialog or menu', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+    await user.click(toggle);
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.append(dialog);
+    const reached = vi.fn();
+    document.addEventListener('keydown', reached);
+
+    await user.keyboard('{Escape}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(reached).toHaveBeenCalled();
+    document.removeEventListener('keydown', reached);
+    dialog.remove();
+  });
+
+  it('closes the overlay on any navigation, not only its own links', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+
+    await user.keyboard('[[');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('gp');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
   });
 });
