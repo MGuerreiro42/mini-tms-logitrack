@@ -26,4 +26,12 @@ describe('StatsWindowQueryDto', () => {
   ])('rejects a since that is %s', async (_label, since) => {
     expect(await validate(parse({ since }))).not.toHaveLength(0);
   });
+
+  it.each(['7d', '30d', '90d'])('accepts the window %s', async (window) => {
+    expect(await validate(parse({ window }))).toHaveLength(0);
+  });
+
+  it.each(['1d', '30', 'all'])('rejects the window %s', async (window) => {
+    expect(await validate(parse({ window }))).not.toHaveLength(0);
+  });
 });

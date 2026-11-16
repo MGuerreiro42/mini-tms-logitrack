@@ -11,6 +11,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
+import { windowSince } from '../../shared/stats/stats';
 import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
 import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { SIGNUP_RATE_LIMIT } from '../../shared/throttling/rate-limits';
@@ -129,7 +130,7 @@ export class CarriersController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.carriersService.performance(user.id, query.since);
+    return this.carriersService.performance(user.id, windowSince(query));
   }
 
   @ApiOperation({
@@ -144,7 +145,7 @@ export class CarriersController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.carriersService.operatorRanking(user.id, query.since);
+    return this.carriersService.operatorRanking(user.id, windowSince(query));
   }
 
   @ApiOperation({

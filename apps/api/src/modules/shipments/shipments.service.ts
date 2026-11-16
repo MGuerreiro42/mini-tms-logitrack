@@ -21,7 +21,11 @@ import {
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { countByStatus, createdSince } from '../../shared/stats/stats';
+import {
+  countByStatus,
+  createdSince,
+  type StatsWindow,
+} from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type {
   AdminShipmentDetailResponseDto,
@@ -100,6 +104,8 @@ import {
   SELLER_VIEWS,
   type ShipmentView,
   type ViewContext,
+  viewWhere,
+  windowWhere,
 } from './shipment-views';
 import { generateTrackingCode } from './tracking-code';
 import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
@@ -280,9 +286,10 @@ export class ShipmentsService {
 
   async viewCountsForSeller(
     userId: string,
+    window?: StatsWindow,
   ): Promise<SellerViewCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    return this.countViews(SELLER_VIEWS, { sellerId: seller.id }, null);
+    return this.countViews(SELLER_VIEWS, { sellerId: seller.id }, null, window);
   }
 
   async viewCountsForCarrier(
@@ -299,8 +306,14 @@ export class ShipmentsService {
   viewCountsForAdmin(
     carrierId?: string,
     sellerId?: string,
+    window?: StatsWindow,
   ): Promise<AdminViewCountsResponseDto> {
-    return this.countViews(ADMIN_VIEWS, adminScope(carrierId, sellerId), null);
+    return this.countViews(
+      ADMIN_VIEWS,
+      adminScope(carrierId, sellerId),
+      null,
+      window,
+    );
   }
 
   // One count per view: at most six small queries, throttled by the client's invalidation.
@@ -308,11 +321,14 @@ export class ShipmentsService {
     views: readonly V[],
     scope: Prisma.ShipmentWhereInput,
     carrierUserId: string | null,
+    window?: StatsWindow,
   ): Promise<Record<V, number>> {
     const ctx = { now: new Date(), carrierUserId, includeSeller: false };
     const counts = await Promise.all(
       views.map((view) =>
-        this.prisma.shipment.count({ where: listWhere(scope, { view }, ctx) }),
+        this.prisma.shipment.count({
+          where: listWhere(scope, { view, window }, ctx),
+        }),
       ),
     );
     return Object.fromEntries(
@@ -322,24 +338,27 @@ export class ShipmentsService {
 
   async countsByStatusForSeller(
     userId: string,
+    window?: StatsWindow,
   ): Promise<ShipmentStatusCountsResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    return this.countByStatus({ sellerId: seller.id });
+    return this.countByStatus({ sellerId: seller.id }, window);
   }
 
   countsByStatusForAdmin(
     carrierId?: string,
     sellerId?: string,
+    window?: StatsWindow,
   ): Promise<ShipmentStatusCountsResponseDto> {
-    return this.countByStatus(adminScope(carrierId, sellerId));
+    return this.countByStatus(adminScope(carrierId, sellerId), window);
   }
 
   private async countByStatus(
-    where: Prisma.ShipmentWhereInput,
+    scope: Prisma.ShipmentWhereInput,
+    window?: StatsWindow,
   ): Promise<ShipmentStatusCountsResponseDto> {
     const groups = await this.prisma.shipment.groupBy({
       by: ['status'],
-      where,
+      where: { ...scope, ...windowWhere(window, new Date()) },
       _count: true,
     });
     return countByStatus(ShipmentStatus, groups);
@@ -398,17 +417,16 @@ export class ShipmentsService {
 
   async attentionForSeller(
     userId: string,
+    window?: StatsWindow,
   ): Promise<ShipmentAttentionResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
-    const failedWhere = {
-      sellerId: seller.id,
-      status: ShipmentStatus.FAILED_DELIVERY,
-    };
-
+    const now = new Date();
+    // The late view's own rule and window, so this count equals the Late tab.
+    const scope = { sellerId: seller.id, ...windowWhere(window, now) };
+    const failedWhere = { ...scope, status: ShipmentStatus.FAILED_DELIVERY };
     const lateWhere = {
-      sellerId: seller.id,
-      status: { in: OPEN_STATUSES },
-      dueAt: { lt: new Date() },
+      ...scope,
+      ...viewWhere('late', { now, carrierUserId: null }),
     };
 
     const [failed, failedCount, late, lateCount] = await Promise.all([

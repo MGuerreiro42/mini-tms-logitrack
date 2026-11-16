@@ -50,7 +50,10 @@ describe('List views and search (e2e)', () => {
     });
     await seed('undated', { dueAt: null });
     await seed('failed', { status: 'FAILED_DELIVERY' });
-    await seed('delivered', { status: 'DELIVERED' });
+    await seed('delivered', {
+      status: 'DELIVERED',
+      createdAt: inHours(-40 * 24),
+    });
     await seed('road', { status: 'IN_TRANSIT' });
     await seed('other', { addressCity: 'Campinas' }, tenants.sellerB);
     const claimed = await seed('claimed', {});
@@ -69,7 +72,7 @@ describe('List views and search (e2e)', () => {
   });
 
   it.each([
-    ['seller', '/shipments', { active: 5, exceptions: 2, done: 1 }],
+    ['seller', '/shipments', { active: 5, late: 1, exceptions: 2, done: 1 }],
     [
       'carrier',
       '/shipments/queue',
@@ -82,7 +85,11 @@ describe('List views and search (e2e)', () => {
         done: 1,
       },
     ],
-    ['admin', '/admin/shipments', { active: 6, exceptions: 2, done: 1 }],
+    [
+      'admin',
+      '/admin/shipments',
+      { active: 6, late: 1, exceptions: 2, done: 1 },
+    ],
   ])(
     'gives the %s list a count per view equal to its total',
     async (role, path, expected) => {
@@ -156,5 +163,68 @@ describe('List views and search (e2e)', () => {
     await expect(
       totalOf(tenants.sellerA, '/shipments', { q: '   ' }),
     ).resolves.toBe(7);
+  });
+
+  it('narrows the lists and their counts to the window by createdAt', async () => {
+    const scope = { carrierId: tenants.carrierId };
+    await expect(
+      totalOf(tenants.sellerA, '/shipments', { window: '30d' }),
+    ).resolves.toBe(6);
+    await expect(
+      totalOf(tenants.sellerA, '/shipments', { window: '90d' }),
+    ).resolves.toBe(7);
+    await expect(
+      totalOf(admin, '/admin/shipments', { ...scope, window: '30d' }),
+    ).resolves.toBe(7);
+
+    const views = await get(tenants.sellerA, '/shipments/view-counts', {
+      window: '30d',
+    }).expect(200);
+    const statuses = await get(tenants.sellerA, '/shipments/status-counts', {
+      window: '30d',
+    }).expect(200);
+    const adminStatuses = await get(admin, '/admin/shipments/status-counts', {
+      ...scope,
+      window: '90d',
+    }).expect(200);
+
+    const attention = await get(tenants.sellerA, '/shipments/attention', {
+      window: '30d',
+    }).expect(200);
+
+    expect(views.body).toMatchObject({ active: 5, done: 0 });
+    expect(attention.body.counts.late).toBe(views.body.late);
+    expect(statuses.body.DELIVERED).toBe(0);
+    expect(adminStatuses.body.DELIVERED).toBe(1);
+  });
+
+  it.each([
+    ['seller', '/shipments'],
+    ['seller', '/shipments/view-counts'],
+    ['seller', '/shipments/status-counts'],
+    ['seller', '/shipments/sla-summary'],
+    ['admin', '/admin/shipments'],
+    ['admin', '/admin/shipments/view-counts'],
+    ['admin', '/admin/shipments/status-counts'],
+    ['carrier', '/carriers/me/performance'],
+  ])('rejects an unknown window on the %s %s', async (role, path) => {
+    const token = { admin, seller: tenants.sellerA, carrier: tenants.manager }[
+      role
+    ] as string;
+    await get(token, path, { window: '1d' }).expect(400);
+  });
+
+  it('lets window win over since on carrier performance', async () => {
+    const since = inHours(-60 * 24).toISOString();
+    const total = async (query: object) =>
+      (
+        await get(tenants.manager, '/carriers/me/performance', query).expect(
+          200,
+        )
+      ).body.totalShipments;
+
+    await expect(total({ since, window: '30d' })).resolves.toBe(
+      (await total({ since })) - 1,
+    );
   });
 });

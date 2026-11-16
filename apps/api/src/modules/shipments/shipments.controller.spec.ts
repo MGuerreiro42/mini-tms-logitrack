@@ -128,9 +128,9 @@ describe('ShipmentsController', () => {
     const attention = { shipments: [], counts: { failed: 0, late: 0 } };
     attentionForSeller.mockResolvedValue(attention);
 
-    const result = await controller.attention(user);
+    const result = await controller.attention(user, { window: '7d' });
 
-    expect(attentionForSeller).toHaveBeenCalledWith('user-1');
+    expect(attentionForSeller).toHaveBeenCalledWith('user-1', '7d');
     expect(result).toEqual(attention);
   });
 
