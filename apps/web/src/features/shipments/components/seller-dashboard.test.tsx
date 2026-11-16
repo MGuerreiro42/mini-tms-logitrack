@@ -121,10 +121,11 @@ describe('SellerDashboard', () => {
     expect(items[1]).toHaveTextContent(/Late \d h/);
     expect(items[1]).toHaveAttribute('href', '/seller/shipments/late');
 
-    expect(screen.getByText('80.0%')).toBeInTheDocument();
-    expect(screen.getByText('2 deliveries past SLA')).toHaveClass(
-      'text-destructive',
+    // The tone colours the value, never the note.
+    expect(screen.getByText('80.0%').parentElement).toHaveClass(
+      'text-notice-foreground',
     );
+    expect(screen.getByText('2 deliveries past SLA')).toBeInTheDocument();
     expect(screen.getByText('1 waiting for a carrier')).toBeInTheDocument();
     expect(screen.getByText('1 failed, 6 late')).toBeInTheDocument();
     expect(screen.getByText('5 more shipments not shown')).toBeInTheDocument();

@@ -130,7 +130,6 @@ function ShipmentTiles({
             : '—'
         }
         note={failed ? FAILED_NOTE : 'Across all carriers'}
-        problem={failed}
       />
       <StatTile
         label="Delivered"
@@ -141,7 +140,6 @@ function ShipmentTiles({
             ? FAILED_NOTE
             : counts && `Of ${plural(sumRecord(counts), 'shipment')}`
         }
-        problem={failed}
       />
     </>
   );

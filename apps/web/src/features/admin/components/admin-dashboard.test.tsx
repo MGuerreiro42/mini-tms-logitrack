@@ -93,7 +93,7 @@ describe('AdminDashboard', () => {
     const rows = within(list).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Ateliê AuroraSeller');
     expect(rows[1]).toHaveTextContent('Rota Sul LogísticaCarrier');
-    expect(screen.getByText('In progress').nextSibling).toHaveTextContent('19');
+    expect(screen.getByRole('link', { name: 'In progress, 19' })).toBeVisible();
   });
 
   it('approves an application inline', async () => {
