@@ -4,6 +4,7 @@ export const DEMO_QUEUE = 'demo';
 export const TICK_JOB = 'tick';
 export const DRIVE_JOB = 'drive';
 export const RESET_JOB = 'reset';
+export const CHAOS_END_JOB = 'chaos-end';
 
 export const TICK_EVERY_MS = 10_000;
 export const DRIVE_EVERY_MS = 2_000;

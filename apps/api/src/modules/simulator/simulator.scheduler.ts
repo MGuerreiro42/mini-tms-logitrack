@@ -24,8 +24,8 @@ import {
 } from './simulator.constants';
 
 const FAILED_JOBS_KEPT = 50;
-const RESET_WAIT_MS = 30_000;
-const JOB_OPTIONS: JobsOptions = {
+export const JOB_WAIT_MS = 30_000;
+export const JOB_OPTIONS: JobsOptions = {
   removeOnComplete: true,
   removeOnFail: FAILED_JOBS_KEPT,
 };
@@ -64,7 +64,7 @@ export class SimulatorScheduler implements OnApplicationBootstrap {
   // Through the queue, so a manual reset never overlaps a tick or the scheduled reset.
   async resetNow(): Promise<void> {
     const job = await this.queue.add(RESET_JOB, {}, JOB_OPTIONS);
-    await job.waitUntilFinished(this.queueEvents.queueEvents, RESET_WAIT_MS);
+    await job.waitUntilFinished(this.queueEvents.queueEvents, JOB_WAIT_MS);
   }
 
   private async schedule(): Promise<void> {
