@@ -5,6 +5,9 @@ export class SellerViewCountsResponseDto {
   active: number;
 
   @ApiProperty()
+  late: number;
+
+  @ApiProperty()
   exceptions: number;
 
   @ApiProperty()

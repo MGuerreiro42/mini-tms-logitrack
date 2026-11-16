@@ -1,4 +1,9 @@
 import { type Prisma, ShipmentStatus } from '../../../generated/prisma/client';
+import {
+  daysAgo,
+  type StatsWindow,
+  WINDOW_DAYS,
+} from '../../shared/stats/stats';
 import { ROAD_STAGES, TERMINAL_STATUSES } from './shipment-status.util';
 
 // Open and still on the clock.
@@ -10,7 +15,7 @@ export const OPEN_STATUSES: ShipmentStatus[] = [
   ShipmentStatus.OUT_FOR_DELIVERY,
 ];
 
-export const SELLER_VIEWS = ['active', 'exceptions', 'done'] as const;
+export const SELLER_VIEWS = ['active', 'late', 'exceptions', 'done'] as const;
 export const ADMIN_VIEWS = SELLER_VIEWS;
 export const CARRIER_VIEWS = [
   'mine',
@@ -21,7 +26,9 @@ export const CARRIER_VIEWS = [
   'done',
 ] as const;
 
-export type ShipmentView = (typeof CARRIER_VIEWS)[number] | 'active';
+export type ShipmentView =
+  | (typeof CARRIER_VIEWS)[number]
+  | (typeof SELLER_VIEWS)[number];
 
 export interface ViewContext {
   now: Date;
@@ -34,12 +41,10 @@ const VIEW_WHERE: Record<
   (ctx: ViewContext) => Prisma.ShipmentWhereInput
 > = {
   active: () => ({ status: { in: OPEN_STATUSES } }),
-  // The rule of attentionForSeller: failed, or open past its due time.
-  exceptions: ({ now }) => ({
-    OR: [
-      { status: ShipmentStatus.FAILED_DELIVERY },
-      { status: { in: OPEN_STATUSES }, dueAt: { lt: now } },
-    ],
+  late: ({ now }) => ({ status: { in: OPEN_STATUSES }, dueAt: { lt: now } }),
+  // The rule of attentionForSeller: failed, or late.
+  exceptions: (ctx) => ({
+    OR: [{ status: ShipmentStatus.FAILED_DELIVERY }, VIEW_WHERE.late(ctx)],
   }),
   done: () => ({ status: { in: TERMINAL_STATUSES } }),
   mine: ({ carrierUserId }) => {
@@ -89,15 +94,22 @@ export interface ListFilters {
   status?: ShipmentStatus;
   view?: ShipmentView;
   q?: string;
+  window?: StatsWindow;
 }
 
-// Scope, status, view and search narrow by AND; the scope always carries the tenant.
+export const windowWhere = (
+  window: StatsWindow | undefined,
+  now: Date,
+): Prisma.ShipmentWhereInput =>
+  window ? { createdAt: { gte: daysAgo(WINDOW_DAYS[window], now) } } : {};
+
+// Scope, status, view, window and search narrow by AND; the scope always carries the tenant.
 export function listWhere(
   scope: Prisma.ShipmentWhereInput,
-  { status, view, q }: ListFilters,
+  { status, view, q, window }: ListFilters,
   ctx: ViewContext & { includeSeller: boolean },
 ): Prisma.ShipmentWhereInput {
-  const parts = [scope];
+  const parts = [{ ...scope, ...windowWhere(window, ctx.now) }];
   if (status) parts.push({ status });
   if (view) parts.push(viewWhere(view, ctx));
   if (q) parts.push(searchWhere(q, ctx));

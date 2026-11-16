@@ -12,7 +12,11 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
-import { StatsWindowQueryDto } from '../../shared/stats/stats-window-query.dto';
+import { windowSince } from '../../shared/stats/stats';
+import {
+  StatsWindowQueryDto,
+  WindowQueryDto,
+} from '../../shared/stats/stats-window-query.dto';
 import { POSITION_REPORT_RATE_LIMIT } from '../../shared/throttling/rate-limits';
 import { CARRIER_ROLES } from '../auth/carrier-roles';
 import { Auth, RateLimitedAuth } from '../auth/decorators/auth.decorator';
@@ -89,7 +93,7 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "List the authenticated seller's own shipments, filterable by status, view and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
+      "List the authenticated seller's own shipments, filterable by status, view, window and q (open views sort by dueAt) — paginated (default 20/page, max 100)",
   })
   @ApiPaginatedResponse(ShipmentResponseDto)
   @Auth(GlobalRole.SELLER)
@@ -103,14 +107,17 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "Count the authenticated seller's own shipments per list view (active, exceptions, done) — ignores q",
+      "Count the authenticated seller's own shipments per list view (active, late, exceptions, done), optionally created in the window — ignores q",
   })
   @ApiResponse({ status: 200, type: SellerViewCountsResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @Auth(GlobalRole.SELLER)
   @Get('view-counts')
-  viewCounts(@CurrentUser() user: AuthenticatedUser) {
-    return this.shipmentsService.viewCountsForSeller(user.id);
+  viewCounts(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WindowQueryDto,
+  ) {
+    return this.shipmentsService.viewCountsForSeller(user.id, query.window);
   }
 
   @ApiOperation({
@@ -284,14 +291,17 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
-      "Count the authenticated seller's own shipments by ShipmentStatus — seller dashboard",
+      "Count the authenticated seller's own shipments by ShipmentStatus, optionally created in the window — seller dashboard",
   })
   @ApiResponse({ status: 200, type: ShipmentStatusCountsResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @Auth(GlobalRole.SELLER)
   @Get('status-counts')
-  countsByStatus(@CurrentUser() user: AuthenticatedUser) {
-    return this.shipmentsService.countsByStatusForSeller(user.id);
+  countsByStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WindowQueryDto,
+  ) {
+    return this.shipmentsService.countsByStatusForSeller(user.id, query.window);
   }
 
   @ApiOperation({
@@ -306,19 +316,25 @@ export class ShipmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.shipmentsService.slaSummaryForSeller(user.id, query.since);
+    return this.shipmentsService.slaSummaryForSeller(
+      user.id,
+      windowSince(query),
+    );
   }
 
   @ApiOperation({
     summary:
-      'Shipments of the authenticated seller that need attention — failed deliveries first (latest first), then open shipments past createdAt + modality.slaHours (most overdue first), at most 5, plus the full counts of each',
+      'Shipments of the authenticated seller that need attention — failed deliveries first (latest first), then open shipments past createdAt + modality.slaHours (most overdue first), at most 5, plus the full counts of each, optionally created in the window',
   })
   @ApiResponse({ status: 200, type: ShipmentAttentionResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @Auth(GlobalRole.SELLER)
   @Get('attention')
-  attention(@CurrentUser() user: AuthenticatedUser) {
-    return this.shipmentsService.attentionForSeller(user.id);
+  attention(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WindowQueryDto,
+  ) {
+    return this.shipmentsService.attentionForSeller(user.id, query.window);
   }
 
   @ApiOperation({

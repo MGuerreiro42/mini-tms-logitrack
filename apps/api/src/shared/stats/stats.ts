@@ -3,12 +3,21 @@ export const MS_PER_HOUR = 60 * 60 * 1000;
 export const DEFAULT_STATS_WINDOW_DAYS = 90;
 export const MAX_STATS_WINDOW_DAYS = 365;
 
+export const WINDOW_DAYS = { '7d': 7, '30d': 30, '90d': 90 } as const;
+export type StatsWindow = keyof typeof WINDOW_DAYS;
+
 export const daysAgo = (days: number, now = new Date()): Date =>
   new Date(now.getTime() - days * 24 * MS_PER_HOUR);
 
 export const createdSince = (since?: Date): { createdAt: { gte: Date } } => ({
   createdAt: { gte: since ?? daysAgo(DEFAULT_STATS_WINDOW_DAYS) },
 });
+
+// A named window wins over an explicit since; neither keeps createdSince's default.
+export const windowSince = (
+  { window, since }: { window?: StatsWindow; since?: Date },
+  now = new Date(),
+): Date | undefined => (window ? daysAgo(WINDOW_DAYS[window], now) : since);
 
 export const hoursBetween = (from: Date, to: Date): number =>
   (to.getTime() - from.getTime()) / MS_PER_HOUR;

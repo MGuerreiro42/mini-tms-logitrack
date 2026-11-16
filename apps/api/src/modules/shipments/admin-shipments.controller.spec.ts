@@ -28,11 +28,13 @@ describe('AdminShipmentsController', () => {
     const result = await controller.countsByStatus({
       carrierId: 'carrier-1',
       sellerId: 'seller-1',
+      window: '7d',
     });
 
     expect(countsByStatusForAdmin).toHaveBeenCalledWith(
       'carrier-1',
       'seller-1',
+      '7d',
     );
     expect(result).toEqual(counts);
   });
