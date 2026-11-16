@@ -2,8 +2,9 @@
 
 import { useCarrierStatusCounts } from '@/features/carriers/hooks/use-carrier-status-counts';
 import { useSellerStatusCounts } from '@/features/sellers/hooks/use-seller-status-counts';
-import { useAdminShipmentStatusCounts } from '@/features/shipments/hooks/use-admin-shipments';
+import { useAdminMetrics } from '@/features/shipments/hooks/use-admin-shipments';
 import { useShipmentTracking } from '@/features/shipments/hooks/use-shipment-tracking';
+import type { StatsWindow } from '@/hooks/use-stats-window';
 import { combineQueries } from '@/lib/combine-queries';
 import type { ApprovalStatusCounts } from '@/types/status';
 
@@ -12,7 +13,7 @@ export interface AdminDashboardData {
   carriers: ApprovalStatusCounts;
 }
 
-export function useAdminDashboard() {
+export function useAdminDashboard(statsWindow: StatsWindow) {
   const { status: liveStatus } = useShipmentTracking({
     subscribeToMonitoring: true,
   });
@@ -22,6 +23,6 @@ export function useAdminDashboard() {
       [useSellerStatusCounts(), useCarrierStatusCounts()] as const,
       ([sellers, carriers]): AdminDashboardData => ({ sellers, carriers }),
     ),
-    shipments: useAdminShipmentStatusCounts({}, liveStatus),
+    metrics: useAdminMetrics({ window: statsWindow }, liveStatus),
   };
 }

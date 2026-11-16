@@ -3,13 +3,14 @@
 import { useLiveQuery } from '@/hooks/use-live-query';
 import type { LiveStatus } from '@/lib/live-status';
 import {
+  getAdminMetrics,
   getAdminShipment,
   getAdminShipmentStatusCounts,
   getAdminShipmentViewCounts,
   listAdminShipments,
 } from '../api';
 import { shipmentKeys } from '../api/keys';
-import type { AdminStatusCountsQuery, ListAdminShipmentsQuery } from '../types';
+import type { AdminScopeQuery, ListAdminShipmentsQuery } from '../types';
 
 export function useAdminShipments(
   query: ListAdminShipmentsQuery,
@@ -32,7 +33,7 @@ export function useAdminShipment(id: string, liveStatus: LiveStatus) {
 }
 
 export function useAdminShipmentStatusCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   liveStatus: LiveStatus,
 ) {
   return useLiveQuery({
@@ -43,8 +44,20 @@ export function useAdminShipmentStatusCounts(
   });
 }
 
+export function useAdminMetrics(
+  query: AdminScopeQuery,
+  liveStatus: LiveStatus,
+) {
+  return useLiveQuery({
+    queryKey: shipmentKeys.adminMetrics(query),
+    queryFn: (token) => getAdminMetrics(query, token),
+    liveStatus,
+    keepPrevious: true,
+  });
+}
+
 export function useAdminShipmentViewCounts(
-  query: AdminStatusCountsQuery,
+  query: AdminScopeQuery,
   liveStatus: LiveStatus,
 ) {
   return useLiveQuery({
