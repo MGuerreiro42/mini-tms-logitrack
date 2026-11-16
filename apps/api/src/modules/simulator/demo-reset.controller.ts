@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
+import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -66,6 +67,8 @@ export class DemoResetController {
       'Runs the same job as the daily reset and answers once it has finished.',
   })
   @ApiResponse({ status: 204, description: 'Demo tenant reset' })
+  // Per user: every visitor on the shared demo admin shares this one reset a minute.
+  @RateLimit(1)
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('reset')
   reset(): Promise<void> {

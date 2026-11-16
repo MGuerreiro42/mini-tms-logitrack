@@ -16,6 +16,7 @@ import { RateLimit } from '../../shared/throttling/rate-limit.decorator';
 import { SIGNUP_RATE_LIMIT } from '../../shared/throttling/rate-limits';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SignupDecisionAuth } from '../auth/guards/signup-decision.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { CreateSellerDto } from './dto/create-seller.dto';
@@ -134,7 +135,7 @@ export class SellersController {
   @ApiResponse({ status: 200, type: SellerResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @ApiResponse({ status: 409, description: 'Seller is not pending' })
-  @Auth(GlobalRole.ADMIN)
+  @SignupDecisionAuth()
   @Patch(':id/approve')
   approve(@Param('id') id: string) {
     return this.sellersService.approve(id);
@@ -144,7 +145,7 @@ export class SellersController {
   @ApiResponse({ status: 200, type: SellerResponseDto })
   @ApiResponse({ status: 404, description: 'Seller not found' })
   @ApiResponse({ status: 409, description: 'Seller is not pending' })
-  @Auth(GlobalRole.ADMIN)
+  @SignupDecisionAuth()
   @Patch(':id/reject')
   reject(@Param('id') id: string) {
     return this.sellersService.reject(id);

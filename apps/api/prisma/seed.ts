@@ -8,6 +8,7 @@ import {
 } from '../generated/prisma/client';
 import {
   buildDemoShipments,
+  DEMO_ADMIN,
   DEMO_CARRIER,
   DEMO_CARRIER_MEMBERS,
   DEMO_EXTRA_CARRIERS,
@@ -39,7 +40,7 @@ async function upsertUser(
 ) {
   return prisma.user.upsert({
     where: { email },
-    update: { name },
+    update: { name, role },
     create: { email, name, passwordHash: hash, role },
   });
 }
@@ -205,6 +206,11 @@ async function seedShipments(tenant: DemoTenant) {
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@minitms.dev';
+  if (adminEmail === DEMO_ADMIN.email) {
+    throw new Error(
+      'ADMIN_EMAIL must differ from the demo admin, whose password is public',
+    );
+  }
   const adminHash = await bcrypt.hash(resolveAdminPassword(), 10);
   const admin = await upsertUser(adminEmail, 'Admin', 'ADMIN', adminHash);
   console.log(`Admin seeded: ${admin.email}`);
@@ -221,6 +227,7 @@ async function main() {
   const sellers = await seedSellers(modalities, demoHash);
   const carrier = await seedCarrier(modalities, demoHash);
   await seedExtraCarriers(modalities, demoHash);
+  await upsertUser(DEMO_ADMIN.email, DEMO_ADMIN.name, 'ADMIN', demoHash);
   console.log(
     `Demo accounts seeded: ${sellers.sellerIds.length} sellers, ${1 + DEMO_EXTRA_CARRIERS.length} carriers`,
   );
