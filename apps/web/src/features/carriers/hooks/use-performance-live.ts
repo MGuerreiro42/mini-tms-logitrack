@@ -7,26 +7,32 @@ import { useSocketSubscription } from '@/hooks/use-socket-subscription';
 import type { LiveConnection } from '@/lib/live-status';
 import { throttle } from '@/lib/throttle';
 import { getSocket } from '@/services/websocket-client';
-import { carrierKeys } from '../api/keys';
+import { carrierScope } from '../api/keys';
 
 // Aggregates move slowly: one refetch per 10 s is enough, however busy the queue.
 export const PERFORMANCE_REFRESH_MS = 10_000;
 
-export function usePerformanceLive(): LiveConnection {
+// The carrier's own (me) or, for the admin's Carrier 360, one carrier's performance and team.
+export function usePerformanceRefresh(carrierId?: string): () => void {
   const queryClient = useQueryClient();
   const [refresh] = useState(() =>
     throttle(() => {
-      queryClient.invalidateQueries({
-        queryKey: [...carrierKeys.me(), 'performance'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [...carrierKeys.me(), 'operator-ranking'],
-      });
+      for (const part of ['performance', 'operator-ranking']) {
+        queryClient.invalidateQueries({
+          queryKey: [...carrierScope(carrierId), part],
+        });
+      }
     }, PERFORMANCE_REFRESH_MS),
   );
-  const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
 
   useEffect(() => refresh.cancel, [refresh]);
+
+  return refresh;
+}
+
+export function usePerformanceLive(): LiveConnection {
+  const refresh = usePerformanceRefresh();
+  const [lastEventAt, setLastEventAt] = useState<Date | null>(null);
 
   const status = useSocketSubscription({
     getSocket,

@@ -1,4 +1,4 @@
-import { CarrierDetailCard } from '@/features/carriers/components/carrier-detail-card';
+import { Carrier360 } from '@/features/admin/components/carrier-360';
 
 export default async function AdminCarrierDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function AdminCarrierDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <CarrierDetailCard id={id} />;
+  return <Carrier360 id={id} />;
 }

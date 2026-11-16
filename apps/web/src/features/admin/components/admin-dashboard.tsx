@@ -20,7 +20,11 @@ import {
   useRejectSeller,
 } from '@/features/sellers/hooks/use-approve-reject-seller';
 import type { AdminMetrics } from '@/features/shipments/types';
-import { useStatsWindow, windowLabel } from '@/hooks/use-stats-window';
+import {
+  DEFAULT_STATS_WINDOW,
+  useStatsWindow,
+  windowLabel,
+} from '@/hooks/use-stats-window';
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
 import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
@@ -57,6 +61,9 @@ export function AdminDashboard() {
   const counts = approvals.data;
   const waiting = counts ? counts.sellers.PENDING + counts.carriers.PENDING : 0;
   const scope = windowLabel(statsWindow);
+  // A carrier's 360 opens on the window being read here.
+  const windowQuery =
+    statsWindow === DEFAULT_STATS_WINDOW ? '' : `?window=${statsWindow}`;
 
   return (
     <div className="flex flex-col gap-5">
@@ -115,7 +122,9 @@ export function AdminDashboard() {
                   rows={data.byCarrier.map((carrier) => ({
                     key: carrier.carrierId,
                     label: (
-                      <TextLink href={KINDS.carrier.href(carrier.carrierId)}>
+                      <TextLink
+                        href={`${KINDS.carrier.href(carrier.carrierId)}${windowQuery}`}
+                      >
                         {carrier.companyName}
                       </TextLink>
                     ),
