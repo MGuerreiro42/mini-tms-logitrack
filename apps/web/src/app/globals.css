@@ -55,6 +55,8 @@
   --color-offline: var(--offline);
   --color-notice: var(--notice);
   --color-notice-foreground: var(--notice-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-status-dot-ink: var(--status-dot-ink);
   --color-status-pending-bg: var(--status-pending-bg);
   --color-status-pending-fg: var(--status-pending-fg);
@@ -197,6 +199,9 @@
   --offline: #c06a2e;
   --notice: #f2e2d5;
   --notice-foreground: #6b3610;
+  /* Reserved for Chaos Mode (spec 08); foreground on it is 9.4:1. */
+  --warning: #edb98e;
+  --warning-foreground: #1c201e;
   --panel-shadow:
     0 1px 2px rgb(28 48 40 / 0.06), 0 10px 28px -14px rgb(28 48 40 / 0.22);
   --control-shadow: 0 1px 2px rgb(28 48 40 / 0.08);
@@ -270,6 +275,9 @@
   --offline: #d08548;
   --notice: #36271c;
   --notice-foreground: #edb98e;
+  /* 6.2:1 */
+  --warning: #d08548;
+  --warning-foreground: #121614;
   --panel-shadow: 0 0 0 1px #222823, 0 12px 28px -16px rgb(0 0 0 / 0.6);
   --control-shadow: 0 0 0 1px var(--input);
   --status-dot-ink: var(--background);

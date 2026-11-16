@@ -65,3 +65,14 @@ export function formatTimeUntil(iso: string, now: Date): string {
   if (remaining < MS_PER_MINUTE) return `in ${Math.round(remaining / 1_000)} s`;
   return `in ${formatDuration(remaining / MS_PER_HOUR)}`;
 }
+
+const localTime = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+// In the viewer's own zone, unlike the rest of this file: render it on the client only.
+export function formatLocalTime(iso: string): string {
+  return localTime.format(new Date(iso));
+}
