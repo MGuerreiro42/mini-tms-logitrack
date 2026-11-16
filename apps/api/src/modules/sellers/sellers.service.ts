@@ -171,6 +171,12 @@ export class SellersService {
     return this.buildModalityToggles(seller.id);
   }
 
+  // Admin read: the same toggles the seller sees, so the Seller 360 matches their settings.
+  async getModalitiesById(id: string): Promise<ModalityToggleResponseDto[]> {
+    await this.findSellerOrThrow(id);
+    return this.buildModalityToggles(id);
+  }
+
   async setModalities(
     userId: string,
     modalityIds: string[],
