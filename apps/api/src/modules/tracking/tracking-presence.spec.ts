@@ -31,6 +31,13 @@ describe('TrackingPresence', () => {
     await expect(presenceWith(0, 2).hasViewers()).resolves.toBe(true);
   });
 
+  it('counts the sockets of each namespace', async () => {
+    await expect(presenceWith(3, 2).socketCounts()).resolves.toEqual({
+      internal: 3,
+      public: 2,
+    });
+  });
+
   it('reuses an answer for 5 s', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const presence = presenceWith(0, 0);

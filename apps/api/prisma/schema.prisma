@@ -234,6 +234,8 @@ model TrackingEvent {
 
   // Serves both the filter and the timeline sort order.
   @@index([shipmentId, createdAt])
+  // The admin pulse counts the platform's events per minute.
+  @@index([createdAt])
 }
 
 model ApiKey {
@@ -295,4 +297,6 @@ model WebhookDelivery {
   // Delivery log, newest first, optionally by status.
   @@index([endpointId, createdAt])
   @@index([endpointId, status])
+  // The admin pulse reads the last hour of deliveries across every endpoint.
+  @@index([createdAt])
 }

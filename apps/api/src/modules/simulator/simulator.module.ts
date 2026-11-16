@@ -26,5 +26,7 @@ import { SimulatorService } from './simulator.service';
     DemoQueueEvents,
     { provide: SIMULATOR_RANDOM, useValue: Math.random },
   ],
+  // The admin pulse reads this module's queue counts.
+  exports: [BullModule],
 })
 export class SimulatorModule {}
