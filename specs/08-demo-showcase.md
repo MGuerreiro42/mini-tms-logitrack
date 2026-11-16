@@ -2,7 +2,7 @@
 
 **Feature**: `demo-showcase` — `SimulatorModule` (demo admin seed, Chaos Mode state, scenarios and routes, demo status), `IntegrationsModule` (webhook-down scenario), `TrackingModule` (`demo:chaos` event), `HealthModule` (pulse) and `apps/web` (demo picker, global banner, admin Demo card)
 **Created**: 2026-11-11
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §5 (Demo simulator, Webhooks), §11 (auth), §16 (dashboards, pulse); `SCREENS.md` (Login, Seller Signup, General Dashboard); spec `01-demo-simulator` (queue, tick, drive, reset), spec `05-foundations` FR-015 and FR-018 (extra demo carriers, `next` on demo logins), spec `07-dashboards` FR-021, FR-027, FR-028 (two-column layout, pulse); `.claude/research/ux-briefs.md` §1.1, §5.1, §6.1, §7, §8.3, §9 step 5, §10.1; `po-admin-public.md` A2, §3.1, §3.3; `tms-benchmark.md` D5; prototypes `Login` (desktop and mobile), `AdminOverview` (Chaos running), `States` (GlobalBanner) and `Components` in the approved design canvas; design system tokens `--warning` / `--warning-foreground`
 
 ## Summary
@@ -200,7 +200,7 @@ A visitor signed in with a demo account reads one dismissible line "You're using
 
 - **API (`apps/api`)**:
   - `src/modules/simulator/`: `demo-dataset.ts` (`DEMO_ADMIN`), `chaos-scenarios.ts` (catalog, FR-010), `chaos.service.ts` (start, end, state, cooldown, runs; FR-011–FR-015), `chaos-events.ts` (`DEMO_CHAOS_CHANGED`), `simulator.constants.ts` (`CHAOS_END_JOB`), `simulator.processor.ts` (dispatches `chaos-end`), `demo-reset.service.ts` (ends the run first), `simulator.service.ts` (reads the state per job; FR-021, FR-022), `demo.controller.ts` (`GET /demo/status`) and `demo-reset.controller.ts` grown into the admin demo controller (`GET /admin/demo`, `POST`/`DELETE /admin/demo/chaos`, reset rate limit), DTOs under `dto/`.
-  - `src/modules/integrations/webhooks.service.ts`: inbox answer checks the active `webhook-down` run (FR-023).
+  - `src/modules/integrations/webhook-inbox.service.ts`: inbox answer checks the active `webhook-down` run (FR-023).
   - `src/modules/tracking/tracking.listener.ts`: `demo:chaos` emit (FR-019).
   - `src/modules/health/pulse.service.ts` and `dto/pulse-response.dto.ts`: `chaos` (FR-024), read from Redis by a small exported reader in `chaos.service.ts`, so the health module does not need the conditional simulator module.
   - `prisma/seed.ts`: demo admin.
@@ -268,3 +268,4 @@ PRs 1–2 and 3–5 form two independent chains; 6 and 7 can be reviewed in para
 | Date | Change |
 |------|--------|
 | 2026-11-11 | Spec created from the UX briefs (§1.1, §5.1, §6.1, §7, §8.3, §9 step 5, §10.1), `po-admin-public.md` (A2, §3.1, §3.3), `tms-benchmark.md` D5 and the approved prototypes; every item verified against `docs/spec-07-wrapup` |
+| 2026-11-11 | Implemented (PRs `feat/chaos-state` to `feat/demo-picker`). Review changes: an overdue run (late or failed end job) is ended as expired by start, End now and the reset, and the end job retries; the end is a compare-and-delete script; the web shows "Ending…" until the server ends such a run; `webhook-down` is read per inbox request (FR-023); the overview columns stack with `align-items: start`, so they no longer end flush (FR-030); a card's persona is part of its accessible description; with Redis down the chaos routes answer `500`, not `503` (known gap) |

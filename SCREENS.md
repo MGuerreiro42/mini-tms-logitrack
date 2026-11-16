@@ -15,6 +15,7 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Data:** form — email, password.
 - **Actions:** sign in; "forgot my password" (out of MVP scope, but leaving the link mute is more honest than omitting it).
 - **States:** invalid credential error; an account with `Seller.status`/`Carrier.status` = `PENDING` redirects to "Awaiting Approval" instead of a generic access-denied.
+- **Demo picker** (`NEXT_PUBLIC_DEMO_LOGIN=true`): beside the form on desktop and above it on a phone, "Explore the demo · one click, no signup" shows four cards (Seller, Carrier manager, Operator, Admin), each a button named by its role and described by its persona and what it does. A card signs in with its account and honours `next`; while any sign-in is pending, and until the next page loads after a success, every card and the form's submit are off, and a failure shows in the form's error. The left column's footnote adds "reset daily at 04:00 (São Paulo)" ([spec 08](./specs/08-demo-showcase.md)).
 - **Navigation →** the corresponding role's dashboard, or a waiting screen.
 
 ### Seller Signup (self-signup)
@@ -24,6 +25,7 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **Data:** email, password, `Seller.companyName`, `Seller.document` (tax ID).
 - **Actions:** create account → goes straight into Onboarding.
 - **States:** document already registered (`document` is `@unique`) → clear error, not generic.
+- **Public demo notice:** on the demo deployment, both signup pages say above the form that anything entered can be read by visitors signed in as the demo admin.
 - **Navigation →** Multi-step Onboarding.
 
 ### Invite Acceptance
@@ -178,7 +180,8 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 - **Role:** Admin
 - **Goal:** the whole live platform at a glance.
-- **Data:** a pulse strip polled every 5 s, outside the window: events per minute (15-minute sparkline), sockets, simulator, webhooks over the last hour, queues and Postgres/Redis, each part degrading on its own ("Pulse unavailable · retrying" when the request fails); tiles On time, Late now, Failed and Median claim for the window; On time by carrier (each name opens its Carrier 360 on the same window); the review queue with approve/reject inline and the approved tenant counts.
+- **Data:** a pulse strip polled every 5 s, outside the window: events per minute (15-minute sparkline), sockets, simulator ("Chaos · <label>" with a warning dot while a scenario runs), webhooks over the last hour, queues and Postgres/Redis, each part degrading on its own ("Pulse unavailable · retrying" when the request fails); tiles On time, Late now, Failed and Median claim for the window; On time by carrier (each name opens its Carrier 360 on the same window); the review queue with approve/reject inline and the approved tenant counts. The demo admin sees Approve and Reject disabled on a pending application, with "The demo admin can't approve or reject sign-ups". The two columns stack on their own (`align-items: start`), so neither panel stretches.
+- **Demo card** (only where `GET /admin/demo` answers): under the review queue, the simulator word, "Resets daily at 04:00 · last reset · next", "Reset demo data…" behind a confirmation (a second reset within a minute explains itself in the dialog), and Chaos Mode: a duration choice (1, 3 or 5 min), one row per scenario with Start, the running block (progress, start and end times, End now) with the card's warning ring, Start disabled with "One scenario at a time", "Ending…" for a run past its end the server has not ended yet, or "Available in m:ss" during the cooldown, and the last five runs with how each ended.
 - **Navigation →** Sellers List · Carriers List · Global Monitoring · Carrier Detail.
 
 ### Sellers List
@@ -221,6 +224,10 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **States:** the most natural place to visually highlight the granularity of `ShipmentStatus`'s 9 states (§10) — worth a clearly visible per-state filter, not just a flat list.
 
 ---
+
+## Global banner (every app shell)
+
+On the demo deployment the admin, seller and carrier layouts each pass the demo's `GlobalBanner` to `AppShell`'s banner slot, between the header and the page (shared code can't import a feature). While a Chaos Mode scenario runs, every signed-in user sees a full-width warning line with the scenario, a ticking "m:ss left" and, for admins, End now; it hides at its local end time even if the socket missed the end. Its live region announces only the start and the end. With no scenario, demo accounts see a dismissible "You're using the shared public demo" line with the next reset time.
 
 ## Known Gaps (not modeled yet, so as not to pretend they're ready)
 
