@@ -51,8 +51,13 @@ describe('shipment views', () => {
     });
   });
 
-  it('counts failed, late and waiting shipments as exceptions', () => {
+  it('counts failed and late shipments as exceptions, and waiting ones for a seller', () => {
     expect(viewWhere('exceptions', ctx)).toEqual({
+      OR: [{ status: 'FAILED_DELIVERY' }, viewWhere('late', ctx)],
+    });
+    expect(
+      viewWhere('exceptions', { ...ctx, waitingIsException: true }),
+    ).toEqual({
       OR: [
         { status: 'FAILED_DELIVERY' },
         viewWhere('late', ctx),
