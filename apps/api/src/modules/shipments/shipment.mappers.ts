@@ -49,7 +49,7 @@ export const sellerShipmentDetailInclude = {
 export const carrierShipmentInclude = {
   ...modality,
   seller: { include: { user: { select: { email: true } } } },
-  owner: { include: { user: { select: { email: true } } } },
+  owner: { include: { user: { select: { email: true, name: true } } } },
 } satisfies Prisma.ShipmentInclude;
 
 export const carrierShipmentDetailInclude = {
@@ -178,6 +178,7 @@ export const toCarrierShipmentResponseDto = (
   sellerEmail: shipment.seller.user.email,
   ownerId: shipment.ownerId,
   ownerEmail: shipment.owner?.user.email ?? null,
+  ownerName: shipment.owner?.user.name ?? null,
   ...pickAddress(shipment),
   createdAt: shipment.createdAt,
   dueAt: shipment.dueAt,

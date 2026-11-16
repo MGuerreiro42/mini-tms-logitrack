@@ -4,7 +4,8 @@ import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { formatDate } from '@/lib/format-date';
 import { type SlaKind, type SlaState, slaState } from '@/lib/sla';
-import { type CarrierShipment, ownerLabel, type Shipment } from '../types';
+import type { CarrierShipment, Shipment } from '../types';
+import { OwnerChip } from './owner-chip';
 
 type ShipmentRow = Pick<
   Shipment,
@@ -71,8 +72,7 @@ export const partyColumns = {
   owner: {
     header: 'Owner',
     hideBelow: 'xl',
-    className: 'text-muted-foreground',
-    cell: ownerLabel,
+    cell: (s) => <OwnerChip shipment={s} />,
   } satisfies Column<CarrierShipment>,
   carrier: {
     header: 'Carrier',

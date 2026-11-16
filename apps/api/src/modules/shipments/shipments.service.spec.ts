@@ -108,7 +108,7 @@ describe('ShipmentsService', () => {
       user: { email: 'seller@example.com' },
     },
     ownerId: 'carrier-user-operator',
-    owner: { user: { email: 'operator@example.com' } },
+    owner: { user: { email: 'operator@example.com', name: 'Ana Souza' } },
     modalityId: 'modality-1',
     modality: { name: 'Standard' },
     addressStreet: 'Av. Paulista',
@@ -828,6 +828,7 @@ describe('ShipmentsService', () => {
       );
       expect(result.data[0].sellerCompanyName).toBe('Acme Store');
       expect(result.data[0].ownerEmail).toBe('operator@example.com');
+      expect(result.data[0].ownerName).toBe('Ana Souza');
     });
 
     it('throws NotFoundException when the user has no CarrierUser profile', async () => {

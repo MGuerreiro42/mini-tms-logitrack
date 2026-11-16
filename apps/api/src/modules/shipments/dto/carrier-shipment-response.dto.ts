@@ -46,6 +46,12 @@ export class CarrierShipmentResponseDto extends ShipmentAddressDto {
   })
   ownerEmail: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "The owning CarrierUser's display name, if claimed and set",
+  })
+  ownerName: string | null;
+
   @ApiProperty()
   createdAt: Date;
 

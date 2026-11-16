@@ -34,6 +34,7 @@ const unclaimedShipment: QueueShipmentDetail = {
   sellerEmail: 'seller@example.com',
   ownerId: null,
   ownerEmail: null,
+  ownerName: null,
   addressStreet: 'Av. Paulista',
   addressNumber: '1000',
   addressComplement: null,

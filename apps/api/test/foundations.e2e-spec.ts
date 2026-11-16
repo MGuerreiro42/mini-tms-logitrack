@@ -9,6 +9,7 @@ import {
   createShipment,
   createTenants,
   type E2eContext,
+  OPERATOR_NAME,
   randomIp,
   shipmentBody,
   startApp,
@@ -247,12 +248,6 @@ describe('Foundations (e2e)', () => {
         'CARRIER_OPERATOR',
         'CARRIER_OPERATOR',
       ]);
-      const operatorId = events[1].actorId as string;
-      await ctx.prisma.user.update({
-        where: { id: operatorId },
-        data: { name: 'Ana Souza' },
-      });
-
       const detail = (
         await as(tenants.manager).get(`/shipments/queue/${shipment.id}`)
       ).body;
@@ -261,7 +256,7 @@ describe('Foundations (e2e)', () => {
       expect(detail.deliveredAt).toBe(detail.trackingEvents.at(-1).createdAt);
       expect(
         detail.trackingEvents.map((e: { actorName: string }) => e.actorName),
-      ).toEqual([null, ...Array(5).fill('Ana Souza')]);
+      ).toEqual([null, ...Array(5).fill(OPERATOR_NAME)]);
     });
 
     it('records the seller as the actor of a cancel', async () => {
@@ -296,6 +291,7 @@ describe('Foundations (e2e)', () => {
         sellerCompanyName: 'E2E Seller',
         carrierCompanyName: 'E2E Carrier',
         ownerEmail: expect.stringMatching(/@e2e\.test$/),
+        ownerName: OPERATOR_NAME,
         trackingEvents: [
           { status: 'PENDING', actorName: null },
           { status: 'ACCEPTED' },

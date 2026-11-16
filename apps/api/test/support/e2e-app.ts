@@ -59,9 +59,10 @@ async function createUser(
   ctx: E2eContext,
   role: GlobalRole,
   email = `${randomUUID()}@e2e.test`,
+  name?: string,
 ) {
   const passwordHash = await ctx.app.get(PasswordService).hash(PASSWORD);
-  return ctx.prisma.user.create({ data: { email, passwordHash, role } });
+  return ctx.prisma.user.create({ data: { email, passwordHash, role, name } });
 }
 
 async function login(ctx: E2eContext, email: string): Promise<string> {
@@ -91,10 +92,12 @@ export async function createCarrier(
       modalities: { create: { modalityId } },
     },
   });
-  const token = async (role: 'MANAGER' | 'OPERATOR') => {
+  const token = async (role: 'MANAGER' | 'OPERATOR', name?: string) => {
     const user = await createUser(
       ctx,
       role === 'MANAGER' ? 'CARRIER_MANAGER' : 'CARRIER_OPERATOR',
+      undefined,
+      name,
     );
     await ctx.prisma.carrierUser.create({
       data: { userId: user.id, carrierId: carrier.id, role },
@@ -103,6 +106,8 @@ export async function createCarrier(
   };
   return { id: carrier.id, token };
 }
+
+export const OPERATOR_NAME = 'Ana Souza';
 
 export async function createTenants(ctx: E2eContext) {
   const modality = await ctx.prisma.deliveryModality.upsert({
@@ -132,7 +137,7 @@ export async function createTenants(ctx: E2eContext) {
     sellerA: await sellerToken(),
     sellerB: await sellerToken(),
     manager: await carrier.token('MANAGER'),
-    operator: await carrier.token('OPERATOR'),
+    operator: await carrier.token('OPERATOR', OPERATOR_NAME),
     carrierToken: carrier.token,
     sellerToken,
   };
