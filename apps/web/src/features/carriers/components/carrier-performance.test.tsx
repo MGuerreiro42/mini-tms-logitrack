@@ -98,7 +98,8 @@ describe('CarrierPerformance', () => {
     expect(rows[1]).toHaveClass('bg-selected');
   });
 
-  it('joins the queue room and refetches once for a burst of updates', async () => {
+  it('joins the queue room and refetches at most once per 10 s', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     let calls = 0;
@@ -110,17 +111,41 @@ describe('CarrierPerformance', () => {
     );
     renderWithQueryClient(<CarrierPerformance />);
     await screen.findByText('n=10 · target 90%');
-
     act(() => socket.trigger('connect'));
-    act(() => {
-      socket.trigger('shipment:updated', { status: 'DELIVERED' });
-      socket.trigger('shipment:updated', { status: 'DELIVERED' });
-    });
+    act(() => socket.ackAll({ ok: true }));
+    // Live now, so no fallback polling; let the catch-up refetch's window pass.
+    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    const settled = calls;
 
+    act(() => {
+      for (let i = 0; i < 3; i += 1) {
+        socket.trigger('shipment:updated', { status: 'DELIVERED' });
+      }
+    });
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(calls - settled).toBe(1);
+    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    expect(calls - settled).toBe(2);
+    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    expect(calls - settled).toBe(2);
     expect(socket.emit.mock.calls.map(([event]) => event)).toContain(
       'subscribe:queue',
     );
-    await waitFor(() => expect(calls).toBe(2));
+    vi.useRealTimers();
+  });
+
+  it('keeps its two columns when the team fails', async () => {
+    server.use(
+      http.get(`${API_URL}/carriers/me/operator-ranking`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<CarrierPerformance />);
+
+    expect(await screen.findByText("Couldn't load the team.")).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Time per stage' }),
+    ).toBeVisible();
   });
 
   it('names the window when it holds no shipment', async () => {

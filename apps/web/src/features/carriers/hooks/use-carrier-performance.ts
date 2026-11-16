@@ -1,18 +1,20 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useAuthToken } from '@/hooks/use-auth-token';
+import { useLiveQuery } from '@/hooks/use-live-query';
 import type { StatsWindow } from '@/hooks/use-stats-window';
+import type { LiveStatus } from '@/lib/live-status';
 import { getMyCarrierPerformance } from '../api';
 import { carrierKeys } from '../api/keys';
 
-export function useCarrierPerformance(statsWindow: StatsWindow) {
-  const { token, enabled } = useAuthToken();
-
-  return useQuery({
+// Polls while the queue room is not live, like every other live page.
+export function useCarrierPerformance(
+  statsWindow: StatsWindow,
+  liveStatus: LiveStatus,
+) {
+  return useLiveQuery({
     queryKey: carrierKeys.performance(statsWindow),
-    queryFn: () => getMyCarrierPerformance(statsWindow, token),
-    enabled,
-    placeholderData: keepPreviousData,
+    queryFn: (token) => getMyCarrierPerformance(statsWindow, token),
+    liveStatus,
+    keepPrevious: true,
   });
 }
