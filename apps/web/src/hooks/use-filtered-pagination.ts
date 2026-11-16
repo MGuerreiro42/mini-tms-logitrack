@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent } from 'react';
+import { PEEK_PARAM } from '@/hooks/use-peek';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 
 const PAGE_SIZE = 20;
@@ -52,6 +53,8 @@ export function useFilteredPagination<F extends Record<string, string>>(
   function update(change: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams.toString());
     change(next);
+    // A new filter or page shows other rows, so an open peek would point off the list.
+    next.delete(PEEK_PARAM);
     const search = next.toString();
     router.replace(search ? `${pathname}?${search}` : pathname, {
       scroll: false,

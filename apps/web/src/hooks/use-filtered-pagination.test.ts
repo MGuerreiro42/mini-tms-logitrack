@@ -86,6 +86,14 @@ describe('useFilteredPagination', () => {
     expect(currentUrl()).toBe('/admin/monitoring');
   });
 
+  it('closes an open peek on any filter or page change', () => {
+    const { result } = setup('/admin/monitoring?peek=s-1');
+
+    act(() => result.current.setPage(2));
+
+    expect(currentUrl()).toBe('/admin/monitoring?page=2');
+  });
+
   it('keeps the filters when the page changes', () => {
     const { result } = setup('/admin/monitoring?status=PENDING');
 
