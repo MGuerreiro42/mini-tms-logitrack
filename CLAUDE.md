@@ -42,7 +42,10 @@ Multi-tenant com RBAC em múltiplas camadas (admin / seller / carrier / operator
 
 ## Subagents já configurados
 
-`.claude/agents/nestjs-reviewer.md` e `.claude/agents/nextjs-reviewer.md` — use-os para revisão de código específica de cada app em vez de revisar tudo no fluxo principal.
+Use-os para revisão de código específica de cada app em vez de revisar tudo no fluxo principal:
+
+- Mudanças em `apps/web`: `.claude/agents/react-reviewer.md` + `.claude/agents/typescript-reviewer.md`, juntos.
+- Mudanças em `apps/api`: `.claude/agents/nestjs-reviewer.md` + `.claude/agents/typescript-reviewer.md`.
 
 ## Status
 
