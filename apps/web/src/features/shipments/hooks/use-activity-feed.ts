@@ -7,7 +7,10 @@ import type { ShipmentActivity } from '../types';
 const NEW_MARK_MS = 3000;
 
 // Keeps what is on screen apart from what the API returned, so arrivals can be held and marked as new.
-export function useActivityFeed(latest: ShipmentActivity[], holding: boolean) {
+export function useActivityFeed<T extends ShipmentActivity>(
+  latest: T[],
+  holding: boolean,
+) {
   const [shown, setShown] = useState(latest);
   const [freshIds, setFreshIds] = useState<ReadonlySet<string>>(new Set());
   const [listKey, setListKey] = useState(0);

@@ -16,8 +16,8 @@ import { StatTile } from '@/components/common/stat-tile';
 import { TextLink } from '@/components/common/text-link';
 import { TrackingCode } from '@/components/common/tracking-code';
 import { WindowSelector } from '@/components/common/window-selector';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { useNow } from '@/hooks/use-now';
 import {
   type StatsWindow,
@@ -188,12 +188,12 @@ function SellerDashboardView({
         counts={counts}
         hrefFor={(status) => listHref(`status=${status}`)}
       />
-      {/* The columns stack on their own (decision 10.11): no panel stretches to the other's height. */}
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="flex min-w-0 flex-col gap-5">
-          <AttentionPanel attention={attention} />
-          <div aria-busy={busy} className={dim}>
-            <Panel title={`On time by modality · ${scope}`}>
+          <ExceptionsPanel attention={attention} />
+          {/* Grid items stretch to the row; the modality panel fills the left column so both end flush. */}
+          <div aria-busy={busy} className={cn('flex-1', dim)}>
+            <Panel title={`On time by modality · ${scope}`} className="h-full">
               <QueryState
                 query={metrics}
                 skeleton={<QuerySkeleton variant="lines" />}
@@ -225,7 +225,7 @@ function SellerDashboardView({
           aside={<LiveIndicator live={live} />}
           footer={
             <TextLink href={ROUTES.sellerShipments} className="text-sm">
-              View all shipments
+              See all updates
             </TextLink>
           }
         >
@@ -262,71 +262,67 @@ function OnTimeTile({
   );
 }
 
-function AttentionPanel({
+function ExceptionsPanel({
   attention: { shipments, counts },
 }: {
   attention: ShipmentAttention;
 }) {
   const now = useNow(SLA_REFRESH_MS);
-  const hidden = counts.failed + counts.late - shipments.length;
+  const total = counts.failed + counts.late;
 
   return (
     <Panel
-      title="Needs your attention"
+      title={
+        <span className="flex items-center gap-2">
+          Exceptions
+          <Badge variant="secondary" aria-hidden>
+            {total}
+          </Badge>
+        </span>
+      }
+      aside={
+        // Announced with its noun when the number changes, not on first render.
+        <span className="sr-only" aria-live="polite">
+          {plural(total, 'exception')}
+        </span>
+      }
+      description={
+        total > 0 ? `${counts.late} late · ${counts.failed} failed` : undefined
+      }
       className="gap-2.5"
       footer={
-        hidden > 0 && (
-          <span className="text-[13px] text-muted-foreground">
-            {plural(hidden, 'more shipment')} not shown
-          </span>
+        total > shipments.length && (
+          <TextLink href={listHref('view=exceptions')} className="text-sm">
+            All exceptions
+          </TextLink>
         )
       }
     >
       {shipments.length === 0 ? (
-        <p className="border-t border-muted py-3 text-sm text-muted-foreground">
-          Nothing needs you right now. Failed deliveries and late shipments show
-          up here.
+        <p className="text-sm text-muted-foreground">
+          Nothing needs you right now.
         </p>
       ) : (
         <ul>
           {shipments.map((shipment) => (
             <li key={shipment.id}>
               <PanelLink href={ROUTES.sellerShipment(shipment.id)}>
-                <span className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-3.5">
-                  <TrackingCode
-                    code={shipment.trackingCode}
-                    className="shrink-0 text-[13px] md:w-42"
-                  />
-                  <AttentionReason shipment={shipment} now={now} />
+                {/* A fixed column, so the codes line up whatever the badge says. */}
+                <span className="w-22 shrink-0">
+                  <RiskBadge state={slaState({ ...shipment, now })} />
                 </span>
-                <ShipmentStatusBadge status={shipment.status} />
+                <TrackingCode
+                  code={shipment.trackingCode}
+                  className="shrink-0 text-[13px]"
+                />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+                  {place(shipment)} · {shipment.modalityName}
+                </span>
               </PanelLink>
             </li>
           ))}
         </ul>
       )}
     </Panel>
-  );
-}
-
-function AttentionReason({ shipment, now }: { shipment: Shipment; now: Date }) {
-  const failed = shipment.status === 'FAILED_DELIVERY';
-
-  return (
-    <span className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-sm font-semibold">
-        {failed ? 'Delivery attempt failed' : 'Past its SLA'}
-      </span>
-      <span className="truncate text-[13px] text-muted-foreground">
-        {failed ? (
-          `${place(shipment)} · ${shipment.carrierName}`
-        ) : (
-          <>
-            {place(shipment)} · {shipment.modalityName} ·{' '}
-            <RiskBadge state={slaState({ ...shipment, now })} />
-          </>
-        )}
-      </span>
-    </span>
   );
 }
