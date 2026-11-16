@@ -25,6 +25,18 @@ const seller = (status: string) => ({
   createdAt: '2026-10-01T10:00:00Z',
 });
 
+const shipment = {
+  id: 'shipment-1',
+  trackingCode: 'TMS-AAA111',
+  status: 'IN_TRANSIT',
+  carrierName: 'Transportadora Demo',
+  addressCity: 'Campinas',
+  addressState: 'SP',
+  dueAt: null,
+  deliveredAt: null,
+  createdAt: '2026-11-01T00:00:00.000Z',
+};
+
 const metrics = {
   shipments: 14,
   active: 6,
@@ -57,7 +69,7 @@ function answer(status: string, total = 23) {
     ),
     http.get(`${API_URL}/admin/shipments`, () =>
       HttpResponse.json({
-        data: [],
+        data: total ? [shipment] : [],
         meta: { total, page: 1, limit: 10, totalPages: 3 },
       }),
     ),
@@ -104,16 +116,28 @@ describe('Seller360', () => {
     ).toBeVisible();
   });
 
-  it('shows the status bar and the enabled modalities', async () => {
+  it('shows the recent shipments, the status bar and the enabled modalities', async () => {
     answer('APPROVED');
     renderWithQueryClient(<Seller360 id="s-1" />);
 
+    expect(
+      await screen.findByRole('link', { name: 'All 23 in Monitoring →' }),
+    ).toHaveAttribute('href', '/admin/monitoring?sellerId=s-1&view=ALL');
+    expect(
+      await screen.findByRole('link', { name: 'TMS-AAA111' }),
+    ).toHaveAttribute(
+      'href',
+      '/admin/shipments/shipment-1?sellerId=s-1&view=ALL',
+    );
     expect(await screen.findByText('Status · 30 d')).toBeVisible();
     const modalities = await screen.findByRole('list', {
-      name: 'Enabled modalities',
+      name: 'Modalities',
     });
-    expect(within(modalities).getAllByRole('listitem')).toHaveLength(1);
-    expect(modalities).toHaveTextContent('Standard');
+    expect(
+      within(modalities)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['StandardEnabled', 'ExpressOff']);
   });
 
   it('says so instead of zero tiles when the seller has no shipment', async () => {
