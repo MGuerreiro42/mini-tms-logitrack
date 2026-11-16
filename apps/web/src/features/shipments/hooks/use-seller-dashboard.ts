@@ -8,6 +8,7 @@ import {
   getSellerMetrics,
   getShipmentActivity,
   getShipmentAttention,
+  listShipments,
 } from '../api';
 import { shipmentKeys } from '../api/keys';
 import { statusCountsQuery } from './use-shipment-status-counts';
@@ -18,6 +19,8 @@ export type OverviewPoll = ReturnType<typeof fallbackPollInterval>;
 
 // The API maximum: grouped by shipment, it fills the six groups shown.
 const ACTIVITY_LIMIT = 20;
+// The list API's page maximum: the flow draws the first 100 open shipments by due time.
+const FLOW_QUERY = { view: 'active', limit: 100 } as const;
 
 export function useSellerCounts(poll: OverviewPoll) {
   const { token, enabled } = useAuthToken();
@@ -56,5 +59,15 @@ export function useSellerMetrics(statsWindow: StatsWindow, poll: OverviewPoll) {
     refetchInterval: poll,
     // The previous window's numbers stay, dimmed, until the new ones arrive.
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useSellerFlow(poll: OverviewPoll) {
+  const { token, enabled } = useAuthToken();
+  return useQuery({
+    queryKey: shipmentKeys.list(FLOW_QUERY),
+    queryFn: () => listShipments(FLOW_QUERY, token),
+    enabled,
+    refetchInterval: poll,
   });
 }
