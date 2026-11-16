@@ -14,12 +14,12 @@ import type {
   ListQueueQuery,
   ListShipmentsQuery,
   QueueShipmentDetail,
+  SellerMetrics,
   Shipment,
   ShipmentActivity,
   ShipmentAttention,
   ShipmentDetail,
   ShipmentStatusCounts,
-  SlaSummaryItem,
   UpdateShipmentStatusInput,
   ViewCounts,
 } from '../types';
@@ -115,9 +115,12 @@ export function getShipmentActivity(
   );
 }
 
-export function getSlaSummary(token: string): Promise<SlaSummaryItem[]> {
-  return apiClient<SlaSummaryItem[]>(
-    '/shipments/sla-summary',
+export function getSellerMetrics(
+  statsWindow: StatsWindow,
+  token: string,
+): Promise<SellerMetrics> {
+  return apiClient<SellerMetrics>(
+    `/shipments/metrics${toQueryString({ window: statsWindow })}`,
     undefined,
     token,
   );
