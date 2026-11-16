@@ -325,8 +325,9 @@ export class ShipmentsService {
     sellerId: string,
     view: SlaStateView,
   ): Promise<string[]> {
-    const now = new Date();
-    // dueAt holds UTC without a zone: read as UTC, it compares instants whatever the session zone.
+    // dueAt holds UTC without a zone and now is sent with its Z, so both read as instants
+    // whatever the session time zone.
+    const now = new Date().toISOString();
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Shipment"
       WHERE "sellerId" = ${sellerId}
