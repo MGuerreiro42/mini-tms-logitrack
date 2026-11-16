@@ -8,6 +8,7 @@ import type {
 } from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
+import { usePeek } from '@/hooks/use-peek';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUSES } from '@/lib/status-colors';
@@ -25,6 +26,7 @@ import {
   withSla,
 } from './shipment-columns';
 import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
+import { ListPeek, SellerShipmentPeek } from './shipment-peek';
 
 type SellerFilters = {
   view: ListView | typeof ALL;
@@ -90,6 +92,8 @@ export function ShipmentsTable() {
     view: view as ListView | undefined,
   });
   const inView = list.filters.view !== ALL || list.filters.status !== ALL;
+  const rows = query.data?.data ?? [];
+  const peek = usePeek(rows.map((shipment) => shipment.id));
 
   return (
     <div className="space-y-4">
@@ -112,6 +116,8 @@ export function ShipmentsTable() {
             getRowClassName={riskRowClassName}
             getRowKey={(shipment) => shipment.id}
             getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}
+            onRowClick={(shipment) => peek.open(shipment.id)}
+            selectedKey={peek.peekId}
             emptyMessage={
               isFiltered
                 ? 'No shipments match.'
@@ -131,6 +137,9 @@ export function ShipmentsTable() {
           />
         )}
       </QueryState>
+      <ListPeek peek={peek} rows={rows} hrefFor={ROUTES.sellerShipment}>
+        {(id) => <SellerShipmentPeek id={id} />}
+      </ListPeek>
     </div>
   );
 }
