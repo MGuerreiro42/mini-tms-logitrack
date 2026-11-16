@@ -9,10 +9,10 @@ import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import {
   type StatusFilter,
-  StatusFilterTabs,
   statusFilterOptions,
   statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+  ViewTabs,
+} from '@/components/common/view-tabs';
 import { Button } from '@/components/ui/button';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
@@ -46,10 +46,11 @@ const STATUS_VALUES = statusFilterValues(STATUS_OPTIONS);
 const SLA_REFRESH_MS = 60_000;
 
 export function CarrierQueueTable() {
-  const { filters, setFilter, setPage, params } = useFilteredPagination(
-    { status: ALL as StatusFilter<ShipmentStatus> },
-    { status: STATUS_VALUES },
-  );
+  const { filters, defaults, setFilters, setPage, params } =
+    useFilteredPagination(
+      { status: ALL as StatusFilter<ShipmentStatus> },
+      { status: STATUS_VALUES },
+    );
 
   const live = useShipmentTracking({ subscribeToQueue: true });
   const query = useShipmentQueue(params, live.status);
@@ -64,10 +65,11 @@ export function CarrierQueueTable() {
         action={<LiveIndicator live={live} />}
       />
       <OfflineBanner status={live.status} />
-      <StatusFilterTabs
+      <ViewTabs
         options={STATUS_OPTIONS}
-        value={filters.status}
-        onChange={(value) => setFilter('status', value)}
+        filters={filters}
+        defaults={defaults}
+        onChange={setFilters}
       />
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}

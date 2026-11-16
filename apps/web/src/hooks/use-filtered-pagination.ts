@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent } from 'react';
-import { ALL } from '@/lib/filters';
+import { ALL, FREE_TEXT } from '@/lib/filters';
 
 const PAGE_SIZE = 20;
 const PAGE_PARAM = 'page';
@@ -11,11 +11,19 @@ type QueryFilters<F> = {
   [K in keyof F]: Exclude<F[K], typeof ALL> | undefined;
 };
 
-type AllowedValues<F> = { [K in keyof F]: readonly F[K][] };
+type AllowedValues<F> = {
+  [K in keyof F]: readonly F[K][] | typeof FREE_TEXT;
+};
+
+interface Options<F> {
+  // Tab keys: a view is where the user is, not a filter to clear or count.
+  viewKeys?: (keyof F)[];
+}
 
 export function useFilteredPagination<F extends Record<string, string>>(
   defaultFilters: F,
   allowedValues: AllowedValues<F>,
+  { viewKeys = [] }: Options<F> = {},
 ) {
   const router = useRouter();
   const pathname = usePathname();
@@ -23,7 +31,12 @@ export function useFilteredPagination<F extends Record<string, string>>(
 
   const rejected = Object.keys(defaultFilters).filter((key) => {
     const value = searchParams.get(key);
-    return value !== null && !allowedValues[key].includes(value as F[string]);
+    const allowed = allowedValues[key];
+    return (
+      value !== null &&
+      allowed !== FREE_TEXT &&
+      !allowed.includes(value as F[string])
+    );
   });
   const filters = Object.fromEntries(
     Object.entries(defaultFilters).map(([key, fallback]) => [
@@ -45,17 +58,28 @@ export function useFilteredPagination<F extends Record<string, string>>(
     });
   }
 
-  function setFilter<K extends keyof F & string>(key: K, value: F[K]) {
+  function setFilters(changes: Partial<F>) {
     update((next) => {
-      if (value === defaultFilters[key]) next.delete(key);
-      else next.set(key, value);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === undefined || value === defaultFilters[key])
+          next.delete(key);
+        else next.set(key, value);
+      }
       next.delete(PAGE_PARAM);
     });
   }
 
+  function setFilter<K extends keyof F & string>(key: K, value: F[K]) {
+    setFilters({ [key]: value } as unknown as Partial<F>);
+  }
+
+  const filterKeys = Object.keys(defaultFilters).filter(
+    (key) => !viewKeys.includes(key),
+  );
+
   function clearFilters() {
     update((next) => {
-      for (const key of Object.keys(defaultFilters)) next.delete(key);
+      for (const key of filterKeys) next.delete(key);
       next.delete(PAGE_PARAM);
     });
   }
@@ -82,16 +106,16 @@ export function useFilteredPagination<F extends Record<string, string>>(
   const query = Object.fromEntries(
     Object.entries(filters).map(([key, value]) => [
       key,
-      value === ALL ? undefined : value,
+      value === ALL || value === '' ? undefined : value,
     ]),
   ) as QueryFilters<F>;
 
   return {
     filters,
-    isFiltered: Object.keys(defaultFilters).some(
-      (key) => filters[key] !== defaultFilters[key],
-    ),
+    defaults: defaultFilters,
+    isFiltered: filterKeys.some((key) => filters[key] !== defaultFilters[key]),
     setFilter,
+    setFilters,
     clearFilters,
     setPage,
     params: { ...query, page, limit: PAGE_SIZE },

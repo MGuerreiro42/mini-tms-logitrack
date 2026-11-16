@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { FREE_TEXT } from '@/lib/filters';
 import { currentUrl, resetNavigation, router } from '@/test/navigation';
 import { useFilteredPagination } from './use-filtered-pagination';
 
@@ -110,5 +111,44 @@ describe('useFilteredPagination', () => {
     act(() => result.current.clearFilters());
 
     expect(currentUrl()).toBe('/admin/monitoring?tab=x');
+  });
+
+  describe('with a view key and a free-text key', () => {
+    const setupSearch = (href: string) => {
+      resetNavigation(href);
+      return renderHook(() =>
+        useFilteredPagination(
+          { view: 'ALL' as string, status: 'ALL' as string, q: '' },
+          { view: ['ALL', 'active'], status: ['ALL', 'PENDING'], q: FREE_TEXT },
+          { viewKeys: ['view', 'status'] },
+        ),
+      );
+    };
+
+    it('accepts any text and sends an empty one as no filter', () => {
+      expect(setupSearch('/s?q=TMS-DE').result.current.params.q).toBe('TMS-DE');
+      expect(setupSearch('/s').result.current.params.q).toBeUndefined();
+      expect(router.replace).not.toHaveBeenCalled();
+    });
+
+    it('sets several keys at once, dropping defaults and the page', () => {
+      const { result } = setupSearch('/s?status=PENDING&page=2');
+
+      act(() => result.current.setFilters({ view: 'active', status: 'ALL' }));
+
+      expect(currentUrl()).toBe('/s?view=active');
+    });
+
+    it('neither counts nor clears the view', () => {
+      const { result } = setupSearch('/s?view=active&q=x');
+
+      expect(result.current.isFiltered).toBe(true);
+      act(() => result.current.clearFilters());
+
+      expect(currentUrl()).toBe('/s?view=active');
+      expect(setupSearch('/s?view=active').result.current.isFiltered).toBe(
+        false,
+      );
+    });
   });
 });

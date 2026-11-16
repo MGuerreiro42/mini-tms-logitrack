@@ -1,6 +1,6 @@
 'use client';
 
-import type { StatusFilter } from '@/components/common/status-filter-tabs';
+import type { StatusFilter } from '@/components/common/view-tabs';
 import {
   APPROVAL_FILTER_VALUES,
   CompanyApprovalTable,

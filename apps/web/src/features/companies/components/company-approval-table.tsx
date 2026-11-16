@@ -10,7 +10,7 @@ import {
   type StatusFilter,
   statusFilterOptions,
   statusFilterValues,
-} from '@/components/common/status-filter-tabs';
+} from '@/components/common/view-tabs';
 import { ApprovalStatusBadge } from '@/components/ui/status-badge';
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
