@@ -5,6 +5,7 @@ import { setSession } from '@/lib/session';
 import { getSocket } from '@/services/websocket-client';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import { setViewportWidth } from '@/test/viewport';
 import { CarrierQueueTable } from './carrier-queue-table';
@@ -43,6 +44,8 @@ describe('CarrierQueueTable', () => {
 
   beforeEach(() => {
     requestedUrls = [];
+    // On the road keeps the Owner column, which Mine hides.
+    resetNavigation('/carrier/queue?view=on_the_road');
     vi.mocked(getSocket).mockReturnValue(makeFakeSocket() as never);
     setSession({
       token: 'signed.jwt.token',
@@ -51,6 +54,16 @@ describe('CarrierQueueTable', () => {
       email: 'operator@example.com',
     });
     server.use(
+      http.get(`${API_URL}/shipments/queue/view-counts`, () =>
+        HttpResponse.json({
+          mine: 1,
+          unclaimed: 1,
+          to_pick_up: 0,
+          on_the_road: 2,
+          exceptions: 0,
+          done: 3,
+        }),
+      ),
       http.get(`${API_URL}/shipments/queue`, ({ request }) => {
         requestedUrls.push(request.url);
         return HttpResponse.json({
@@ -62,7 +75,7 @@ describe('CarrierQueueTable', () => {
   });
 
   it('renders every row with seller, destination, and owner', async () => {
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
 
     await screen.findByText('Example Store');
     expect(screen.getByText('Another Store')).toBeInTheDocument();
@@ -71,7 +84,7 @@ describe('CarrierQueueTable', () => {
   });
 
   it('only shows a Claim button on the unowned row', async () => {
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Example Store');
 
     expect(screen.getAllByRole('button', { name: /^Claim / })).toHaveLength(1);
@@ -86,7 +99,7 @@ describe('CarrierQueueTable', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Example Store');
 
     await user.click(screen.getByRole('button', { name: 'Claim TMS-AAA111' }));
@@ -111,7 +124,7 @@ describe('CarrierQueueTable', () => {
       http.patch(`${API_URL}/shipments/:id/claim`, () => new Promise(() => {})),
     );
     const user = userEvent.setup();
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Third Store');
 
     const [first, second] = screen.getAllByRole('button', { name: /^Claim / });
@@ -131,7 +144,7 @@ describe('CarrierQueueTable', () => {
       ),
     );
     const user = userEvent.setup();
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText('Example Store');
     const fetchesBefore = requestedUrls.length;
 
@@ -142,21 +155,51 @@ describe('CarrierQueueTable', () => {
     );
   });
 
-  it('switching the status tab refetches with the new filter and resets to page 1', async () => {
-    const user = userEvent.setup();
-    renderWithQueryClient(<CarrierQueueTable />);
-    await screen.findByText('Example Store');
+  it.each([
+    ['mine', 'Mine, 1'],
+    ['unclaimed', 'Unclaimed, 1'],
+  ] as const)('lands on the %s default view', async (view, tab) => {
+    resetNavigation('/carrier/queue');
+    renderWithQueryClient(<CarrierQueueTable defaultView={view} />);
 
-    await user.click(screen.getByRole('tab', { name: 'Accepted' }));
-
-    await waitFor(() =>
-      expect(requestedUrls.at(-1)).toContain('status=ACCEPTED'),
+    expect(await screen.findByRole('tab', { name: tab })).toHaveAttribute(
+      'aria-selected',
+      'true',
     );
+    await waitFor(() => expect(requestedUrls.at(-1)).toContain(`view=${view}`));
+    // Mine is all the caller's own, so it has no Owner column.
+    expect(
+      screen.queryAllByRole('columnheader', { name: 'Owner' }),
+    ).toHaveLength(view === 'mine' ? 0 : 1);
+  });
+
+  it('selects the server-given view before any client session exists', () => {
+    document.cookie = 'tms_session=; path=/; max-age=0';
+    resetNavigation('/carrier/queue');
+    renderWithQueryClient(<CarrierQueueTable defaultView="unclaimed" />);
+
+    expect(screen.getByRole('tab', { name: 'Unclaimed' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('reads an old ?status= link as a filter with no tab selected', async () => {
+    resetNavigation('/carrier/queue?status=ACCEPTED');
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Remove Status: Accepted' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('tab', { selected: true })).toBeNull();
+    const url = new URL(requestedUrls.at(-1) as string);
+    expect(url.searchParams.get('status')).toBe('ACCEPTED');
+    expect(url.searchParams.get('view')).toBeNull();
   });
 
   it('keeps Claim, seller and owner on mobile cards', async () => {
     setViewportWidth(390);
-    renderWithQueryClient(<CarrierQueueTable />);
+    renderWithQueryClient(<CarrierQueueTable defaultView="mine" />);
     await screen.findByText(/Example Store/);
 
     expect(screen.queryByRole('table')).toBeNull();

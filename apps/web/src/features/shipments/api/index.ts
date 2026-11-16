@@ -6,6 +6,7 @@ import type {
   AdminShipmentResponse,
   AdminStatusCountsQuery,
   CarrierShipment,
+  CarrierView,
   CreateShipmentInput,
   EligibleCarrier,
   ListAdminShipmentsQuery,
@@ -79,6 +80,16 @@ export function getShipmentViewCounts(
 ): Promise<SellerViewCounts> {
   return apiClient<SellerViewCounts>(
     '/shipments/view-counts',
+    undefined,
+    token,
+  );
+}
+
+export function getQueueViewCounts(
+  token: string,
+): Promise<Record<CarrierView, number>> {
+  return apiClient<Record<CarrierView, number>>(
+    '/shipments/queue/view-counts',
     undefined,
     token,
   );

@@ -1,20 +1,16 @@
 'use client';
 
-import { type FilterChip, FilterChips } from '@/components/common/filter-chips';
-import { FilterToolbar } from '@/components/common/filter-toolbar';
 import { PaginatedTable } from '@/components/common/paginated-table';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
-import { SearchField } from '@/components/common/search-field';
-import {
-  type StatusFilter,
-  type ViewTabOption,
-  ViewTabs,
+import type {
+  StatusFilter,
+  ViewTabOption,
 } from '@/components/common/view-tabs';
 import { useFilteredPagination } from '@/hooks/use-filtered-pagination';
 import { useNow } from '@/hooks/use-now';
 import { ALL, FREE_TEXT } from '@/lib/filters';
 import { ROUTES } from '@/lib/routes';
-import { SHIPMENT_STATUS, SHIPMENT_STATUSES } from '@/lib/status-colors';
+import { SHIPMENT_STATUSES } from '@/lib/status-colors';
 import { sumRecord } from '@/lib/sum-record';
 import { useShipmentStatusCounts } from '../hooks/use-shipment-status-counts';
 import { useShipmentsList } from '../hooks/use-shipments-list';
@@ -28,6 +24,7 @@ import {
   type WithSla,
   withSla,
 } from './shipment-columns';
+import { listScope, ShipmentListToolbar } from './shipment-list-toolbar';
 
 type SellerFilters = {
   view: SellerView | typeof ALL;
@@ -41,15 +38,7 @@ const VIEW_KEYS: (keyof SellerFilters)[] = ['view', 'status'];
 const SLA_REFRESH_MS = 60_000;
 
 export function ShipmentsTable() {
-  const {
-    filters,
-    defaults,
-    isFiltered: isSearching,
-    setFilter,
-    setFilters,
-    setPage,
-    params,
-  } = useFilteredPagination(
+  const list = useFilteredPagination(
     DEFAULT_FILTERS,
     {
       view: [ALL, 'active', 'exceptions'],
@@ -59,11 +48,9 @@ export function ShipmentsTable() {
     { viewKeys: VIEW_KEYS },
   );
 
-  const query = useShipmentsList(params);
   const statusCounts = useShipmentStatusCounts().data;
   const viewCounts = useSellerViewCounts().data;
   const now = useNow(SLA_REFRESH_MS);
-  const total = query.data?.meta.total;
 
   const tabs: ViewTabOption<'view' | 'status'>[] = [
     {
@@ -97,60 +84,21 @@ export function ShipmentsTable() {
       count: statusCounts?.CANCELLED,
     },
   ];
-  // A status link with no tab of its own (?status=IN_TRANSIT) is a filter, not a view.
-  const strayStatus =
-    filters.status !== ALL &&
-    !tabs.some((tab) => tab.key === 'status' && tab.value === filters.status)
-      ? filters.status
-      : undefined;
-  const isFiltered = isSearching || strayStatus !== undefined;
-  const inView = filters.view !== ALL || filters.status !== ALL;
-  const chips: FilterChip[] = [
-    ...(strayStatus
-      ? [
-          {
-            id: 'status',
-            label: `Status: ${SHIPMENT_STATUS[strayStatus].label}`,
-            onRemove: () => setFilter('status', ALL),
-          },
-        ]
-      : []),
-    ...(filters.q
-      ? [
-          {
-            id: 'q',
-            label: `Search: ${filters.q}`,
-            onRemove: () => setFilter('q', ''),
-          },
-        ]
-      : []),
-  ];
+  const { isFiltered, view } = listScope(list, tabs);
+  const query = useShipmentsList({
+    ...list.params,
+    view: view as SellerView | undefined,
+  });
+  const inView = list.filters.view !== ALL || list.filters.status !== ALL;
 
   return (
     <div className="space-y-4">
-      <ViewTabs
-        options={tabs}
-        filters={filters}
-        defaults={defaults}
-        onChange={setFilters}
+      <ShipmentListToolbar
+        list={list}
+        tabs={tabs}
+        placeholder="Code, city or zip"
+        total={query.data?.meta.total}
       />
-      <FilterToolbar
-        onClear={
-          isFiltered
-            ? () => setFilters({ q: '', ...(strayStatus && { status: ALL }) })
-            : undefined
-        }
-        summary={
-          total !== undefined && `${total} shipment${total === 1 ? '' : 's'}`
-        }
-      >
-        <SearchField
-          value={filters.q}
-          onChange={(q) => setFilter('q', q)}
-          placeholder="Code, city or zip"
-        />
-      </FilterToolbar>
-      <FilterChips chips={chips} />
       <QueryState
         skeleton={<QuerySkeleton variant="table" />}
         query={query}
@@ -160,7 +108,7 @@ export function ShipmentsTable() {
           <PaginatedTable<WithSla<Shipment>>
             data={withSla(result.data, now)}
             meta={result.meta}
-            onPageChange={setPage}
+            onPageChange={list.setPage}
             getRowClassName={riskRowClassName}
             getRowKey={(shipment) => shipment.id}
             getRowHref={(shipment) => ROUTES.sellerShipment(shipment.id)}

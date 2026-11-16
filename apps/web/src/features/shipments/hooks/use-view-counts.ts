@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { getShipmentViewCounts } from '../api';
+import { getQueueViewCounts, getShipmentViewCounts } from '../api';
 import { shipmentKeys } from '../api/keys';
 
 export function useSellerViewCounts() {
@@ -10,6 +10,15 @@ export function useSellerViewCounts() {
   return useQuery({
     queryKey: shipmentKeys.viewCounts(),
     queryFn: () => getShipmentViewCounts(token),
+    enabled,
+  });
+}
+
+export function useQueueViewCounts() {
+  const { token, enabled } = useAuthToken();
+  return useQuery({
+    queryKey: shipmentKeys.queueViewCounts(),
+    queryFn: () => getQueueViewCounts(token),
     enabled,
   });
 }
