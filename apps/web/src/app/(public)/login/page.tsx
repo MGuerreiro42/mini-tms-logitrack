@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PublicPage } from '@/components/common/public-page';
 import { TextLink } from '@/components/common/text-link';
+import { DemoPicker } from '@/features/auth/components/demo-picker';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { DEMO_LOGIN_ENABLED } from '@/lib/demo';
 import { ROUTES } from '@/lib/routes';
@@ -15,10 +16,12 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const expired = SESSION_EXPIRED_PARAM in params;
-  const next = params[NEXT_PARAM];
+  const next =
+    typeof params[NEXT_PARAM] === 'string' ? params[NEXT_PARAM] : undefined;
 
   return (
     <PublicPage
+      aside={DEMO_LOGIN_ENABLED ? <DemoPicker next={next} /> : undefined}
       title="Sign in"
       description={
         expired
@@ -41,10 +44,7 @@ export default async function LoginPage({
         </>
       }
     >
-      <LoginForm
-        showDemoAccounts={DEMO_LOGIN_ENABLED}
-        next={typeof next === 'string' ? next : undefined}
-      />
+      <LoginForm next={next} />
     </PublicPage>
   );
 }
