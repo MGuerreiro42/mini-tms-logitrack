@@ -38,6 +38,14 @@ describe('TrackingPresence', () => {
     });
   });
 
+  it('shares one round trip between concurrent callers', async () => {
+    const presence = presenceWith(1, 0);
+
+    await Promise.all([presence.socketCounts(), presence.hasViewers()]);
+
+    expect(fetchSockets).toHaveBeenCalledTimes(2);
+  });
+
   it('reuses an answer for 5 s', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const presence = presenceWith(0, 0);

@@ -16,6 +16,7 @@ export interface SocketCounts {
 export class TrackingPresence {
   private checkedAt = 0;
   private counts: SocketCounts = { internal: 0, public: 0 };
+  private inFlight?: Promise<SocketCounts>;
 
   constructor(
     private readonly gateway: TrackingGateway,
@@ -23,9 +24,20 @@ export class TrackingPresence {
   ) {}
 
   // fetchSockets() goes through the Redis adapter, so it counts every API instance.
-  async socketCounts(): Promise<SocketCounts> {
-    if (Date.now() - this.checkedAt < PRESENCE_CACHE_MS) return this.counts;
+  // Concurrent callers (the drive job, the admin pulse) share one round trip.
+  socketCounts(): Promise<SocketCounts> {
+    if (Date.now() - this.checkedAt < PRESENCE_CACHE_MS) {
+      return Promise.resolve(this.counts);
+    }
+    this.inFlight ??= this.fetchCounts().finally(() => {
+      this.inFlight = undefined;
+    });
+    return this.inFlight;
+  }
 
+  // shortcut: fetchSockets lists every socket of every instance just to count them; upgrade to
+  // a Redis counter kept on connect and disconnect once sockets reach the thousands.
+  private async fetchCounts(): Promise<SocketCounts> {
     const [sockets, publicSockets] = await Promise.all([
       this.gateway.server.fetchSockets(),
       this.publicGateway.server.fetchSockets(),
