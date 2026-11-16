@@ -42,7 +42,12 @@ describe('useRecents', () => {
     signIn('u1');
     localStorage.setItem(
       'tms:recents:u1',
-      JSON.stringify([{ href: 'javascript:alert(1)', code: 'X' }, entry(1)]),
+      JSON.stringify([
+        { href: 'javascript:alert(1)', code: 'X' },
+        { href: '/\\evil.com', code: 'Y' },
+        { href: '//evil.com', code: 'Z' },
+        entry(1),
+      ]),
     );
     const { result } = renderHook(() => useRecents());
     expect(result.current).toEqual([entry(1)]);

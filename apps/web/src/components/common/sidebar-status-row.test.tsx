@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import type { LiveStatus } from '@/lib/live-status';
 import { NavCountsContext } from './nav-counts';
-import { ConnectionStatusRow, SidebarStatusRow } from './sidebar-status-row';
+import {
+  ConnectionStatusRow,
+  SidebarFooter,
+  SidebarStatusRow,
+} from './sidebar-status-row';
 
 describe('ConnectionStatusRow', () => {
   it.each<[LiveStatus, string]>([
@@ -27,5 +31,19 @@ describe('SidebarStatusRow', () => {
       'href',
       '/admin',
     );
+  });
+});
+
+describe('SidebarFooter', () => {
+  it('puts the connection line before the feature lines', () => {
+    render(
+      <NavCountsContext value={{ status: 'live' }}>
+        <SidebarFooter>
+          <p>Chaos · off</p>
+        </SidebarFooter>
+      </NavCountsContext>,
+    );
+    const lines = screen.getAllByText(/Live|Chaos/).map((el) => el.textContent);
+    expect(lines).toEqual(['Live', 'Chaos · off']);
   });
 });

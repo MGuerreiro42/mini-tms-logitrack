@@ -186,7 +186,7 @@ A seller who opened three shipments today sees them under "Recent" in the sideba
 
 - **FR-017**: `AppShell` MUST take an optional `sidebarFooter` slot rendered under the nav, above the collapse button, and in the More sheet. The shell always renders the connection line first from `useNavCounts().status`, reusing `LiveIndicator`'s labels and dot. While not live, the line reads "Reconnecting · counts may be stale". It also exports a `SidebarStatusRow` (`{ tone, label, href? }`) that collapses to a dot with a tooltip in the rail.
 - **FR-018**: `features/demo/components/chaos-status-row.tsx` MUST render "Chaos · off" or "Chaos · <label>" (`warning` dot) from `useDemoStatus()`, and nothing on `404`, with no data, or when `DEMO_LOGIN_ENABLED` is false. It takes an optional `href`. The seller and carrier layouts pass `<ChaosStatusRow />`.
-- **FR-019**: `features/admin/components/admin-ops-status.tsx` MUST render "Simulator · <state>" and "Webhooks · <rate>% · n <n>" (one decimal, as `PulseStrip` formats it; a `null` part reads "unavailable") from `usePulse()`, followed by `<ChaosStatusRow href="/admin" />`. The admin layout passes it. The webhooks line links to `/admin/monitoring`. No new request: the pulse key is shared with the admin Overview.
+- **FR-019**: `features/admin/components/admin-ops-status.tsx` MUST render "Simulator · <state>" and "Webhooks · <rate>% · n <n>" (one decimal, as `PulseStrip` formats it; a `null` part reads "unavailable") from `usePulse()`, followed by `<ChaosStatusRow href="/admin" />`. The admin layout passes it. The webhooks line links to `/admin/monitoring`. It shares the admin Overview's pulse key, so the Overview adds no request, and on every other admin page the footer keeps the 5 s pulse poll running.
 
 ### Phone
 
