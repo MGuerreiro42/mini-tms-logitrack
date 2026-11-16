@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { resetNavigation } from '@/test/navigation';
+import { resetNavigation, router } from '@/test/navigation';
 import { setViewportWidth } from '@/test/viewport';
 import type { NavSection } from './nav-tree';
 import { SidebarFrame } from './sidebar-frame';
@@ -9,7 +9,12 @@ const nav: NavSection[] = [
   {
     items: [
       { name: 'Overview', href: '/seller', icon: null },
-      { name: 'Profile', href: '/seller/profile', icon: null },
+      {
+        name: 'Profile',
+        href: '/seller/profile',
+        icon: null,
+        shortcut: 'p',
+      },
     ],
   },
 ];
@@ -65,7 +70,7 @@ describe('SidebarFrame', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await user.click(screen.getByRole('link', { name: 'Profile' }));
+    act(() => router.push('/seller/profile'));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(toggle);
@@ -125,5 +130,17 @@ describe('SidebarFrame', () => {
     expect(reached).toHaveBeenCalled();
     document.removeEventListener('keydown', reached);
     dialog.remove();
+  });
+
+  it('closes the overlay on any navigation, not only its own links', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+
+    await user.keyboard('[[');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('gp');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
   });
 });

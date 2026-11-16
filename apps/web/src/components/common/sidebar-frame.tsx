@@ -1,6 +1,7 @@
 'use client';
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { ExceptionsAnnouncer } from '@/components/common/nav-counts';
 import { type NavSection, SIDEBAR_COOKIE } from '@/components/common/nav-tree';
@@ -72,6 +73,13 @@ export function SidebarFrame({
     if (!panel.current?.contains(event.target as Node)) closeOverlay();
   });
 
+  // Any navigation closes the overlay: its links, a g-shortcut or a ⌘K pick.
+  const route = `${usePathname()}?${useSearchParams()}`;
+  const onRoute = useEffectEvent((_route: string) => {
+    if (overlay) closeOverlay();
+  });
+  useEffect(() => onRoute(route), [route]);
+
   useEffect(() => {
     if (!overlay) return;
     window.addEventListener('keydown', onKeyDown, true);
@@ -93,12 +101,6 @@ export function SidebarFrame({
           <TooltipProvider delayDuration={300}>
             <div
               ref={panel}
-              // Any link inside closes the overlay, including one to the current page.
-              onClickCapture={(event) => {
-                if (overlay && (event.target as Element).closest('a')) {
-                  closeOverlay();
-                }
-              }}
               className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh max-xl:in-data-[overlay=true]:fixed max-xl:in-data-[overlay=true]:z-30 max-xl:in-data-[overlay=true]:w-60 max-xl:in-data-[overlay=true]:animate-sidebar-in max-xl:in-data-[overlay=true]:shadow-panel"
             >
               <SidebarNav nav={nav} />
