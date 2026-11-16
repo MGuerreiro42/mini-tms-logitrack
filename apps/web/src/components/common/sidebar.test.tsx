@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import { resetNavigation } from '@/test/navigation';
+import userEvent from '@testing-library/user-event';
+import { resetNavigation, router } from '@/test/navigation';
 import type { NavSection } from './nav-tree';
 import { Sidebar } from './sidebar';
 
@@ -60,5 +61,38 @@ describe('Sidebar', () => {
 
     expect(link('Shipments')).toHaveAttribute('aria-current', 'page');
     expect(link('Late')).not.toHaveAttribute('aria-current');
+  });
+
+  it('collapses a section and a view list from their disclosure buttons', async () => {
+    resetNavigation('/seller');
+    const user = userEvent.setup();
+    render(<Sidebar nav={nav} />);
+
+    const setup = screen.getByRole('button', { name: 'Setup' });
+    expect(setup).toHaveAttribute('aria-expanded', 'true');
+    await user.click(setup);
+    expect(setup).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('link', { name: 'Profile' })).toBeNull();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Hide Shipments views' }),
+    );
+    expect(screen.queryByRole('link', { name: 'Late' })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Show Shipments views' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('reopens a collapsed section when navigating into it', async () => {
+    resetNavigation('/seller');
+    const user = userEvent.setup();
+    render(<Sidebar nav={nav} />);
+
+    await user.click(screen.getByRole('button', { name: 'Setup' }));
+    router.push('/seller/profile');
+
+    expect(
+      await screen.findByRole('link', { name: 'Profile' }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 });
