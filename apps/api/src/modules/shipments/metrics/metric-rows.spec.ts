@@ -14,7 +14,7 @@ const shipment = (id: string) => ({
   status: ShipmentStatus.RETURNED,
   dueAt: null,
   deliveredAt: null,
-  modality: { code: 'EXPRESS', name: 'Express' },
+  modality: { code: 'EXPRESS', name: 'Express', slaHours: 48 },
 });
 
 describe('toMetricRows', () => {

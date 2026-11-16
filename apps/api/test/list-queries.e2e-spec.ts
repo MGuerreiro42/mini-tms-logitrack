@@ -227,5 +227,19 @@ describe('List views and search (e2e)', () => {
     await expect(total({ since, window: '30d' })).resolves.toBe(
       (await total({ since })) - 1,
     );
+
+    const { body } = await get(tenants.manager, '/carriers/me/performance', {
+      window: '90d',
+    }).expect(200);
+    expect(
+      body.stages.map((stage: { status: string }) => stage.status),
+    ).toEqual([
+      'PENDING',
+      'ACCEPTED',
+      'COLLECTED',
+      'IN_TRANSIT',
+      'OUT_FOR_DELIVERY',
+    ]);
+    expect(body.stages[0].budgetHours).toBeGreaterThan(0);
   });
 });

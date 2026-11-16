@@ -1,39 +1,85 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { ShipmentStatus } from '../../../../generated/prisma/client';
-import { ShipmentStatusCountsResponseDto } from '../../shipments/dto/shipment-status-counts-response.dto';
+import { OnTimeTrendDto } from '../../shipments/metrics/metrics-response.dto';
 
-export class StageDurationResponseDto {
-  @ApiProperty({ enum: ShipmentStatus })
-  fromStatus: ShipmentStatus;
-
-  @ApiProperty({ enum: ShipmentStatus })
-  toStatus: ShipmentStatus;
-
-  @ApiPropertyOptional({ nullable: true })
-  avgHours: number | null;
+// Medians and p90 are nearest-rank; every value is null without samples.
+export class MedianDeliveryDto {
+  @ApiProperty({ type: Number, nullable: true })
+  hours: number | null;
 
   @ApiProperty()
-  sampleCount: number;
+  n: number;
+}
+
+export class FirstAttemptDto {
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Outcomes without a FAILED_DELIVERY event ÷ n × 100',
+  })
+  rate: number | null;
+
+  @ApiProperty({ description: 'Delivered or ever failed' })
+  n: number;
+
+  @ApiProperty()
+  failed: number;
+
+  @ApiProperty()
+  returned: number;
+}
+
+export class ClaimDto {
+  @ApiProperty({ type: Number, nullable: true })
+  p50Minutes: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  p90Minutes: number | null;
+
+  @ApiProperty()
+  n: number;
+}
+
+export class StageResponseDto {
+  @ApiProperty({
+    enum: ShipmentStatus,
+    description: 'The status a shipment sits in during the stage',
+  })
+  status: ShipmentStatus;
+
+  @ApiProperty({ type: Number, nullable: true })
+  p50Hours: number | null;
+
+  @ApiProperty({ type: Number, nullable: true })
+  p90Hours: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: "A fixed share of the window's median slaHours",
+  })
+  budgetHours: number | null;
+
+  @ApiProperty()
+  n: number;
 }
 
 export class CarrierPerformanceResponseDto {
-  @ApiProperty({ type: ShipmentStatusCountsResponseDto })
-  shipmentCountsByStatus: ShipmentStatusCountsResponseDto;
-
-  @ApiProperty()
+  @ApiProperty({ description: 'Shipments created in the window' })
   totalShipments: number;
 
-  @ApiPropertyOptional({ nullable: true })
-  avgHoursBetweenEvents: number | null;
+  @ApiProperty({ type: OnTimeTrendDto })
+  onTime: OnTimeTrendDto;
 
-  @ApiProperty({
-    description: 'Share of shipments that ever had a FAILED_DELIVERY event',
-  })
-  failedDeliveryRate: number;
+  @ApiProperty({ type: MedianDeliveryDto })
+  medianDelivery: MedianDeliveryDto;
 
-  @ApiProperty()
-  returnedRate: number;
+  @ApiProperty({ type: FirstAttemptDto })
+  firstAttempt: FirstAttemptDto;
 
-  @ApiProperty({ type: [StageDurationResponseDto] })
-  stageDurations: StageDurationResponseDto[];
+  @ApiProperty({ type: ClaimDto })
+  claim: ClaimDto;
+
+  @ApiProperty({ type: [StageResponseDto] })
+  stages: StageResponseDto[];
 }

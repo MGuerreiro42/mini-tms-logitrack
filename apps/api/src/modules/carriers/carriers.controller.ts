@@ -120,17 +120,20 @@ export class CarriersController {
 
   @ApiOperation({
     summary:
-      "Aggregated metrics over the authenticated carrier's own shipments created in the window — read-only for both manager and operator",
+      "Delivery metrics of the authenticated carrier's shipments created in the window (spec 07 FR-008): on time with trend, median delivery, first attempt, claim time and per-stage p50/p90 against a budget — read-only for both manager and operator",
   })
   @ApiResponse({ status: 200, type: CarrierPerformanceResponseDto })
   @ApiResponse({ status: 404, description: 'Carrier not found' })
   @Auth(...CARRIER_ROLES)
   @Get('me/performance')
-  performance(
+  async performance(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: StatsWindowQueryDto,
   ) {
-    return this.carriersService.performance(user.id, windowSince(query));
+    const carrierId = await this.carriersService.findCarrierIdForUserOrThrow(
+      user.id,
+    );
+    return this.carriersService.performance(carrierId, windowSince(query));
   }
 
   @ApiOperation({

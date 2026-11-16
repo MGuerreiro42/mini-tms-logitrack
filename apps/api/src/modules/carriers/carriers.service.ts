@@ -18,33 +18,18 @@ import {
 import { PasswordService } from '../../shared/password/password.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
-import {
-  average,
-  countByStatus,
-  createdSince,
-  hoursBetween,
-  percentage,
-} from '../../shared/stats/stats';
+import { countByStatus, createdSince } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
-import type {
-  CarrierPerformanceResponseDto,
-  StageDurationResponseDto,
-} from './dto/carrier-performance-response.dto';
+import { deliveryMetrics } from '../shipments/metrics/delivery-metrics';
+import { loadMetricRows } from '../shipments/metrics/metric-rows';
+import type { CarrierPerformanceResponseDto } from './dto/carrier-performance-response.dto';
 import type { CarrierResponseDto } from './dto/carrier-response.dto';
 import type { CoverageAreaResponseDto } from './dto/coverage-area-response.dto';
 import type { CreateCarrierDto } from './dto/create-carrier.dto';
 import type { OperatorRankingItemResponseDto } from './dto/operator-ranking-response.dto';
 import type { CarrierStatusCountsResponseDto } from './dto/status-counts-response.dto';
-
-const HAPPY_PATH_TRANSITIONS: [ShipmentStatus, ShipmentStatus][] = [
-  [ShipmentStatus.PENDING, ShipmentStatus.ACCEPTED],
-  [ShipmentStatus.ACCEPTED, ShipmentStatus.COLLECTED],
-  [ShipmentStatus.COLLECTED, ShipmentStatus.IN_TRANSIT],
-  [ShipmentStatus.IN_TRANSIT, ShipmentStatus.OUT_FOR_DELIVERY],
-  [ShipmentStatus.OUT_FOR_DELIVERY, ShipmentStatus.DELIVERED],
-];
 
 const managerInclude = {
   users: {
@@ -178,83 +163,21 @@ export class CarriersService {
   }
 
   async performance(
-    userId: string,
-    since?: Date,
+    carrierId: string,
+    since: Date,
   ): Promise<CarrierPerformanceResponseDto> {
-    const carrierId = await this.findCarrierIdForUserOrThrow(userId);
-    const where = { carrierId, ...createdSince(since) };
-
-    const [groups, events] = await Promise.all([
-      this.prisma.shipment.groupBy({
-        by: ['status'],
-        where,
-        _count: true,
-      }),
-      this.prisma.trackingEvent.findMany({
-        where: { shipment: where },
-        select: { shipmentId: true, status: true, createdAt: true },
-        orderBy: [{ shipmentId: 'asc' }, { createdAt: 'asc' }],
-      }),
-    ]);
-
-    const shipmentCountsByStatus = countByStatus(ShipmentStatus, groups);
-    const totalShipments = Object.values(shipmentCountsByStatus).reduce(
-      (sum, count) => sum + count,
-      0,
-    );
-
-    const gapsInHours: number[] = [];
-    const stageGapsInHours = new Map<string, number[]>();
-    for (let i = 1; i < events.length; i++) {
-      if (events[i].shipmentId === events[i - 1].shipmentId) {
-        const gapHours = hoursBetween(
-          events[i - 1].createdAt,
-          events[i].createdAt,
-        );
-        gapsInHours.push(gapHours);
-
-        const stageKey = `${events[i - 1].status}_${events[i].status}`;
-        const stageGaps = stageGapsInHours.get(stageKey) ?? [];
-        stageGaps.push(gapHours);
-        stageGapsInHours.set(stageKey, stageGaps);
-      }
-    }
-    const avgHoursBetweenEvents = average(gapsInHours);
-
-    const stageDurations: StageDurationResponseDto[] =
-      HAPPY_PATH_TRANSITIONS.map(([fromStatus, toStatus]) => {
-        const stageGaps =
-          stageGapsInHours.get(`${fromStatus}_${toStatus}`) ?? [];
-        return {
-          fromStatus,
-          toStatus,
-          avgHours: average(stageGaps),
-          sampleCount: stageGaps.length,
-        };
-      });
-
-    // From history, not current status: a FAILED_DELIVERY that moved on to RETURNED still failed.
-    const everFailedShipmentIds = new Set(
-      events
-        .filter((event) => event.status === ShipmentStatus.FAILED_DELIVERY)
-        .map((event) => event.shipmentId),
-    );
-    const failedDeliveryRate = percentage(
-      everFailedShipmentIds.size,
-      totalShipments,
-    );
-    const returnedRate = percentage(
-      shipmentCountsByStatus[ShipmentStatus.RETURNED],
-      totalShipments,
-    );
-
+    const rows = await loadMetricRows(this.prisma, {
+      carrierId,
+      ...createdSince(since),
+    });
+    const metrics = deliveryMetrics(rows, { since, now: new Date() });
     return {
-      shipmentCountsByStatus,
-      totalShipments,
-      avgHoursBetweenEvents,
-      failedDeliveryRate,
-      returnedRate,
-      stageDurations,
+      totalShipments: metrics.shipments,
+      onTime: metrics.onTime,
+      medianDelivery: metrics.medianDelivery,
+      firstAttempt: metrics.firstAttempt,
+      claim: metrics.claim,
+      stages: metrics.stages,
     };
   }
 
@@ -370,7 +293,7 @@ export class CarriersService {
     );
   }
 
-  private async findCarrierIdForUserOrThrow(userId: string): Promise<string> {
+  async findCarrierIdForUserOrThrow(userId: string): Promise<string> {
     const carrierUser = await this.prisma.carrierUser.findUnique({
       where: { userId },
     });

@@ -12,7 +12,7 @@ const SHIPMENT_SELECT = {
   status: true,
   dueAt: true,
   deliveredAt: true,
-  modality: { select: { code: true, name: true } },
+  modality: { select: { code: true, name: true, slaHours: true } },
 } satisfies Prisma.ShipmentSelect;
 
 type MetricShipment = Prisma.ShipmentGetPayload<{
