@@ -10,7 +10,7 @@ import type {
   CoverageArea,
   CoverageAreaInput,
   ListCarriersQuery,
-  OperatorRankingItem,
+  TeamMember,
 } from '../types';
 
 export function signupCarrier(input: CarrierSignupInput): Promise<Carrier> {
@@ -108,8 +108,8 @@ export function getMyCarrierPerformance(
 export function getMyOperatorRanking(
   statsWindow: StatsWindow,
   token: string,
-): Promise<OperatorRankingItem[]> {
-  return apiClient<OperatorRankingItem[]>(
+): Promise<TeamMember[]> {
+  return apiClient<TeamMember[]>(
     `/carriers/me/operator-ranking${toQueryString({ window: statsWindow })}`,
     undefined,
     token,

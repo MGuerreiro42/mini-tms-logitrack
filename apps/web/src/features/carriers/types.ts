@@ -1,3 +1,4 @@
+import type { OnTimeTrend, Rate } from '@/lib/metrics';
 import type { PaginationQuery } from '@/types/pagination';
 import type {
   ApprovalStatus,
@@ -40,25 +41,36 @@ export interface CoverageAreaInput {
   city?: string;
 }
 
+// Medians and p90 are nearest-rank, null without samples (spec 07 FR-022).
 export interface StageDuration {
-  fromStatus: ShipmentStatus;
-  toStatus: ShipmentStatus;
-  avgHours: number | null;
-  sampleCount: number;
+  status: ShipmentStatus;
+  p50Hours: number | null;
+  p90Hours: number | null;
+  budgetHours: number | null;
+  n: number;
 }
 
 export interface CarrierPerformance {
-  shipmentCountsByStatus: ShipmentStatusCounts;
   totalShipments: number;
-  avgHoursBetweenEvents: number | null;
-  failedDeliveryRate: number;
-  returnedRate: number;
-  stageDurations: StageDuration[];
+  onTime: OnTimeTrend;
+  medianDelivery: { hours: number | null; n: number };
+  firstAttempt: {
+    rate: number | null;
+    n: number;
+    failed: number;
+    returned: number;
+  };
+  claim: { p50Minutes: number | null; p90Minutes: number | null; n: number };
+  stages: StageDuration[];
 }
 
-export interface OperatorRankingItem {
+export interface TeamMember {
   carrierUserId: string;
+  name: string | null;
   email: string;
-  totalOwned: number;
+  role: 'MANAGER' | 'OPERATOR';
+  active: number;
+  claimed: number;
   delivered: number;
+  onTime: Rate;
 }
