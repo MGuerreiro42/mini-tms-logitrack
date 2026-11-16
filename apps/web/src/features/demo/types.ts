@@ -24,10 +24,15 @@ export interface ChaosRun {
   reason: 'expired' | 'admin' | 'reset';
 }
 
+export interface AdminChaos extends ChaosStatus {
+  startedAt: string;
+  startedBy: string;
+}
+
 export interface AdminDemo {
   lastResetAt: string | null;
   nextResetAt: string | null;
-  chaos: (ChaosStatus & { startedAt: string; startedBy: string }) | null;
+  chaos: AdminChaos | null;
   cooldownUntil: string | null;
   scenarios: ChaosScenario[];
   runs: ChaosRun[];

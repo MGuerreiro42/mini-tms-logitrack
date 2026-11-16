@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/api-client';
-import type { AdminDemo, DemoStatus } from '../types';
+import type { AdminChaos, AdminDemo, DemoStatus } from '../types';
 
 export const demoKeys = {
   all: ['demo'] as const,
@@ -17,6 +17,17 @@ export function getAdminDemo(token: string): Promise<AdminDemo> {
 
 export function resetDemo(token: string): Promise<void> {
   return apiClient<void>('/admin/demo/reset', { method: 'POST' }, token);
+}
+
+export function startChaos(
+  input: { scenario: string; durationSec: number },
+  token: string,
+): Promise<AdminChaos> {
+  return apiClient<AdminChaos>(
+    '/admin/demo/chaos',
+    { method: 'POST', body: JSON.stringify(input) },
+    token,
+  );
 }
 
 export function endChaos(token: string): Promise<void> {
