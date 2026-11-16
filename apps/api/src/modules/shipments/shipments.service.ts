@@ -11,7 +11,8 @@ import {
   ApprovalStatus,
   CarrierRole,
   type CarrierUser,
-  Prisma,
+  type Prisma,
+  type Seller,
   type Shipment,
   ShipmentStatus,
 } from '../../../generated/prisma/client';
@@ -21,7 +22,11 @@ import {
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { countByStatus, createdSince } from '../../shared/stats/stats';
-import type { AdminShipmentResponseDto } from './dto/admin-shipment-response.dto';
+import { cityKey } from '../../shared/transforms/normalize';
+import type {
+  AdminShipmentDetailResponseDto,
+  AdminShipmentResponseDto,
+} from './dto/admin-shipment-response.dto';
 import type {
   CarrierShipmentDetailResponseDto,
   CarrierShipmentResponseDto,
@@ -44,8 +49,14 @@ import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { isPublicPosition } from './route-geometry';
-import { findRoute, type RoutableShipment, routeSellerInclude } from './routes';
 import {
+  findRoute,
+  type RoutableShipment,
+  routeSellerInclude,
+  routeSellerSelect,
+} from './routes';
+import {
+  adminShipmentDetailInclude,
   adminShipmentInclude,
   carrierShipmentDetailInclude,
   carrierShipmentInclude,
@@ -53,6 +64,7 @@ import {
   pickAddress,
   sellerShipmentDetailInclude,
   sellerShipmentInclude,
+  toAdminShipmentDetailResponseDto,
   toAdminShipmentResponseDto,
   toCarrierShipmentDetailResponseDto,
   toCarrierShipmentResponseDto,
@@ -85,7 +97,7 @@ const eligibleCarrierWhere = (
   coverageAreas: {
     some: {
       state,
-      OR: [{ city: null }, { city: { equals: city, mode: 'insensitive' } }],
+      OR: [{ cityKey: null }, { cityKey: cityKey(city) }],
     },
   },
   modalities: { some: { modalityId } },
@@ -135,7 +147,10 @@ export class ShipmentsService {
       include: {
         modality: { select: { name: true } },
         trackingEvents: { orderBy: { createdAt: 'asc' } },
-        ...routeSellerInclude,
+        carrier: { select: { companyName: true } },
+        seller: {
+          select: { companyName: true, ...routeSellerSelect },
+        },
       },
     });
     if (!shipment) {
@@ -148,6 +163,8 @@ export class ShipmentsService {
       addressCity: shipment.addressCity,
       addressState: shipment.addressState,
       modalityName: shipment.modality.name,
+      sellerName: shipment.seller.companyName,
+      carrierName: shipment.carrier.companyName,
       events: shipment.trackingEvents.map((event) => ({
         status: event.status,
         createdAt: event.createdAt,
@@ -176,6 +193,7 @@ export class ShipmentsService {
             modalityId: dto.modalityId,
           },
         },
+        include: { modality: { select: { slaHours: true } } },
       }),
       this.prisma.carrier.findFirst({
         where: {
@@ -200,6 +218,7 @@ export class ShipmentsService {
       );
     }
 
+    const createdAt = new Date();
     const shipment = await this.prisma.shipment.create({
       data: {
         trackingCode: generateTrackingCode(),
@@ -207,7 +226,15 @@ export class ShipmentsService {
         carrierId: dto.carrierId,
         modalityId: dto.modalityId,
         ...pickAddress(dto),
-        trackingEvents: { create: { status: ShipmentStatus.PENDING } },
+        createdAt,
+        dueAt: computeDueAt(createdAt, sellerModality.modality.slaHours),
+        trackingEvents: {
+          create: {
+            status: ShipmentStatus.PENDING,
+            actorId: userId,
+            createdAt,
+          },
+        },
       },
       include: sellerShipmentInclude,
     });
@@ -276,14 +303,9 @@ export class ShipmentsService {
         ...createdSince(since),
       },
       select: {
-        createdAt: true,
-        modality: { select: { code: true, name: true, slaHours: true } },
-        trackingEvents: {
-          where: { status: ShipmentStatus.DELIVERED },
-          select: { createdAt: true },
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-        },
+        dueAt: true,
+        deliveredAt: true,
+        modality: { select: { code: true, name: true } },
       },
     });
 
@@ -292,26 +314,21 @@ export class ShipmentsService {
       { modalityName: string; deliveredCount: number; onTimeCount: number }
     >();
 
-    for (const shipment of shipments) {
-      const dueAt = computeDueAt(
-        shipment.createdAt,
-        shipment.modality.slaHours,
-      );
-      const deliveredEvent = shipment.trackingEvents[0];
-      if (!dueAt || !deliveredEvent) continue;
+    for (const { dueAt, deliveredAt, modality } of shipments) {
+      if (!dueAt || !deliveredAt) continue;
 
-      const entry = byModality.get(shipment.modality.code) ?? {
-        modalityName: shipment.modality.name,
+      const entry = byModality.get(modality.code) ?? {
+        modalityName: modality.name,
         deliveredCount: 0,
         onTimeCount: 0,
       };
       entry.deliveredCount += 1;
 
-      if (deliveredEvent.createdAt <= dueAt) {
+      if (deliveredAt <= dueAt) {
         entry.onTimeCount += 1;
       }
 
-      byModality.set(shipment.modality.code, entry);
+      byModality.set(modality.code, entry);
     }
 
     return Array.from(byModality.entries()).map(([modalityCode, entry]) => ({
@@ -332,7 +349,13 @@ export class ShipmentsService {
       status: ShipmentStatus.FAILED_DELIVERY,
     };
 
-    const [failed, failedCount, late] = await Promise.all([
+    const lateWhere = {
+      sellerId: seller.id,
+      status: { in: LATE_CANDIDATES },
+      dueAt: { lt: new Date() },
+    };
+
+    const [failed, failedCount, late, lateCount] = await Promise.all([
       this.prisma.shipment.findMany({
         where: failedWhere,
         include: sellerShipmentInclude,
@@ -340,26 +363,21 @@ export class ShipmentsService {
         take: ATTENTION_LIMIT,
       }),
       this.prisma.shipment.count({ where: failedWhere }),
-      this.findLateIds(seller.id),
+      this.prisma.shipment.findMany({
+        where: lateWhere,
+        include: sellerShipmentInclude,
+        orderBy: { dueAt: 'asc' },
+        take: ATTENTION_LIMIT,
+      }),
+      this.prisma.shipment.count({ where: lateWhere }),
     ]);
-
-    const lateIds = late
-      .map((row) => row.id)
-      .slice(0, ATTENTION_LIMIT - failed.length);
-    const lateShipments = lateIds.length
-      ? await this.prisma.shipment.findMany({
-          where: { id: { in: lateIds } },
-          include: sellerShipmentInclude,
-        })
-      : [];
-    const byId = new Map(lateShipments.map((s) => [s.id, s]));
 
     return {
       shipments: [
         ...failed,
-        ...lateIds.flatMap((id) => byId.get(id) ?? []),
+        ...late.slice(0, ATTENTION_LIMIT - failed.length),
       ].map(toShipmentResponseDto),
-      counts: { failed: failedCount, late: late[0]?.total ?? 0 },
+      counts: { failed: failedCount, late: lateCount },
     };
   }
 
@@ -382,20 +400,6 @@ export class ShipmentsService {
       take: limit,
     });
     return events.map(toShipmentActivityResponseDto);
-  }
-
-  // The due date is createdAt + modality.slaHours, not a column, so the typed client can't filter or sort on it.
-  private findLateIds(sellerId: string) {
-    return this.prisma.$queryRaw<{ id: string; total: number }[]>`
-      SELECT s."id", (COUNT(*) OVER ())::int AS "total"
-      FROM "Shipment" s
-      JOIN "DeliveryModality" m ON m."id" = s."modalityId"
-      WHERE s."sellerId" = ${sellerId}
-        AND s."status"::text IN (${Prisma.join(LATE_CANDIDATES)})
-        AND m."slaHours" IS NOT NULL
-        AND s."createdAt" + m."slaHours" * INTERVAL '1 hour' < NOW()
-      ORDER BY s."createdAt" + m."slaHours" * INTERVAL '1 hour'
-      LIMIT ${ATTENTION_LIMIT}`;
   }
 
   async findOneForSeller(
@@ -424,19 +428,20 @@ export class ShipmentsService {
   ): Promise<ShipmentResponseDto> {
     const seller = await this.findSellerOrThrow(userId);
     try {
-      return await this.cancelOnce(seller.id, shipmentId, dto);
+      return await this.cancelOnce(seller, shipmentId, dto);
     } catch (error) {
       if (!(error instanceof ConflictException)) throw error;
       // A claim may land between the read and the write; ACCEPTED is still cancellable, so read again once.
-      return this.cancelOnce(seller.id, shipmentId, dto);
+      return this.cancelOnce(seller, shipmentId, dto);
     }
   }
 
   private async cancelOnce(
-    sellerId: string,
+    seller: Pick<Seller, 'id' | 'userId'>,
     shipmentId: string,
     dto: TrackingNoteDto,
   ): Promise<ShipmentResponseDto> {
+    const sellerId = seller.id;
     const shipment = await this.prisma.shipment.findFirst({
       where: { id: shipmentId, sellerId },
       select: { status: true },
@@ -455,6 +460,7 @@ export class ShipmentsService {
       from: shipment.status,
       expected: { sellerId },
       to: ShipmentStatus.CANCELLED,
+      actorId: seller.userId,
       note: dto.note,
       conflictMessage:
         'Shipment status changed concurrently, reload and try again',
@@ -527,6 +533,17 @@ export class ShipmentsService {
     );
   }
 
+  async findOneForAdmin(id: string): Promise<AdminShipmentDetailResponseDto> {
+    const shipment = await this.prisma.shipment.findUnique({
+      where: { id },
+      include: adminShipmentDetailInclude,
+    });
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+    return toAdminShipmentDetailResponseDto(shipment);
+  }
+
   async findOneForCarrier(
     userId: string,
     id: string,
@@ -571,6 +588,7 @@ export class ShipmentsService {
       from: ShipmentStatus.PENDING,
       expected: { carrierId: carrierUser.carrierId, ownerId: null },
       to: ShipmentStatus.ACCEPTED,
+      actorId: userId,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
       include: carrierShipmentInclude,
@@ -612,6 +630,7 @@ export class ShipmentsService {
       shipmentId,
       from: shipment.status,
       to: dto.status,
+      actorId: userId,
       note: dto.note,
       conflictMessage: `Shipment status changed concurrently — expected ${shipment.status}, reload and try again`,
       include: carrierShipmentInclude,
@@ -729,22 +748,28 @@ export class ShipmentsService {
     from: ShipmentStatus;
     expected?: Prisma.ShipmentWhereInput;
     to: ShipmentStatus;
+    actorId: string;
     data?: Prisma.ShipmentUncheckedUpdateManyInput;
     note?: string;
     conflictMessage: string;
     include: I;
   }): Promise<Prisma.ShipmentGetPayload<{ include: I }>> {
-    const { shipmentId, from, to } = params;
+    const { shipmentId, from, to, actorId } = params;
+    const createdAt = new Date();
     const written = await this.prisma.$transaction(async (tx) => {
       const [shipment] = await tx.shipment.updateManyAndReturn({
         where: { id: shipmentId, ...params.expected, status: from },
-        data: { ...params.data, status: to },
+        data: {
+          ...params.data,
+          status: to,
+          ...(to === ShipmentStatus.DELIVERED && { deliveredAt: createdAt }),
+        },
       });
       if (!shipment) {
         throw new ConflictException(params.conflictMessage);
       }
       await tx.trackingEvent.create({
-        data: { shipmentId, status: to, note: params.note },
+        data: { shipmentId, status: to, note: params.note, actorId, createdAt },
       });
       return shipment;
     });

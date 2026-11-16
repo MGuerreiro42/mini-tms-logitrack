@@ -25,6 +25,7 @@ import {
   hoursBetween,
   percentage,
 } from '../../shared/stats/stats';
+import { cityKey } from '../../shared/transforms/normalize';
 import type { ModalityToggleResponseDto } from '../modalities/dto/modality-toggle-response.dto';
 import { ModalitiesService } from '../modalities/modalities.service';
 import type {
@@ -334,6 +335,7 @@ export class CarriersService {
           carrierId,
           state: area.state,
           city: area.city ?? null,
+          cityKey: area.city ? cityKey(area.city) : null,
         })),
         skipDuplicates: true,
       }),

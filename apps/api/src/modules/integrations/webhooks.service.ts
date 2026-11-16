@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
@@ -8,14 +7,12 @@ import { OnEvent } from '@nestjs/event-emitter';
 import {
   WebhookDeliveryStatus,
   type WebhookEndpoint,
-  WebhookEvent,
 } from '../../../generated/prisma/client';
 import {
   type PaginatedResult,
   paginate,
 } from '../../shared/pagination/pagination-meta.dto';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { uniqueViolationTarget } from '../../shared/prisma/unique-violation';
 import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
@@ -29,8 +26,6 @@ import {
 import { WebhookDispatcher } from './webhook-dispatcher';
 import { WebhookInboxService } from './webhook-inbox.service';
 import { generateWebhookSecret } from './webhook-signature';
-
-const ALL_EVENTS = Object.values(WebhookEvent);
 
 @Injectable()
 export class WebhooksService {
@@ -165,51 +160,24 @@ export class WebhooksService {
       }),
       this.prisma.apiKey.deleteMany({ where: { sellerId: { in: sellerIds } } }),
       // Fresh inbox id and secret: the demo password is public, so yesterday's visitors knew both.
-      ...endpoints.map((endpoint) => {
-        const inboxId = randomUUID();
-        return this.prisma.webhookEndpoint.update({
+      ...endpoints.map((endpoint) =>
+        this.prisma.webhookEndpoint.update({
           where: { id: endpoint.id },
-          data: {
-            inboxId,
-            url: this.inbox.urlFor(inboxId),
-            events: ALL_EVENTS,
-            active: true,
-            secret: generateWebhookSecret(),
-          },
-        });
-      }),
+          data: { ...this.inbox.freshEndpoint(), active: true },
+        }),
+      ),
     ]);
   }
 
-  // Every seller starts with an active endpoint on their own test inbox, so deliveries show up at once.
   private async findOrCreateEndpoint(userId: string): Promise<WebhookEndpoint> {
     const seller = await this.prisma.seller.findUnique({
       where: { userId },
-      include: { webhookEndpoint: true },
+      select: { id: true },
     });
     if (!seller) {
       throw new NotFoundException('Seller not found');
     }
-    if (seller.webhookEndpoint) return seller.webhookEndpoint;
-
-    const inboxId = randomUUID();
-    try {
-      return await this.prisma.webhookEndpoint.create({
-        data: {
-          sellerId: seller.id,
-          inboxId,
-          url: this.inbox.urlFor(inboxId),
-          events: ALL_EVENTS,
-          secret: generateWebhookSecret(),
-        },
-      });
-    } catch (error) {
-      // A concurrent first visit (endpoint + inbox load together) created it first.
-      if (!uniqueViolationTarget(error)) throw error;
-      return this.prisma.webhookEndpoint.findUniqueOrThrow({
-        where: { sellerId: seller.id },
-      });
-    }
+    return this.dispatcher.findOrCreateEndpoint(seller.id);
   }
 
   private toResponse(endpoint: WebhookEndpoint): WebhookEndpointResponseDto {

@@ -10,11 +10,17 @@ import { DemoTenantService } from './demo-tenant.service';
 
 const tenant = {
   sellerIds: ['seller-1', 'seller-2'],
+  sellerUserIds: ['seller-user-1', 'seller-user-2'],
   carrierId: 'carrier-1',
   carrierUserIds: {
     'carrier@demo.minitms.dev': 'manager',
     'operator1@demo.minitms.dev': 'operator-1',
     'operator2@demo.minitms.dev': 'operator-2',
+  },
+  memberUserIds: {
+    'carrier@demo.minitms.dev': 'manager-user',
+    'operator1@demo.minitms.dev': 'operator-user-1',
+    'operator2@demo.minitms.dev': 'operator-user-2',
   },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },

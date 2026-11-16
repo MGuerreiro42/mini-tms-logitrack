@@ -5,11 +5,17 @@ import { STAGE_DURATION_MS } from './simulator.constants';
 
 const tenant: DemoTenant = {
   sellerIds: ['seller-1', 'seller-2'],
+  sellerUserIds: ['seller-user-1', 'seller-user-2'],
   carrierId: 'carrier-1',
   carrierUserIds: {
     'carrier@demo.minitms.dev': 'manager',
     'operator1@demo.minitms.dev': 'operator-1',
     'operator2@demo.minitms.dev': 'operator-2',
+  },
+  memberUserIds: {
+    'carrier@demo.minitms.dev': 'manager-user',
+    'operator1@demo.minitms.dev': 'operator-user-1',
+    'operator2@demo.minitms.dev': 'operator-user-2',
   },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
@@ -135,6 +141,41 @@ describe('buildDemoShipments', () => {
     for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
       const accepted = events.some((e) => e.status === ShipmentStatus.ACCEPTED);
       expect(shipment.ownerId !== null).toBe(accepted);
+    }
+  });
+
+  it('stores the due date and the delivery moment as live creation does', () => {
+    const slaHours = { standard: 72, full: 48, express: 24 };
+    for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
+      const sla = slaHours[shipment.modalityId as keyof typeof slaHours];
+      expect(shipment.dueAt).toEqual(
+        new Date(shipment.createdAt.getTime() + sla * MS_PER_HOUR),
+      );
+      expect(shipment.deliveredAt ?? null).toEqual(
+        events.find((e) => e.status === ShipmentStatus.DELIVERED)?.createdAt ??
+          null,
+      );
+    }
+  });
+
+  it('records the seller as the actor of opening and cancelling, the owner of the rest', () => {
+    const memberUser = Object.fromEntries(
+      Object.entries(tenant.carrierUserIds).map(([email, id]) => [
+        id,
+        tenant.memberUserIds[email as keyof typeof tenant.memberUserIds],
+      ]),
+    );
+    for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
+      const sellerUser =
+        tenant.sellerUserIds[tenant.sellerIds.indexOf(shipment.sellerId)];
+      for (const event of events) {
+        const bySeller =
+          event.status === ShipmentStatus.PENDING ||
+          event.status === ShipmentStatus.CANCELLED;
+        expect(event.actorId).toBe(
+          bySeller ? sellerUser : memberUser[shipment.ownerId ?? ''],
+        );
+      }
     }
   });
 

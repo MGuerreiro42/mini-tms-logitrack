@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { Job } from 'bullmq';
 import { PrismaService } from '../../shared/prisma/prisma.service';
@@ -154,5 +155,11 @@ describe('WebhookDeliveryProcessor', () => {
       responseCode: null,
     });
     expect(receive).not.toHaveBeenCalled();
+  });
+
+  it('shuts down without a worker that was never initialized', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    await expect(processor.onModuleDestroy()).resolves.toBeUndefined();
   });
 });

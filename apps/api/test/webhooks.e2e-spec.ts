@@ -94,6 +94,19 @@ describe('Webhooks (e2e)', () => {
     ]);
   });
 
+  it('provisions the endpoint on the first event of a seller who never opened Integrations', async () => {
+    const freshSeller = await tenants.sellerToken();
+    const shipment = await createShipment(ctx, freshSeller, tenants);
+
+    const delivery = await deliveryFor(freshSeller, shipment.trackingCode);
+
+    expect(delivery).toMatchObject({
+      status: 'SUCCEEDED',
+      payload: { type: 'shipment.created' },
+    });
+    expect(await endpointOf(freshSeller)).toMatchObject({ active: true });
+  });
+
   it('delivers a signed event to the inbox and logs it as succeeded', async () => {
     await endpointOf(tenants.sellerA);
     const shipment = await createShipment(ctx, tenants.sellerA, tenants);

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { toLowerTrimmed } from '../../../shared/transforms/normalize';
+import { IsTaxId } from '../../../shared/validation/br-validators';
 
 export class CreateSellerDto {
   @ApiProperty({ example: 'seller@example.com' })
@@ -19,8 +20,11 @@ export class CreateSellerDto {
   @IsNotEmpty()
   companyName: string;
 
-  @ApiProperty({ example: '12345678000199', description: 'Tax ID (CNPJ/CPF)' })
-  @IsString()
-  @IsNotEmpty()
+  @ApiProperty({
+    example: '11.222.333/0001-81',
+    description:
+      'CPF (11 digits) or CNPJ (14 digits), punctuation optional; stored as digits only',
+  })
+  @IsTaxId({ cpf: true, cnpj: true })
   document: string;
 }

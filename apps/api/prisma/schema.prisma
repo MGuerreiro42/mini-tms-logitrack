@@ -51,15 +51,17 @@ enum ShipmentStatus {
 // ---------- auth ----------
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String     @id @default(uuid())
+  email        String     @unique
+  name         String?
   passwordHash String
   role         GlobalRole
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  seller      Seller?
-  carrierUser CarrierUser?
+  seller         Seller?
+  carrierUser    CarrierUser?
+  trackingEvents TrackingEvent[]
 }
 
 // ---------- seller ----------
@@ -102,13 +104,13 @@ model Carrier {
 }
 
 model CarrierUser {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
+  id        String      @id @default(uuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id])
   carrierId String
-  carrier   Carrier  @relation(fields: [carrierId], references: [id])
+  carrier   Carrier     @relation(fields: [carrierId], references: [id])
   role      CarrierRole
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   ownedShipments Shipment[] @relation("ShipmentOwner")
 
@@ -135,11 +137,13 @@ model CarrierCoverageArea {
   carrier   Carrier  @relation(fields: [carrierId], references: [id])
   state     String
   city      String? // null = covers the entire state
+  // city trimmed, lowercased and without diacritics: what matching compares
+  cityKey   String?
   createdAt DateTime @default(now())
 
-  @@unique([carrierId, state, city])
+  @@unique([carrierId, state, cityKey])
   // Reverse of the unique above: "which carriers cover this state/city?" at shipment creation.
-  @@index([state, city])
+  @@index([state, cityKey])
 }
 
 // ---------- delivery modality ----------
@@ -203,8 +207,11 @@ model Shipment {
   addressState        String
   addressZipCode      String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // createdAt + modality.slaHours, fixed at creation
+  dueAt       DateTime?
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   trackingEvents TrackingEvent[]
 
@@ -221,6 +228,8 @@ model TrackingEvent {
   shipment   Shipment       @relation(fields: [shipmentId], references: [id])
   status     ShipmentStatus
   note       String?
+  actorId    String?
+  actor      User?          @relation(fields: [actorId], references: [id])
   createdAt  DateTime       @default(now()) // immutable — never has an updatedAt
 
   // Serves both the filter and the timeline sort order.

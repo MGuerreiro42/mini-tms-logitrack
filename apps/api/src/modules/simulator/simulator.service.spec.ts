@@ -23,7 +23,15 @@ const tenant: LoadedDemoTenant = {
     'operator1@demo.minitms.dev': 'operator-1',
     'operator2@demo.minitms.dev': 'operator-2',
   },
-  operatorUserIds: ['operator-user-1', 'operator-user-2'],
+  memberUserIds: {
+    'carrier@demo.minitms.dev': 'manager-user',
+    'operator1@demo.minitms.dev': 'operator-user-1',
+    'operator2@demo.minitms.dev': 'operator-user-2',
+  },
+  claimUserIds: {
+    'carrier-1': ['operator-user-1', 'operator-user-2'],
+    'carrier-2': ['extra-manager-user'],
+  },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
     FULL: { id: 'full', slaHours: 48 },
@@ -52,6 +60,7 @@ describe('SimulatorService', () => {
   const updateStatus = vi.fn();
   const claim = vi.fn();
   const create = vi.fn();
+  const findEligibleCarriers = vi.fn();
   const reportPosition = vi.fn();
   const random = vi.fn();
 
@@ -77,7 +86,13 @@ describe('SimulatorService', () => {
         },
         {
           provide: ShipmentsService,
-          useValue: { updateStatus, claim, create, reportPosition },
+          useValue: {
+            updateStatus,
+            claim,
+            create,
+            findEligibleCarriers,
+            reportPosition,
+          },
         },
         { provide: TrackingPresence, useValue: { hasViewers } },
         { provide: DemoTenantService, useValue: { load } },
@@ -186,15 +201,33 @@ describe('SimulatorService', () => {
   });
 
   it('claims the oldest pending shipment for an operator', async () => {
-    givenShipments(null, { id: 'pending-1' });
+    givenShipments(null, { id: 'pending-1', carrierId: 'carrier-1' });
 
     await simulator.tick();
 
     expect(claim).toHaveBeenCalledWith('operator-user-2', 'pending-1');
   });
 
+  it("claims another demo carrier's shipment as that carrier's user", async () => {
+    givenShipments(null, { id: 'pending-2', carrierId: 'carrier-2' });
+
+    await simulator.tick();
+
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          carrierId: { in: ['carrier-1', 'carrier-2'] },
+        }),
+      }),
+    );
+    expect(claim).toHaveBeenCalledWith('extra-manager-user', 'pending-2');
+  });
+
   it('keeps going when a visitor wins the race for a shipment', async () => {
-    givenShipments(owned(ShipmentStatus.COLLECTED), { id: 'pending-1' });
+    givenShipments(owned(ShipmentStatus.COLLECTED), {
+      id: 'pending-1',
+      carrierId: 'carrier-1',
+    });
     updateStatus.mockRejectedValue(new ConflictException());
 
     await simulator.tick();
@@ -209,21 +242,43 @@ describe('SimulatorService', () => {
     await expect(simulator.tick()).rejects.toThrow(BadRequestException);
   });
 
-  it('creates a shipment for a demo seller on some ticks', async () => {
+  it('creates a shipment for a demo seller with an eligible demo carrier on some ticks', async () => {
     givenShipments(null);
-    random.mockReturnValue(0.1);
+    random.mockReturnValue(0.9);
+    random.mockReturnValueOnce(0.1);
     count.mockResolvedValue(3);
+    findEligibleCarriers.mockResolvedValue([
+      { id: 'carrier-1' },
+      { id: 'real-carrier' },
+      { id: 'carrier-2' },
+    ]);
 
     await simulator.tick();
 
+    expect(findEligibleCarriers).toHaveBeenCalledWith(
+      'SP',
+      expect.any(String),
+      'express',
+    );
     expect(create).toHaveBeenCalledWith(
-      'seller-user-1',
+      'seller-user-2',
       expect.objectContaining({
-        carrierId: 'carrier-1',
-        modalityId: 'standard',
+        carrierId: 'carrier-2',
+        modalityId: 'express',
         addressState: 'SP',
       }),
     );
+  });
+
+  it('creates nothing when no demo carrier serves the address and modality', async () => {
+    givenShipments(null);
+    random.mockReturnValue(0.1);
+    count.mockResolvedValue(3);
+    findEligibleCarriers.mockResolvedValue([{ id: 'real-carrier' }]);
+
+    await simulator.tick();
+
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('stops creating once the demo has enough shipments in flight', async () => {
