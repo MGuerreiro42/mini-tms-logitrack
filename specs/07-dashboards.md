@@ -162,7 +162,7 @@ The admin Sellers list shows "Shipments · 30 d" and "On time" per row; the Carr
 | Delivered | `DELIVERED` in W | — | W |
 | On time | `DELIVERED` in W with `dueAt` and `deliveredAt ≤ dueAt`, ÷ n, × 100 | `DELIVERED` in W with `dueAt` | W |
 | On-time trend | On time per bucket, W split into 12 equal buckets by `createdAt`; `null` for an empty bucket | per bucket | W |
-| Median delivery | p50 of `deliveredAt − createdAt` | `DELIVERED` in W | W |
+| Median delivery | p50 (nearest rank, as every median and p90 here) of `deliveredAt − createdAt` | `DELIVERED` in W | W |
 | First attempt | outcomes without a `FAILED_DELIVERY` event ÷ n × 100 | in W and (`DELIVERED` or ever `FAILED_DELIVERY`) | W |
 | Failed | 100 − First attempt; note carries failed and returned counts | as First attempt | W |
 | Median claim | p50 (and p90) of first `ACCEPTED` event − `createdAt` | in W with an `ACCEPTED` event | W |

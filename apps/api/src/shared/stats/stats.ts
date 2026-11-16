@@ -30,6 +30,25 @@ export const average = (values: number[]): number | null =>
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : null;
 
+// Insertion order is the order each key first appears.
+export function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+  for (const item of items) {
+    const group = groups.get(key(item));
+    if (group) group.push(item);
+    else groups.set(key(item), [item]);
+  }
+  return groups;
+}
+
+// Nearest rank: always a sampled value, never an interpolation; null without samples.
+export function percentile(values: number[], p: number): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const rank = Math.max(1, Math.ceil((p / 100) * sorted.length));
+  return sorted[rank - 1];
+}
+
 export function countByStatus<S extends string>(
   statuses: Record<string, S>,
   groups: { status: S; _count: number }[],

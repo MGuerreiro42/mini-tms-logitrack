@@ -3,8 +3,10 @@ import {
   countByStatus,
   createdSince,
   daysAgo,
+  groupBy,
   hoursBetween,
   percentage,
+  percentile,
   windowSince,
 } from './stats';
 
@@ -53,6 +55,21 @@ describe('stats', () => {
     );
     expect(windowSince({ since }, now)).toBe(since);
     expect(windowSince({}, now)).toBeUndefined();
+  });
+
+  it('percentile takes the nearest rank, null without samples', () => {
+    expect(percentile([5, 1, 3, 2, 4], 50)).toBe(3);
+    expect(percentile([1, 2, 3, 4], 50)).toBe(2);
+    expect(percentile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 90)).toBe(9);
+    expect(percentile([7], 0)).toBe(7);
+    expect(percentile([], 50)).toBeNull();
+  });
+
+  it('groupBy keeps the order each key first appears', () => {
+    expect([...groupBy([3, 1, 4, 2], (n) => n % 2).entries()]).toEqual([
+      [1, [3, 1]],
+      [0, [4, 2]],
+    ]);
   });
 
   it('countByStatus fills every status with 0 and overlays the groups', () => {
