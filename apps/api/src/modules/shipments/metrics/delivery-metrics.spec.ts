@@ -206,33 +206,30 @@ describe('onTimeByState', () => {
 describe('volumeSeries', () => {
   const open = { status: ShipmentStatus.IN_TRANSIT, deliveredAt: null };
 
-  it('buckets a window up to 30 days by day, from its start', () => {
+  it('buckets a window up to 30 days by São Paulo calendar day', () => {
+    // 12:30 in São Paulo (UTC−3), two days of window.
+    const noon = new Date('2026-01-13T15:30:00Z');
+    const day = (date: string) => new Date(`${date}T03:00:00Z`);
     const { bucket, points } = volumeSeries(
       [
-        row({ createdAt: at(1) }),
-        row({ createdAt: at(25), ...open }),
-        row({ createdAt: at(26), status: ShipmentStatus.RETURNED }),
-        row({ createdAt: at(27), status: ShipmentStatus.CANCELLED }),
-        row({ createdAt: now, status: ShipmentStatus.FAILED_DELIVERY }),
+        row({ createdAt: new Date('2026-01-12T02:59:00Z') }),
+        row({ createdAt: day('2026-01-12'), ...open }),
+        row({
+          createdAt: new Date('2026-01-12T10:00:00Z'),
+          status: ShipmentStatus.RETURNED,
+        }),
+        row({ createdAt: noon, status: ShipmentStatus.CANCELLED }),
+        row({ createdAt: noon, status: ShipmentStatus.FAILED_DELIVERY }),
       ],
-      { since, now },
+      { since: new Date('2026-01-11T15:30:00Z'), now: noon },
     );
 
     expect(bucket).toBe('day');
-    expect(points).toHaveLength(12);
-    expect(points[0]).toEqual({
-      start: since,
-      delivered: 1,
-      problem: 0,
-      open: 0,
-    });
-    expect(points[1]).toEqual({
-      start: at(24),
-      delivered: 0,
-      problem: 1,
-      open: 1,
-    });
-    expect(points[11]).toMatchObject({ start: at(11 * 24), problem: 1 });
+    expect(points).toEqual([
+      { start: day('2026-01-11'), delivered: 1, problem: 0, open: 0 },
+      { start: day('2026-01-12'), delivered: 0, problem: 1, open: 1 },
+      { start: day('2026-01-13'), delivered: 0, problem: 1, open: 0 },
+    ]);
   });
 
   it('buckets a longer window by week, the last one partial', () => {
