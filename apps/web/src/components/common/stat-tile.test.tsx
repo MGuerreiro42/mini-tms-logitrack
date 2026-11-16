@@ -25,4 +25,24 @@ describe('StatTile', () => {
     expect(glowOf(container)).toHaveAttribute('aria-hidden', 'true');
     expect(getByText('10')).toHaveClass('animate-value-in');
   });
+
+  it('is a link to its filtered list only when given an href', () => {
+    const { getByRole, queryByRole, rerender } = render(
+      <StatTile label="On time" value="98%" />,
+    );
+    expect(queryByRole('link')).toBeNull();
+
+    rerender(
+      <StatTile
+        label="Delivered"
+        value={9}
+        href="/seller/shipments?status=DELIVERED"
+      />,
+    );
+
+    expect(getByRole('link', { name: /Delivered\s*9/ })).toHaveAttribute(
+      'href',
+      '/seller/shipments?status=DELIVERED',
+    );
+  });
 });

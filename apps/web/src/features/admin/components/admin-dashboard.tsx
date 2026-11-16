@@ -19,6 +19,7 @@ import {
 import { formatTaxId } from '@/lib/br-documents';
 import { formatDate } from '@/lib/format-date';
 import { plural } from '@/lib/plural';
+import { ROUTES } from '@/lib/routes';
 import { HAPPY_PATH } from '@/lib/shipment-progress';
 import { sumRecord } from '@/lib/sum-record';
 import type { QuerySource } from '@/types/query';
@@ -122,6 +123,7 @@ function ShipmentTiles({
     <>
       <StatTile
         label="In progress"
+        href={`${ROUTES.adminMonitoring}?view=active`}
         value={
           counts
             ? IN_PROGRESS.reduce((sum, status) => sum + counts[status], 0)
@@ -133,6 +135,7 @@ function ShipmentTiles({
       <StatTile
         label="Delivered"
         value={counts ? counts.DELIVERED : '—'}
+        href={`${ROUTES.adminMonitoring}?status=DELIVERED`}
         note={
           failed
             ? FAILED_NOTE
