@@ -69,12 +69,7 @@ export class PublicApiController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListShipmentsQueryDto,
   ) {
-    return this.shipmentsService.findAllForSeller(
-      user.id,
-      query.status,
-      query.page,
-      query.limit,
-    );
+    return this.shipmentsService.findAllForSeller(user.id, query);
   }
 
   @ApiOperation({

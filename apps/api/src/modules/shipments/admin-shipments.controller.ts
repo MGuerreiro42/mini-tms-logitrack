@@ -25,13 +25,7 @@ export class AdminShipmentsController {
   @Auth(GlobalRole.ADMIN)
   @Get('shipments')
   findAll(@Query() query: ListAdminShipmentsQueryDto) {
-    return this.shipmentsService.findAllForAdmin(
-      query.status,
-      query.carrierId,
-      query.sellerId,
-      query.page,
-      query.limit,
-    );
+    return this.shipmentsService.findAllForAdmin(query);
   }
 
   @ApiOperation({

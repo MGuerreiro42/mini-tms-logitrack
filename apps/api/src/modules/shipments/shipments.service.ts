@@ -85,6 +85,13 @@ import {
   isValidTransition,
   ROAD_STAGES,
 } from './shipment-status.util';
+import {
+  type ListFilters,
+  listOrderBy,
+  listWhere,
+  OPEN_STATUSES,
+  type ViewContext,
+} from './shipment-views';
 import { generateTrackingCode } from './tracking-code';
 import { POSITION_MAX_AGE_MS, VehiclePositions } from './vehicle-positions';
 
@@ -108,14 +115,16 @@ const ATTENTION_LIMIT = 5;
 // Device clocks drift; anything further ahead would outrank every honest ping until then.
 const POSITION_MAX_LEAD_MS = 5_000;
 
-// Open and still on the clock: FAILED_DELIVERY is reported on its own, ahead of late ones.
-const LATE_CANDIDATES: ShipmentStatus[] = [
-  ShipmentStatus.PENDING,
-  ShipmentStatus.ACCEPTED,
-  ShipmentStatus.COLLECTED,
-  ShipmentStatus.IN_TRANSIT,
-  ShipmentStatus.OUT_FOR_DELIVERY,
-];
+// An empty id filters nothing, as before the query DTOs allowed it.
+const adminScope = (
+  carrierId?: string,
+  sellerId?: string,
+): Prisma.ShipmentWhereInput => ({
+  ...(carrierId ? { carrierId } : {}),
+  ...(sellerId ? { sellerId } : {}),
+});
+
+type ListQuery = ListFilters & { page: number; limit: number };
 
 @Injectable()
 export class ShipmentsService {
@@ -246,18 +255,16 @@ export class ShipmentsService {
 
   async findAllForSeller(
     userId: string,
-    status?: ShipmentStatus,
-    page = 1,
-    limit = 20,
+    query: ListQuery,
   ): Promise<PaginatedResult<ShipmentResponseDto>> {
     const seller = await this.findSellerOrThrow(userId);
 
     return this.findShipmentPage(
-      { sellerId: seller.id, ...(status ? { status } : {}) },
+      { sellerId: seller.id },
+      query,
+      { carrierUserId: null, includeSeller: false },
       sellerShipmentInclude,
       toShipmentResponseDto,
-      page,
-      limit,
     );
   }
 
@@ -272,10 +279,7 @@ export class ShipmentsService {
     carrierId?: string,
     sellerId?: string,
   ): Promise<ShipmentStatusCountsResponseDto> {
-    return this.countByStatus({
-      ...(carrierId ? { carrierId } : {}),
-      ...(sellerId ? { sellerId } : {}),
-    });
+    return this.countByStatus(adminScope(carrierId, sellerId));
   }
 
   private async countByStatus(
@@ -351,7 +355,7 @@ export class ShipmentsService {
 
     const lateWhere = {
       sellerId: seller.id,
-      status: { in: LATE_CANDIDATES },
+      status: { in: OPEN_STATUSES },
       dueAt: { lt: new Date() },
     };
 
@@ -495,41 +499,28 @@ export class ShipmentsService {
 
   async findAllForCarrier(
     userId: string,
-    status?: ShipmentStatus,
-    page = 1,
-    limit = 20,
+    query: ListQuery,
   ): Promise<PaginatedResult<CarrierShipmentResponseDto>> {
     const carrierUser = await this.findCarrierUserOrThrow(userId);
 
     return this.findShipmentPage(
-      {
-        carrierId: carrierUser.carrierId,
-        ...(status ? { status } : {}),
-      },
+      { carrierId: carrierUser.carrierId },
+      query,
+      { carrierUserId: carrierUser.id, includeSeller: true },
       carrierShipmentInclude,
       toCarrierShipmentResponseDto,
-      page,
-      limit,
     );
   }
 
-  async findAllForAdmin(
-    status?: ShipmentStatus,
-    carrierId?: string,
-    sellerId?: string,
-    page = 1,
-    limit = 20,
+  findAllForAdmin(
+    query: ListQuery & { carrierId?: string; sellerId?: string },
   ): Promise<PaginatedResult<AdminShipmentResponseDto>> {
     return this.findShipmentPage(
-      {
-        ...(status ? { status } : {}),
-        ...(carrierId ? { carrierId } : {}),
-        ...(sellerId ? { sellerId } : {}),
-      },
+      adminScope(query.carrierId, query.sellerId),
+      query,
+      { carrierUserId: null, includeSeller: true },
       adminShipmentInclude,
       toAdminShipmentResponseDto,
-      page,
-      limit,
     );
   }
 
@@ -786,17 +777,18 @@ export class ShipmentsService {
   }
 
   private async findShipmentPage<I extends Prisma.ShipmentInclude, R>(
-    where: Prisma.ShipmentWhereInput,
+    scope: Prisma.ShipmentWhereInput,
+    { page, limit, ...filters }: ListQuery,
+    ctx: Omit<ViewContext, 'now'> & { includeSeller: boolean },
     include: I,
     toDto: (shipment: Prisma.ShipmentGetPayload<{ include: I }>) => R,
-    page: number,
-    limit: number,
   ): Promise<PaginatedResult<R>> {
+    const where = listWhere(scope, filters, { ...ctx, now: new Date() });
     const [shipments, total] = await Promise.all([
       this.prisma.shipment.findMany({
         where,
         include,
-        orderBy: { createdAt: 'desc' },
+        orderBy: listOrderBy(filters.view),
         skip: (page - 1) * limit,
         take: limit,
       }),
