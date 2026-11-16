@@ -120,6 +120,7 @@ const eligibleCarrierWhere = (
 });
 
 const ATTENTION_LIMIT = 5;
+const CLAIM_NEXT_TRIES = 3;
 
 // Device clocks drift; anything further ahead would outrank every honest ping until then.
 const POSITION_MAX_LEAD_MS = 5_000;
@@ -611,6 +612,13 @@ export class ShipmentsService {
     shipmentId: string,
   ): Promise<CarrierShipmentResponseDto> {
     const carrierUser = await this.findCarrierUserOrThrow(userId);
+    return this.claimAs(carrierUser, shipmentId);
+  }
+
+  private async claimAs(
+    carrierUser: Pick<CarrierUser, 'id' | 'carrierId' | 'userId'>,
+    shipmentId: string,
+  ): Promise<CarrierShipmentResponseDto> {
     const shipment = await this.findCarrierShipmentOrThrow(
       carrierUser.carrierId,
       shipmentId,
@@ -630,12 +638,43 @@ export class ShipmentsService {
       from: ShipmentStatus.PENDING,
       expected: { carrierId: carrierUser.carrierId, ownerId: null },
       to: ShipmentStatus.ACCEPTED,
-      actorId: userId,
+      actorId: carrierUser.userId,
       data: { ownerId: carrierUser.id },
       conflictMessage: 'Shipment is no longer available to claim',
       include: carrierShipmentInclude,
     });
     return toCarrierShipmentResponseDto(updated);
+  }
+
+  // Up to CLAIM_NEXT_TRIES candidates, so a lost race moves on instead of failing at once.
+  async claimNext(userId: string): Promise<CarrierShipmentResponseDto> {
+    const carrierUser = await this.findCarrierUserOrThrow(userId);
+    const candidates = await this.prisma.shipment.findMany({
+      where: {
+        carrierId: carrierUser.carrierId,
+        status: ShipmentStatus.PENDING,
+        ownerId: null,
+      },
+      select: { id: true },
+      orderBy: [
+        { dueAt: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'asc' },
+      ],
+      take: CLAIM_NEXT_TRIES,
+    });
+    for (const { id } of candidates) {
+      try {
+        return await this.claimAs(carrierUser, id);
+      } catch (error) {
+        if (!(error instanceof ConflictException)) throw error;
+      }
+    }
+    // A full batch lost means more may be waiting behind it; fewer means the queue is empty.
+    throw new ConflictException(
+      candidates.length === CLAIM_NEXT_TRIES
+        ? 'Others claimed these first, try again'
+        : 'No shipment is waiting to be claimed',
+    );
   }
 
   async updateStatus(

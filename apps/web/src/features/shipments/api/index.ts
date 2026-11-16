@@ -191,6 +191,14 @@ export function getQueueShipment(
   );
 }
 
+export function claimNextShipment(token: string): Promise<CarrierShipment> {
+  return apiClient<CarrierShipment>(
+    '/shipments/queue/claim-next',
+    { method: 'POST' },
+    token,
+  );
+}
+
 export function claimShipment(
   id: string,
   token: string,

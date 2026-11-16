@@ -148,6 +148,26 @@ export class ShipmentsController {
 
   @ApiOperation({
     summary:
+      "Claim the most urgent unclaimed shipment of the caller's carrier (earliest dueAt), trying up to 3 before giving up",
+  })
+  @ApiResponse({ status: 200, type: CarrierShipmentResponseDto })
+  @ApiResponse({
+    status: 403,
+    description: 'Not a carrier user, or the carrier is not approved',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'No shipment is waiting to be claimed',
+  })
+  @Auth(...CARRIER_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @Post('queue/claim-next')
+  claimNext(@CurrentUser() user: AuthenticatedUser) {
+    return this.shipmentsService.claimNext(user.id);
+  }
+
+  @ApiOperation({
+    summary:
       'Get a single shipment in the queue of the authenticated carrier, including its full tracking timeline — a shipment belonging to another carrier returns 404, not 403',
   })
   @ApiResponse({ status: 200, type: CarrierShipmentDetailResponseDto })
