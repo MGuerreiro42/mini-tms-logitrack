@@ -59,8 +59,13 @@ export class DemoResetService {
     this.logger.log(`Demo tenant reset with ${shipments.length} shipments`);
   }
 
-  async isOverdue(): Promise<boolean> {
+  async lastResetAt(): Promise<Date | null> {
     const lastReset = await this.redis.get(LAST_RESET_KEY);
-    return !lastReset || Date.now() - Number(lastReset) > RESET_MAX_AGE_MS;
+    return lastReset ? new Date(Number(lastReset)) : null;
+  }
+
+  async isOverdue(): Promise<boolean> {
+    const lastReset = await this.lastResetAt();
+    return !lastReset || Date.now() - lastReset.getTime() > RESET_MAX_AGE_MS;
   }
 }

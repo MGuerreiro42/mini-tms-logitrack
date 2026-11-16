@@ -67,6 +67,12 @@ export class SimulatorScheduler implements OnApplicationBootstrap {
     await job.waitUntilFinished(this.queueEvents.queueEvents, JOB_WAIT_MS);
   }
 
+  // Read from the job scheduler, so the cron pattern is never parsed here.
+  async nextResetAt(): Promise<Date | null> {
+    const scheduler = await this.queue.getJobScheduler(RESET_JOB);
+    return scheduler?.next ? new Date(scheduler.next) : null;
+  }
+
   private async schedule(): Promise<void> {
     // One job at a time across every instance, so a tick, a drive and a reset never overlap.
     await this.queue.setGlobalConcurrency(1);

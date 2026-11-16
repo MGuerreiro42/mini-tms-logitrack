@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ShipmentsModule } from '../shipments/shipments.module';
 import { TrackingModule } from '../tracking/tracking.module';
 import { ChaosService } from './chaos.service';
+import { DemoController } from './demo.controller';
 import { DemoResetController } from './demo-reset.controller';
 import { DemoResetService } from './demo-reset.service';
 import { DemoTenantService } from './demo-tenant.service';
@@ -17,7 +18,7 @@ import { SimulatorService } from './simulator.service';
     ShipmentsModule,
     TrackingModule,
   ],
-  controllers: [DemoResetController],
+  controllers: [DemoController, DemoResetController],
   providers: [
     DemoTenantService,
     DemoResetService,

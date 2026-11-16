@@ -106,6 +106,16 @@ export class ChaosService {
     return readChaos(this.redis);
   }
 
+  async cooldownUntil(): Promise<Date | null> {
+    const ms = await this.redis.pttl(CHAOS_COOLDOWN_KEY);
+    return ms > 0 ? new Date(Date.now() + ms) : null;
+  }
+
+  async runs(limit: number): Promise<ChaosRun[]> {
+    const runs = await this.redis.lrange(CHAOS_RUNS_KEY, 0, limit - 1);
+    return runs.map((run) => JSON.parse(run) as ChaosRun);
+  }
+
   async start(
     scenario: ChaosScenarioId,
     durationSec: number,
