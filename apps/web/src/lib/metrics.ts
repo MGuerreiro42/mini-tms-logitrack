@@ -1,3 +1,12 @@
+// n is the denominator; rate is null at n = 0 (spec 07 FR-008).
+export interface Rate {
+  n: number;
+  count: number;
+  rate: number | null;
+}
+
+export type OnTimeTrend = Rate & { trend: (number | null)[] };
+
 // Below this many samples a rate or median is noise: shown as "—", never as a number.
 export const MIN_SAMPLE = 5;
 
