@@ -98,7 +98,7 @@ describe('NavList tabs', () => {
 
   it('shows exactly four items as tabs without More', () => {
     vi.mocked(usePathname).mockReturnValue('/seller');
-    render(<NavList items={many.slice(0, 4)} variant="tabs" />);
+    render(<NavList items={many.slice(0, 4)} />);
 
     expect(screen.getAllByRole('link')).toHaveLength(4);
     expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
@@ -111,7 +111,6 @@ describe('NavList tabs', () => {
         items={[
           { name: 'Modalities & coverage', shortName: 'Coverage', href: '/c' },
         ]}
-        variant="tabs"
       />,
     );
 
@@ -121,7 +120,7 @@ describe('NavList tabs', () => {
   it('folds the overflow into More and marks it current for a folded route', async () => {
     vi.mocked(usePathname).mockReturnValue('/seller/settings');
     const user = userEvent.setup();
-    render(<NavList items={many} variant="tabs" />);
+    render(<NavList items={many} />);
 
     expect(screen.getAllByRole('link')).toHaveLength(3);
     const more = screen.getByRole('button', { name: /more/i });
@@ -135,7 +134,7 @@ describe('NavList tabs', () => {
 
   it('leaves More alone when the current route is a visible tab', () => {
     vi.mocked(usePathname).mockReturnValue('/seller/modalities');
-    render(<NavList items={many} variant="tabs" />);
+    render(<NavList items={many} />);
 
     expect(screen.getByRole('link', { name: 'Modalities' })).toHaveAttribute(
       'aria-current',

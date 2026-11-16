@@ -37,89 +37,62 @@ function useActiveHref(items: NavItem[]): string | undefined {
 
 export function NavList({
   items,
-  variant = 'bar',
   className,
 }: {
   items: NavItem[];
-  variant?: 'bar' | 'tabs';
   className?: string;
 }) {
   const activeHref = useActiveHref(items);
 
-  if (variant === 'tabs') {
-    const overflows = items.length > MAX_TABS;
-    const tabs = overflows ? items.slice(0, MAX_TABS - 1) : items;
-    const more = overflows ? items.slice(MAX_TABS - 1) : [];
-    const moreActive = more.some((item) => item.href === activeHref);
-
-    return (
-      <nav
-        aria-label="Main"
-        className={cn(
-          'grid auto-cols-fr grid-flow-col bg-nav px-safe-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
-          className,
-        )}
-      >
-        {tabs.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={item.href === activeHref ? 'page' : undefined}
-            className={tabClassName(item.href === activeHref)}
-          >
-            <TabMarker active={item.href === activeHref} />
-            <span className="max-w-full truncate">
-              {item.shortName ?? item.name}
-            </span>
-          </Link>
-        ))}
-        {more.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-current={moreActive ? true : undefined}
-              className={tabClassName(moreActive)}
-            >
-              <TabMarker active={moreActive} />
-              More
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-56">
-              {more.map((item) => (
-                <DropdownMenuItem key={item.href} asChild className="min-h-11">
-                  <Link
-                    href={item.href}
-                    aria-current={item.href === activeHref ? 'page' : undefined}
-                  >
-                    {item.name}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </nav>
-    );
-  }
+  const overflows = items.length > MAX_TABS;
+  const tabs = overflows ? items.slice(0, MAX_TABS - 1) : items;
+  const more = overflows ? items.slice(MAX_TABS - 1) : [];
+  const moreActive = more.some((item) => item.href === activeHref);
 
   return (
-    <nav aria-label="Main" className={cn('flex items-center gap-1', className)}>
-      {items.map((item) => {
-        const active = item.href === activeHref;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'inline-flex h-9 items-center rounded-sm px-3 text-sm whitespace-nowrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-              active
-                ? 'bg-muted font-semibold text-foreground'
-                : 'font-medium text-muted-foreground hover:text-foreground',
-            )}
+    <nav
+      aria-label="Main"
+      className={cn(
+        'grid auto-cols-fr grid-flow-col bg-nav px-safe-2 pt-2 pb-[max(--spacing(2),env(safe-area-inset-bottom))] shadow-tab-bar',
+        className,
+      )}
+    >
+      {tabs.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          aria-current={item.href === activeHref ? 'page' : undefined}
+          className={tabClassName(item.href === activeHref)}
+        >
+          <TabMarker active={item.href === activeHref} />
+          <span className="max-w-full truncate">
+            {item.shortName ?? item.name}
+          </span>
+        </Link>
+      ))}
+      {more.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-current={moreActive ? true : undefined}
+            className={tabClassName(moreActive)}
           >
-            {item.name}
-          </Link>
-        );
-      })}
+            <TabMarker active={moreActive} />
+            More
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            {more.map((item) => (
+              <DropdownMenuItem key={item.href} asChild className="min-h-11">
+                <Link
+                  href={item.href}
+                  aria-current={item.href === activeHref ? 'page' : undefined}
+                >
+                  {item.name}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </nav>
   );
 }
