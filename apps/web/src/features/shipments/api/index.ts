@@ -13,7 +13,6 @@ import type {
   ListQueueQuery,
   ListShipmentsQuery,
   QueueShipmentDetail,
-  SellerViewCounts,
   Shipment,
   ShipmentActivity,
   ShipmentAttention,
@@ -21,6 +20,7 @@ import type {
   ShipmentStatusCounts,
   SlaSummaryItem,
   UpdateShipmentStatusInput,
+  ViewCounts,
 } from '../types';
 
 export function getEligibleCarriers(
@@ -75,14 +75,8 @@ export function getShipmentStatusCounts(
   );
 }
 
-export function getShipmentViewCounts(
-  token: string,
-): Promise<SellerViewCounts> {
-  return apiClient<SellerViewCounts>(
-    '/shipments/view-counts',
-    undefined,
-    token,
-  );
+export function getShipmentViewCounts(token: string): Promise<ViewCounts> {
+  return apiClient<ViewCounts>('/shipments/view-counts', undefined, token);
 }
 
 export function getQueueViewCounts(
@@ -170,6 +164,17 @@ export function getAdminShipmentStatusCounts(
 ): Promise<ShipmentStatusCounts> {
   return apiClient<ShipmentStatusCounts>(
     `/admin/shipments/status-counts${toQueryString({ ...query })}`,
+    undefined,
+    token,
+  );
+}
+
+export function getAdminShipmentViewCounts(
+  query: AdminStatusCountsQuery,
+  token: string,
+): Promise<ViewCounts> {
+  return apiClient<ViewCounts>(
+    `/admin/shipments/view-counts${toQueryString({ ...query })}`,
     undefined,
     token,
   );

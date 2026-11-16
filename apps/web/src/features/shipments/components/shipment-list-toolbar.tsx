@@ -35,7 +35,7 @@ export interface ShipmentListMenu<F> {
 
 type Tabs = ViewTabOption<'view' | 'status'>[];
 
-// A status with no tab of its own (an old ?status= link) is a filter that replaces the view.
+// Any status replaces the view; one without a tab (an old ?status= link) is also a filter.
 export function listScope<F extends ShipmentListFilters>(
   { filters, defaults, isFiltered }: ShipmentListControls<F>,
   tabs: Tabs,
@@ -48,7 +48,10 @@ export function listScope<F extends ShipmentListFilters>(
   return {
     strayStatus,
     isFiltered: isFiltered || strayStatus !== undefined,
-    view: strayStatus || filters.view === ALL ? undefined : filters.view,
+    view:
+      filters.status !== defaults.status || filters.view === ALL
+        ? undefined
+        : filters.view,
   };
 }
 
@@ -113,8 +116,12 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
     <>
       <ViewTabs
         options={tabs}
-        // Under a stray status no tab is selected, and picking one drops the status.
-        filters={strayStatus ? { ...filters, view: '' } : filters}
+        // A status overrides the view: its own tab is selected, a stray one selects none.
+        filters={
+          filters.status === defaults.status
+            ? filters
+            : { ...filters, view: strayStatus ? '' : defaults.view }
+        }
         defaults={defaults}
         onChange={(changes) =>
           setFilters({ ...changes, status: changes.status ?? defaults.status })

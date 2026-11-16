@@ -45,6 +45,9 @@ describe('AdminMonitoringTable', () => {
           CANCELLED: 1,
         }),
       ),
+      http.get(`${API_URL}/admin/shipments/view-counts`, () =>
+        HttpResponse.json({ active: 5, exceptions: 0, done: 1 }),
+      ),
     );
   });
 
@@ -57,8 +60,12 @@ describe('AdminMonitoringTable', () => {
     );
 
     expect(
-      await screen.findByText('No shipments on the platform yet.'),
+      await screen.findByText('No shipments in this view.'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Active, 5' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(
       screen.getByRole('button', { name: /Carrier: Any/ }),
     ).toBeInTheDocument();
@@ -66,7 +73,7 @@ describe('AdminMonitoringTable', () => {
       screen.getByRole('button', { name: /Seller: Any/ }),
     ).toBeInTheDocument();
     expect(requestedUrls).toEqual([
-      `${API_URL}/admin/shipments?page=1&limit=20`,
+      `${API_URL}/admin/shipments?view=active&page=1&limit=20`,
     ]);
   });
 
@@ -105,16 +112,28 @@ describe('AdminMonitoringTable', () => {
     ).toHaveAttribute('href', '/admin/shipments/shipment-1?status=PENDING');
   });
 
-  it('filters by status from the toolbar menu', async () => {
+  it('opens a status tab without the default view', async () => {
     const user = userEvent.setup();
     renderWithQueryClient(
       <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
     );
-    await screen.findByText('No shipments on the platform yet.');
 
-    await user.click(screen.getByRole('button', { name: /Status: All/ }));
-    await user.click(screen.getByRole('menuitemradio', { name: /^Cancelled/ }));
+    await user.click(await screen.findByRole('tab', { name: 'Cancelled, 1' }));
 
+    expect(requestedUrls.at(-1)).toBe(
+      `${API_URL}/admin/shipments?status=CANCELLED&page=1&limit=20`,
+    );
+  });
+
+  it('selects the status tab of a link that also names a view', async () => {
+    resetNavigation('/admin/monitoring?view=exceptions&status=CANCELLED');
+    renderWithQueryClient(
+      <AdminMonitoringTable carrierOptions={[]} sellerOptions={[]} />,
+    );
+
+    expect(
+      await screen.findByRole('tab', { name: 'Cancelled, 1' }),
+    ).toHaveAttribute('aria-selected', 'true');
     expect(requestedUrls.at(-1)).toBe(
       `${API_URL}/admin/shipments?status=CANCELLED&page=1&limit=20`,
     );
@@ -183,7 +202,7 @@ describe('AdminMonitoringTable', () => {
       />,
     );
     expect(
-      await screen.findByRole('button', { name: /Status: All 6/ }),
+      await screen.findByRole('tab', { name: 'All, 6' }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Carrier: Any/ }));
@@ -192,7 +211,10 @@ describe('AdminMonitoringTable', () => {
     );
 
     expect(
-      await screen.findByRole('button', { name: /Status: All 3/ }),
+      await screen.findByRole('tab', { name: 'All, 3' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove Carrier: Fast Carrier' }),
+    ).toBeVisible();
   });
 });
