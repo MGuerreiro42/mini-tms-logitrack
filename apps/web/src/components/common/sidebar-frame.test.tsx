@@ -1,5 +1,12 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { resetNavigation, router } from '@/test/navigation';
 import { setViewportWidth } from '@/test/viewport';
 import type { NavSection } from './nav-tree';
@@ -114,22 +121,52 @@ describe('SidebarFrame', () => {
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
-  it('leaves Esc to an open dialog or menu', async () => {
+  it.each([
+    [
+      'dialog',
+      <Dialog key="d" defaultOpen>
+        <DialogContent aria-describedby={undefined}>
+          <DialogTitle>Confirm</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    ],
+    [
+      'menu',
+      <DropdownMenu key="m" defaultOpen>
+        <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Copy</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    ],
+  ])('leaves Esc to an open Radix %s above the overlay', async (_, layer) => {
     setViewportWidth(1100);
     const user = userEvent.setup();
     const toggle = renderFrame();
     await user.click(toggle);
-    const dialog = document.createElement('div');
-    dialog.setAttribute('role', 'dialog');
-    document.body.append(dialog);
-    const reached = vi.fn();
-    document.addEventListener('keydown', reached);
+    render(layer);
+    expect(
+      screen.getByRole(layer.key === 'd' ? 'dialog' : 'menu'),
+    ).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('menu')).toBeNull();
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(reached).toHaveBeenCalled();
-    document.removeEventListener('keydown', reached);
-    dialog.remove();
+
+    await user.keyboard('{Escape}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('takes Esc before the non-modal peek sheet', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+    await user.click(toggle);
+    render(<div role="dialog" aria-modal="false" aria-label="Peek" />);
+
+    await user.keyboard('{Escape}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('closes the overlay on any navigation, not only its own links', async () => {
