@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { DEMO_ADMIN_DECISION_MESSAGE } from '../src/modules/auth/guards/signup-decision.guard';
@@ -7,13 +6,7 @@ import {
   DEMO_PASSWORD,
 } from '../src/modules/simulator/demo-dataset';
 import { adminToken, type E2eContext, startApp } from './support/e2e-app';
-import { truncateAllTables } from './support/e2e-database';
-
-const seedDemo = () =>
-  execSync('pnpm exec prisma db seed', {
-    env: { ...process.env, SEED_DEMO: 'true' },
-    stdio: 'ignore',
-  });
+import { seedDemo, truncateAllTables } from './support/e2e-database';
 
 describe('Demo admin (e2e)', () => {
   let ctx: E2eContext;

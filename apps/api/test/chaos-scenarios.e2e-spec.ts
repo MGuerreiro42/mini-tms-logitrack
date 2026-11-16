@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import { getQueueToken } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -24,7 +23,7 @@ import {
   randomIp,
   startApp,
 } from './support/e2e-app';
-import { truncateAllTables } from './support/e2e-database';
+import { seedDemo, truncateAllTables } from './support/e2e-database';
 
 // AppModule decides whether to load the simulator when it is imported, before any hook runs.
 vi.hoisted(() => {
@@ -80,10 +79,7 @@ describe('Chaos scenarios (e2e)', () => {
   };
 
   beforeAll(async () => {
-    execSync('pnpm exec prisma db seed', {
-      env: { ...process.env, SEED_DEMO: 'true' },
-      stdio: 'ignore',
-    });
+    seedDemo();
     redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
     // A fresh mark keeps the startup catch-up reset from racing the assertions.
     await redis.set(LAST_RESET_KEY, Date.now());
