@@ -21,16 +21,19 @@ interface CopyFieldProps {
   describedBy?: string;
 }
 
-export function CopyField({
+type CopyButtonProps = Omit<CopyFieldProps, 'isLink' | 'display'> & {
+  size?: 'icon' | 'icon-sm';
+};
+
+export function CopyButton({
   value,
   label,
   copiedMessage = 'Copied',
   failedMessage = "Couldn't copy",
-  isLink = true,
-  display = value,
   buttonRef,
   describedBy,
-}: CopyFieldProps) {
+  size = 'icon',
+}: CopyButtonProps) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
@@ -40,6 +43,48 @@ export function CopyField({
     }
   }
 
+  return (
+    <Button
+      type="button"
+      size={size}
+      variant="outline"
+      ref={buttonRef}
+      aria-label={label}
+      aria-describedby={describedBy}
+      onClick={copy}
+    >
+      <CopyIcon />
+    </Button>
+  );
+}
+
+// Inline text with a small copy button, e.g. an e-mail in a page header.
+export function CopyText({
+  value,
+  display = value,
+  label,
+  mono,
+}: {
+  value: string;
+  display?: string;
+  label: string;
+  mono?: boolean;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn(mono && 'font-mono text-[13px]')}>{display}</span>
+      <CopyButton value={value} label={label} size="icon-sm" />
+    </span>
+  );
+}
+
+export function CopyField({
+  value,
+  label,
+  isLink = true,
+  display = value,
+  ...button
+}: CopyFieldProps) {
   return (
     <div className="flex items-center gap-2">
       {isLink ? (
@@ -54,17 +99,7 @@ export function CopyField({
       ) : (
         <code className={cn(FIELD_CLASS, 'break-all')}>{display}</code>
       )}
-      <Button
-        type="button"
-        size="icon"
-        variant="outline"
-        ref={buttonRef}
-        aria-label={label}
-        aria-describedby={describedBy}
-        onClick={copy}
-      >
-        <CopyIcon />
-      </Button>
+      <CopyButton value={value} label={label} {...button} />
     </div>
   );
 }
