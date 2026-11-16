@@ -26,7 +26,6 @@ import { formatDate } from '@/lib/format-date';
 import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
 import { plural } from '@/lib/plural';
 import { ROUTES } from '@/lib/routes';
-import { sumRecord } from '@/lib/sum-record';
 import { cn } from '@/lib/utils';
 import { useAdminDashboard } from '../hooks/use-admin-dashboard';
 import {
@@ -34,6 +33,7 @@ import {
   type ApplicationKind,
   usePendingApplications,
 } from '../hooks/use-pending-applications';
+import { PulseStrip } from './pulse-strip';
 
 const KINDS = {
   seller: {
@@ -75,6 +75,7 @@ export function AdminDashboard() {
           <WindowSelector value={statsWindow} onChange={setStatsWindow} />
         }
       />
+      <PulseStrip />
       <QueryState
         query={metrics}
         errorMessage="Couldn't load platform metrics."
