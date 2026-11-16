@@ -48,6 +48,11 @@ import type { ShipmentStatusCountsResponseDto } from './dto/shipment-status-coun
 import type { SlaSummaryItemResponseDto } from './dto/sla-summary-response.dto';
 import type { TrackingNoteDto } from './dto/tracking-note.dto';
 import type { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import type {
+  AdminViewCountsResponseDto,
+  CarrierViewCountsResponseDto,
+  SellerViewCountsResponseDto,
+} from './dto/view-counts-response.dto';
 import { isPublicPosition } from './route-geometry';
 import {
   findRoute,
@@ -86,10 +91,14 @@ import {
   ROAD_STAGES,
 } from './shipment-status.util';
 import {
+  ADMIN_VIEWS,
+  CARRIER_VIEWS,
   type ListFilters,
   listOrderBy,
   listWhere,
   OPEN_STATUSES,
+  SELLER_VIEWS,
+  type ShipmentView,
   type ViewContext,
 } from './shipment-views';
 import { generateTrackingCode } from './tracking-code';
@@ -266,6 +275,48 @@ export class ShipmentsService {
       sellerShipmentInclude,
       toShipmentResponseDto,
     );
+  }
+
+  async viewCountsForSeller(
+    userId: string,
+  ): Promise<SellerViewCountsResponseDto> {
+    const seller = await this.findSellerOrThrow(userId);
+    return this.countViews(SELLER_VIEWS, { sellerId: seller.id }, null);
+  }
+
+  async viewCountsForCarrier(
+    userId: string,
+  ): Promise<CarrierViewCountsResponseDto> {
+    const carrierUser = await this.findCarrierUserOrThrow(userId);
+    return this.countViews(
+      CARRIER_VIEWS,
+      { carrierId: carrierUser.carrierId },
+      carrierUser.id,
+    );
+  }
+
+  viewCountsForAdmin(
+    carrierId?: string,
+    sellerId?: string,
+  ): Promise<AdminViewCountsResponseDto> {
+    return this.countViews(ADMIN_VIEWS, adminScope(carrierId, sellerId), null);
+  }
+
+  // One count per view: at most six small queries, throttled by the client's invalidation.
+  private async countViews<V extends ShipmentView>(
+    views: readonly V[],
+    scope: Prisma.ShipmentWhereInput,
+    carrierUserId: string | null,
+  ): Promise<Record<V, number>> {
+    const ctx = { now: new Date(), carrierUserId, includeSeller: false };
+    const counts = await Promise.all(
+      views.map((view) =>
+        this.prisma.shipment.count({ where: listWhere(scope, { view }, ctx) }),
+      ),
+    );
+    return Object.fromEntries(
+      views.map((view, index) => [view, counts[index]]),
+    ) as Record<V, number>;
   }
 
   async countsByStatusForSeller(
