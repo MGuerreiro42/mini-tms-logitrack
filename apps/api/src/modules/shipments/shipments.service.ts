@@ -24,6 +24,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import {
   countByStatus,
   createdSince,
+  groupBy,
   type StatsWindow,
 } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
@@ -57,6 +58,8 @@ import type {
   CarrierViewCountsResponseDto,
   SellerViewCountsResponseDto,
 } from './dto/view-counts-response.dto';
+import { isOnTimeSample, onTime } from './metrics/delivery-metrics';
+import { loadMetricRows } from './metrics/metric-rows';
 import { isPublicPosition } from './route-geometry';
 import {
   findRoute,
@@ -371,48 +374,32 @@ export class ShipmentsService {
   ): Promise<SlaSummaryItemResponseDto[]> {
     const seller = await this.findSellerOrThrow(userId);
 
-    const shipments = await this.prisma.shipment.findMany({
-      where: {
+    const rows = await loadMetricRows(
+      this.prisma,
+      {
         sellerId: seller.id,
         status: ShipmentStatus.DELIVERED,
         ...createdSince(since),
       },
-      select: {
-        dueAt: true,
-        deliveredAt: true,
-        modality: { select: { code: true, name: true } },
-      },
-    });
+      { events: false },
+    );
 
-    const byModality = new Map<
-      string,
-      { modalityName: string; deliveredCount: number; onTimeCount: number }
-    >();
+    // Grouping only the samples keeps the modality order of the first on-time sample.
+    const byModality = groupBy(
+      rows.filter(isOnTimeSample),
+      (row) => row.modality.code,
+    );
 
-    for (const { dueAt, deliveredAt, modality } of shipments) {
-      if (!dueAt || !deliveredAt) continue;
-
-      const entry = byModality.get(modality.code) ?? {
-        modalityName: modality.name,
-        deliveredCount: 0,
-        onTimeCount: 0,
+    return [...byModality.entries()].map(([modalityCode, group]) => {
+      const { n, count, rate } = onTime(group);
+      return {
+        modalityCode,
+        modalityName: group[0].modality.name,
+        deliveredCount: n,
+        onTimeCount: count,
+        onTimeRate: rate as number,
       };
-      entry.deliveredCount += 1;
-
-      if (deliveredAt <= dueAt) {
-        entry.onTimeCount += 1;
-      }
-
-      byModality.set(modality.code, entry);
-    }
-
-    return Array.from(byModality.entries()).map(([modalityCode, entry]) => ({
-      modalityCode,
-      modalityName: entry.modalityName,
-      deliveredCount: entry.deliveredCount,
-      onTimeCount: entry.onTimeCount,
-      onTimeRate: (entry.onTimeCount / entry.deliveredCount) * 100,
-    }));
+    });
   }
 
   async attentionForSeller(
