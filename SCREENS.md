@@ -68,10 +68,10 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 ### Dashboard (Seller)
 
 - **Role:** approved Seller
-- **Goal:** overview of the seller's shipments.
-- **Data:** `Shipment` count by `status` (how many `PENDING`, `IN_TRANSIT`, `DELIVERED`, etc.), shortcut to the latest shipments.
-- **Actions:** create a shipment; view the full list.
-- **States:** zero shipments yet → empty state with a CTA to create the first one.
+- **Goal:** "how am I doing this period, and what needs me now", answered in five seconds ([spec 07](./specs/07-dashboards.md)).
+- **Data:** a window selector (7 d · 30 d · 90 d, `?window=`, 30 d by default); tiles Active now, Late now, On time · window (sparkline, n, 90 % target) and Delivered · window, each defined in the [metric table](./specs/07-dashboards.md#metrics-core-api); a pipeline bar of the open statuses; Exceptions (late and failed) over On time by modality; an Activity panel grouped by shipment, at most six.
+- **Actions:** every count tile and pipeline segment opens the shipment list filtered to exactly that number; create a shipment.
+- **States:** a rate on fewer than five samples reads "—" with "Not enough deliveries (n=<n>)"; no exception is one line, "Nothing needs you right now."
 - **Navigation →** Create Shipment · Shipments List · Modality Configuration.
 
 ### Create Shipment
@@ -166,9 +166,9 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 ### Carrier Performance
 
 - **Role:** `CARRIER_MANAGER` and `CARRIER_OPERATOR`
-- **Goal:** aggregated metrics — how many `Shipment` records per `status`, average time between `TrackingEvent`s (SLA proxy), `FAILED_DELIVERY`/`RETURNED` rate.
-- **Data:** `Shipment`/`TrackingEvent` aggregations filtered by `carrierId` — no data from other carriers (multi-tenant isolation).
-- **States:** not enough data yet (new carrier, few shipments).
+- **Goal:** the number the carrier is judged on (on time) and where time goes.
+- **Data:** window selector; tiles On time, Median delivery, First attempt and Median claim for the window ([metric table](./specs/07-dashboards.md#metrics-core-api)); time per stage (median bar, p90 whisker, budget tick, a table view); the Team table with every member by name, the manager under a divider and "You" on the signed-in row. Refreshes live from the queue room, throttled to one refetch per 10 s. Only the carrier's own shipments (multi-tenant isolation).
+- **States:** fewer than five samples per rate or stage → "Not enough data (n=<n>)"; no shipment in the window → empty state.
 
 ---
 
@@ -177,37 +177,39 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 ### General Dashboard
 
 - **Role:** Admin
-- **Goal:** executive view of the entire platform.
-- **Data:** seller/carrier counts by `ApprovalStatus`, total `Shipment` count by `ShipmentStatus`, pending approvals highlighted (the admin's most frequent action).
-- **Actions:** direct shortcut to the approval queue.
-- **Navigation →** Sellers List · Carriers List · Global Monitoring.
+- **Goal:** the whole live platform at a glance.
+- **Data:** a pulse strip polled every 5 s, outside the window: events per minute (15-minute sparkline), sockets, simulator, webhooks over the last hour, queues and Postgres/Redis, each part degrading on its own ("Pulse unavailable · retrying" when the request fails); tiles On time, Late now, Failed and Median claim for the window; On time by carrier (each name opens its Carrier 360 on the same window); the review queue with approve/reject inline and the approved tenant counts.
+- **Navigation →** Sellers List · Carriers List · Global Monitoring · Carrier Detail.
 
 ### Sellers List
 
 - **Role:** Admin
-- **Data:** `companyName`, `document`, `status`, `createdAt`.
+- **Data:** `companyName`, `document`, Shipments · 30 d and On time (same response, `include=stats`), `status`, `createdAt`.
 - **Actions:** filter by status (the `PENDING` queue is the default view, since it's the recurring action).
+- **States:** a rate on fewer than five deliveries reads "—", with "Not enough deliveries (n=<n>)" as its title and for screen readers; Tax ID and sign-up date give way below 1024 px.
 - **Navigation →** Seller Detail.
 
 ### Seller Detail
 
-- **Role:** Admin
-- **Data:** every `Seller` field + onboarding data + enabled `SellerModality` entries + list of recent `Shipment` records.
-- **Actions:** **approve / reject** (`status: PENDING → APPROVED/REJECTED`).
-- **States:** already approved/rejected — the action becomes history only, with no active button.
+- **Role:** Admin — the Seller 360.
+- **Data:** header with the approval badge, e-mail and tax ID with copy buttons, and the window. Approved: tiles Shipments · window, On time · window, Active now and Late now, equal to the seller's own overview; the ten most recent shipments (each opening its detail with the Monitoring scope kept for the breadcrumb) with a link to all of them in Monitoring (`view=ALL`); Status · window; the modality catalog, each Enabled or Off. "No shipments yet" for an approved seller without any, and no tile is drawn before the total is known.
+- **Actions:** **approve / reject** while pending (the company details review; focus moves to the new title after approval); count tiles open Monitoring filtered by the seller, Shipments on `view=ALL` and the window.
+- **States:** pending or rejected — the company details review instead of metrics.
 
 ### Carriers List
 
 - **Role:** Admin
-- **Data:** `companyName`, `document`, `status`, `CarrierUser` count, `createdAt`.
+- **Data:** `companyName`, `document`, `CarrierUser` count, Shipments · 30 d, On time and Failed (`include=stats`), `status`, `createdAt`.
 - **Actions:** filter by status.
+- **States:** a rate on fewer than five samples reads "—", with "Not enough deliveries (n=<n>)" as its title and for screen readers; Tax ID and sign-up date give way below 1024 px.
 - **Navigation →** Carrier Detail.
 
 ### Carrier Detail
 
-- **Role:** Admin
-- **Data:** `Carrier` fields + `CarrierCoverageArea` (list of covered cities/states) + `CarrierModality` (what it operates) + `CarrierUser` sub-list (manager + operators) + pending `Invite`s.
-- **Actions:** **approve/reject the company**; view operators and invites (same sub-list as Operator Management, read-only for the admin).
+- **Role:** Admin — the Carrier 360.
+- **Data:** header with the manager e-mail and user count, and the window. Approved: tiles On time, Median delivery, First attempt (the manager's own endpoints by id, so the numbers equal their Performance page) and Active now; time per stage, full width; from 1280 px the ten most recent shipments beside the read-only Team table (no "You", no links) and Coverage & modalities (UF / city chips, "All of <UF>", the enabled modalities with SLA hours), stacked full width below it. Performance and team refresh like the carrier's own page, at most once per 10 s. "No shipments yet" for an approved carrier without any; a carrier without a manager reads "No manager".
+- **Actions:** **approve/reject the company** while pending; Active now opens Monitoring filtered by the carrier.
+- **States:** pending or rejected — the company details review instead of metrics.
 
 ### Global Monitoring
 

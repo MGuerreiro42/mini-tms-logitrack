@@ -16,18 +16,20 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 
 **Sellers**
 - Create shipments in three steps: destination and modality, a carrier that covers it, review
-- Home focused on what needs attention: failed deliveries and shipments past their SLA, plus a live activity feed
+- Overview for a 7/30/90-day window: active, late, on time and delivered tiles that open the matching list, a pipeline of open stages, exceptions and live activity ([spec](./specs/07-dashboards.md))
 - Shipment list with views and counts (Active, Exceptions, …), search, one risk phrase per row, a peek sheet and bulk copy/cancel ([spec](./specs/06-tables-and-search.md))
 - Integrations: signed webhooks with retries, a live test inbox and delivery log with replay, and API keys for the public API
 
 **Carriers**
 - Shared queue with Mine/Unclaimed/On the road views sorted by urgency, owners by name and Claim next; operators move shipments step by step, with notes for the seller
 - Failed delivery and return flows behind confirmation
-- Performance: status distribution, time per stage, operator ranking
+- Performance for a window: on time, median delivery, first attempt and claim time, median and p90 per stage against a budget, and the team by name
 - Own coverage areas (whole states or specific cities) and modalities
 
 **Admins**
 - Approve or reject seller and carrier sign-ups
+- Overview with a live platform pulse (events, sockets, simulator, webhooks, queues, Postgres and Redis), platform tiles and on time per carrier
+- Seller 360 and Carrier 360 pages with the tenant's own numbers, and 30-day scorecards on both lists
 - Platform-wide monitoring with views per status, search and a peek, filterable by seller and carrier, updated live; overview tiles open the matching list
 
 **Everyone**
