@@ -9,6 +9,7 @@ import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
 import { getMyCarrier } from '@/features/carriers/api';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
+import { CarrierNavCounts } from '@/features/shipments/components/nav-counts-provider';
 import { carrierDefaultView } from '@/lib/carrier-default-view';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
@@ -87,16 +88,18 @@ export default async function CarrierLayout({
   const isManager = session.role === 'CARRIER_MANAGER';
 
   return (
-    <AppShell
-      banner={<GlobalBanner />}
-      nav={carrierNav(carrierDefaultView(session.role))}
-      user={{
-        name: carrier.companyName,
-        role: isManager ? 'Manager' : 'Operator',
-        initials: initialsFor(carrier.companyName),
-      }}
-    >
-      {children}
-    </AppShell>
+    <CarrierNavCounts>
+      <AppShell
+        banner={<GlobalBanner />}
+        nav={carrierNav(carrierDefaultView(session.role))}
+        user={{
+          name: carrier.companyName,
+          role: isManager ? 'Manager' : 'Operator',
+          initials: initialsFor(carrier.companyName),
+        }}
+      >
+        {children}
+      </AppShell>
+    </CarrierNavCounts>
   );
 }
