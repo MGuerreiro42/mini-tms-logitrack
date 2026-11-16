@@ -2,6 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GlobalRole } from '../../../generated/prisma/client';
 import { ApiPaginatedResponse } from '../../shared/pagination/api-paginated-response.decorator';
+import { windowSince } from '../../shared/stats/stats';
 import { Auth } from '../auth/decorators/auth.decorator';
 import {
   AdminShipmentDetailResponseDto,
@@ -11,6 +12,10 @@ import { AdminStatusCountsQueryDto } from './dto/admin-status-counts-query.dto';
 import { ListAdminShipmentsQueryDto } from './dto/list-admin-shipments-query.dto';
 import { ShipmentStatusCountsResponseDto } from './dto/shipment-status-counts-response.dto';
 import { AdminViewCountsResponseDto } from './dto/view-counts-response.dto';
+import {
+  AdminMetricsQueryDto,
+  AdminMetricsResponseDto,
+} from './metrics/admin-metrics.dto';
 import { ShipmentsService } from './shipments.service';
 
 @ApiTags('admin')
@@ -57,6 +62,21 @@ export class AdminShipmentsController {
       query.sellerId,
       query.window,
     );
+  }
+
+  @ApiOperation({
+    summary:
+      'Platform delivery metrics for the window (spec 07 FR-008), optionally for one carrierId/sellerId, with active and late now and on time per approved carrier — admin only',
+  })
+  @ApiResponse({ status: 200, type: AdminMetricsResponseDto })
+  @Auth(GlobalRole.ADMIN)
+  @Get('metrics')
+  metrics(@Query() query: AdminMetricsQueryDto) {
+    return this.shipmentsService.metricsForAdmin({
+      carrierId: query.carrierId,
+      sellerId: query.sellerId,
+      since: windowSince(query),
+    });
   }
 
   // Declared after the static shipments/* routes, which the UUID pipe would otherwise reject.
