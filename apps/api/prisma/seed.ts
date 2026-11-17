@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 import {
@@ -8,7 +7,6 @@ import {
   PrismaClient,
 } from '../generated/prisma/client';
 import {
-  buildDemoShipments,
   DEMO_ADMIN,
   DEMO_CARRIER,
   DEMO_CARRIER_MEMBERS,
@@ -18,6 +16,7 @@ import {
   DEMO_STATE,
   type DemoTenant,
 } from '../src/modules/simulator/demo-dataset';
+import { replaceDemoShipments } from '../src/modules/simulator/demo-shipments';
 import { cityKey } from '../src/shared/transforms/normalize';
 
 const prisma = new PrismaClient({
@@ -195,35 +194,8 @@ async function seedExtraCarriers(modalities: DeliveryModality[], hash: string) {
 }
 
 async function seedShipments(tenant: DemoTenant) {
-  const shipments = buildDemoShipments(tenant, Date.now());
-  const present = await prisma.shipment.findMany({
-    where: {
-      trackingCode: {
-        in: shipments.map(({ shipment }) => shipment.trackingCode),
-      },
-    },
-    select: { trackingCode: true },
-  });
-  const presentCodes = new Set(present.map((s) => s.trackingCode));
-  const missing = shipments
-    .filter(({ shipment }) => !presentCodes.has(shipment.trackingCode))
-    .map((demo) => ({ ...demo, id: randomUUID() }));
-
-  // Batched as in the daily reset: one statement per table.
-  await prisma.$transaction([
-    prisma.shipment.createMany({
-      data: missing.map(({ id, shipment }) => ({ ...shipment, id })),
-    }),
-    prisma.trackingEvent.createMany({
-      data: missing.flatMap(({ id, events }) =>
-        events.map((event) => ({ ...event, shipmentId: id })),
-      ),
-    }),
-  ]);
-
-  console.log(
-    `Demo shipments: ${missing.length} created, ${presentCodes.size} already present`,
-  );
+  const count = await replaceDemoShipments(prisma, tenant);
+  console.log(`Demo shipments: ${count} replaced`);
 }
 
 async function main() {
