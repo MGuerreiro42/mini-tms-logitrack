@@ -7,7 +7,9 @@ import {
   type OverviewPoll,
   useSellerMetrics,
 } from '@/features/shipments/hooks/use-seller-dashboard';
+import { fitVolume } from '@/features/shipments/lib/volume-buckets';
 import type { SellerMetrics } from '@/features/shipments/types';
+import { useElementWidth } from '@/hooks/use-element-width';
 import { type StatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { formatMonthDay } from '@/lib/format-date';
 import { hasEnoughData } from '@/lib/metrics';
@@ -38,10 +40,12 @@ export function VolumePanel({
 }) {
   const metrics = useSellerMetrics(statsWindow, poll);
   const busy = metrics.isPlaceholderData;
-  const bucket = metrics.data?.volume.bucket ?? 'day';
+  const [ref, width] = useElementWidth<HTMLDivElement>();
+  const volume = metrics.data && fitVolume(metrics.data.volume, width);
 
   return (
     <div
+      ref={ref}
       aria-busy={busy}
       className={cn('transition-opacity', busy && 'opacity-60')}
     >
@@ -50,7 +54,7 @@ export function VolumePanel({
           <>
             Volume{' '}
             <span className="text-[13px] font-normal text-muted-foreground">
-              · {windowLabel(statsWindow)}, by {bucket}
+              · {windowLabel(statsWindow)}, by {volume?.label ?? 'day'}
             </span>
           </>
         }
@@ -62,7 +66,7 @@ export function VolumePanel({
         >
           {(data) =>
             hasEnoughData(data.shipments) ? (
-              <VolumeChart metrics={data} />
+              <VolumeChart metrics={data} width={width} />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Volume shows once you have 5 shipments in this window.
@@ -77,10 +81,13 @@ export function VolumePanel({
 
 function VolumeChart({
   metrics: { volume, cancelled, firstAttempt },
+  width,
 }: {
   metrics: SellerMetrics;
+  width: number | undefined;
 }) {
-  const columns = volume.points.map((point) => ({
+  const fitted = fitVolume(volume, width);
+  const columns = fitted.points.map((point) => ({
     key: point.start,
     label: formatMonthDay(point.start),
     values: SERIES.map(({ key }) => point[key]),
@@ -114,10 +121,12 @@ function VolumeChart({
       <StackedColumns
         series={[...SERIES]}
         columns={columns}
-        label={`Shipments created per ${volume.bucket}: ${perBucket}`}
+        label={`Shipments created per ${fitted.label}: ${perBucket}`}
       />
       <p className="text-xs text-muted-foreground">
         By creation date, coloured by status now.
+        {fitted.merged &&
+          ` Grouped by ${fitted.label} to keep each column tappable.`}
         {cancelled > 0 && ` ${cancelled} cancelled not shown.`}
       </p>
     </>
