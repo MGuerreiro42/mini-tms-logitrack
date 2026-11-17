@@ -301,9 +301,9 @@
   --offline: #d08548;
   --notice: #36271c;
   --notice-foreground: #edb98e;
-  /* 6.2:1 */
   --sla-soon: #edb98e;
   --sla-late: #d2645a;
+  /* 6.2:1 */
   --warning: #d08548;
   --warning-foreground: #121614;
   --panel-shadow: 0 0 0 1px #222823, 0 12px 28px -16px rgb(0 0 0 / 0.6);

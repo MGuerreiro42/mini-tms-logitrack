@@ -40,6 +40,32 @@ describe('useFlip', () => {
     expect(animate).toHaveBeenCalledTimes(1);
   });
 
+  it('starts the slide from the layout position, whatever the scroll or a running slide', () => {
+    reducedMotion(false);
+    const { container, rerender } = render(<Marks group="IN_TRANSIT" />);
+    const mark = container.querySelector<HTMLElement>('[data-flip-id="a"]');
+    if (!mark) throw new Error('mark missing');
+    const place = (left: number, top: number, rectLeft: number) => {
+      Object.defineProperty(mark, 'offsetLeft', {
+        value: left,
+        configurable: true,
+      });
+      Object.defineProperty(mark, 'offsetTop', {
+        value: top,
+        configurable: true,
+      });
+      mark.getBoundingClientRect = () =>
+        ({ left: rectLeft, top: rectLeft }) as DOMRect;
+    };
+    place(100, 40, 100);
+    rerender(<Marks group="IN_TRANSIT" />);
+
+    place(10, 40, -300);
+    rerender(<Marks group="OUT_FOR_DELIVERY" />);
+
+    expect(animate.mock.calls[0][0][0].transform).toBe('translate(90px, 0px)');
+  });
+
   it('moves the mark without a tween under reduced motion', () => {
     reducedMotion(true);
     const { rerender } = render(<Marks group="IN_TRANSIT" />);

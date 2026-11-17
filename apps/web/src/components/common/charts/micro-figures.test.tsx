@@ -45,6 +45,15 @@ describe('micro figures', () => {
     expect(lefts(container)).toEqual(['80%', '50%', '80%']);
   });
 
+  it('marks a rate below the floor with a chevron instead of a dot at the edge', () => {
+    const { container } = render(
+      <RateDots rate={30} previous={60} target={90} />,
+    );
+
+    expect(container.querySelectorAll('[data-below-min]')).toHaveLength(1);
+    expect(lefts(container)).toEqual(['80%', '20%']);
+  });
+
   it('scales columns to the tallest', () => {
     const { container } = render(<MiniColumns values={[5, 10]} />);
 

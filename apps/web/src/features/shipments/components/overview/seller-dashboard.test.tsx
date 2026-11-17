@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import type {
@@ -89,12 +89,18 @@ describe('SellerDashboard', () => {
       http.get(`${API_URL}/shipments/activity`, () =>
         HttpResponse.json([collected]),
       ),
-      http.get(`${API_URL}/shipments`, () =>
-        HttpResponse.json({
-          data: [late],
-          meta: { total: 1, page: 1, limit: 100, totalPages: 1 },
-        }),
-      ),
+      http.get(`${API_URL}/shipments`, ({ request }) => {
+        const view = new URL(request.url).searchParams.get('view');
+        return HttpResponse.json({
+          data: view === 'active' ? [late] : [],
+          meta: {
+            total: view === 'late' ? 1 : 0,
+            page: 1,
+            limit: 100,
+            totalPages: 1,
+          },
+        });
+      }),
     );
   });
 
@@ -189,6 +195,92 @@ describe('SellerDashboard', () => {
       }),
     ).toBeVisible();
     expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
+  });
+
+  it.each([
+    ['attention', "Couldn't load the late shipments."],
+    ['status-counts', "Couldn't load the shipment flow."],
+  ])('keeps the other sections when %s fails', async (path, message) => {
+    server.use(
+      http.get(`${API_URL}/shipments/${path}`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect((await screen.findAllByText(message)).length).toBeGreaterThan(0);
+    expect(await screen.findByText('91.3%')).toBeVisible();
+    expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
+  });
+
+  it('keeps the other sections when the activity fails', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/activity`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText('91.3%')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Exceptions' }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole('link', {
+        name: 'Late now, 1. View late shipments',
+      }),
+    ).toBeVisible();
+  });
+
+  it('falls back to the unclaimed count when attention fails', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/attention`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText('1 unclaimed')).toBeInTheDocument();
+  });
+
+  it('asks for the first shipment when there is nothing yet', async () => {
+    server.use(
+      http.get(`${API_URL}/shipments/status-counts`, () =>
+        HttpResponse.json(
+          Object.fromEntries(Object.keys(counts).map((key) => [key, 0])),
+        ),
+      ),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(await screen.findByText('Send your first shipment')).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Exceptions' })).toBeNull();
+  });
+
+  it('dims the previous numbers while another window loads', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const user = userEvent.setup();
+    renderWithQueryClient(<SellerDashboard />);
+    expect(await screen.findByText('91.3%')).toBeVisible();
+    server.use(
+      http.get(`${API_URL}/shipments/metrics`, async () => {
+        await gate;
+        return HttpResponse.json(sellerMetrics());
+      }),
+    );
+
+    await user.click(screen.getByRole('radio', { name: '7 d' }));
+
+    await waitFor(() =>
+      expect(document.querySelector('[aria-busy="true"]')).not.toBeNull(),
+    );
+    release();
+    await waitFor(() =>
+      expect(document.querySelector('[aria-busy="true"]')).toBeNull(),
+    );
   });
 
   it('opens each count tile and flow legend count on exactly that list', async () => {
