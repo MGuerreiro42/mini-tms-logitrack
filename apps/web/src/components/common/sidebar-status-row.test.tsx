@@ -28,4 +28,16 @@ describe('SidebarStatusRow', () => {
       '/admin',
     );
   });
+
+  it('wraps long labels instead of truncating them', () => {
+    render(
+      <SidebarStatusRow
+        tone="warning"
+        label="Reconnecting · counts may be stale"
+      />,
+    );
+    expect(
+      screen.getByText('Reconnecting · counts may be stale'),
+    ).not.toHaveClass('truncate');
+  });
 });
