@@ -16,6 +16,14 @@ const serve = (metrics: SellerMetrics) =>
 const renderPanel = () =>
   renderWithQueryClient(<VolumePanel statsWindow="90d" poll={() => false} />);
 
+beforeAll(() => {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
+
 describe('VolumePanel', () => {
   beforeEach(() => {
     setSession({ token: 't', role: 'SELLER', userId: 'u', email: 'a@b.c' });
@@ -32,13 +40,62 @@ describe('VolumePanel', () => {
     expect(first).toHaveAccessibleName(
       'Aug 13: 11 — Delivered 10 · Open 0 · Problem 1',
     );
-    expect(second).toHaveAttribute('tabindex', '0');
+    expect([first, second].map((column) => column.tabIndex)).toEqual([0, -1]);
     expect(screen.getByText('(3 failed · 6 returned)')).toBeVisible();
     expect(
       screen.getByText(
         'By creation date, coloured by status now. 5 cancelled not shown.',
       ),
     ).toBeVisible();
+  });
+
+  it('reads a small count on a whole-number axis', async () => {
+    serve(
+      sellerMetrics({
+        volume: {
+          bucket: 'day',
+          points: [
+            {
+              start: '2026-08-13T03:00:00.000Z',
+              delivered: 1,
+              problem: 0,
+              open: 0,
+            },
+            {
+              start: '2026-08-14T03:00:00.000Z',
+              delivered: 2,
+              problem: 0,
+              open: 0,
+            },
+          ],
+        },
+      }),
+    );
+    const { container } = renderPanel();
+
+    await screen.findByRole('list', { name: /^Shipments created per day/ });
+    const ticks = [...container.querySelectorAll('[aria-hidden] > span')]
+      .map((tick) => tick.textContent ?? '')
+      .filter((text) => /^[\d.]+$/.test(text));
+    expect(ticks).toEqual(['0', '1', '2', '3', '4']);
+  });
+
+  it('moves between columns with the arrows and closes the tooltip with Escape', async () => {
+    serve(sellerMetrics());
+    const user = userEvent.setup();
+    renderPanel();
+    const chart = await screen.findByRole('list', {
+      name: /^Shipments created per week/,
+    });
+    const [first, second] = within(chart).getAllByRole('listitem');
+
+    first.focus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Aug 13: 11');
+    await user.keyboard('{ArrowRight}');
+    expect(second).toHaveFocus();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('switches to a table of the same numbers', async () => {
