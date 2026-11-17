@@ -54,7 +54,7 @@ describe('useRecents', () => {
   });
 
   it('lasts for the session when storage is blocked', () => {
-    signIn('u1');
+    signIn('blocked');
     const blocked = vi
       .spyOn(Storage.prototype, 'setItem')
       .mockImplementation(() => {
@@ -64,9 +64,9 @@ describe('useRecents', () => {
       throw new Error('blocked');
     });
     const { result } = renderHook(() => useRecents());
-    act(() => rememberRecent(entry(1)));
+    act(() => rememberRecent(entry(9)));
 
-    expect(result.current).toEqual([entry(1)]);
+    expect(result.current).toEqual([entry(9)]);
     blocked.mockRestore();
     vi.restoreAllMocks();
   });

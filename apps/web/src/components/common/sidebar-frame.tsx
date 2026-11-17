@@ -33,8 +33,9 @@ export function SidebarFrame({
 }) {
   const [rail, setRail] = useState(initialRail);
   const [overlay, setOverlay] = useState(false);
-  const wide = useMediaQuery('(min-width: 1280px)');
-  const midRange = useMediaQuery('(min-width: 1024px) and (max-width: 1279px)');
+  const wide = useMediaQuery('(min-width: 80rem)');
+  const medium = useMediaQuery('(min-width: 64rem)');
+  const midRange = medium && !wide;
   const panel = useRef<HTMLDivElement>(null);
   const toggleButton = useRef<HTMLButtonElement>(null);
   const compact = wide ? rail : !overlay;
@@ -73,7 +74,7 @@ export function SidebarFrame({
     if (!panel.current?.contains(event.target as Node)) closeOverlay();
   });
 
-  // Any navigation closes the overlay: its links, a g-shortcut or a ⌘K pick.
+  // Any navigation closes the overlay: a link inside it (even to this page), a g-shortcut or a ⌘K pick.
   const route = `${usePathname()}?${useSearchParams()}`;
   const onRoute = useEffectEvent((_route: string) => {
     if (overlay) closeOverlay();
@@ -101,6 +102,11 @@ export function SidebarFrame({
           <TooltipProvider delayDuration={300}>
             <div
               ref={panel}
+              onClickCapture={(event) => {
+                if (overlay && (event.target as Element).closest('a')) {
+                  closeOverlay();
+                }
+              }}
               className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-nav p-3 shadow-[1px_0_0_var(--nav-line)] short:top-0 short:h-dvh max-xl:in-data-[overlay=true]:fixed max-xl:in-data-[overlay=true]:z-30 max-xl:in-data-[overlay=true]:w-60 max-xl:in-data-[overlay=true]:animate-sidebar-in max-xl:in-data-[overlay=true]:shadow-panel"
             >
               <SidebarNav nav={nav} />
