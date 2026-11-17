@@ -87,10 +87,9 @@ export function OnTimeBy({
   const busy = metrics.isPlaceholderData;
 
   return (
-    // Grid items stretch to the row; this panel fills the left column so both end flush.
     <div
       aria-busy={busy}
-      className={cn('flex-1 transition-opacity', busy && 'opacity-60')}
+      className={cn('transition-opacity', busy && 'opacity-60')}
     >
       <Panel
         title={
@@ -109,7 +108,6 @@ export function OnTimeBy({
             onChange={setPicked}
           />
         }
-        className="h-full"
       >
         <QueryState
           query={metrics}
