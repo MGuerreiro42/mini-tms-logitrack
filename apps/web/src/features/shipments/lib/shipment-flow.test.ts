@@ -10,16 +10,15 @@ const counts = {
 };
 
 describe('flowStages', () => {
-  it('groups the drawn marks by stage, with the rest counted as hidden', () => {
-    const now = new Date();
-    const { stages, totals } = flowStages(
+  it('groups the drawn marks by stage and says how many it did not draw', () => {
+    const stages = flowStages(
       [
         shipment('late', 'IN_TRANSIT', -7),
         shipment('soon', 'IN_TRANSIT', 2),
         shipment('pending', 'PENDING', 48),
       ],
       counts,
-      now,
+      new Date(),
     );
 
     const inTransit = stages.find((stage) => stage.status === 'IN_TRANSIT');
@@ -28,18 +27,19 @@ describe('flowStages', () => {
       'dueSoon',
     ]);
     expect(inTransit?.hidden).toBe(1);
-    expect(inTransit?.summary).toBe('In transit 3: 1 due soon, 1 late');
-    expect(totals).toEqual({ onTrack: 1, dueSoon: 1, late: 1, none: 0 });
+    expect(inTransit?.summary).toBe(
+      'In transit 3: 1 due soon, 1 late, 1 not drawn',
+    );
+    expect(stages[0].summary).toBe('Pending 1: 1 on track');
   });
 
   it('counts a shipment without an SLA apart', () => {
-    const { totals, stages } = flowStages(
+    const [pending] = flowStages(
       [{ ...shipment('free', 'PENDING', 5), dueAt: null }],
       counts,
       new Date(),
     );
 
-    expect(totals.none).toBe(1);
-    expect(stages[0].summary).toBe('Pending 1: 1 no SLA');
+    expect(pending.summary).toBe('Pending 1: 1 no SLA');
   });
 });

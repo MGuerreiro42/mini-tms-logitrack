@@ -124,7 +124,10 @@ export function OnTimeBy({
               </p>
             ) : (
               <>
-                <RangeDotRows rows={rows} />
+                <RangeDotRows
+                  rows={rows}
+                  label={`On time by ${tab}, worst first`}
+                />
                 <p className="text-xs text-muted-foreground">
                   Dot = on-time rate. Bar = where the true rate likely sits (95%
                   range): wide when n is small.
