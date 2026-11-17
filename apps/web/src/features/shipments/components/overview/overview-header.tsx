@@ -9,6 +9,7 @@ import {
   useSellerMetrics,
 } from '@/features/shipments/hooks/use-seller-dashboard';
 import {
+  isDelta,
   rangeLine,
   windowDeltas,
 } from '@/features/shipments/lib/overview-rules';
@@ -26,10 +27,7 @@ export function OverviewHeader({
 }) {
   const { data } = useSellerMetrics(statsWindow, poll);
   const compared =
-    data !== undefined &&
-    Object.values(windowDeltas(data)).some(
-      (delta) => delta !== null && delta !== 'immature',
-    );
+    data !== undefined && Object.values(windowDeltas(data)).some(isDelta);
 
   return (
     <PageHeader

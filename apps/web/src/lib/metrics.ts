@@ -48,3 +48,12 @@ export interface StageDuration {
   budgetHours: number | null;
   n: number;
 }
+
+// Each stage is named by the status the shipment sits in (spec 07 FR-016).
+export const STAGE_LABEL: Partial<Record<ShipmentStatus, string>> = {
+  PENDING: 'Claim wait',
+  ACCEPTED: 'Pickup wait',
+  COLLECTED: 'At origin',
+  IN_TRANSIT: 'Line haul',
+  OUT_FOR_DELIVERY: 'Last mile',
+};
