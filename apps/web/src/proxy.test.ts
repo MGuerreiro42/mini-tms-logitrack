@@ -106,6 +106,16 @@ describe('proxy', () => {
     },
   );
 
+  it.each(['/signup/seller', '/signup/carrier'])(
+    'sends a signed-in visitor from %s home, and shows it to an anonymous one',
+    (path) => {
+      expect(proxy(request(path, 'SELLER')).headers.get('location')).toBe(
+        'http://localhost/seller',
+      );
+      expect(proxy(request(path)).headers.get('location')).toBeNull();
+    },
+  );
+
   it.each([
     ['/carrier/queue/abc', 'CARRIER_MANAGER', '/carrier/queue/abc'],
     ['/admin', 'SELLER', '/seller'],
