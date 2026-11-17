@@ -2,13 +2,19 @@
 
 import Link from 'next/link';
 import { useRef } from 'react';
-import { PIPELINE_STATUSES } from '@/components/common/charts/pipeline-bar';
 import { Panel } from '@/components/common/panel';
 import { QuerySkeleton, QueryState } from '@/components/common/query-state';
 import { SlaMark } from '@/components/common/sla-mark';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   type OverviewPoll,
   useSellerFlow,
+  useSellerSlaTotals,
 } from '@/features/shipments/hooks/use-seller-dashboard';
 import {
   type FlowKind,
@@ -20,19 +26,28 @@ import type {
 } from '@/features/shipments/types';
 import { useFlip } from '@/hooks/use-flip';
 import { useNow } from '@/hooks/use-now';
-import { formatTime } from '@/lib/format-date';
+import { useRovingFocus } from '@/hooks/use-roving-focus';
+import { formatShortDateTime } from '@/lib/format-date';
 import { ROUTES } from '@/lib/routes';
 import type { SlaState } from '@/lib/sla';
 import { SHIPMENT_STATUS } from '@/lib/status-colors';
+import { PIPELINE_STATUSES } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 
 const SLA_REFRESH_MS = 60_000;
 
-const LEGEND: { kind: FlowKind; label: string; view?: string }[] = [
-  { kind: 'onTrack', label: 'On track', view: 'on-track' },
-  { kind: 'dueSoon', label: 'Due soon', view: 'due-soon' },
-  { kind: 'late', label: 'Late', view: 'late' },
-  { kind: 'none', label: 'No SLA' },
+const KIND_LABEL: Record<FlowKind, string> = {
+  onTrack: 'On track',
+  dueSoon: 'Due soon',
+  late: 'Late',
+  none: 'No SLA',
+};
+
+const LEGEND: { kind: FlowKind; view?: string }[] = [
+  { kind: 'onTrack', view: 'on-track' },
+  { kind: 'dueSoon', view: 'due-soon' },
+  { kind: 'late', view: 'late' },
+  { kind: 'none' },
 ];
 
 export function ShipmentFlow({
@@ -43,6 +58,7 @@ export function ShipmentFlow({
   poll: OverviewPoll;
 }) {
   const flow = useSellerFlow(poll);
+  const totals = useSellerSlaTotals(poll);
   const active = PIPELINE_STATUSES.reduce(
     (sum, status) => sum + counts[status],
     0,
@@ -60,7 +76,14 @@ export function ShipmentFlow({
         skeleton={<QuerySkeleton variant="lines" />}
         errorMessage="Couldn't load the open shipments."
       >
-        {({ data }) => <FlowStages shipments={data} counts={counts} />}
+        {({ data }) => (
+          <FlowStages
+            shipments={data}
+            counts={counts}
+            active={active}
+            totals={totals}
+          />
+        )}
       </QueryState>
     </Panel>
   );
@@ -69,20 +92,28 @@ export function ShipmentFlow({
 function FlowStages({
   shipments,
   counts,
+  active,
+  totals,
 }: {
   shipments: Shipment[];
   counts: ShipmentStatusCounts;
+  active: number;
+  totals: ReturnType<typeof useSellerSlaTotals>;
 }) {
   const now = useNow(SLA_REFRESH_MS);
   const list = useRef<HTMLOListElement>(null);
   useFlip(list);
-  // shortcut: the legend counts the drawn marks, exact up to the 100 the list returns;
-  // past that it needs per-state counts from the API.
-  const { stages, totals } = flowStages(shipments, counts, now);
+  const roving = useRovingFocus(list, '[data-mark]');
+  const stages = flowStages(shipments, counts, now);
+  // Exact, from the lists the legend opens; the marks only draw the most urgent ones.
+  const legend = totals && {
+    ...totals,
+    none: Math.max(active - totals.onTrack - totals.dueSoon - totals.late, 0),
+  };
 
   return (
-    <>
-      <ol ref={list} className="flex gap-0.5 @max-[600px]:flex-col">
+    <TooltipProvider>
+      <ol ref={list} {...roving} className="flex gap-0.5 @max-[600px]:flex-col">
         {stages.map((stage) => (
           <li
             key={stage.status}
@@ -101,7 +132,7 @@ function FlowStages({
             </p>
             <ul
               aria-label={stage.summary}
-              className="mt-1.5 flex flex-wrap items-center gap-0.5"
+              className="mt-1.5 flex flex-wrap items-center"
             >
               {stage.marks.map(({ shipment, state, kind }) => (
                 <li
@@ -113,19 +144,25 @@ function FlowStages({
                 </li>
               ))}
               {stage.hidden > 0 && (
-                <li className="text-xs font-medium">+{stage.hidden}</li>
+                <li
+                  aria-label={`${stage.hidden} more not drawn`}
+                  className="px-1 text-xs font-medium"
+                >
+                  +{stage.hidden}
+                </li>
               )}
             </ul>
           </li>
         ))}
       </ol>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-        {LEGEND.filter(({ kind }) => kind !== 'none' || totals.none > 0).map(
-          ({ kind, label, view }) => {
+        {LEGEND.filter(({ kind }) => kind !== 'none' || legend?.none).map(
+          ({ kind, view }) => {
             const content = (
               <>
                 <SlaMark kind={kind} />
-                {label} <span className="font-semibold">{totals[kind]}</span>
+                {KIND_LABEL[kind]}{' '}
+                <span className="font-semibold">{legend?.[kind] ?? '—'}</span>
               </>
             );
             return view ? (
@@ -143,12 +180,17 @@ function FlowStages({
             );
           },
         )}
+        {shipments.length < active && (
+          <span className="text-muted-foreground">
+            Showing the {shipments.length} most urgent of {active}
+          </span>
+        )}
         <span className="ml-auto text-muted-foreground @max-[600px]:hidden">
-          Hover a dot for its code and due time · a dot slides right when a
+          Hover or focus a dot for its details · a dot slides right when a
           carrier scans it
         </span>
       </div>
-    </>
+    </TooltipProvider>
   );
 }
 
@@ -162,17 +204,27 @@ function FlowMark({
   kind: FlowKind;
 }) {
   const place = `${shipment.addressCity}/${shipment.addressState}`;
-  const label = kind === 'none' ? 'No SLA' : state.label;
-  const due = shipment.dueAt ? ` · due ${formatTime(shipment.dueAt)}` : '';
+  // Late carries how late; the rest read as the legend does.
+  const label = kind === 'late' ? state.label : KIND_LABEL[kind];
+  const due = shipment.dueAt
+    ? `, due ${formatShortDateTime(shipment.dueAt)}`
+    : '';
+  const name = `${shipment.trackingCode}, ${place}, ${shipment.modalityName}, ${label}${due}`;
 
   return (
-    <Link
-      href={ROUTES.sellerShipment(shipment.id)}
-      aria-label={`${shipment.trackingCode}, ${place}, ${label}`}
-      title={`${shipment.trackingCode} ${place} · ${shipment.modalityName} · ${label}${due}`}
-      className="grid size-3.5 place-items-center rounded-full outline-ring focus-visible:outline-2"
-    >
-      <SlaMark kind={kind} className="ring-2 ring-card" />
-    </Link>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={ROUTES.sellerShipment(shipment.id)}
+          aria-label={name}
+          data-mark
+          // 24 px target (WCAG 2.5.8) around the 10 px dot.
+          className="grid size-6 place-items-center rounded-full outline-ring focus-visible:outline-2"
+        >
+          <SlaMark kind={kind} className="ring-2 ring-card" />
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent>{name}</TooltipContent>
+    </Tooltip>
   );
 }

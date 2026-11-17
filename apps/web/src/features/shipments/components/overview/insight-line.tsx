@@ -38,7 +38,8 @@ export function InsightLine({
   webhook: WebhookHealth | undefined;
 }) {
   const attention = useSellerAttention(poll);
-  const metrics = useSellerMetrics(statsWindow, poll).data;
+  const metricsQuery = useSellerMetrics(statsWindow, poll);
+  const metrics = metricsQuery.data;
   const now = useNow(SLA_REFRESH_MS);
   if (!attention.data) return null;
 
@@ -52,6 +53,7 @@ export function InsightLine({
       </h2>
       <InsightCells
         metrics={metrics}
+        metricsFailed={metricsQuery.isError}
         fired={insights({
           attention: attention.data,
           webhook,
@@ -67,17 +69,20 @@ export function InsightLine({
 
 function InsightCells({
   metrics,
+  metricsFailed,
   fired,
   checkedAt,
 }: {
   metrics: SellerMetrics | undefined;
+  metricsFailed: boolean;
   fired: Insight[];
   checkedAt: number;
 }) {
   // A sentence that fires after the first render fades in once; the first ones just appear.
   const [initial] = useState(() => new Set(fired.map(({ id }) => id)));
   const [expanded, setExpanded] = useState(false);
-  const thin = isThin(metrics);
+  // Without metrics only the "now" rules ran: that is loading or failed, never "thin".
+  const thin = metrics !== undefined && isThin(metrics);
   const hidden = fired.length - NARROW_SENTENCES;
 
   return (
@@ -98,7 +103,7 @@ function InsightCells({
           <InsightSentence insight={insight} />
         </li>
       ))}
-      {fired.length === 0 && !thin && (
+      {fired.length === 0 && metrics && !thin && (
         <li className="text-[13px] text-muted-foreground">
           Nothing needs you right now · Checked{' '}
           {formatTime(new Date(checkedAt).toISOString())} against {RULE_COUNT}{' '}
@@ -108,18 +113,25 @@ function InsightCells({
       {thin && (
         <li className="text-[13px] text-muted-foreground">
           Not enough history to call trends yet · Only "late" and "webhooks"
-          rules run (n = {metrics?.shipments ?? 0})
+          rules run (n = {metrics.shipments})
         </li>
       )}
-      {hidden > 0 && !expanded && (
+      {!metrics && (
+        <li className="text-[13px] text-muted-foreground">
+          {metricsFailed
+            ? "Couldn't load your delivery trends."
+            : 'Checking your delivery trends…'}
+        </li>
+      )}
+      {hidden > 0 && (
         <li className="@min-[600px]:hidden">
           <button
             type="button"
-            aria-expanded={false}
-            onClick={() => setExpanded(true)}
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
             className="min-h-11 text-[13px] font-medium text-primary underline-offset-4 outline-ring hover:underline focus-visible:outline-2"
           >
-            {hidden} more
+            {expanded ? 'Show fewer' : `${hidden} more`}
           </button>
         </li>
       )}

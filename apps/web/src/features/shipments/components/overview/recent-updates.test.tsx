@@ -62,6 +62,22 @@ describe('RecentUpdates', () => {
     ).toHaveTextContent('Failed delivery · Bauru');
   });
 
+  it('keeps no separate minute clock for the strip', async () => {
+    const timers = vi.spyOn(globalThis, 'setInterval');
+    renderWithQueryClient(
+      <RecentUpdates
+        live={{ status: 'live', lastEventAt: null }}
+        poll={() => false}
+      />,
+    );
+    await screen.findByRole('list', { name: 'Last hour 2' });
+
+    const delays = timers.mock.calls.map(([, delay]) => delay);
+    // The strip no longer keeps a minute clock beside the feed's.
+    expect(delays).not.toContain(60_000);
+    timers.mockRestore();
+  });
+
   it('draws the last 4 hours as one tick per event, failures named', async () => {
     renderWithQueryClient(
       <RecentUpdates

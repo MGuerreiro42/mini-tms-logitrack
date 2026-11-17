@@ -17,7 +17,10 @@ import {
   type OverviewPoll,
   useSellerMetrics,
 } from '@/features/shipments/hooks/use-seller-dashboard';
-import { promiseSummary } from '@/features/shipments/lib/overview-rules';
+import {
+  overBudget,
+  promiseSummary,
+} from '@/features/shipments/lib/overview-rules';
 import type { SellerMetrics } from '@/features/shipments/types';
 import { type StatsWindow, windowLabel } from '@/hooks/use-stats-window';
 import { formatDuration } from '@/lib/format-duration';
@@ -212,6 +215,12 @@ function Ribbon({
 }
 
 function SlowTail({ stages }: { stages: StageDuration[] }) {
+  const overruns = new Map(
+    overBudget(stages).map(({ status, p90Hours, budgetHours }) => [
+      status,
+      p90Hours - budgetHours,
+    ]),
+  );
   return (
     <Table>
       <caption className="mb-2 text-left text-[13px] font-semibold">
@@ -229,10 +238,7 @@ function SlowTail({ stages }: { stages: StageDuration[] }) {
       <TableBody>
         {stages.map((stage) => {
           const enough = hasEnoughData(stage.n) && stage.p90Hours !== null;
-          const over =
-            enough && stage.budgetHours !== null
-              ? (stage.p90Hours as number) - stage.budgetHours
-              : 0;
+          const over = overruns.get(stage.status) ?? 0;
           return (
             <TableRow key={stage.status}>
               <TableCell>{label(stage)}</TableCell>

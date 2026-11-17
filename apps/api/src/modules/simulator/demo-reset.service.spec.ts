@@ -4,8 +4,8 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
 import { DEMO_SHIPMENT_COUNT } from './demo-dataset';
-import { DEMO_RESET } from './demo-events';
-import { DemoResetService, LAST_RESET_KEY } from './demo-reset.service';
+import { DEMO_RESET, LAST_RESET_KEY } from './demo-events';
+import { DemoResetService } from './demo-reset.service';
 import { DemoTenantService } from './demo-tenant.service';
 
 const tenant = {

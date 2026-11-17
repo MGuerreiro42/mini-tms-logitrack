@@ -11,7 +11,7 @@ import {
   readChaos,
 } from '../src/modules/simulator/chaos.service';
 import { DEMO_CHAOS_CHANGED } from '../src/modules/simulator/chaos-events';
-import { LAST_RESET_KEY } from '../src/modules/simulator/demo-reset.service';
+import { LAST_RESET_KEY } from '../src/modules/simulator/demo-events';
 import {
   CHAOS_END_JOB,
   DEMO_QUEUE,
