@@ -16,7 +16,7 @@ describe('WebhookStrip', () => {
     render(<WebhookStrip health={health} />);
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Webhooks degraded 91% of 23 deliveries succeeded · p95 1.2 s · last success 4 min ago',
+      'Webhooks degraded 91% of 23 attempts succeeded · p95 1.2 s · last success 4 min ago',
     );
   });
 
