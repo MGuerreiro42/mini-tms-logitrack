@@ -124,7 +124,7 @@ The seller reads:
 ### User Story 5 - Live without noise (Priority: P2)
 
 The page stays live through `shipment:updated` and `webhook:delivery`. A changed value ticks once and its panel glows once. A screen reader hears only:
-- exception count changes;
+- exception count changes (by the sidebar);
 - Delivery health band changes;
 - webhooks going Down.
 
@@ -334,7 +334,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
   | waiting | "Waiting for carrier" |
   | webhook | "You" |
 
-- **FR-023**: When webhook health is `down`, the panel MUST prepend a "Webhook" group built on the web in the same `AttentionGroup` shape. Its single row reads "Webhook endpoint failing since 14:02 · Last N deliveries failed · your store is not receiving status updates" and links to Integrations. When the state is `degraded` or `down`, the strip of States C MUST show under the header, using the 390 short stats. `useWebhookHealth` lives under `integrationKeys`, is invalidated (throttled) on the existing `webhook:delivery` socket event, and polls every 60 s as a fallback.
+- **FR-023**: When webhook health is `down`, the panel MUST prepend a "Webhook" group built on the web in the same `AttentionGroup` shape. Its single row reads "Webhook endpoint failing since 14:02 · Last N attempts failed · your store is not receiving status updates" and links to Integrations. When the state is `degraded` or `down`, the strip of States C MUST show under the header, using the 390 short stats. `useWebhookHealth` lives under `integrationKeys`, is invalidated (throttled) on the existing `webhook:delivery` socket event, and polls every 60 s as a fallback.
 
 ### Insight line and Delivery health
 
@@ -405,8 +405,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 ### Live, accessibility and motion
 
 - **FR-031**: Every new seller query MUST live under `shipmentKeys` (metrics, attention, activity, flow list), except webhook health (FR-023), so `shipment:updated` refreshes it through the existing throttled invalidation. There are no client-side socket patches.
-- **FR-032**: One page-level `OverviewAnnouncer` (`aria-live="polite"`) MUST replace the Exceptions panel's own live span. It batches these changes at most every 10 s into one sentence ("Exceptions 5 → 6. Delivery health now Fair, held back by first attempt 88 %."):
-  - the exception total;
+- **FR-032**: The exception count MUST be announced once, by the sidebar's `ExceptionsAnnouncer` (spec 09, FR-012), so the page adds no second announcement of the same change. The Exceptions panel has no live span of its own. One page-level `OverviewAnnouncer` (`aria-live="polite"`) MUST speak only what the sidebar does not, batched at most every 10 s ("Delivery health now Fair, held back by first attempt 88 %."):
   - the Delivery health band.
 
   Webhooks Down use the strip's `role="alert"`. Nothing else is announced.
@@ -492,8 +491,8 @@ Each row is one pull request, stacked on the row before it, at most about 500 ch
 | 5 | `feat/webhook-health` | `GET /webhooks/health` (states, rate, p95, failing run); e2e; `useWebhookHealth` and socket invalidation | FR-012 | api, web | ~330 | 4 |
 | 6 | `feat/overview-shell` | SLA tokens; split the page into `overview/`; container layout and order; `WindowSelector` range; `StatTile` `figure`/`delta`; tiles moved to common; six tiles with figures and low-n states | FR-015–FR-019, FR-035 | web | ~490 | 5 |
 | 7 | `feat/shipment-flow` | `ShipmentFlow` (marks, legend, tooltip, empty, +N, narrow rows, FLIP) | FR-020, FR-021 | web | ~420 | 6 |
-| 8 | `feat/overview-exceptions` | catalog, groups, owner chips, overrun track, webhook group and strip, announcer | FR-022, FR-023, FR-032 | web | ~460 | 7 |
-| 9 | `feat/overview-insights` | `overview-rules`, `deliveryHealth`, thermometer, `InsightLine` and its states | FR-024–FR-026 | web | ~480 | 8 |
+| 8 | `feat/overview-exceptions` | catalog, groups, owner chips, overrun track, webhook group and strip | FR-022, FR-023 | web | ~460 | 7 |
+| 9 | `feat/overview-insights` | `overview-rules`, `deliveryHealth`, thermometer, `InsightLine` and its states, `OverviewAnnouncer` for the band | FR-024–FR-026, FR-032 | web | ~480 | 8 |
 | 10 | `feat/on-time-by-v2` | `wilson`, `RangeDotRows`, tabs, links, states | FR-027 | web | ~320 | 9 |
 | 11 | `feat/overview-volume` | `StackedColumns`, `VolumePanel`, table toggle, states | FR-028 | web | ~380 | 10 |
 | 12 | `feat/recent-updates-v2` | 4 h strip, time groups, transitions, pause/resume, 390 cap | FR-029 | web | ~400 | 11 |
