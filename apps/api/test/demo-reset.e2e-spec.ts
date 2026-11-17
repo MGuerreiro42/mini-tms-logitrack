@@ -127,6 +127,43 @@ describe('Demo reset (e2e)', () => {
     );
   }, 20_000);
 
+  it('replaces a legacy demo dataset with the current one on the first seed', async () => {
+    const [seller] = await ctx.prisma.seller.findMany({
+      where: { user: { email: DEMO_SELLERS[0].email } },
+    });
+    const carrier = await ctx.prisma.carrier.findUniqueOrThrow({
+      where: { document: DEMO_CARRIER.document },
+    });
+    const modality = await ctx.prisma.deliveryModality.findUniqueOrThrow({
+      where: { code: 'STANDARD' },
+    });
+    await ctx.prisma.shipment.createMany({
+      data: ['LEGACY-1', 'LEGACY-2'].map((suffix) => ({
+        trackingCode: `${DEMO_TRACKING_PREFIX}${suffix}`,
+        sellerId: seller.id,
+        carrierId: carrier.id,
+        modalityId: modality.id,
+        addressStreet: 'Rua Velha',
+        addressNumber: '1',
+        addressNeighborhood: 'Centro',
+        addressCity: 'São Paulo',
+        addressState: 'SP',
+        addressZipCode: '01000000',
+      })),
+    });
+
+    seedDemo();
+
+    const codes = await ctx.prisma.shipment.findMany({
+      where: { sellerId: { in: await demoSellerIds() } },
+      select: { trackingCode: true },
+    });
+    expect(codes).toHaveLength(DEMO_SHIPMENT_COUNT);
+    expect(
+      codes.some(({ trackingCode }) => trackingCode.includes('LEGACY')),
+    ).toBe(false);
+  }, 20_000);
+
   it('lets only the admin trigger a reset, once a minute per admin', async () => {
     await resetAs(demoSellerToken).expect(403);
     const admin = await newAdminToken(ctx);
