@@ -92,6 +92,8 @@ export function ViewTabs<F extends Record<string, string>>({
           <TabsTrigger
             key={idOf(option)}
             value={idOf(option)}
+            // The tabs filter one list below; no panel carries their id.
+            aria-controls={undefined}
             aria-label={
               option.count === undefined
                 ? undefined

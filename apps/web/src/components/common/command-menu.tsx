@@ -2,7 +2,7 @@
 
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   type NavSection,
   navLinks,
@@ -49,7 +49,11 @@ export function CommandMenu({ nav }: { nav: NavSection[] }) {
   const [query, setQuery] = useState('');
   const code = query.trim().toUpperCase();
 
+  const trigger = useRef<HTMLButtonElement>(null);
+  const opener = useRef<Element | null>(null);
+
   function changeOpen(next: boolean) {
+    if (next) opener.current = document.activeElement;
     setOpen(next);
     if (!next) setQuery('');
   }
@@ -74,8 +78,9 @@ export function CommandMenu({ nav }: { nav: NavSection[] }) {
   return (
     <>
       <Button
+        ref={trigger}
         variant="outline"
-        onClick={() => setOpen(true)}
+        onClick={() => changeOpen(true)}
         aria-keyshortcuts="Meta+K Control+K"
         className="size-11 px-0 font-normal text-muted-foreground lg:h-9 lg:w-48 lg:justify-start lg:px-3 xl:w-64"
       >
@@ -90,6 +95,15 @@ export function CommandMenu({ nav }: { nav: NavSection[] }) {
       <CommandDialog
         open={open}
         onOpenChange={changeOpen}
+        // Over the sidebar overlay Radix finds no element to return to, so land on the opener or the trigger.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const target = opener.current;
+          (target instanceof HTMLElement && target !== document.body
+            ? target
+            : trigger.current
+          )?.focus();
+        }}
         title="Search or jump to"
         description="Go to a page, or open a shipment by its tracking code."
       >

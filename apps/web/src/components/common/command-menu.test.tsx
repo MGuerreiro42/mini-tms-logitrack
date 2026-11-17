@@ -30,6 +30,18 @@ beforeAll(() => {
 });
 
 describe('CommandMenu', () => {
+  it('keeps its title out of the page outline until open, and returns focus on Esc', async () => {
+    const user = userEvent.setup();
+    render(<CommandMenu nav={nav} />);
+    const trigger = screen.getByRole('button', { name: /search or jump to/i });
+    expect(screen.queryByRole('heading')).toBeNull();
+
+    await user.click(trigger);
+    await user.keyboard('{Escape}');
+
+    expect(trigger).toHaveFocus();
+  });
+
   it('opens on Ctrl+K and jumps to a page', async () => {
     const user = userEvent.setup();
     render(<CommandMenu nav={nav} />);
