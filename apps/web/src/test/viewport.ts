@@ -1,6 +1,7 @@
 const DESKTOP_WIDTH = 1280;
 
 let width = DESKTOP_WIDTH;
+let rootFontSize = 16;
 let reducedMotion = false;
 const listeners = new Set<() => void>();
 
@@ -13,6 +14,11 @@ export function setViewportWidth(next: number) {
   notify();
 }
 
+export function setRootFontSize(next: number) {
+  rootFontSize = next;
+  notify();
+}
+
 export function setReducedMotion(next: boolean) {
   reducedMotion = next;
   notify();
@@ -20,15 +26,18 @@ export function setReducedMotion(next: boolean) {
 
 export function resetViewport() {
   width = DESKTOP_WIDTH;
+  rootFontSize = 16;
   reducedMotion = false;
 }
 
 function matches(query: string): boolean {
   if (/prefers-reduced-motion:\s*reduce/.test(query)) return reducedMotion;
-  const min = /min-width:\s*(\d+)px/.exec(query);
-  const max = /max-width:\s*(\d+)px/.exec(query);
+  const min = /min-width:\s*([\d.]+)(px|rem)/.exec(query);
+  const max = /max-width:\s*([\d.]+)(px|rem)/.exec(query);
   if (!min && !max) return false;
-  return (!min || width >= Number(min[1])) && (!max || width <= Number(max[1]));
+  const px = (m: RegExpExecArray) =>
+    Number(m[1]) * (m[2] === 'rem' ? rootFontSize : 1);
+  return (!min || width >= px(min)) && (!max || width <= px(max));
 }
 
 export function installMatchMedia() {

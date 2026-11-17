@@ -142,4 +142,22 @@ describe('SidebarNav', () => {
       }),
     ).toHaveAttribute('href', '/seller/shipments/1');
   });
+
+  it('marks the open shipment as current in the recent list', () => {
+    setSession({ token: 't', role: 'SELLER', userId: 'u1', email: 'e' });
+    act(() => {
+      rememberRecent({ href: '/seller/shipments/1', code: 'TMS-1' });
+      rememberRecent({ href: '/seller/shipments/2', code: 'TMS-2' });
+    });
+    resetNavigation('/seller/shipments/2');
+    render(<SidebarNav nav={nav} />);
+
+    expect(screen.getByRole('link', { name: 'TMS-2' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'TMS-1' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
 });
