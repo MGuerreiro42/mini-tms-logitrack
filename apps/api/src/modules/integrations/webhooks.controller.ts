@@ -20,6 +20,7 @@ import { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import { UpdateWebhookInboxDto } from './dto/update-webhook-inbox.dto';
 import { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
 import { WebhookEndpointResponseDto } from './dto/webhook-endpoint-response.dto';
+import { WebhookHealthResponseDto } from './dto/webhook-health-response.dto';
 import { WebhookInboxResponseDto } from './dto/webhook-inbox-response.dto';
 import { WebhooksService } from './webhooks.service';
 
@@ -94,6 +95,16 @@ export class WebhooksController {
   @Post('deliveries/:id/replay')
   replay(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.webhooksService.replay(user.id, id);
+  }
+
+  @ApiOperation({
+    summary:
+      'Health of the endpoint over the last 24 h: ok, degraded (< 95 % succeeded), down (the last 5 failed), too_few (n < 5) or not_configured',
+  })
+  @ApiResponse({ status: 200, type: WebhookHealthResponseDto })
+  @Get('health')
+  health(@CurrentUser() user: AuthenticatedUser) {
+    return this.webhooksService.health(user.id);
   }
 
   @ApiOperation({ summary: 'The latest requests received by the test inbox' })
