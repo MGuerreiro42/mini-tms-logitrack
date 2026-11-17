@@ -2,7 +2,7 @@
 
 **Feature**: `app-sidebar` — `apps/web` only: `AppShell` and the shared navigation (`components/common`), the three role layouts, live view counts (`features/shipments`), the live-ops footer (`features/demo`, `features/admin`), recents, keyboard shortcuts and the ⌘K menu
 **Created**: 2026-11-11
-**Status**: Draft
+**Status**: Implemented
 **Design reference**: `DESIGN.md` §9 (dependency rule, where state lives, live updates, motion); `SCREENS.md` (Global banner, every role's Navigation line); spec `04-live-motion` (one-shot motion, reduced motion), spec `06-tables-and-search` (views and view counts), spec `07-dashboards` FR-027 (pulse), spec `08-demo-showcase` FR-016, FR-026 (demo status, banner slot); `.claude/research/sidebar/ux.md` (§2 IA, §4 responsive, §5 keyboard and screen reader, §7 recommendation), `design.md` (§2 visual system, §3 motion, §4 dark mode), `canvas-notes.md`; approved canvas "Option A" (https://claude.ai/artifact/GHiQr6e5ca7tu4ErZJJ96i), artboards 1, 4, 5, 6 and 7
 
 ## Summary
@@ -307,3 +307,4 @@ PRs 2, 3 and 6 can be reviewed in parallel once 1 is merged. 7 stacks on 6 only 
 | Date | Change |
 |------|--------|
 | 2026-11-11 | Spec created from `.claude/research/sidebar/` (ux.md, design.md, canvas-notes.md) and the approved canvas, Option A, plus its live-ops footer and recents. Every route, view, count, hook and endpoint was verified against `docs/spec-08-wrapup` |
+| 2026-11-13 | Implemented as stacked branches: `feat/nav-tree`, `feat/sidebar-shell`, `feat/sidebar-disclosures` (PR 1 split three ways to stay under the size budget), then `feat/sidebar-rail` through `fix/sidebar-page-widths`. Decisions: At risk deferred; operators keep the Company section; Late uses the tables' late tone (#9b2c24 light, #d2645a dark, on the nav surface in dark mode for 4.5:1) and only Exceptions the exception tone. The Exceptions live region is mounted once in the shell rather than in the sidebar or the bottom bar. FR-026: only the view tabs needed a change (they now scroll at any width); the other pages hold at 1024–1440 px |

@@ -50,6 +50,8 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 ## Seller
 
+**Navigation (app shell):** "Create shipment" (outline button at the top); Overview; Shipments with Active, Late and Exceptions (counted), Delivered and Cancelled; Setup: Modalities, Integrations, Profile. Phone tabs: Overview, Shipments, Create, More.
+
 ### Multi-step Onboarding
 
 - **Role:** newly registered Seller
@@ -117,6 +119,8 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 ## Carrier
 
+**Navigation (app shell, manager and operator alike):** Queue with Unclaimed, Mine, To pick up, On the road and Exceptions (counted) and Done, Unclaimed current by default for a manager and Mine for an operator; Performance; Company: Company, Modalities & coverage. Phone tabs: Queue, Metrics, Company, More.
+
 ### Company Registration
 
 - **Role:** public (becomes a `CarrierUser` with role `CARRIER_MANAGER`)
@@ -176,6 +180,8 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 
 ## Admin
 
+**Navigation (app shell):** Overview; Monitoring (also owns shipment details) with Active (default), Late and Exceptions, all counted; Tenants: Sellers, Carriers. Phone tabs: Overview, Monitoring, Sellers, More.
+
 ### General Dashboard
 
 - **Role:** Admin
@@ -224,6 +230,18 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 - **States:** the most natural place to visually highlight the granularity of `ShipmentStatus`'s 9 states (§10) — worth a clearly visible per-state filter, not just a flat list.
 
 ---
+
+## App shell ([spec 09](./specs/09-app-sidebar.md))
+
+- **Header:** brand, `⌘K` and the user menu only. The global banner spans the full width under it, above the sidebar and the page. "Skip to content" and, from 1024 px, "Skip to navigation" appear on focus.
+- **Sidebar (≥ 1280 px):** 240 px, docked, sticky under the header, scrolling on its own. The role's tree (see each role's Navigation line) in sections with disclosure buttons; the views nest under their level-1 item. The current view row carries `aria-current="page"`; without a matching view, the level-1 item does.
+- **Rail:** `[` or the button at the sidebar foot shrinks it to a 64 px rail of icons with tooltips; the choice lives in the `tms-sidebar` cookie, so a reload renders the rail with no flash. In the rail an open Exceptions count puts a danger dot on its icon ("Shipments, 3 exceptions").
+- **1024–1279 px:** always the rail. The button opens the full sidebar as an overlay above the page, without reflowing it; Esc, a click outside, a navigation or leaving the range closes it, and focus returns to the button.
+- **Counts:** live pills on the "act now" views (all time, never windowed), throttled to one repaint every 2 s. Hidden at 0, "99+" above 99, the exact number in the link's name ("Late, 124 shipments"). Exceptions use the exception tone, Late the tables' late tone, the rest plain numbers. While the sidebar's subscription isn't live the toned pills turn outlined and the counts poll. Rises of Exceptions are announced politely, at most once per 10 s.
+- **Footer:** the connection line ("Live", "Connecting…" or "Reconnecting · counts may be stale"), "Chaos · off" or "Chaos · <label>" on the demo deployment, and for admins "Simulator · <state>" and "Webhooks · <rate>% · n <n>" (links to Monitoring). In the rail each line is a dot with a tooltip.
+- **Recent:** the last five shipment details the user opened, by tracking code, newest first; absent when empty.
+- **Phone (< 1024 px):** three tabs plus More, which opens a "Navigation" bottom sheet with the whole tree, counts, Recent and the footer at 44 px targets.
+- **Shortcuts:** `g` then a key (seller `o` `s` `c`, carrier `q` `p`, admin `o` `m`) and `[`; ignored in fields, with a modifier and under a dialog, and switched off by "Keyboard shortcuts" in the user menu. `⌘K` lists every level-1 item, every view as "<parent> · <view>" with its hint, and the recents.
 
 ## Global banner (every app shell)
 
