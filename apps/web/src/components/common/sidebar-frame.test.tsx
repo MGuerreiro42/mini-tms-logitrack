@@ -87,6 +87,16 @@ describe('SidebarFrame', () => {
     expect(document.cookie).not.toContain('tms-sidebar');
   });
 
+  it('closes the overlay on a click to the current page', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+
+    await user.click(toggle);
+    await user.click(screen.getByRole('link', { name: 'Overview' }));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('closes the overlay on a pointer down outside it or past 1280 px', async () => {
     setViewportWidth(1100);
     const user = userEvent.setup();
