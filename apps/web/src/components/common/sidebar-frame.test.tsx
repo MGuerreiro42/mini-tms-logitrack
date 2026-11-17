@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { resetNavigation, router } from '@/test/navigation';
-import { setViewportWidth } from '@/test/viewport';
+import { setRootFontSize, setViewportWidth } from '@/test/viewport';
 import type { NavSection } from './nav-tree';
 import { SidebarFrame } from './sidebar-frame';
 
@@ -110,6 +110,17 @@ describe('SidebarFrame', () => {
     await user.tab();
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveFocus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Overview');
+  });
+
+  it('follows the rem breakpoints when the default font size is larger', async () => {
+    const user = userEvent.setup();
+    setRootFontSize(20);
+    setViewportWidth(1400);
+    const toggle = renderFrame();
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('shows no tooltip while expanded', async () => {

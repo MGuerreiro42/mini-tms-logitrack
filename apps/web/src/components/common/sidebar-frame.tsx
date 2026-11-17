@@ -33,8 +33,9 @@ export function SidebarFrame({
 }) {
   const [rail, setRail] = useState(initialRail);
   const [overlay, setOverlay] = useState(false);
-  const wide = useMediaQuery('(min-width: 1280px)');
-  const midRange = useMediaQuery('(min-width: 1024px) and (max-width: 1279px)');
+  const wide = useMediaQuery('(min-width: 80rem)');
+  const medium = useMediaQuery('(min-width: 64rem)');
+  const midRange = medium && !wide;
   const panel = useRef<HTMLDivElement>(null);
   const toggleButton = useRef<HTMLButtonElement>(null);
   const compact = wide ? rail : !overlay;
