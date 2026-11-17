@@ -47,32 +47,33 @@ export function SellerDashboard() {
         poll={poll}
         webhook={webhook}
       />
-      <QueryState query={counts} errorMessage="Couldn't load your dashboard.">
-        {(data) =>
-          sumRecord(data) === 0 ? (
-            <FirstShipment />
-          ) : (
-            <div className="space-y-5">
-              <InsightLine
-                statsWindow={statsWindow}
-                poll={poll}
-                webhook={webhook}
-              />
-              <OverviewTiles statsWindow={statsWindow} poll={poll} />
-              <ShipmentFlow counts={data} poll={poll} />
-              <div className="grid grid-cols-1 gap-5 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-                <div className="flex min-w-0 flex-col gap-5">
-                  <ExceptionsPanel poll={poll} webhook={webhook} />
-                  <VolumePanel statsWindow={statsWindow} poll={poll} />
-                  <OnTimeBy statsWindow={statsWindow} poll={poll} />
-                </div>
-                <RecentUpdates live={live} poll={poll} />
-              </div>
-              <PromiseVsReality statsWindow={statsWindow} poll={poll} />
+      {counts.data && sumRecord(counts.data) === 0 ? (
+        <FirstShipment />
+      ) : (
+        <div className="space-y-5">
+          <InsightLine
+            statsWindow={statsWindow}
+            poll={poll}
+            webhook={webhook}
+          />
+          <OverviewTiles statsWindow={statsWindow} poll={poll} />
+          <QueryState
+            query={counts}
+            errorMessage="Couldn't load the shipment flow."
+          >
+            {(data) => <ShipmentFlow counts={data} poll={poll} />}
+          </QueryState>
+          <div className="grid grid-cols-1 gap-5 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+            <div className="flex min-w-0 flex-col gap-5">
+              <ExceptionsPanel poll={poll} webhook={webhook} />
+              <VolumePanel statsWindow={statsWindow} poll={poll} />
+              <OnTimeBy statsWindow={statsWindow} poll={poll} />
             </div>
-          )
-        }
-      </QueryState>
+            <RecentUpdates live={live} poll={poll} />
+          </div>
+          <PromiseVsReality statsWindow={statsWindow} poll={poll} />
+        </div>
+      )}
     </div>
   );
 }

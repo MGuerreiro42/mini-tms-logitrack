@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { WebhookHealth } from '@/features/integrations/types';
 import { WebhookStrip } from './webhook-strip';
 
@@ -20,16 +20,34 @@ describe('WebhookStrip', () => {
     );
   });
 
-  it('says none in 24 h when a down endpoint never succeeded in the window', () => {
+  it('says no success in 24 h when a down endpoint never succeeded in the window', () => {
     render(
       <WebhookStrip
         health={{ ...health, state: 'down', lastSuccessAt: null }}
       />,
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'last success none in 24 h',
-    );
+    expect(screen.getByRole('alert')).toHaveTextContent('no success in 24 h');
+  });
+
+  it('keeps the last success current without a refetch', () => {
+    vi.useFakeTimers();
+    try {
+      render(<WebhookStrip health={health} />);
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'last success 4 min ago',
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(5 * 60_000);
+      });
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'last success 9 min ago',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows nothing when the endpoint is fine, absent or too quiet to judge', () => {

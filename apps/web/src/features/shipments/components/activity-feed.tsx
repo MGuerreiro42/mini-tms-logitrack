@@ -5,7 +5,6 @@ import { type FocusEvent, useId, useMemo, useState } from 'react';
 import { TrackingCode } from '@/components/common/tracking-code';
 import { Button } from '@/components/ui/button';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { useNow } from '@/hooks/use-now';
 import { formatTimeAgo } from '@/lib/format-date';
 import { LIST_ANIMATION } from '@/lib/motion';
 import { plural } from '@/lib/plural';
@@ -19,13 +18,18 @@ import { useActivityFeed } from '../hooks/use-activity-feed';
 import type { ShipmentActivity } from '../types';
 import { PanelLink } from './panel-link';
 
-const TIME_REFRESH_MS = 15_000;
 const HOUR_MS = 3_600_000;
 const FEED_SIZE = 20;
 // At 390 the feed keeps to the first rows of the last hour; "See all updates" follows.
 const NARROW_ROWS = 4;
 
-export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
+export function ActivityFeed({
+  events,
+  now,
+}: {
+  events: ShipmentActivity[];
+  now: Date;
+}) {
   const latest = useMemo(() => events.slice(0, FEED_SIZE), [events]);
   const [paused, setPaused] = useState(false);
   const [pointerInside, setPointerInside] = useState(false);
@@ -38,7 +42,6 @@ export function ActivityFeed({ events }: { events: ShipmentActivity[] }) {
     latest,
     holding,
   );
-  const now = useNow(TIME_REFRESH_MS);
   const hourAgo = now.getTime() - HOUR_MS;
   const lastHour = shown.filter(
     (event) => Date.parse(event.createdAt) >= hourAgo,

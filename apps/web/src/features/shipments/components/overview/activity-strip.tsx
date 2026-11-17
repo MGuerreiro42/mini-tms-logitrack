@@ -15,7 +15,7 @@ export function ActivityStrip({
     (event) => event.status === 'FAILED_DELIVERY',
   ).length;
   const left = (iso: string) =>
-    `${Math.max(0, 100 - ((now.getTime() - Date.parse(iso)) / ACTIVITY_WINDOW_MS) * 100)}%`;
+    `${Math.min(100, Math.max(0, 100 - ((now.getTime() - Date.parse(iso)) / ACTIVITY_WINDOW_MS) * 100))}%`;
 
   return (
     <div className="flex flex-col gap-1.5">

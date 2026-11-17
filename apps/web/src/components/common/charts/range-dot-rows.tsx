@@ -15,14 +15,25 @@ export interface RangeDotRow {
 const TICK_STEP = 20;
 const DEFAULT_FLOOR = 40;
 
-const shown = (row: RangeDotRow) =>
+type ShownRow = RangeDotRow & {
+  rate: number;
+  range: NonNullable<RangeDotRow['range']>;
+};
+
+const shown = (row: RangeDotRow): row is ShownRow =>
   hasEnoughData(row.n) && row.rate !== null && row.range !== null;
 
 // A rate dot over its 95 % range, against the dashed target, on one shared axis (spec 10 FR-027).
-export function RangeDotRows({ rows }: { rows: RangeDotRow[] }) {
+export function RangeDotRows({
+  rows,
+  label,
+}: {
+  rows: RangeDotRow[];
+  label: string;
+}) {
   const lowest = Math.min(
     DEFAULT_FLOOR,
-    ...rows.flatMap((row) => (shown(row) && row.range ? [row.range.low] : [])),
+    ...rows.flatMap((row) => (shown(row) ? [row.range.low] : [])),
   );
   const floor = Math.floor(lowest / TICK_STEP) * TICK_STEP;
   const at = (value: number) => `${((value - floor) / (100 - floor)) * 100}%`;
@@ -33,21 +44,21 @@ export function RangeDotRows({ rows }: { rows: RangeDotRow[] }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <ul className="flex flex-col">
+      <ul aria-label={label} className="flex flex-col">
         {rows.map((row) => (
           <li key={row.key}>
             <Link
               href={row.href}
               aria-label={
                 shown(row)
-                  ? `${row.label}: ${row.rate?.toFixed(0)}% on time, ${row.count} of ${row.n}, likely ${row.range?.low.toFixed(0)}–${row.range?.high.toFixed(0)}%`
+                  ? `${row.label}: ${row.rate.toFixed(0)}% on time, ${row.count} of ${row.n}, likely ${row.range.low.toFixed(0)}–${row.range.high.toFixed(0)}%`
                   : `${row.label}: too few deliveries, n=${row.n}`
               }
               className="grid min-h-9 grid-cols-[5.5rem_minmax(0,1fr)_6.5rem] items-center gap-3 rounded-sm text-[13px] outline-ring hover:bg-muted/50 focus-visible:outline-2 pointer-coarse:min-h-11"
             >
               <span className="truncate font-medium">{row.label}</span>
               <span aria-hidden className="relative h-3">
-                {shown(row) && row.range && (
+                {shown(row) && (
                   <>
                     <span
                       className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-chart-2"
@@ -58,7 +69,7 @@ export function RangeDotRows({ rows }: { rows: RangeDotRow[] }) {
                     />
                     <span
                       className="absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-primary ring-2 ring-card"
-                      style={{ left: at(row.rate as number) }}
+                      style={{ left: at(row.rate) }}
                     />
                   </>
                 )}
@@ -70,7 +81,7 @@ export function RangeDotRows({ rows }: { rows: RangeDotRow[] }) {
               <span className="text-right whitespace-nowrap tabular-nums">
                 {shown(row) ? (
                   <>
-                    {row.rate?.toFixed(0)}%{' '}
+                    {row.rate.toFixed(0)}%{' '}
                     <span className="text-muted-foreground">
                       · {row.count}/{row.n}
                     </span>
