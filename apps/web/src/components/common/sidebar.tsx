@@ -23,10 +23,17 @@ import { cn } from '@/lib/utils';
 export function SidebarNav({ nav }: { nav: NavSection[] }) {
   return (
     <nav id={SIDEBAR_NAV_ID} aria-label="Main" tabIndex={-1}>
-      <Suspense fallback={<NavTree nav={nav} search={null} />}>
-        <NavTreeWithSearch nav={nav} />
-      </Suspense>
+      <LiveNavTree nav={nav} />
     </nav>
+  );
+}
+
+// The view rows need the query string, which is only readable inside Suspense.
+export function LiveNavTree({ nav }: { nav: NavSection[] }) {
+  return (
+    <Suspense fallback={<NavTree nav={nav} search={null} />}>
+      <NavTreeWithSearch nav={nav} />
+    </Suspense>
   );
 }
 

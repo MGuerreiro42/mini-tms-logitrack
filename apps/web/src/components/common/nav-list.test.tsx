@@ -1,147 +1,84 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { usePathname } from 'next/navigation';
+import { resetNavigation } from '@/test/navigation';
 import { NavList } from './nav-list';
+import type { NavSection } from './nav-tree';
 
-vi.mock('next/navigation', () => ({
-  usePathname: vi.fn(),
-}));
-
-const items = [
-  { name: 'Profile', href: '/seller' },
-  { name: 'Modalities', href: '/seller/modalities' },
-  { name: 'Shipments', href: '/seller/shipments' },
+const nav: NavSection[] = [
+  {
+    items: [
+      { name: 'Overview', href: '/seller', icon: null, tab: true },
+      {
+        name: 'Shipments',
+        href: '/seller/shipments',
+        icon: null,
+        tab: true,
+        views: [{ name: 'Late', param: 'view', value: 'late' }],
+      },
+      {
+        name: 'Create shipment',
+        shortName: 'Create',
+        href: '/seller/shipments/new',
+        icon: null,
+        tab: true,
+      },
+    ],
+  },
+  {
+    label: 'Setup',
+    items: [{ name: 'Profile', href: '/seller/profile', icon: null }],
+  },
 ];
 
 describe('NavList', () => {
-  it('marks only the section root active when the pathname is exactly the root', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller');
-    render(<NavList items={items} />);
-
-    expect(screen.getByRole('link', { name: /profile/i })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(
-      screen.getByRole('link', { name: /modalities/i }),
-    ).not.toHaveAttribute('aria-current');
-  });
-
-  it('marks the nested item active, not the section root, on a nested route', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller/modalities');
-    render(<NavList items={items} />);
-
-    expect(screen.getByRole('link', { name: /modalities/i })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveAttribute(
-      'aria-current',
-    );
-  });
-
-  it('picks the longest matching href on a deeper nested route', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller/shipments/new');
-    render(<NavList items={items} />);
-
-    expect(screen.getByRole('link', { name: /shipments/i })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('link', { name: /profile/i })).not.toHaveAttribute(
-      'aria-current',
-    );
-  });
-
-  it('marks an item active on a route root it owns', () => {
-    vi.mocked(usePathname).mockReturnValue('/admin/shipments/abc');
-    render(
-      <NavList
-        items={[
-          { name: 'Overview', href: '/admin' },
-          {
-            name: 'Monitoring',
-            href: '/admin/monitoring',
-            owns: ['/admin/shipments'],
-          },
-        ]}
-      />,
-    );
-
-    expect(screen.getByRole('link', { name: /monitoring/i })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('link', { name: /overview/i })).not.toHaveAttribute(
-      'aria-current',
-    );
-  });
-
-  it('marks nothing active when the pathname matches no item', () => {
-    vi.mocked(usePathname).mockReturnValue('/admin');
-    render(<NavList items={items} />);
-
-    for (const item of items) {
-      expect(screen.getByRole('link', { name: item.name })).not.toHaveAttribute(
-        'aria-current',
-      );
-    }
-  });
-});
-
-describe('NavList tabs', () => {
-  const many = [
-    ...items,
-    { name: 'Create shipment', href: '/seller/shipments/new' },
-    { name: 'Settings', href: '/seller/settings' },
-  ];
-
-  it('shows exactly four items as tabs without More', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller');
-    render(<NavList items={many.slice(0, 4)} />);
-
-    expect(screen.getAllByRole('link')).toHaveLength(4);
-    expect(screen.queryByRole('button', { name: /more/i })).toBeNull();
-  });
-
-  it('labels a tab with its short name when it has one', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller');
-    render(
-      <NavList
-        items={[
-          { name: 'Modalities & coverage', shortName: 'Coverage', href: '/c' },
-        ]}
-      />,
-    );
-
-    expect(screen.getByRole('link', { name: 'Coverage' })).toBeInTheDocument();
-  });
-
-  it('folds the overflow into More and marks it current for a folded route', async () => {
-    vi.mocked(usePathname).mockReturnValue('/seller/settings');
-    const user = userEvent.setup();
-    render(<NavList items={many} />);
+  it('shows the tab items by short name plus More', () => {
+    resetNavigation('/seller/shipments/new');
+    render(<NavList nav={nav} />);
 
     expect(screen.getAllByRole('link')).toHaveLength(3);
-    const more = screen.getByRole('button', { name: /more/i });
-    expect(more).toHaveAttribute('aria-current', 'true');
-    await user.click(more);
-
-    expect(
-      await screen.findByRole('menuitem', { name: 'Settings' }),
-    ).toHaveAttribute('aria-current', 'page');
-  });
-
-  it('leaves More alone when the current route is a visible tab', () => {
-    vi.mocked(usePathname).mockReturnValue('/seller/modalities');
-    render(<NavList items={many} />);
-
-    expect(screen.getByRole('link', { name: 'Modalities' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(screen.getByRole('button', { name: /more/i })).not.toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'More' })).not.toHaveAttribute(
       'aria-current',
     );
+  });
+
+  it('marks More current for a route that has no tab', () => {
+    resetNavigation('/seller/profile');
+    render(<NavList nav={nav} />);
+
+    expect(screen.getByRole('button', { name: 'More' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('opens the whole tree in a sheet that closes on navigation', async () => {
+    resetNavigation('/seller');
+    const user = userEvent.setup();
+    render(<NavList nav={nav} footer={<p>Chaos · off</p>} />);
+
+    await user.click(screen.getByRole('button', { name: 'More' }));
+    const sheet = screen.getByRole('dialog', { name: 'Navigation' });
+    expect(sheet).toHaveTextContent('Chaos · off');
+    const late = screen.getByRole('link', { name: 'Late' });
+    expect(late).toHaveAttribute('href', '/seller/shipments?view=late');
+    await user.click(late);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('returns focus to More on Esc', async () => {
+    resetNavigation('/seller');
+    const user = userEvent.setup();
+    render(<NavList nav={nav} />);
+
+    const more = screen.getByRole('button', { name: 'More' });
+    await user.click(more);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(more).toHaveFocus();
   });
 });
