@@ -74,7 +74,7 @@ The seller reads the insight line, then the Exceptions panel:
 
 **Why this priority**: the Overview's job is "what needs you". Today's exceptions list does not say who acts or how far past the SLA a shipment is (S10, `ux-ideas.md` top 6).
 
-**Independent test**: on the reset demo, read "2 late, oldest 7 h" in the insight line and follow it to `/shipments?view=late`, which lists 2 rows. Turn on "Fail requests" for the demo endpoint and wait for 5 failed deliveries. A "Webhook" group appears first with owner "You", and the strip above the tiles reads "Webhooks down".
+**Independent test**: on the reset demo, read "2 late, oldest 7 h" in the insight line and follow it to `/shipments?view=late`, which lists 2 rows. Turn on "Fail requests" for the demo endpoint and wait for 5 failed attempts (the first retries count). A "Webhook" group appears first with owner "You", and the strip above the tiles reads "Webhooks down".
 
 **Acceptance scenarios**:
 
@@ -231,9 +231,9 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
     lastSuccessAt: string | null, failingSince: string | null }
   ```
 
-  - `successRate` = SUCCEEDED ÷ (SUCCEEDED + FAILED).
-  - Down = the last 5 finished deliveries failed. `failingSince` is the first of that failing run.
-  - Degraded = rate < 95 %.
+  - `n` = attempts; `successRate` = succeeded attempts ÷ attempts. A delivery with `attempts` tries counts `attempts` failures if PENDING or FAILED, and `attempts − 1` failures then one success if SUCCEEDED.
+  - Down = the last 5 attempts failed, retries pending included. `failingSince` is the first of that failing run.
+  - Degraded = rate < 95 %, so a retrying endpoint is Degraded until its run reaches 5.
   - `too_few` = n < 5.
   - It lives in `webhooks.controller.ts` and `webhooks.service.ts`.
 
@@ -557,3 +557,4 @@ Answered by the user on 2026-11-13:
 |------|--------|
 | 2026-11-11 | Draft from the chosen board "Overview · reimagined components · 1440 light", its 390 variant, the components sheet and States, mapped to `final.md`, `fe.md`, `suggestions.md`, `ux-ideas.md`, `visual-ideas.md` and `design-notes.md`; API shapes checked against `origin/docs/spec-08-wrapup` |
 | 2026-11-13 | Open questions resolved: bands accepted, replay left to a later spec, `view=on-track` added to row 3, Casa & Cia Demo at about 30 shipments, waiting fixed at 2 h |
+| 2026-11-17 | QA pass 2: webhook health counts attempts (FR-012), so the "webhook endpoints down" Chaos reaches Degraded and Down while deliveries still wait in the retry backoff |
