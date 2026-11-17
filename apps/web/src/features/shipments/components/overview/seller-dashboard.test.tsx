@@ -233,7 +233,9 @@ describe('SellerDashboard', () => {
 
     expect((await screen.findAllByText(message)).length).toBeGreaterThan(0);
     expect(await screen.findByText('91.3%')).toBeVisible();
-    expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Recent updates' }),
+    ).toBeVisible();
   });
 
   it('keeps the other sections when the activity fails', async () => {
