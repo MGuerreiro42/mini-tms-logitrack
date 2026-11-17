@@ -29,7 +29,7 @@ export function SellerDashboard() {
   const live = useShipmentTracking({ subscribeToSeller: true });
   const poll = fallbackPollInterval(live.status);
   const counts = useSellerCounts(poll);
-  // Read once here, so the webhook socket room is joined once for the strip, panel and announcer.
+  // Read once here, so the webhook socket room is joined once for the strip and the panel.
   const webhook = useWebhookHealth().data;
 
   return (
@@ -41,11 +41,7 @@ export function SellerDashboard() {
         poll={poll}
       />
       <WebhookStrip health={webhook} />
-      <OverviewAnnouncer
-        statsWindow={statsWindow}
-        poll={poll}
-        webhook={webhook}
-      />
+      <OverviewAnnouncer statsWindow={statsWindow} poll={poll} />
       {counts.data && sumRecord(counts.data) === 0 ? (
         <FirstShipment />
       ) : (
