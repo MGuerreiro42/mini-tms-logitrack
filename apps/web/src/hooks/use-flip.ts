@@ -13,6 +13,21 @@ interface Seen {
 // A 400 ms slide, then one pulse at its new place.
 const SLIDE_SHARE = 0.67;
 
+// Layout position on the page: unlike getBoundingClientRect it ignores scroll and a running transform.
+function layoutPosition(element: HTMLElement) {
+  let left = 0;
+  let top = 0;
+  for (
+    let node: HTMLElement | null = element;
+    node;
+    node = node.offsetParent as HTMLElement | null
+  ) {
+    left += node.offsetLeft;
+    top += node.offsetTop;
+  }
+  return { left, top };
+}
+
 // FLIP for marks that move between groups (`data-flip-id`, `data-flip-group`): an element
 // slides from where it was only when its group changed, so a mount, a reflow or a new id
 // never animates.
@@ -26,7 +41,7 @@ export function useFlip(ref: RefObject<HTMLElement | null>) {
       '[data-flip-id]',
     ) ?? []) {
       const { flipId = '', flipGroup = '' } = element.dataset;
-      const { left, top } = element.getBoundingClientRect();
+      const { left, top } = layoutPosition(element);
       const before = seen.current.get(flipId);
       if (!reduced && before && before.group !== flipGroup) {
         element.animate(

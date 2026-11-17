@@ -215,8 +215,8 @@ function WebhookGroup({ health, now }: { health: WebhookHealth; now: Date }) {
               <OwnerChip>You</OwnerChip>
             </span>
             <span className="text-xs text-muted-foreground">
-              Last success {lastSuccessText(health, now)} · your store is not
-              receiving status updates
+              Your store is not receiving status updates ·{' '}
+              {lastSuccessText(health, now)}
             </span>
           </span>
         </PanelLink>
