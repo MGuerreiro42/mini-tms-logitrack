@@ -1,12 +1,13 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { createStorageStore } from '@/hooks/storage-store';
 
 export const DENSITIES = ['comfortable', 'compact'] as const;
 export type Density = (typeof DENSITIES)[number];
 
 const STORAGE_KEY = 'tms:density';
-const listeners = new Set<() => void>();
+const store = createStorageStore();
 // Storage throws when blocked; the choice then lasts for the session only.
 let unsaved: Density = 'comfortable';
 
@@ -20,23 +21,14 @@ function read(): Density {
   }
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  window.addEventListener('storage', listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener('storage', listener);
-  };
-}
-
 export function setDensity(density: Density) {
   unsaved = density;
   try {
     localStorage.setItem(STORAGE_KEY, density);
   } catch {}
-  for (const listener of listeners) listener();
+  store.notify();
 }
 
 export function useDensity(): Density {
-  return useSyncExternalStore(subscribe, read, () => 'comfortable');
+  return useSyncExternalStore(store.subscribe, read, () => 'comfortable');
 }

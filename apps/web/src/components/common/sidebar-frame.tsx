@@ -1,12 +1,14 @@
 'use client';
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { ExceptionsAnnouncer } from '@/components/common/nav-counts';
 import { type NavSection, SIDEBAR_COOKIE } from '@/components/common/nav-tree';
 import { SidebarNav } from '@/components/common/sidebar';
 import { SidebarContext } from '@/components/common/sidebar-context';
 import { SidebarFooter } from '@/components/common/sidebar-status-row';
+import { useNavShortcuts } from '@/components/common/use-nav-shortcuts';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -53,6 +55,8 @@ export function SidebarFrame({
     else setOverlay(true);
   }
 
+  useNavShortcuts(nav, toggle);
+
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     // A modal dialog or a menu above keeps its own Esc; the non-modal peek sheet sits below the overlay.
     if (
@@ -69,6 +73,13 @@ export function SidebarFrame({
   const onPointerDown = useEffectEvent((event: PointerEvent) => {
     if (!panel.current?.contains(event.target as Node)) closeOverlay();
   });
+
+  // Any navigation closes the overlay: a link inside it (even to this page), a g-shortcut or a ⌘K pick.
+  const route = `${usePathname()}?${useSearchParams()}`;
+  const onRoute = useEffectEvent((_route: string) => {
+    if (overlay) closeOverlay();
+  });
+  useEffect(() => onRoute(route), [route]);
 
   useEffect(() => {
     if (!overlay) return;
@@ -91,7 +102,6 @@ export function SidebarFrame({
           <TooltipProvider delayDuration={300}>
             <div
               ref={panel}
-              // Any link inside closes the overlay, including one to the current page.
               onClickCapture={(event) => {
                 if (overlay && (event.target as Element).closest('a')) {
                   closeOverlay();

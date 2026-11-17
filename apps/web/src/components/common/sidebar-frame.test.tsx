@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { resetNavigation } from '@/test/navigation';
+import { resetNavigation, router } from '@/test/navigation';
 import { setRootFontSize, setViewportWidth } from '@/test/viewport';
 import type { NavSection } from './nav-tree';
 import { SidebarFrame } from './sidebar-frame';
@@ -16,7 +16,12 @@ const nav: NavSection[] = [
   {
     items: [
       { name: 'Overview', href: '/seller', icon: null },
-      { name: 'Profile', href: '/seller/profile', icon: null },
+      {
+        name: 'Profile',
+        href: '/seller/profile',
+        icon: null,
+        shortcut: 'p',
+      },
     ],
   },
 ];
@@ -72,7 +77,7 @@ describe('SidebarFrame', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await user.click(screen.getByRole('link', { name: 'Profile' }));
+    act(() => router.push('/seller/profile'));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(toggle);
@@ -80,6 +85,16 @@ describe('SidebarFrame', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(toggle).toHaveFocus();
     expect(document.cookie).not.toContain('tms-sidebar');
+  });
+
+  it('closes the overlay on a click to the current page', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+
+    await user.click(toggle);
+    await user.click(screen.getByRole('link', { name: 'Overview' }));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('closes the overlay on a pointer down outside it or past 1280 px', async () => {
@@ -173,5 +188,17 @@ describe('SidebarFrame', () => {
 
     await user.keyboard('{Escape}');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes the overlay on any navigation, not only its own links', async () => {
+    setViewportWidth(1100);
+    const user = userEvent.setup();
+    const toggle = renderFrame();
+
+    await user.keyboard('[[');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('gp');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveFocus();
   });
 });
