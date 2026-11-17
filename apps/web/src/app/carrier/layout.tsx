@@ -11,6 +11,7 @@ import { getMyCarrier } from '@/features/carriers/api';
 import { ChaosStatusRow } from '@/features/demo/components/chaos-status-row';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { CarrierNavCounts } from '@/features/shipments/components/nav-counts-provider';
+import { carrierDefaultView } from '@/lib/carrier-default-view';
 import { initialsFor } from '@/lib/initials';
 import { ROUTES } from '@/lib/routes';
 import { requireSegment, withAuthRedirects } from '@/lib/server-session';
@@ -91,7 +92,7 @@ export default async function CarrierLayout({
       <AppShell
         banner={<GlobalBanner />}
         sidebarFooter={<ChaosStatusRow />}
-        nav={carrierNav(isManager ? 'unclaimed' : 'mine')}
+        nav={carrierNav(carrierDefaultView(session.role))}
         user={{
           name: carrier.companyName,
           role: isManager ? 'Manager' : 'Operator',
