@@ -9,7 +9,7 @@ import {
   CHAOS_RUNS_KEY,
   type ChaosState,
 } from '../src/modules/simulator/chaos.service';
-import { LAST_RESET_KEY } from '../src/modules/simulator/demo-reset.service';
+import { LAST_RESET_KEY } from '../src/modules/simulator/demo-events';
 import {
   CHAOS_END_JOB,
   DEMO_QUEUE,

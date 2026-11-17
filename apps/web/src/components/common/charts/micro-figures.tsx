@@ -44,6 +44,7 @@ export function TickTrack({ values, max }: { values: number[]; max: number }) {
 }
 
 // A rate on a min–100 % track: the current dot, the previous one hollow, and the target tick.
+// A rate below the track's floor is drawn as a "‹" at its start, never as a dot that reads as the floor.
 export function RateDots({
   rate,
   previous,
@@ -56,6 +57,26 @@ export function RateDots({
   min?: number;
 }) {
   const at = (value: number) => ({ left: pct(value - min, 100 - min) });
+  const mark = (value: number, dotClass: string, glyphClass: string) =>
+    value < min ? (
+      <span
+        className={cn(
+          'absolute top-1/2 left-0 -translate-y-1/2 font-bold text-xs leading-none',
+          glyphClass,
+        )}
+        data-below-min
+      >
+        ‹
+      </span>
+    ) : (
+      <span
+        className={cn(
+          'absolute top-1/2 size-2 -translate-1/2 rounded-full',
+          dotClass,
+        )}
+        style={at(value)}
+      />
+    );
   return (
     <div className="relative h-2.5">
       <span className="absolute inset-x-0 top-1/2 h-px bg-border" />
@@ -63,16 +84,13 @@ export function RateDots({
         className="absolute top-0 h-full w-px bg-foreground"
         style={at(target)}
       />
-      {previous !== undefined && (
-        <span
-          className="absolute top-1/2 size-2 -translate-1/2 rounded-full border-[1.5px] border-muted-foreground bg-card"
-          style={at(previous)}
-        />
-      )}
-      <span
-        className="absolute top-1/2 size-2 -translate-1/2 rounded-full bg-primary ring-2 ring-card"
-        style={at(rate)}
-      />
+      {previous !== undefined &&
+        mark(
+          previous,
+          'border-[1.5px] border-muted-foreground bg-card',
+          'text-muted-foreground',
+        )}
+      {mark(rate, 'bg-primary ring-2 ring-card', 'text-primary')}
     </div>
   );
 }

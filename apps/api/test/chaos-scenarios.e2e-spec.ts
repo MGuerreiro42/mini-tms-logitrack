@@ -11,7 +11,7 @@ import {
   DEMO_PASSWORD,
   DEMO_SELLERS,
 } from '../src/modules/simulator/demo-dataset';
-import { LAST_RESET_KEY } from '../src/modules/simulator/demo-reset.service';
+import { LAST_RESET_KEY } from '../src/modules/simulator/demo-events';
 import { DEMO_QUEUE } from '../src/modules/simulator/simulator.constants';
 import { SimulatorService } from '../src/modules/simulator/simulator.service';
 import {
