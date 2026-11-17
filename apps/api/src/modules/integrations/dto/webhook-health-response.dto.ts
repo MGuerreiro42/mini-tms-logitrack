@@ -12,17 +12,19 @@ export class WebhookHealthResponseDto {
   @ApiProperty({
     enum: WEBHOOK_HEALTH_STATES,
     description:
-      'down: the last 5 finished deliveries failed; degraded: under 95 % succeeded; too_few: n < 5; not_configured: no active endpoint',
+      'down: the last 5 attempts failed; degraded: under 95 % of attempts succeeded; too_few: n < 5; not_configured: no active endpoint',
   })
   state: (typeof WEBHOOK_HEALTH_STATES)[number];
 
-  @ApiProperty({ description: 'Finished deliveries of the last 24 h' })
+  @ApiProperty({
+    description: 'Delivery attempts of the last 24 h, retries pending included',
+  })
   n: number;
 
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: 'SUCCEEDED ÷ (SUCCEEDED + FAILED) × 100; null at n = 0',
+    description: 'Succeeded ÷ all attempts × 100; null at n = 0',
   })
   successRate: number | null;
 

@@ -21,6 +21,10 @@ import {
 } from './overview.fixtures';
 import { SellerDashboard } from './seller-dashboard';
 
+// jsdom has no ResizeObserver, and its absence also keeps auto-animate off.
+vi.mock('@/hooks/use-element-width', () => ({
+  useElementWidth: () => [{ current: null }, undefined],
+}));
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
@@ -137,6 +141,15 @@ describe('SellerDashboard', () => {
     expect(first).toHaveTextContent('Webhook endpoint failing since 14:02');
   });
 
+  it('leaves the exception count to the sidebar announcer', async () => {
+    const { container } = renderWithQueryClient(<SellerDashboard />);
+    await screen.findByRole('heading', { name: 'Exceptions 2' });
+
+    expect(
+      container.querySelector('[aria-live="polite"]'),
+    ).toBeEmptyDOMElement();
+  });
+
   it('dates the window and the one it is compared with', async () => {
     renderWithQueryClient(<SellerDashboard />);
 
@@ -183,6 +196,24 @@ describe('SellerDashboard', () => {
     ).toHaveLength(2);
     expect(screen.queryByText(/compared with/)).toBeNull();
     expect(screen.queryByText(/prev 88.1%/)).toBeNull();
+  });
+
+  it('says so when the previous window has no history', async () => {
+    useMetrics(
+      sellerMetrics({
+        comparison: {
+          ...sellerMetrics().comparison,
+          onTime: { n: 0, count: 0, rate: null },
+          firstAttempt: { n: 0, count: 0, rate: null },
+        },
+      }),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(
+      await screen.findByText(/^Aug 13 – .* · No earlier history to compare$/),
+    ).toBeVisible();
+    expect(screen.queryByText(/compared with/)).toBeNull();
   });
 
   it('reads low samples as a dash with their n and draws no figure', async () => {

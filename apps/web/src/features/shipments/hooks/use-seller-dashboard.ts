@@ -29,6 +29,8 @@ export function useSellerCounts(poll: OverviewPoll) {
   return useQuery({
     ...statusCountsQuery(token, enabled),
     refetchInterval: poll,
+    // The next poll is the retry, so a failure shows at once.
+    retry: false,
   });
 }
 
@@ -39,6 +41,8 @@ export function useSellerAttention(poll: OverviewPoll) {
     queryFn: () => getShipmentAttention(token),
     enabled,
     refetchInterval: poll,
+    // The next poll is the retry, so a failure shows at once.
+    retry: false,
   });
 }
 

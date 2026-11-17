@@ -118,7 +118,7 @@ function webhookRule({ webhook }: InsightInput): Insight | null {
     id: 'webhooks',
     text: `Webhooks down${webhook.failingSince ? ` since ${formatTime(webhook.failingSince)}` : ''}`,
     href: ROUTES.sellerIntegrations,
-    rule: 'last 5 deliveries failed',
+    rule: 'last 5 attempts failed',
   };
 }
 

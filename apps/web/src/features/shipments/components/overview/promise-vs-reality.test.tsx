@@ -59,6 +59,17 @@ describe('PromiseVsReality', () => {
     ).toBeVisible();
   });
 
+  it('makes the slow tail scroller a named, focusable region', async () => {
+    serve(sellerMetrics({ stages }));
+    renderPanel();
+
+    const region = await screen.findByRole('region', {
+      name: 'The slow tail table, scrollable',
+    });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(within(region).getByRole('table')).toBeVisible();
+  });
+
   it('switches the chart to a table', async () => {
     serve(sellerMetrics({ stages }));
     const user = userEvent.setup();
