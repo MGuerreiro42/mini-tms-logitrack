@@ -14,6 +14,7 @@ const shipment = (id: string) => ({
   carrierId: 'carrier-1',
   sellerId: 'seller-1',
   ownerId: null,
+  addressState: 'SP',
   status: ShipmentStatus.RETURNED,
   dueAt: null,
   deliveredAt: null,

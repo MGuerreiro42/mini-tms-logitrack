@@ -7,6 +7,9 @@ export class MedianDeliveryDto {
   @ApiProperty({ type: Number, nullable: true })
   hours: number | null;
 
+  @ApiProperty({ type: Number, nullable: true })
+  p90Hours: number | null;
+
   @ApiProperty()
   n: number;
 }

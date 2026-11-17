@@ -12,6 +12,7 @@ const SHIPMENT_SELECT = {
   carrierId: true,
   sellerId: true,
   ownerId: true,
+  addressState: true,
   status: true,
   dueAt: true,
   deliveredAt: true,

@@ -1,5 +1,13 @@
 import { ShipmentStatus } from '../../../../generated/prisma/client';
-import { deliveryMetrics, type MetricRow, onTime } from './delivery-metrics';
+import {
+  deliveryMetrics,
+  firstAttempt,
+  isMature,
+  type MetricRow,
+  onTime,
+  onTimeByState,
+  volumeSeries,
+} from './delivery-metrics';
 
 const HOUR = 3_600_000;
 const now = new Date('2026-01-13T00:00:00Z');
@@ -11,6 +19,7 @@ const row = (overrides: Partial<MetricRow> = {}): MetricRow => ({
   carrierId: 'carrier-1',
   sellerId: 'seller-1',
   ownerId: null,
+  addressState: 'SP',
   status: ShipmentStatus.DELIVERED,
   dueAt: at(24),
   deliveredAt: at(10),
@@ -72,7 +81,11 @@ describe('deliveryMetrics', () => {
     expect(metrics.shipments).toBe(0);
     expect(metrics.onTime.rate).toBeNull();
     expect(metrics.onTime.trend).toEqual(Array(12).fill(null));
-    expect(metrics.medianDelivery).toEqual({ hours: null, n: 0 });
+    expect(metrics.medianDelivery).toEqual({
+      hours: null,
+      p90Hours: null,
+      n: 0,
+    });
     expect(metrics.firstAttempt.rate).toBeNull();
     expect(metrics.claim).toEqual({ p50Minutes: null, p90Minutes: null, n: 0 });
     expect(metrics.stages.every((stage) => stage.p50Hours === null)).toBe(true);
@@ -132,7 +145,7 @@ describe('deliveryMetrics', () => {
       { since, now },
     );
 
-    expect(metrics.medianDelivery).toEqual({ hours: 20, n: 3 });
+    expect(metrics.medianDelivery).toEqual({ hours: 20, p90Hours: 90, n: 3 });
     expect(metrics.claim).toEqual({ p50Minutes: 60, p90Minutes: 120, n: 3 });
     expect(metrics.stages[0]).toEqual({
       status: ShipmentStatus.PENDING,
@@ -145,5 +158,105 @@ describe('deliveryMetrics', () => {
     expect(
       metrics.stages.map((stage) => stage.budgetHours?.toFixed(1)),
     ).toEqual(['2.4', '4.8', '2.4', '9.6', '4.8']);
+  });
+
+  it('counts the cancelled rows and returns the budget base', () => {
+    const metrics = deliveryMetrics(
+      [
+        row({ status: ShipmentStatus.CANCELLED, deliveredAt: null }),
+        row({ modality: { code: 'STANDARD', name: 'Standard', slaHours: 72 } }),
+        row({ modality: { code: 'STANDARD', name: 'Standard', slaHours: 72 } }),
+      ],
+      { since, now },
+    );
+
+    expect(metrics.cancelled).toBe(1);
+    expect(metrics.slaMedianHours).toBe(72);
+  });
+});
+
+describe('firstAttempt', () => {
+  it('is a rate of the outcomes that never failed', () => {
+    expect(
+      firstAttempt([
+        row(),
+        row({ status: ShipmentStatus.RETURNED, everFailed: true }),
+        row({ status: ShipmentStatus.IN_TRANSIT, deliveredAt: null }),
+      ]),
+    ).toEqual({ n: 2, count: 1, rate: 50 });
+  });
+});
+
+describe('onTimeByState', () => {
+  it('groups the on-time samples by destination UF', () => {
+    expect(
+      onTimeByState([
+        row({ addressState: 'PR' }),
+        row({ addressState: 'PR', deliveredAt: at(30) }),
+        row({ addressState: 'RJ' }),
+        row({ addressState: 'MG', dueAt: null }),
+      ]),
+    ).toEqual([
+      { uf: 'PR', n: 2, count: 1, rate: 50 },
+      { uf: 'RJ', n: 1, count: 1, rate: 100 },
+    ]);
+  });
+});
+
+describe('volumeSeries', () => {
+  const open = { status: ShipmentStatus.IN_TRANSIT, deliveredAt: null };
+
+  it('buckets a window up to 30 days by São Paulo calendar day', () => {
+    // 12:30 in São Paulo (UTC−3), two days of window.
+    const noon = new Date('2026-01-13T15:30:00Z');
+    const day = (date: string) => new Date(`${date}T03:00:00Z`);
+    const { bucket, points } = volumeSeries(
+      [
+        row({ createdAt: new Date('2026-01-12T02:59:00Z') }),
+        row({ createdAt: day('2026-01-12'), ...open }),
+        row({
+          createdAt: new Date('2026-01-12T10:00:00Z'),
+          status: ShipmentStatus.RETURNED,
+        }),
+        row({ createdAt: noon, status: ShipmentStatus.CANCELLED }),
+        row({ createdAt: noon, status: ShipmentStatus.FAILED_DELIVERY }),
+      ],
+      { since: new Date('2026-01-11T15:30:00Z'), now: noon },
+    );
+
+    expect(bucket).toBe('day');
+    expect(points).toEqual([
+      { start: day('2026-01-11'), delivered: 1, problem: 0, open: 0 },
+      { start: day('2026-01-12'), delivered: 0, problem: 1, open: 1 },
+      { start: day('2026-01-13'), delivered: 0, problem: 1, open: 0 },
+    ]);
+  });
+
+  it('buckets a longer window by week, the last one partial', () => {
+    const { bucket, points } = volumeSeries([], {
+      since: new Date(now.getTime() - 90 * 24 * HOUR),
+      now,
+    });
+
+    expect(bucket).toBe('week');
+    expect(points).toHaveLength(13);
+  });
+});
+
+describe('isMature', () => {
+  const closed = row();
+  const pastDue = row({ status: ShipmentStatus.IN_TRANSIT, dueAt: at(1) });
+  const onTheClock = row({
+    status: ShipmentStatus.IN_TRANSIT,
+    dueAt: at(400),
+  });
+
+  it('needs 80 % of the shipments terminal or past due', () => {
+    expect(isMature([closed, closed, closed, pastDue, onTheClock], now)).toBe(
+      true,
+    );
+    expect(
+      isMature([closed, closed, pastDue, onTheClock, onTheClock], now),
+    ).toBe(false);
   });
 });
