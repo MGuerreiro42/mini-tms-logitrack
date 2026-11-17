@@ -140,7 +140,9 @@ describe('SellerDashboard', () => {
     const { container } = renderWithQueryClient(<SellerDashboard />);
     await screen.findByRole('heading', { name: 'Exceptions 2' });
 
-    expect(container.querySelector('[aria-live="polite"]')).toBeNull();
+    expect(
+      container.querySelector('[aria-live="polite"]'),
+    ).toBeEmptyDOMElement();
   });
 
   it('dates the window and the one it is compared with', async () => {
@@ -159,9 +161,12 @@ describe('SellerDashboard', () => {
     expect(
       screen.getByText('n=150 · ○ prev 88.1% · | 90%'),
     ).toBeInTheDocument();
-    expect(screen.getByText('3.2 pts', { exact: false })).toHaveTextContent(
-      '▲ 3.2 pts up from 88.1%',
-    );
+    // The narrow note: the count, then the delta with its spoken direction.
+    expect(
+      screen.getByText(
+        (_, node) => node?.textContent === 'n=150 · ▲ 3.2 pts up from 88.1%',
+      ),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('1 unclaimed · oldest 2 h'),
     ).toBeInTheDocument();

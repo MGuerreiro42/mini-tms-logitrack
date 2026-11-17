@@ -13,7 +13,7 @@ export type HealthLevel = (typeof HEALTH_LEVELS)[number];
 // A benchmark, not the seller's goal: revisit once real data exists (spec 10 Resolved 1).
 const RATE_FLOORS = [95, 90, 85, 80];
 const SHARE_CEILINGS = [2, 4, 6, 8];
-const MIN_DELIVERIES = 10;
+export const MIN_DELIVERIES = 10;
 
 export type DeliveryHealth =
   | { level: HealthLevel; heldBackBy: string | null }

@@ -12,7 +12,9 @@ import { fallbackPollInterval } from '@/lib/live-status';
 import { ROUTES } from '@/lib/routes';
 import { sumRecord } from '@/lib/sum-record';
 import { ExceptionsPanel } from './exceptions-panel';
+import { InsightLine } from './insight-line';
 import { OnTimeBy } from './on-time-by';
+import { OverviewAnnouncer } from './overview-announcer';
 import { OverviewHeader } from './overview-header';
 import { OverviewTiles } from './overview-tiles';
 import { RecentUpdates } from './recent-updates';
@@ -38,10 +40,16 @@ export function SellerDashboard() {
         poll={poll}
       />
       <WebhookStrip health={webhook} />
+      <OverviewAnnouncer statsWindow={statsWindow} poll={poll} />
       {counts.data && sumRecord(counts.data) === 0 ? (
         <FirstShipment />
       ) : (
         <div className="space-y-5">
+          <InsightLine
+            statsWindow={statsWindow}
+            poll={poll}
+            webhook={webhook}
+          />
           <OverviewTiles statsWindow={statsWindow} poll={poll} />
           <QueryState
             query={counts}
