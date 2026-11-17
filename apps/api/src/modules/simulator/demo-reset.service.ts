@@ -4,11 +4,10 @@ import type { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../shared/redis/redis.module';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
-import { DEMO_RESET, type DemoResetEvent } from './demo-events';
+import { DEMO_RESET, type DemoResetEvent, LAST_RESET_KEY } from './demo-events';
 import { replaceDemoShipments } from './demo-shipments';
 import { DemoTenantService } from './demo-tenant.service';
 
-export const LAST_RESET_KEY = 'demo:last-reset';
 const RESET_MAX_AGE_MS = 24 * MS_PER_HOUR;
 
 @Injectable()
