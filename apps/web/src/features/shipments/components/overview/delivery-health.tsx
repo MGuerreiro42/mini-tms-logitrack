@@ -31,7 +31,7 @@ export function DeliveryHealthCell({ health }: { health: DeliveryHealth }) {
 
   return (
     // The band rule shows on hover; screen readers always read it.
-    <div className="group flex flex-col gap-1.5">
+    <div className="group relative flex flex-col gap-1.5">
       <p className="text-[13px] font-semibold">Delivery health</p>
       <div aria-hidden className="relative w-32 pb-1.5">
         <div className="flex gap-0.5">
@@ -61,7 +61,7 @@ export function DeliveryHealthCell({ health }: { health: DeliveryHealth }) {
           </span>
         )}
       </p>
-      <p className="font-mono text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+      <p className="absolute top-full z-10 bg-card font-mono text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
         rule: worst of on time, first attempt, returns, cancelled · benchmark,
         not your goal
       </p>
