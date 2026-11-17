@@ -101,8 +101,8 @@ function PromiseBody({
     .join(', ')}. Median delivery ${fmt(median)} of a ${fmt(sla)} SLA.`;
 
   return (
-    <div className="grid gap-6 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-      <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-1 gap-6 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="flex min-w-0 flex-col gap-3">
         {asTable ? (
           <Table>
             <TableHeader>
@@ -180,7 +180,7 @@ function PromiseBody({
           {asTable ? 'View as chart' : 'View as table'}
         </Button>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <SlowTail stages={stages} />
         <p className="text-[13px]">
           {promiseSummary(stages, median, slaMedianHours)}
@@ -222,7 +222,7 @@ function SlowTail({ stages }: { stages: StageDuration[] }) {
     ]),
   );
   return (
-    <Table>
+    <Table className="@max-[600px]:[&_td]:px-1.5 @max-[600px]:[&_th]:px-1.5">
       <caption className="mb-2 text-left text-[13px] font-semibold">
         The slow tail: slowest 10% per stage
       </caption>
