@@ -7,7 +7,7 @@
 - `apps/web`: the seller Overview, rebuilt on the reimagined components.
 
 **Created**: 2026-11-11
-**Status**: Draft
+**Status**: Implemented
 **Design reference**:
 - **Chosen board.** "Overview · reimagined components · 1440 light" on the design canvas (`project/Reimagined.dc.html`), with:
   - its 390 variant (`project/ReimaginedMobile.dc.html`, the same artboard with `mobile`);
@@ -557,3 +557,4 @@ Answered by the user on 2026-11-13:
 |------|--------|
 | 2026-11-11 | Draft from the chosen board "Overview · reimagined components · 1440 light", its 390 variant, the components sheet and States, mapped to `final.md`, `fe.md`, `suggestions.md`, `ux-ideas.md`, `visual-ideas.md` and `design-notes.md`; API shapes checked against `origin/docs/spec-08-wrapup` |
 | 2026-11-13 | Open questions resolved: bands accepted, replay left to a later spec, `view=on-track` added to row 3, Casa & Cia Demo at about 30 shipments, waiting fixed at 2 h |
+| 2026-11-16 | Web implemented as stacked branches: `feat/overview-primitives` and `feat/overview-shell` (row 6 split for size), `feat/shipment-flow`, `feat/overview-exceptions`, `feat/overview-rules` and `feat/overview-insights` (row 9 split), `feat/on-time-by-v2`, `feat/overview-volume`, `feat/recent-updates-v2`, `feat/promise-vs-reality`, `docs/spec-10-wrapup`. Decisions: the delta is a `DeltaText` in the narrow tile note rather than a `StatTile` prop (the board shows it only at 390); `MIN_SAMPLE` stays in `lib/metrics`; the predecessor lives in `lib/shipment-progress` (`previousStatus`) instead of a new `transitions.ts`; durations use `formatDuration` (days from 24 h) and stage names `STAGE_LABEL` (now shared); the UF rule names the code ("PR trails"); flow rows switch under a 600 px container; the motion curve is the existing `--ease-enter`; `features/shipments` may import `integrations` (webhook health). The axe and browser pass (SC-002, SC-004, SC-006) is left to the final QA run |

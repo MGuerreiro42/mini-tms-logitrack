@@ -16,7 +16,7 @@ Multi-tenant transportation management system. Sellers ship, carriers deliver, a
 
 **Sellers**
 - Create shipments in three steps: destination and modality, a carrier that covers it, review
-- Overview for a 7/30/90-day window: active, late, on time and delivered tiles that open the matching list, a pipeline of open stages, exceptions and live activity ([spec](./specs/07-dashboards.md))
+- Overview for a 7/30/90-day window: an insight line with Delivery health, six tiles with micro-figures and honest comparisons, a flow of open shipments shaped by SLA state, exceptions grouped by who acts, on time by modality or destination with 95 % ranges, volume, recent updates with a 4-hour strip and promise against reality; every number opens a list of exactly that count ([spec](./specs/10-seller-overview-v2.md))
 - Shipment list with views and counts (Active, Exceptions, …), search, one risk phrase per row, a peek sheet and bulk copy/cancel ([spec](./specs/06-tables-and-search.md))
 - Integrations: signed webhooks with retries, a live test inbox and delivery log with replay, and API keys for the public API
 
