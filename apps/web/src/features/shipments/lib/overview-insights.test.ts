@@ -139,4 +139,69 @@ describe('insights', () => {
 
     expect(fired.map((insight) => insight.id)).toEqual(['webhooks']);
   });
+
+  describe('stays quiet', () => {
+    const movedBy = (onTime: number, firstAttempt: number) => {
+      const base = sellerMetrics({ byState: [] });
+      return sellerMetrics({
+        byState: [],
+        onTime: { ...base.onTime, rate: 90 },
+        firstAttempt: { ...base.firstAttempt, rate: 92 },
+        comparison: {
+          ...base.comparison,
+          onTime: { n: 84, count: 74, rate: 90 - onTime },
+          firstAttempt: { n: 100, count: 92, rate: 92 - firstAttempt },
+        },
+      });
+    };
+
+    it('for a rate change under 2 points, firing from exactly 2', () => {
+      expect(run({ metrics: movedBy(1.9, -1.9) })).toEqual([]);
+      expect(run({ metrics: movedBy(2, 0) })[0].text).toMatch(
+        /^On time up 2\.0 pts/,
+      );
+    });
+
+    it('words a fall as down, and reports first attempt when on time held', () => {
+      expect(run({ metrics: movedBy(-3, 0) })[0].text).toMatch(
+        /^On time down 3\.0 pts/,
+      );
+      expect(run({ metrics: movedBy(0, 2.5) })[0]).toMatchObject({
+        text: expect.stringMatching(/^First attempt up 2\.5 pts/),
+        href: '/seller/shipments?view=exceptions',
+      });
+    });
+
+    it('for a stage whose p90 equals its budget or has no budget', () => {
+      const stage = (p90Hours: number, budgetHours: number | null) => ({
+        status: 'IN_TRANSIT' as const,
+        p50Hours: 5,
+        p90Hours,
+        budgetHours,
+        n: 20,
+      });
+
+      expect(
+        run({ metrics: { ...calm, stages: [stage(10, 10), stage(50, null)] } }),
+      ).toEqual([]);
+      expect(
+        run({ metrics: { ...calm, stages: [stage(10.1, 10)] } })[0].id,
+      ).toBe('slow-tail');
+    });
+
+    it('drops the lead caveat when the range cannot reach the target', () => {
+      const [insight] = run({
+        metrics: {
+          ...calm,
+          byState: [{ uf: 'MG', n: 50, count: 30, rate: 60 }],
+        },
+      });
+
+      expect(insight.text).toBe('MG trails · 30 of 50 on time.');
+    });
+
+    it('for a degraded webhook', () => {
+      expect(run({ webhook: { ...down, state: 'degraded' } })).toEqual([]);
+    });
+  });
 });
