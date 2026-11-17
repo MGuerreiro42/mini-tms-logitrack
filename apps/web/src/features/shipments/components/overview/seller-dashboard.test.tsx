@@ -89,6 +89,18 @@ describe('SellerDashboard', () => {
       http.get(`${API_URL}/shipments/activity`, () =>
         HttpResponse.json([collected]),
       ),
+      http.get(`${API_URL}/shipments`, ({ request }) => {
+        const view = new URL(request.url).searchParams.get('view');
+        return HttpResponse.json({
+          data: view === 'active' ? [late] : [],
+          meta: {
+            total: view === 'late' ? 1 : 0,
+            page: 1,
+            limit: 100,
+            totalPages: 1,
+          },
+        });
+      }),
     );
   });
 
@@ -205,7 +217,7 @@ describe('SellerDashboard', () => {
 
   it.each([
     ['attention', "Couldn't load the late shipments."],
-    ['status-counts', "Couldn't load the shipment pipeline."],
+    ['status-counts', "Couldn't load the shipment flow."],
   ])('keeps the other sections when %s fails', async (path, message) => {
     server.use(
       http.get(`${API_URL}/shipments/${path}`, () =>
@@ -289,7 +301,7 @@ describe('SellerDashboard', () => {
     );
   });
 
-  it('opens each count tile and pipeline segment on exactly that list', async () => {
+  it('opens each count tile and flow legend count on exactly that list', async () => {
     resetNavigation('/seller?window=7d');
     renderWithQueryClient(<SellerDashboard />);
 
@@ -310,9 +322,7 @@ describe('SellerDashboard', () => {
     expect(await href('First attempt 7 d, 94.3%. View exceptions')).toBe(
       '/seller/shipments?view=exceptions',
     );
-    expect(await href('1 In transit')).toBe(
-      '/seller/shipments?status=IN_TRANSIT',
-    );
+    expect(await href('Due soon 0')).toBe('/seller/shipments?view=due-soon');
     expect(metricsUrls.at(-1)?.searchParams.get('window')).toBe('7d');
   });
 

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { PipelineBar } from '@/components/common/charts/pipeline-bar';
 import { EmptyState } from '@/components/common/feedback-state';
 import { QueryState } from '@/components/common/query-state';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { OnTimeBy } from './on-time-by';
 import { OverviewHeader } from './overview-header';
 import { OverviewTiles } from './overview-tiles';
 import { RecentUpdates } from './recent-updates';
+import { ShipmentFlow } from './shipment-flow';
 
 // Composition only: each section reads its own query, so one refetch re-renders one section.
 export function SellerDashboard() {
@@ -40,16 +40,9 @@ export function SellerDashboard() {
           <OverviewTiles statsWindow={statsWindow} poll={poll} />
           <QueryState
             query={counts}
-            errorMessage="Couldn't load the shipment pipeline."
+            errorMessage="Couldn't load the shipment flow."
           >
-            {(data) => (
-              <PipelineBar
-                counts={data}
-                hrefFor={(status) =>
-                  ROUTES.sellerShipmentList(`status=${status}`)
-                }
-              />
-            )}
+            {(data) => <ShipmentFlow counts={data} poll={poll} />}
           </QueryState>
           <div className="grid grid-cols-1 gap-5 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
             <div className="flex min-w-0 flex-col gap-5">

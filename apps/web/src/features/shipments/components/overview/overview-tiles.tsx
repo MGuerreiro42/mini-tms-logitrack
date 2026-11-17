@@ -8,7 +8,6 @@ import {
   SpanBar,
   TickTrack,
 } from '@/components/common/charts/micro-figures';
-import { PIPELINE_STATUSES } from '@/components/common/charts/pipeline-bar';
 import {
   FirstAttemptTile,
   MedianDeliveryTile,
@@ -30,6 +29,7 @@ import { formatDuration } from '@/lib/format-duration';
 import { hasEnoughData, ON_TIME_TARGET } from '@/lib/metrics';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
+import { PIPELINE_STATUSES } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 
 const SLA_REFRESH_MS = 60_000;
