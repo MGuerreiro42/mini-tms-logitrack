@@ -146,12 +146,15 @@ export class WebhooksService {
     const deliveries = await this.prisma.webhookDelivery.findMany({
       where: {
         endpointId: endpoint.id,
-        status: {
-          in: [WebhookDeliveryStatus.SUCCEEDED, WebhookDeliveryStatus.FAILED],
-        },
+        attempts: { gt: 0 },
         createdAt: { gte: daysAgo(1) },
       },
-      select: { status: true, durationMs: true, updatedAt: true },
+      select: {
+        status: true,
+        attempts: true,
+        durationMs: true,
+        updatedAt: true,
+      },
       orderBy: { updatedAt: 'desc' },
     });
     return webhookHealth(deliveries);

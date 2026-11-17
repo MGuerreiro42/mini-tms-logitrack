@@ -11,7 +11,7 @@ describe('Webhook health (e2e)', () => {
     request(ctx.app.getHttpServer())
       .get('/webhooks/health')
       .auth(token, { type: 'bearer' });
-  // A seller whose endpoint finished these deliveries, newest first (S succeeded, F failed).
+  // A seller whose endpoint finished these deliveries, newest first (S succeeded, F failed for good, P failed once and waits for its retry).
   const sellerWith = async (statuses: string) => {
     const token = await tenants.sellerToken();
     const { body } = await request(ctx.app.getHttpServer())
@@ -27,7 +27,10 @@ describe('Webhook health (e2e)', () => {
         endpointId: endpoint.id,
         event: 'SHIPMENT_CREATED' as const,
         payload: {},
-        status: s === 'S' ? ('SUCCEEDED' as const) : ('FAILED' as const),
+        status: ({ S: 'SUCCEEDED', F: 'FAILED', P: 'PENDING' } as const)[
+          s as 'S' | 'F' | 'P'
+        ],
+        attempts: 1,
         durationMs: 100,
         createdAt: minutesAgo(i + 1),
         updatedAt: minutesAgo(i + 1),
@@ -80,6 +83,20 @@ describe('Webhook health (e2e)', () => {
     expect(Date.parse(body.lastSuccessAt)).toBeLessThan(
       Date.parse(body.failingSince),
     );
+  });
+
+  it('is down while retries are still pending, counting their failed attempts', async () => {
+    const { body } = await healthOf(await sellerWith('PPPPPS')).expect(200);
+
+    expect(body).toMatchObject({ state: 'down', n: 6 });
+  });
+
+  it('is degraded while a retrying endpoint has not failed 5 attempts in a row', async () => {
+    const { body } = await healthOf(
+      await sellerWith(`PP${'S'.repeat(8)}`),
+    ).expect(200);
+
+    expect(body).toMatchObject({ state: 'degraded', successRate: 80 });
   });
 
   it('is reserved to sellers', async () => {
