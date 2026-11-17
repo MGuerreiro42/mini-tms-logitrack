@@ -143,10 +143,10 @@ function InsightSentence({ insight }: { insight: Insight }) {
   return (
     <Link
       href={insight.href}
-      className="group flex flex-col gap-1 rounded-sm text-[13px] outline-ring focus-visible:outline-2 focus-visible:outline-offset-2 pointer-coarse:min-h-11"
+      className="group relative flex flex-col gap-1 rounded-sm text-[13px] outline-ring focus-visible:outline-2 focus-visible:outline-offset-2 pointer-coarse:min-h-11"
     >
       <span className="group-hover:underline">{insight.text}</span>
-      <span className="font-mono text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className="absolute top-full z-10 bg-card font-mono text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
         rule: {insight.rule}
       </span>
     </Link>
