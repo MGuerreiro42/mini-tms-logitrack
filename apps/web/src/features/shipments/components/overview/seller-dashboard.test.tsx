@@ -48,6 +48,7 @@ function activity(id: string, status: ShipmentStatus): ShipmentActivity {
     trackingCode: `TMS-${id.toUpperCase()}`,
     status,
     city: 'Bauru',
+    dueAt: null,
     createdAt: new Date().toISOString(),
   };
 }
@@ -210,7 +211,7 @@ describe('SellerDashboard', () => {
         name: 'Late now, 1. View late shipments',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('log', { name: 'Recent updates' })).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Last hour 1' })).toBeVisible();
   });
 
   it('opens each count tile and flow legend count on exactly that list', async () => {
@@ -266,15 +267,16 @@ describe('SellerDashboard', () => {
     );
     renderWithQueryClient(<SellerDashboard />);
 
-    const log = await screen.findByRole('log', { name: 'Recent updates' });
+    const log = await screen.findByRole('list', { name: 'Last hour 1' });
     expect(within(log).getAllByRole('link')).toHaveLength(1);
     expect(within(log).queryByText('New')).not.toBeInTheDocument();
 
     act(() => socket.trigger('connect'));
     act(() => socket.trigger('shipment:updated', { status: 'DELIVERED' }));
 
-    expect(await within(log).findByText('New')).toBeInTheDocument();
-    const [first] = within(log).getAllByRole('link');
+    const fresh = await screen.findByRole('list', { name: 'Last hour 2' });
+    expect(within(fresh).getByText('New')).toBeInTheDocument();
+    const [first] = within(fresh).getAllByRole('link');
     expect(first).toHaveTextContent('TMS-DELIVERED');
     expect(first).toHaveAttribute(
       'href',
@@ -282,13 +284,18 @@ describe('SellerDashboard', () => {
     );
   });
 
-  it('holds live arrivals while paused and shows them on request', async () => {
+  it('holds live arrivals while paused and counts them until back to live', async () => {
     const socket = makeFakeSocket();
     vi.mocked(getSocket).mockReturnValue(socket as never);
     let calls = 0;
     server.use(
-      http.get(`${API_URL}/shipments/activity`, () => {
+      http.get(`${API_URL}/shipments/activity`, ({ request }) => {
         calls += 1;
+        const url = new URL(request.url);
+        expect(url.searchParams.get('limit')).toBe('200');
+        expect(
+          Date.now() - Date.parse(url.searchParams.get('since') ?? ''),
+        ).toBeCloseTo(4 * HOUR_MS, -4);
         return HttpResponse.json(
           calls === 1 ? [collected] : [delivered, collected],
         );
@@ -296,18 +303,16 @@ describe('SellerDashboard', () => {
     );
     const user = userEvent.setup();
     renderWithQueryClient(<SellerDashboard />);
-    const log = await screen.findByRole('log', { name: 'Recent updates' });
+    await screen.findByRole('list', { name: 'Last hour 1' });
 
     await user.click(screen.getByRole('button', { name: 'Pause updates' }));
     act(() => socket.trigger('connect'));
     act(() => socket.trigger('shipment:updated', { status: 'DELIVERED' }));
 
-    const show = await screen.findByRole('button', {
-      name: 'Show 1 new update',
-    });
-    expect(within(log).getAllByRole('link')).toHaveLength(1);
+    expect(await screen.findByText('Paused · 1 new')).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Last hour 1' })).toBeVisible();
 
-    await user.click(show);
-    expect(within(log).getAllByRole('link')).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Back to live' }));
+    expect(screen.getByRole('list', { name: 'Last hour 2' })).toBeVisible();
   });
 });

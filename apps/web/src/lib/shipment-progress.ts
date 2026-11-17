@@ -19,6 +19,13 @@ export function nextExpectedStatus(
   return index === -1 ? undefined : STEPS[index + 1];
 }
 
+export function previousStatus(
+  status: ShipmentStatus,
+): ShipmentStatus | undefined {
+  const index = STEPS.indexOf(status);
+  return index > 0 ? STEPS[index - 1] : undefined;
+}
+
 export function isOnHappyPath(status: ShipmentStatus): boolean {
   return STEPS.includes(status);
 }

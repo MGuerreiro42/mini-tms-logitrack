@@ -1,5 +1,9 @@
 import type { ShipmentStatus } from '@/types/status';
-import { nextExpectedStatus, reachedStepIndex } from './shipment-progress';
+import {
+  nextExpectedStatus,
+  previousStatus,
+  reachedStepIndex,
+} from './shipment-progress';
 
 const at = (status: ShipmentStatus, day: number) => ({
   status,
@@ -39,5 +43,17 @@ describe('nextExpectedStatus', () => {
     ['RETURNED', undefined],
   ] as const)('expects %s to be followed by %s', (status, next) => {
     expect(nextExpectedStatus(status)).toBe(next);
+  });
+});
+
+describe('previousStatus', () => {
+  it('finds the one step a happy-path status comes from', () => {
+    expect(previousStatus('ACCEPTED')).toBe('PENDING');
+    expect(previousStatus('DELIVERED')).toBe('OUT_FOR_DELIVERY');
+  });
+
+  it('has none for the first step or off the happy path', () => {
+    expect(previousStatus('PENDING')).toBeUndefined();
+    expect(previousStatus('FAILED_DELIVERY')).toBeUndefined();
   });
 });

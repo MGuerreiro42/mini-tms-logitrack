@@ -9,8 +9,12 @@ import {
   type OverviewPoll,
   useSellerActivity,
 } from '@/features/shipments/hooks/use-seller-dashboard';
+import { useNow } from '@/hooks/use-now';
 import type { LiveConnection } from '@/lib/live-status';
 import { ROUTES } from '@/lib/routes';
+import { ActivityStrip } from './activity-strip';
+
+const STRIP_REFRESH_MS = 60_000;
 
 export function RecentUpdates({
   live,
@@ -20,6 +24,7 @@ export function RecentUpdates({
   poll: OverviewPoll;
 }) {
   const activity = useSellerActivity(poll);
+  const now = useNow(STRIP_REFRESH_MS);
 
   return (
     <Panel
@@ -33,7 +38,12 @@ export function RecentUpdates({
       }
     >
       <QueryState query={activity} errorMessage="Couldn't load the updates.">
-        {(events) => <ActivityFeed events={events} />}
+        {(events) => (
+          <>
+            <ActivityStrip events={events} now={now} />
+            <ActivityFeed events={events} />
+          </>
+        )}
       </QueryState>
     </Panel>
   );
