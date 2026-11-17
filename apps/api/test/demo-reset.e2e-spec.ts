@@ -5,6 +5,7 @@ import { Redis } from 'ioredis';
 import request from 'supertest';
 import {
   DEMO_CARRIER,
+  DEMO_EXTRA_CARRIERS,
   DEMO_PASSWORD,
   DEMO_SELLERS,
   DEMO_SHIPMENT_COUNT,
@@ -21,6 +22,12 @@ import {
   startApp,
 } from './support/e2e-app';
 import { truncateAllTables } from './support/e2e-database';
+
+const seedDemo = () =>
+  execSync('pnpm exec prisma db seed', {
+    env: { ...process.env, SEED_DEMO: 'true' },
+    stdio: 'ignore',
+  });
 
 // AppModule decides whether to load the simulator when it is imported, before any hook runs.
 vi.hoisted(() => {
@@ -52,10 +59,7 @@ describe('Demo reset (e2e)', () => {
     ).map((seller) => seller.id);
 
   beforeAll(async () => {
-    execSync('pnpm exec prisma db seed', {
-      env: { ...process.env, SEED_DEMO: 'true' },
-      stdio: 'ignore',
-    });
+    seedDemo();
     // A fresh mark keeps the startup catch-up reset from racing the assertions.
     redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
     await redis.set(LAST_RESET_KEY, Date.now());
@@ -94,7 +98,9 @@ describe('Demo reset (e2e)', () => {
     const tenants = await createTenants(ctx);
     const otherShipment = await createShipment(ctx, tenants.sellerA, tenants);
 
+    const startedAt = Date.now();
     await resetAs(adminToken).expect(204);
+    expect(Date.now() - startedAt).toBeLessThan(5000);
 
     const demoShipments = await ctx.prisma.shipment.findMany({
       where: { sellerId: { in: await demoSellerIds() } },
@@ -113,6 +119,20 @@ describe('Demo reset (e2e)', () => {
       ctx.prisma.shipment.findUnique({ where: { id: otherShipment.id } }),
     ).resolves.not.toBeNull();
   });
+
+  it('covers RJ, MG and PR with EconoLog once, however often the seed runs', async () => {
+    seedDemo();
+
+    const coverage = await ctx.prisma.carrierCoverageArea.findMany({
+      where: { carrier: { document: DEMO_EXTRA_CARRIERS[1].document } },
+      select: { state: true, city: true },
+      orderBy: { state: 'asc' },
+    });
+    expect(coverage).toEqual(
+      ['MG', 'PR', 'RJ', 'SP'].map((state) => ({ state, city: null })),
+    );
+    // The seed script starts its own Prisma client and hashes the demo passwords.
+  }, 20_000);
 
   it('lets only the admin trigger a reset, once a minute per admin', async () => {
     await resetAs(demoSellerToken).expect(403);

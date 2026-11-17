@@ -33,6 +33,13 @@ const tenant: LoadedDemoTenant = {
     'carrier-1': ['operator-user-1', 'operator-user-2'],
     'carrier-2': ['extra-manager-user'],
   },
+  extraCarriers: {
+    'Rápido Paulista': {
+      carrierId: 'carrier-2',
+      ownerId: 'extra-manager',
+      ownerUserId: 'extra-manager-user',
+    },
+  },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
     FULL: { id: 'full', slaHours: 48 },

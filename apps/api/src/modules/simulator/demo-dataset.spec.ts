@@ -1,6 +1,10 @@
 import { ShipmentStatus } from '../../../generated/prisma/client';
 import { MS_PER_HOUR } from '../../shared/stats/stats';
-import { buildDemoShipments, type DemoTenant } from './demo-dataset';
+import {
+  buildDemoShipments,
+  DEMO_EXTRA_CARRIERS,
+  type DemoTenant,
+} from './demo-dataset';
 import { STAGE_DURATION_MS } from './simulator.constants';
 
 const tenant: DemoTenant = {
@@ -16,6 +20,13 @@ const tenant: DemoTenant = {
     'carrier@demo.minitms.dev': 'manager-user',
     'operator1@demo.minitms.dev': 'operator-user-1',
     'operator2@demo.minitms.dev': 'operator-user-2',
+  },
+  extraCarriers: {
+    'Rápido Paulista': {
+      carrierId: 'rapido',
+      ownerId: 'rapido-manager',
+      ownerUserId: 'rapido-user',
+    },
   },
   modalities: {
     STANDARD: { id: 'standard', slaHours: 72 },
@@ -60,8 +71,8 @@ describe('buildDemoShipments', () => {
           "TMS-DE0000000002",
           "DELIVERED",
           "express",
-          "Ribeirão Preto",
-          "operator-1",
+          "Santos",
+          "rapido-manager",
           288,
         ],
         [
@@ -76,8 +87,8 @@ describe('buildDemoShipments', () => {
           "TMS-DE0000000004",
           "DELIVERED",
           "express",
-          "Campinas",
-          "operator-1",
+          "São Paulo",
+          "rapido-manager",
           377,
         ],
         [
@@ -110,6 +121,15 @@ describe('buildDemoShipments', () => {
     expect(count(ShipmentStatus.DELIVERED)).toBe(20);
     expect(count(ShipmentStatus.PENDING)).toBe(2);
     expect(count(ShipmentStatus.CANCELLED)).toBe(3);
+  });
+
+  it('sends SP Express to Rápido Paulista on its cities, the rest to the core carrier', () => {
+    const [rapido] = DEMO_EXTRA_CARRIERS;
+    for (const { shipment } of buildDemoShipments(tenant, NOW)) {
+      const express = shipment.modalityId === 'express';
+      expect(shipment.carrierId).toBe(express ? 'rapido' : 'carrier-1');
+      if (express) expect(rapido.cities).toContain(shipment.addressCity);
+    }
   });
 
   it('places every event in order and before now, ending on the shipment status', () => {
@@ -159,12 +179,16 @@ describe('buildDemoShipments', () => {
   });
 
   it('records the seller as the actor of opening and cancelling, the owner of the rest', () => {
-    const memberUser = Object.fromEntries(
-      Object.entries(tenant.carrierUserIds).map(([email, id]) => [
+    const memberUser = Object.fromEntries([
+      ...Object.entries(tenant.carrierUserIds).map(([email, id]) => [
         id,
         tenant.memberUserIds[email as keyof typeof tenant.memberUserIds],
       ]),
-    );
+      ...Object.values(tenant.extraCarriers).map((extra) => [
+        extra.ownerId,
+        extra.ownerUserId,
+      ]),
+    ]);
     for (const { shipment, events } of buildDemoShipments(tenant, NOW)) {
       const sellerUser =
         tenant.sellerUserIds[tenant.sellerIds.indexOf(shipment.sellerId)];

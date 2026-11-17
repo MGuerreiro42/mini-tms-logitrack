@@ -42,19 +42,15 @@ export const DEMO_CARRIER_MEMBERS = [
 export const DEMO_MODALITY_CODES = ['STANDARD', 'FULL', 'EXPRESS'] as const;
 type DemoModalityCode = (typeof DEMO_MODALITY_CODES)[number];
 
-// So the carrier choice at shipment creation is a real one; null cities cover the whole state.
-export const DEMO_EXTRA_CARRIERS: readonly {
-  companyName: string;
-  document: string;
-  manager: { email: string; name: string };
-  cities: readonly string[] | null;
-  modalityCodes: readonly DemoModalityCode[];
-}[] = [
+// So the carrier choice at shipment creation is a real one; null cities cover the whole of SP,
+// farStates are covered whole.
+export const DEMO_EXTRA_CARRIERS = [
   {
     companyName: 'Rápido Paulista',
     document: '11222333000181',
     manager: { email: 'rapido@demo.minitms.dev', name: 'Rafael Alves' },
     cities: ['São Paulo', 'Guarulhos', 'Campinas', 'Santos'],
+    farStates: [],
     modalityCodes: ['EXPRESS', 'FULL'],
   },
   {
@@ -62,9 +58,18 @@ export const DEMO_EXTRA_CARRIERS: readonly {
     document: '44555666000181',
     manager: { email: 'econolog@demo.minitms.dev', name: 'Juliana Rocha' },
     cities: null,
+    farStates: ['RJ', 'MG', 'PR'],
     modalityCodes: ['STANDARD', 'FULL'],
   },
-];
+] as const satisfies readonly {
+  companyName: string;
+  document: string;
+  manager: { email: string; name: string };
+  cities: readonly string[] | null;
+  farStates: readonly string[];
+  modalityCodes: readonly DemoModalityCode[];
+}[];
+type DemoExtraCarrierName = (typeof DEMO_EXTRA_CARRIERS)[number]['companyName'];
 
 export const DEMO_ADDRESSES = [
   {
@@ -158,12 +163,22 @@ export interface DemoTenant {
   carrierId: string;
   carrierUserIds: Record<DemoMemberEmail, string>;
   memberUserIds: Record<DemoMemberEmail, string>;
+  // Each extra carrier's manager owns its shipments; a missing one leaves them to the core carrier.
+  extraCarriers: Partial<
+    Record<
+      DemoExtraCarrierName,
+      { carrierId: string; ownerId: string; ownerUserId: string }
+    >
+  >;
   modalities: Record<DemoModalityCode, { id: string; slaHours: number | null }>;
 }
 
 const DAY_MS = 24 * MS_PER_HOUR;
 const DEFAULT_SLA_HOURS = 72;
 const STAGE_WEIGHTS = [0.04, 0.2, 0.08, 0.55, 0.13];
+const RAPIDO_ADDRESSES = DEMO_ADDRESSES.filter((address) =>
+  (DEMO_EXTRA_CARRIERS[0].cities as readonly string[]).includes(address.city),
+);
 const MODALITY_POOL: DemoModalityCode[] = [
   'STANDARD',
   'STANDARD',
@@ -321,26 +336,39 @@ export function buildDemoShipments(
 
   return PLANS.map((plan, index) => {
     const sellerIndex = index % 3 === 2 ? 1 : 0;
-    const modality = tenant.modalities[random.pick(MODALITY_POOL)];
-    const address = random.pick(DEMO_ADDRESSES);
+    const modalityCode = random.pick(MODALITY_POOL);
+    const modality = tenant.modalities[modalityCode];
+    // SP Express goes to Rápido Paulista on its cities, the rest to the core carrier.
+    const extra =
+      modalityCode === 'EXPRESS'
+        ? tenant.extraCarriers['Rápido Paulista']
+        : undefined;
+    const address = random.pick(extra ? RAPIDO_ADDRESSES : DEMO_ADDRESSES);
     const events = planEvents(
       random,
       plan,
       modality.slaHours ?? DEFAULT_SLA_HOURS,
       now,
     );
-    const owner = events.some((e) => e.status === ACCEPTED)
-      ? random.pick(OWNER_POOL)
-      : null;
+    let owner: { id: string; userId: string } | null = null;
+    if (events.some((e) => e.status === ACCEPTED)) {
+      const member = random.pick(OWNER_POOL);
+      owner = extra
+        ? { id: extra.ownerId, userId: extra.ownerUserId }
+        : {
+            id: tenant.carrierUserIds[member],
+            userId: tenant.memberUserIds[member],
+          };
+    }
     const createdAt = events[0].at;
 
     return {
       shipment: {
         trackingCode: demoTrackingCode(index),
         sellerId: tenant.sellerIds[sellerIndex],
-        carrierId: tenant.carrierId,
+        carrierId: extra?.carrierId ?? tenant.carrierId,
         modalityId: modality.id,
-        ownerId: owner && tenant.carrierUserIds[owner],
+        ownerId: owner?.id ?? null,
         status: plan.status,
         ...toAddressFields(address),
         createdAt,
@@ -355,7 +383,7 @@ export function buildDemoShipments(
         actorId:
           event.status === PENDING || event.status === CANCELLED || !owner
             ? tenant.sellerUserIds[sellerIndex]
-            : tenant.memberUserIds[owner],
+            : owner.userId,
         createdAt: event.at,
       })),
     };
