@@ -35,6 +35,13 @@ export interface ShipmentListMenu<F> {
   options: FilterChoice<string>[];
 }
 
+// A filter only a link sets (the Overview's drill-through): no menu, a chip while set.
+export interface ShipmentListLinkFilter<F> {
+  key: keyof F & string;
+  // Undefined for a value that needs no chip, such as a view with its own tab.
+  label: (value: string) => string | undefined;
+}
+
 type Tabs = ViewTabOption<'view' | 'status'>[];
 
 // Any status replaces the view; one without a tab (an old ?status= link) is also a filter.
@@ -61,6 +68,7 @@ interface ShipmentListToolbarProps<F extends ShipmentListFilters> {
   list: ShipmentListControls<F>;
   tabs: Tabs;
   menus?: ShipmentListMenu<F>[];
+  linkFilters?: ShipmentListLinkFilter<F>[];
   placeholder: string;
   total?: number;
   // Shown instead of the search row, e.g. a bulk bar while rows are selected.
@@ -71,6 +79,7 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
   list,
   tabs,
   menus = [],
+  linkFilters = [],
   placeholder,
   total,
   replacement,
@@ -81,7 +90,10 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
     setFilters(
       Object.fromEntries(keys.map((key) => [key, defaults[key]])) as Partial<F>,
     );
-  const menuKeys = menus.map((menu) => menu.key);
+  const menuKeys = [
+    ...menus.map((menu) => menu.key),
+    ...linkFilters.map((filter) => filter.key),
+  ];
 
   const chips: FilterChip[] = [
     ...(strayStatus
@@ -105,6 +117,11 @@ export function ShipmentListToolbar<F extends ShipmentListFilters>({
               onRemove: () => reset(menu.key),
             },
           ];
+    }),
+    ...linkFilters.flatMap(({ key, label }) => {
+      const text =
+        filters[key] === defaults[key] ? undefined : label(filters[key]);
+      return text ? [{ id: key, label: text, onRemove: () => reset(key) }] : [];
     }),
     ...(filters.window !== defaults.window
       ? [
