@@ -136,6 +136,15 @@ describe('SellerDashboard', () => {
     expect(first).toHaveTextContent('Webhook endpoint failing since 14:02');
   });
 
+  it('leaves the exception count to the sidebar announcer', async () => {
+    const { container } = renderWithQueryClient(<SellerDashboard />);
+    await screen.findByRole('heading', { name: 'Exceptions 2' });
+
+    expect(
+      container.querySelector('[aria-live="polite"]'),
+    ).toBeEmptyDOMElement();
+  });
+
   it('dates the window and the one it is compared with', async () => {
     renderWithQueryClient(<SellerDashboard />);
 

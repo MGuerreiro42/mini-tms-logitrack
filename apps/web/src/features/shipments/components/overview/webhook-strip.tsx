@@ -26,7 +26,7 @@ function stats(health: WebhookHealth, now: Date): string {
             `failing since ${formatTime(health.failingSince)}`,
         ]
       : [
-          `${health.successRate?.toFixed(0)}% of ${health.n} deliveries succeeded`,
+          `${health.successRate?.toFixed(0)}% of ${health.n} attempts succeeded`,
           health.p95Ms !== null && `p95 ${latency(health.p95Ms)}`,
         ];
   return [...parts, lastSuccessText(health, now)].filter(Boolean).join(' · ');
