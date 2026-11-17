@@ -7,7 +7,7 @@
 - `apps/web`: the seller Overview, rebuilt on the reimagined components.
 
 **Created**: 2026-11-11
-**Status**: Draft
+**Status**: Implemented
 **Design reference**:
 - **Chosen board.** "Overview · reimagined components · 1440 light" on the design canvas (`project/Reimagined.dc.html`), with:
   - its 390 variant (`project/ReimaginedMobile.dc.html`, the same artboard with `mobile`);
@@ -145,7 +145,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
 - **New seller with fewer than 5 shipments in the window.** The tiles follow States A ("—" plus "n = 3"). Each micro-figure is replaced by its note. The insight line shows "Not enough history to call trends yet · Only "late" and "webhooks" rules run (n = 3)". Delivery health shows "Building your score · 3 of 10 deliveries".
 - **Seller with no shipment at all.** Today's `EmptyState` ("Send your first shipment") replaces the whole page, unchanged.
-- **Previous window older than the seller's history.** Its n < 5, so no delta line and no "compared with" clause in the range line.
+- **Previous window older than the seller's history.** Its n < 5, so no delta line and no "compared with" clause in the range line. The range line then reads "· No earlier history to compare". The demo seed holds 90 days, so its 90 d window always lands here.
 - **Immature window** (under 80 % of created shipments terminal or past due). The rate tiles read "Comparison once more shipments close". The delta insight rule does not fire.
 - **Open shipment whose modality has no SLA (`dueAt` null).** It is drawn as a dashed ring with the label "No SLA" and counted in no outlook bucket. The legend adds "No SLA N" only when N > 0.
 - **Due soon is a moving boundary.** The web re-evaluates `slaState` every 60 s (`useNow`). The `view=due-soon` list uses the request time. A count can differ from the list by a shipment for up to a minute. This is accepted and stated in the e2e test as "same instant, same count".
@@ -303,16 +303,18 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
 ### Shipment flow
 
-- **FR-020**: `ShipmentFlow` MUST replace `PipelineBar` and the outlook bar on the seller Overview. `PipelineBar` stays for the other pages. It reads:
+- **FR-020**: `ShipmentFlow` MUST replace `PipelineBar` and the outlook bar on the seller Overview. `PipelineBar` is deleted (no other page used it) and `PIPELINE_STATUSES` lives in `lib/status-labels`. It reads:
   - `GET /shipments?view=active&limit=100`, sorted by `dueAt`, under `shipmentKeys.list`, so it gets the live refresh;
-  - the stage counts from `status-counts`.
+  - the stage counts from `status-counts`;
+  - the legend totals from `GET /shipments?view=on-track|due-soon|late&limit=1` (`meta.total`), so they equal the lists the legend opens whatever the 100 drawn marks are; "No SLA" is the active count minus those three.
 
   Rendering:
   - Stages are proportional segments on today's `status-*-bg`.
   - Marks are 10 px with a 2 px card ring, shaped by `slaState` (ring, half disc `--sla-soon`, filled `--sla-late`).
   - Each mark is a link to the shipment, with a tooltip "TMS-… Ribeirão Preto/SP · Standard · Late 7 h · due 07:31".
-  - The legend reads "On track N (link) · Due soon N (link) · Late N (link)".
-  - The desktop hint reads "Hover a dot for its code and due time · a dot slides right when a carrier scans it".
+  - The legend reads "On track N (link) · Due soon N (link) · Late N (link)", and "Showing the 100 most urgent of N" when fewer marks are drawn than are open.
+  - Each mark is a 24 px target around the dot, with one tab stop for the flow and arrow keys between marks; the tooltip opens on hover or focus and carries code, place, modality, state and due time.
+  - The desktop hint reads "Hover or focus a dot for its details · a dot slides right when a carrier scans it".
   - The empty state is "No open shipments." with no bar and no zero segments.
 - **FR-021**: Motion is a FLIP keyed by shipment id. When a mark changes stage between two renders it slides 400 ms `cubic-bezier(.16,1,.3,1)` and pulses once. The animation is on a wrapper `div`, not on SVG. Under reduced motion the mark moves without a tween. Moves are never announced.
 
@@ -556,4 +558,5 @@ Answered by the user on 2026-11-13:
 |------|--------|
 | 2026-11-11 | Draft from the chosen board "Overview · reimagined components · 1440 light", its 390 variant, the components sheet and States, mapped to `final.md`, `fe.md`, `suggestions.md`, `ux-ideas.md`, `visual-ideas.md` and `design-notes.md`; API shapes checked against `origin/docs/spec-08-wrapup` |
 | 2026-11-13 | Open questions resolved: bands accepted, replay left to a later spec, `view=on-track` added to row 3, Casa & Cia Demo at about 30 shipments, waiting fixed at 2 h |
+| 2026-11-16 | Web implemented as stacked branches: `feat/overview-primitives` and `feat/overview-shell` (row 6 split for size), `feat/shipment-flow`, `feat/overview-exceptions`, `feat/overview-rules` and `feat/overview-insights` (row 9 split), `feat/on-time-by-v2`, `feat/overview-volume`, `feat/recent-updates-v2`, `feat/promise-vs-reality`, `docs/spec-10-wrapup`. Decisions: the delta is a `DeltaText` in the narrow tile note rather than a `StatTile` prop (the board shows it only at 390); `MIN_SAMPLE` stays in `lib/metrics`; the predecessor lives in `lib/shipment-progress` (`previousStatus`) instead of a new `transitions.ts`; durations use `formatDuration` (days from 24 h) and stage names `STAGE_LABEL` (now shared); the UF rule names the code ("PR trails"); flow rows switch under a 600 px container; the motion curve is the existing `--ease-enter`; `features/shipments` may import `integrations` (webhook health). The axe and browser pass (SC-002, SC-004, SC-006) is left to the final QA run |
 | 2026-11-17 | QA pass 2: webhook health counts attempts (FR-012), so the "webhook endpoints down" Chaos reaches Degraded and Down while deliveries still wait in the retry backoff |

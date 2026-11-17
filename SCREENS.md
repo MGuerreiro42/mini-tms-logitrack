@@ -72,11 +72,21 @@ Every screen follows the same format: **Role** (who accesses it) · **Goal** · 
 ### Dashboard (Seller)
 
 - **Role:** approved Seller
-- **Goal:** "how am I doing this period, and what needs me now", answered in five seconds ([spec 07](./specs/07-dashboards.md)).
-- **Data:** a window selector (7 d · 30 d · 90 d, `?window=`, 30 d by default); tiles Active now, Late now, On time · window (sparkline, n, 90 % target) and Delivered · window, each defined in the [metric table](./specs/07-dashboards.md#metrics-core-api); a pipeline bar of the open statuses; Exceptions (late and failed) over On time by modality; an Activity panel grouped by shipment, at most six.
-- **Actions:** every count tile and pipeline segment opens the shipment list filtered to exactly that number; create a shipment.
-- **States:** a rate on fewer than five samples reads "—" with "Not enough deliveries (n=<n>)"; no exception is one line, "Nothing needs you right now."
-- **Navigation →** Create Shipment · Shipments List · Modality Configuration.
+- **Goal:** "what needs me now, what is moving, and how well I keep the promise", in one screen ([spec 07](./specs/07-dashboards.md), [spec 10](./specs/10-seller-overview-v2.md)).
+- **Layout:** by the page's own width (container queries), which the sidebar narrows: header with the window selector (7 d · 30 d · 90 d, `?window=`) and its range line ("Aug 18 – Nov 16 · compared with May 20 – Aug 17"); a webhook strip when degraded (`role="status"`) or down (`role="alert"`); the insight line; six tiles (one row ≥ 1100 px, 3 × 2 from 600 px, 2 × 3 below); Shipment flow; then Exceptions → Volume → On time by beside Recent updates (one column under 880 px, Recent updates last); Promise against reality, full width (`#promise`).
+- **Data:**
+  - **Insight line:** Delivery health (worst of on time, first attempt, returns and cancelled, banded Excellent → Critical; "Building your score" below 10 deliveries) and up to three rule sentences in priority order (late, webhooks down, waiting for a carrier, slow tail over budget, a UF under the 90 % target, a rate change of 2 pts or more), each a link with its rule on hover or focus.
+  - **Tiles:** Active (stage mix; "3 unclaimed · oldest 2 h"), Late (ages on a 0–12 h track), On time (current and previous dot, 90 % tick), Delivered (per-bucket columns; "of 180 created"), Delivery time (p50 → p90 against the SLA median), First attempt (first try / failed / returned). Rate tiles show "▲ 3.2 pts" in the narrow note.
+  - **Shipment flow:** one mark per open shipment per stage, shaped by SLA state (ring on track, half disc due soon, filled late, dashed ring without an SLA), a legend of the three counts; a mark slides when a carrier scans it. Over 100 open, stages end with "+N".
+  - **Exceptions:** groups Late, Failed attempt, Waiting for a carrier (and a Webhook row when down), each row with who acts next, the SLA overrun on late rows and the failure note on failed ones; "Checked HH:MM".
+  - **Volume:** shipments by creation date per day (7 d, 30 d) or week (90 d), stacked Delivered → Open → Problem, cancelled left out with a count.
+  - **On time by:** Modality or Destination, a rate dot over its 95 % Wilson range against the dashed target, worst first.
+  - **Recent updates:** a 4-hour strip of ticks, then the newest 20 changes in "Last hour" and "Earlier today" ("Collected → In transit", "Delivered · Late by 3 h").
+  - **Promise against reality:** stage budgets and stage medians end to end on one axis with the median delivery, and the slow-tail table (p90 against budget).
+- **Actions:** every number opens the list filtered to exactly that count: tiles (`view=active`, `view=late`, `status=DELIVERED&window=…&sla=late`, `status=DELIVERED&window=…`, `view=exceptions`), flow legend (`view=on-track`, `view=due-soon`, `view=late`), exception groups, insight sentences, On time by rows (`uf=`, `modality=`); pause Recent updates ("Paused · N new", "Back to live"); switch a chart to its table; create a shipment.
+- **States:** a seller with no shipment sees "Send your first shipment" instead of the page; fewer than five samples read "—" with their n and draw no figure; an immature window (under 80 % of shipments closed) reads "Comparison once more shipments close"; fewer than five shipments in the window: "Not enough history to call trends yet" and no Volume axis; no exception: "Nothing needs you right now."
+- **Live:** every section refreshes on `shipment:updated`; webhook health on `webhook:delivery`. One polite announcer speaks at most one sentence per 10 s (exception total, Delivery health band); the feed and the flow are never announced. Motion is transform and opacity, once per change, none under reduced motion.
+- **Navigation →** Create Shipment · Shipments List · Modality Configuration · Integrations.
 
 ### Create Shipment
 
