@@ -25,7 +25,7 @@ export const ownerLabel = ({
 }: Pick<AttentionGroup, 'type' | 'owner'>) =>
   OWNER_BY_TYPE[type] ?? OWNER_FALLBACK[owner];
 
-// The panel's title and the announcer count the same rows: every group, plus the webhook when down.
+// The panel's title counts every row of the list: every group, plus the webhook when down.
 export const exceptionTotal = (
   { groups }: ShipmentAttention,
   webhook: WebhookHealth['state'] | undefined,

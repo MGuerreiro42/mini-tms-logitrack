@@ -13,7 +13,6 @@ import { ROUTES } from '@/lib/routes';
 import { sumRecord } from '@/lib/sum-record';
 import { ExceptionsPanel } from './exceptions-panel';
 import { OnTimeBy } from './on-time-by';
-import { OverviewAnnouncer } from './overview-announcer';
 import { OverviewHeader } from './overview-header';
 import { OverviewTiles } from './overview-tiles';
 import { RecentUpdates } from './recent-updates';
@@ -27,7 +26,7 @@ export function SellerDashboard() {
   const live = useShipmentTracking({ subscribeToSeller: true });
   const poll = fallbackPollInterval(live.status);
   const counts = useSellerCounts(poll);
-  // Read once here, so the webhook socket room is joined once for the strip, panel and announcer.
+  // Read once here, so the webhook socket room is joined once for the strip and the panel.
   const webhook = useWebhookHealth().data;
 
   return (
@@ -39,7 +38,6 @@ export function SellerDashboard() {
         poll={poll}
       />
       <WebhookStrip health={webhook} />
-      <OverviewAnnouncer poll={poll} webhook={webhook} />
       {counts.data && sumRecord(counts.data) === 0 ? (
         <FirstShipment />
       ) : (
