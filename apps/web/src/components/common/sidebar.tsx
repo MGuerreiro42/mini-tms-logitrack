@@ -272,6 +272,7 @@ function NavRow({
 
 function RecentList() {
   const recents = useRecents();
+  const pathname = usePathname();
   if (recents.length === 0) return null;
   return (
     <div className="flex flex-col gap-1 rail:hidden">
@@ -283,16 +284,23 @@ function RecentList() {
         Recent
       </p>
       <ul aria-label="Recent" className="flex flex-col gap-0.5">
-        {recents.map((recent) => (
-          <li key={recent.href}>
-            <Link
-              href={recent.href}
-              className={cn(rowClassName('rest'), 'font-mono text-xs')}
-            >
-              <span className="truncate">{recent.code}</span>
-            </Link>
-          </li>
-        ))}
+        {recents.map((recent) => {
+          const active = recent.href === pathname;
+          return (
+            <li key={recent.href}>
+              <Link
+                href={recent.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  rowClassName(active ? 'current' : 'rest'),
+                  'font-mono text-xs',
+                )}
+              >
+                <span className="truncate">{recent.code}</span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
