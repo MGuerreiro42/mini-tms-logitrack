@@ -185,6 +185,24 @@ describe('SellerDashboard', () => {
     expect(screen.queryByText(/prev 88.1%/)).toBeNull();
   });
 
+  it('says so when the previous window has no history', async () => {
+    useMetrics(
+      sellerMetrics({
+        comparison: {
+          ...sellerMetrics().comparison,
+          onTime: { n: 0, count: 0, rate: null },
+          firstAttempt: { n: 0, count: 0, rate: null },
+        },
+      }),
+    );
+    renderWithQueryClient(<SellerDashboard />);
+
+    expect(
+      await screen.findByText(/^Aug 13 – .* · No earlier history to compare$/),
+    ).toBeVisible();
+    expect(screen.queryByText(/compared with/)).toBeNull();
+  });
+
   it('reads low samples as a dash with their n and draws no figure', async () => {
     useMetrics(
       sellerMetrics({
