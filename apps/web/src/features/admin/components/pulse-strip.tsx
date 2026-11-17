@@ -15,6 +15,17 @@ export function simulatorWord(pulse?: Pulse): string {
   return pulse.simulator ? SIMULATOR_WORDS[pulse.simulator] : UNAVAILABLE;
 }
 
+// The success rate to one decimal, then a detail; "No deliveries" when there were none.
+export function webhooksText(
+  webhooks: NonNullable<Pulse['webhooks']>,
+  detail: string | false,
+): string {
+  if (webhooks.successRate === null) return 'No deliveries';
+  return [`${webhooks.successRate.toFixed(1)}%`, detail]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 const sum = (values: number[]) =>
   values.reduce((total, value) => total + value, 0);
 
@@ -76,14 +87,10 @@ function PulseItems({ pulse }: { pulse?: Pulse }) {
       <Item label="Webhooks · 1 h">
         {pending(
           webhooks &&
-            (webhooks.successRate === null
-              ? 'No deliveries'
-              : [
-                  `${webhooks.successRate.toFixed(1)}%`,
-                  webhooks.p95Ms !== null && `p95 ${webhooks.p95Ms} ms`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')),
+            webhooksText(
+              webhooks,
+              webhooks.p95Ms !== null && `p95 ${webhooks.p95Ms} ms`,
+            ),
         )}
       </Item>
       <Item label="Queues">

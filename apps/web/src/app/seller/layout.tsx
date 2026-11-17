@@ -9,6 +9,7 @@ import {
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
+import { ChaosStatusRow } from '@/features/demo/components/chaos-status-row';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { getMySeller } from '@/features/sellers/api';
 import { SellerNavCounts } from '@/features/shipments/components/nav-counts-provider';
@@ -95,6 +96,7 @@ export default async function SellerLayout({
     <SellerNavCounts>
       <AppShell
         banner={<GlobalBanner />}
+        sidebarFooter={<ChaosStatusRow />}
         nav={SELLER_NAV}
         user={{
           name: seller.companyName,

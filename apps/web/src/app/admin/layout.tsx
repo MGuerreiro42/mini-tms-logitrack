@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { AppShell } from '@/components/common/app-shell';
 import type { NavSection } from '@/components/common/nav-tree';
+import { AdminOpsStatus } from '@/features/admin/components/admin-ops-status';
 import { GlobalBanner } from '@/features/demo/components/global-banner';
 import { AdminNavCounts } from '@/features/shipments/components/nav-counts-provider';
 import { requireSegment } from '@/lib/server-session';
@@ -71,6 +72,7 @@ export default async function AdminLayout({
     <AdminNavCounts>
       <AppShell
         banner={<GlobalBanner />}
+        sidebarFooter={<AdminOpsStatus />}
         nav={ADMIN_NAV}
         user={{ name: session.email, role: 'Administrator', initials: 'AD' }}
       >
