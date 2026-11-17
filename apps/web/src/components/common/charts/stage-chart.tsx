@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { formatDuration } from '@/lib/format-duration';
 import { hasEnoughData, notEnoughNote } from '@/lib/metrics';
+import { AXIS_TICKS, axisMax } from './axis';
 
 export interface StageRow {
   key: string;
@@ -22,17 +23,8 @@ export interface StageRow {
   n: number;
 }
 
-const TICKS = 4;
 const fmt = (hours: number | null) =>
   hours === null ? '—' : formatDuration(hours);
-
-// A round step so the shared axis reads 0 · 6 h · 12 h · 18 h, not 0 · 5.3 h …
-function axisMax(max: number): number {
-  const raw = max / TICKS;
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 2.5, 5, 10].find((m) => m * magnitude >= raw) ?? 10;
-  return step * magnitude * TICKS;
-}
 
 // Too few samples: no bar, no median, no over-budget flag, in the chart and the table alike.
 const isCharted = (row: StageRow) =>
@@ -136,17 +128,18 @@ export function StageChart({ rows }: { rows: StageRow[] }) {
             aria-hidden
             className="relative ml-[calc(7rem+0.75rem)] h-4 text-[11px] whitespace-nowrap tabular-nums text-muted-foreground max-sm:ml-0"
           >
-            {Array.from({ length: TICKS + 1 }, (_, i) => (max / TICKS) * i).map(
-              (hours) => (
-                <span
-                  key={hours}
-                  className="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full"
-                  style={{ left: at(hours) }}
-                >
-                  {hours === 0 ? '0' : fmt(hours)}
-                </span>
-              ),
-            )}
+            {Array.from(
+              { length: AXIS_TICKS + 1 },
+              (_, i) => (max / AXIS_TICKS) * i,
+            ).map((hours) => (
+              <span
+                key={hours}
+                className="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full"
+                style={{ left: at(hours) }}
+              >
+                {hours === 0 ? '0' : fmt(hours)}
+              </span>
+            ))}
           </li>
         </ul>
       )}

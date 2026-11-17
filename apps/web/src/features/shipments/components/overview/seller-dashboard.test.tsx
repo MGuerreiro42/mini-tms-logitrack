@@ -21,6 +21,10 @@ import {
 } from './overview.fixtures';
 import { SellerDashboard } from './seller-dashboard';
 
+// jsdom has no ResizeObserver, and its absence also keeps auto-animate off.
+vi.mock('@/hooks/use-element-width', () => ({
+  useElementWidth: () => [{ current: null }, undefined],
+}));
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
