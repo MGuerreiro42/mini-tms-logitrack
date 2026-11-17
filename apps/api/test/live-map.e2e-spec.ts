@@ -24,7 +24,8 @@ import { truncateAllTables } from './support/e2e-database';
 
 const MINUTE = 60_000;
 
-describe('Live map (e2e)', () => {
+// Each test walks a shipment through claim and three status changes first: ~2s, over the 5s default on a busy machine.
+describe('Live map (e2e)', { timeout: 20_000 }, () => {
   let ctx: E2eContext;
   let tenants: Awaited<ReturnType<typeof createTenants>>;
   // Only demo sellers get a route, so the shipments here belong to one.
