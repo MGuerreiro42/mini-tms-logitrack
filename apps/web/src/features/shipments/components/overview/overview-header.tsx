@@ -14,6 +14,7 @@ import {
   windowDeltas,
 } from '@/features/shipments/lib/overview-rules';
 import type { StatsWindow } from '@/hooks/use-stats-window';
+import { hasEnoughData } from '@/lib/metrics';
 import { ROUTES } from '@/lib/routes';
 
 export function OverviewHeader({
@@ -38,7 +39,14 @@ export function OverviewHeader({
           <WindowSelector
             value={statsWindow}
             onChange={onWindowChange}
-            range={data && rangeLine(data.comparison, compared, new Date())}
+            range={
+              data &&
+              rangeLine(data.comparison, compared, new Date()) +
+                // The seed holds one 90 d window of history, so the one before it is empty.
+                (hasEnoughData(data.comparison.onTime.n)
+                  ? ''
+                  : ' · No earlier history to compare')
+            }
           />
           <Button asChild>
             <Link href={ROUTES.newShipment}>Create shipment</Link>
