@@ -47,22 +47,29 @@ describe('OverviewAnnouncer', () => {
       late = count;
       await act(() => queryClient.refetchQueries());
     };
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(
         queryClient.getQueryData(['shipments', 'attention']),
-      ).toBeDefined(),
-    );
-    await act(() => vi.advanceTimersByTimeAsync(10_000));
-    expect(region).toHaveTextContent('');
+      ).toBeDefined();
+      expect(
+        queryClient.getQueryData(['shipments', 'metrics', '90d']),
+      ).toBeDefined();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(11_000));
+    expect(region).toBeEmptyDOMElement();
 
+    // After a quiet 10 s the first change is spoken at once...
     await refetch(6);
-    await act(() => vi.advanceTimersByTimeAsync(10_000));
-    expect(region).toHaveTextContent('Exceptions 5 → 6.');
+    await vi.waitFor(() =>
+      expect(region).toHaveTextContent('Exceptions 5 → 6.'),
+    );
+
+    // ...and the next ones inside the window wait, then speak as one sentence.
 
     await refetch(7);
     firstAttempt = { rate: 88, n: 159, failed: 13, returned: 6 };
     await refetch(8);
-    await act(() => vi.advanceTimersByTimeAsync(10_000));
+    await act(() => vi.advanceTimersByTimeAsync(11_000));
     expect(region).toHaveTextContent(
       'Exceptions 6 → 8. Delivery health now Fair, held back by first attempt 88.0% (n=159).',
     );
