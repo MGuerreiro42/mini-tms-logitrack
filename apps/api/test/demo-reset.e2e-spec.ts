@@ -10,7 +10,7 @@ import {
   DEMO_SHIPMENT_COUNT,
   DEMO_TRACKING_PREFIX,
 } from '../src/modules/simulator/demo-dataset';
-import { LAST_RESET_KEY } from '../src/modules/simulator/demo-reset.service';
+import { LAST_RESET_KEY } from '../src/modules/simulator/demo-events';
 import { DEMO_QUEUE } from '../src/modules/simulator/simulator.constants';
 import {
   connectSocket,
@@ -63,7 +63,8 @@ describe('Demo reset (e2e)', () => {
       process.env.ADMIN_PASSWORD ?? 'admin12345',
     );
     demoSellerToken = await login(DEMO_SELLERS[0].email, DEMO_PASSWORD);
-  });
+    // The seed child process alone takes ~6s on a freshly truncated database.
+  }, 60_000);
 
   afterAll(async () => {
     await ctx.app.get<Queue>(getQueueToken(DEMO_QUEUE)).obliterate({
@@ -123,6 +124,73 @@ describe('Demo reset (e2e)', () => {
     });
     expect(coverage).toEqual(
       ['MG', 'PR', 'RJ', 'SP'].map((state) => ({ state, city: null })),
+    );
+  }, 20_000);
+
+  it('replaces a legacy demo dataset with the current one on the first seed', async () => {
+    const [seller] = await ctx.prisma.seller.findMany({
+      where: { user: { email: DEMO_SELLERS[0].email } },
+    });
+    const carrier = await ctx.prisma.carrier.findUniqueOrThrow({
+      where: { document: DEMO_CARRIER.document },
+    });
+    const modality = await ctx.prisma.deliveryModality.findUniqueOrThrow({
+      where: { code: 'STANDARD' },
+    });
+    await ctx.prisma.shipment.createMany({
+      data: ['LEGACY-1', 'LEGACY-2'].map((suffix) => ({
+        trackingCode: `${DEMO_TRACKING_PREFIX}${suffix}`,
+        sellerId: seller.id,
+        carrierId: carrier.id,
+        modalityId: modality.id,
+        addressStreet: 'Rua Velha',
+        addressNumber: '1',
+        addressNeighborhood: 'Centro',
+        addressCity: 'São Paulo',
+        addressState: 'SP',
+        addressZipCode: '01000000',
+      })),
+    });
+
+    seedDemo();
+
+    const codes = await ctx.prisma.shipment.findMany({
+      where: { sellerId: { in: await demoSellerIds() } },
+      select: { trackingCode: true },
+    });
+    expect(codes).toHaveLength(DEMO_SHIPMENT_COUNT);
+    expect(
+      codes.some(({ trackingCode }) => trackingCode.includes('LEGACY')),
+    ).toBe(false);
+  }, 20_000);
+
+  it('leaves the same state as the daily reset when the seed runs on deploy', async () => {
+    const [sellerId] = await demoSellerIds();
+    const stale = { url: 'https://visitor.example/hook', secret: 'stale' };
+    const endpoint = await ctx.prisma.webhookEndpoint.upsert({
+      where: { sellerId },
+      create: { sellerId, ...stale, events: [], active: false },
+      update: { ...stale, active: false },
+    });
+    await ctx.prisma.apiKey.create({
+      data: { sellerId, name: 'visitor', prefix: 'mt_x', hash: 'visitor-hash' },
+    });
+    await redis.set(LAST_RESET_KEY, 1);
+
+    seedDemo();
+
+    await expect(
+      ctx.prisma.apiKey.count({ where: { sellerId } }),
+    ).resolves.toBe(0);
+    const reset = await ctx.prisma.webhookEndpoint.findUniqueOrThrow({
+      where: { id: endpoint.id },
+    });
+    expect(reset).toMatchObject({ active: true });
+    expect(reset.inboxId).not.toBe(endpoint.inboxId);
+    expect(reset.secret).not.toBe(stale.secret);
+    expect(reset.url).toContain(reset.inboxId);
+    expect(Number(await redis.get(LAST_RESET_KEY))).toBeGreaterThan(
+      Date.now() - 60_000,
     );
   }, 20_000);
 

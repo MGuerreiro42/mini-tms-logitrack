@@ -1,14 +1,18 @@
 import 'dotenv/config';
-import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
+import { Redis } from 'ioredis';
 import {
   type DeliveryModality,
   type GlobalRole,
   PrismaClient,
 } from '../generated/prisma/client';
+import { resetDemoWebhooks } from '../src/modules/integrations/demo-webhooks';
 import {
-  buildDemoShipments,
+  clearInboxes,
+  freshInboxEndpoint,
+} from '../src/modules/integrations/webhook-inbox.service';
+import {
   DEMO_ADMIN,
   DEMO_CARRIER,
   DEMO_CARRIER_MEMBERS,
@@ -18,6 +22,9 @@ import {
   DEMO_STATE,
   type DemoTenant,
 } from '../src/modules/simulator/demo-dataset';
+import { LAST_RESET_KEY } from '../src/modules/simulator/demo-events';
+import { replaceDemoShipments } from '../src/modules/simulator/demo-shipments';
+import { validateEnv } from '../src/shared/config/env.validation';
 import { cityKey } from '../src/shared/transforms/normalize';
 
 const prisma = new PrismaClient({
@@ -194,36 +201,25 @@ async function seedExtraCarriers(modalities: DeliveryModality[], hash: string) {
   return extraCarriers;
 }
 
-async function seedShipments(tenant: DemoTenant) {
-  const shipments = buildDemoShipments(tenant, Date.now());
-  const present = await prisma.shipment.findMany({
-    where: {
-      trackingCode: {
-        in: shipments.map(({ shipment }) => shipment.trackingCode),
+// Converges to the state the daily reset leaves. It cannot emit the in-process reset event: clients reconnect after a deploy.
+async function resetDemo(tenant: DemoTenant) {
+  const { PUBLIC_API_URL, REDIS_URL } = validateEnv(process.env);
+  const redis = new Redis(REDIS_URL);
+  try {
+    const count = await replaceDemoShipments(prisma, tenant);
+    await redis.set(LAST_RESET_KEY, Date.now());
+    await resetDemoWebhooks(
+      prisma,
+      {
+        clear: (ids) => clearInboxes(redis, ids),
+        freshEndpoint: () => freshInboxEndpoint(PUBLIC_API_URL),
       },
-    },
-    select: { trackingCode: true },
-  });
-  const presentCodes = new Set(present.map((s) => s.trackingCode));
-  const missing = shipments
-    .filter(({ shipment }) => !presentCodes.has(shipment.trackingCode))
-    .map((demo) => ({ ...demo, id: randomUUID() }));
-
-  // Batched as in the daily reset: one statement per table.
-  await prisma.$transaction([
-    prisma.shipment.createMany({
-      data: missing.map(({ id, shipment }) => ({ ...shipment, id })),
-    }),
-    prisma.trackingEvent.createMany({
-      data: missing.flatMap(({ id, events }) =>
-        events.map((event) => ({ ...event, shipmentId: id })),
-      ),
-    }),
-  ]);
-
-  console.log(
-    `Demo shipments: ${missing.length} created, ${presentCodes.size} already present`,
-  );
+      tenant.sellerIds,
+    );
+    console.log(`Demo reset: ${count} shipments replaced`);
+  } finally {
+    redis.disconnect();
+  }
 }
 
 async function main() {
@@ -255,7 +251,7 @@ async function main() {
   );
 
   const [standard, full, express] = modalities;
-  await seedShipments({
+  await resetDemo({
     ...sellers,
     ...carrier,
     extraCarriers,

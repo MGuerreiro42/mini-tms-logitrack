@@ -3,7 +3,12 @@
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent, useState } from 'react';
-import type { NavItem } from '@/components/common/nav-list';
+import {
+  type NavSection,
+  navLinks,
+  viewHref,
+} from '@/components/common/nav-tree';
+import { keyShortcut } from '@/components/common/use-nav-shortcuts';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -13,7 +18,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from '@/components/ui/command';
+import { useRecents } from '@/hooks/use-recents';
 import { isTrackingCode, publicTrackingPath } from '@/lib/public-tracking-path';
 
 function isShortcut(event: KeyboardEvent): boolean {
@@ -23,9 +30,22 @@ function isShortcut(event: KeyboardEvent): boolean {
   );
 }
 
-export function CommandMenu({ items }: { items: NavItem[] }) {
+// Every level-1 item and every view, as "<parent> · <view>", so a search finds either word.
+function destinations(nav: NavSection[]) {
+  return navLinks(nav).flatMap((link) => [
+    { label: link.name, href: link.href, shortcut: link.shortcut },
+    ...(link.views ?? []).map((view) => ({
+      label: `${link.name} · ${view.name}`,
+      href: viewHref(link, view),
+      shortcut: undefined,
+    })),
+  ]);
+}
+
+export function CommandMenu({ nav }: { nav: NavSection[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const recents = useRecents();
   const [query, setQuery] = useState('');
   const code = query.trim().toUpperCase();
 
@@ -97,15 +117,34 @@ export function CommandMenu({ items }: { items: NavItem[] }) {
                 </CommandItem>
               </CommandGroup>
             )}
+            {recents.length > 0 && (
+              <CommandGroup heading="Recent">
+                {recents.map((recent) => (
+                  <CommandItem
+                    key={recent.href}
+                    value={`Recent ${recent.code}`}
+                    onSelect={() => go(recent.href)}
+                    className="min-h-11 font-mono"
+                  >
+                    {recent.code}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
             <CommandGroup heading="Go to">
-              {items.map((item) => (
+              {destinations(nav).map((item) => (
                 <CommandItem
                   key={item.href}
-                  value={item.name}
+                  value={item.label}
                   onSelect={() => go(item.href)}
                   className="min-h-11"
                 >
-                  {item.name}
+                  {item.label}
+                  {item.shortcut && (
+                    <CommandShortcut>
+                      {keyShortcut(item.shortcut)}
+                    </CommandShortcut>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

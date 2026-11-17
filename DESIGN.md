@@ -195,7 +195,7 @@ The public demo operates itself while someone is watching, and is restored to th
 - **It acts through the domain.** Each tick advances one shipment, claims one and, on one tick in three on average, creates one, always by calling `ShipmentsService` as the demo user who would do it. Authorization, the status machine, the immutable `TrackingEvent` history and the real-time fan-out are the ones a human action goes through; a visitor racing the simulator gets the same 409 arbitration.
 - **BullMQ for scheduling.** One `demo` queue with two job schedulers (`tick` every 10 s, `reset` daily at 04:00 São Paulo), an extra tick right after a visitor connects (deduplicated for 10 s), and a global concurrency of 1: each job runs on exactly one API instance, and ticks never overlap a reset, without a hand-rolled lock. BullMQ opens its own Redis connections, since its workers need `maxRetriesPerRequest: null` and the shared client fails fast.
 - **Idle without viewers.** A tick first asks both socket namespaces, through the Redis adapter, whether anyone is connected; with nobody watching it writes nothing.
-- **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes and bulk-recreates the demo sellers' shipments in one batched transaction (four statements, ids generated in the service), then emits `demo:reset`, on which the web refetches.
+- **One dataset.** `buildDemoShipments` is seeded and pure, so the seed script and the reset build the same shipments, with timestamps relative to when they run. The reset deletes and bulk-recreates the demo sellers' shipments in one batched transaction (four statements, ids generated in the service), then emits `demo:reset`, on which the web refetches. The deploy-time seed runs the same replacement and webhook reset (minus the in-process event: clients reconnect after a deploy).
 - **Off unless asked.** `ConditionalModule` loads the simulator only with `DEMO_SIMULATOR=true`; elsewhere no queue, worker or route exists.
 
 ### Chaos Mode ([spec 08](./specs/08-demo-showcase.md))
@@ -313,7 +313,7 @@ pnpm start:dev     # prestart:dev runs `prisma migrate deploy` on its own — ht
 
 Changing `schema.prisma` and generating a new migration is always a manual, deliberate step: `pnpm exec prisma migrate dev --name <name>`.
 
-`pnpm exec prisma db seed` always upserts the admin and the modality catalog (in production it refuses to run without `ADMIN_PASSWORD`). Demo sellers, carriers and shipments are seeded only with `SEED_DEMO=true`, because their password is public.
+`pnpm exec prisma db seed` always upserts the admin and the modality catalog (in production it refuses to run without `ADMIN_PASSWORD`). Demo sellers, carriers and shipments are seeded only with `SEED_DEMO=true`, because their password is public; the seed replaces the demo sellers' shipments on every run and leaves other tenants untouched.
 
 ### Frontend (`apps/web`)
 
@@ -358,6 +358,8 @@ apps/web/src/
 **One SLA vocabulary:** `lib/sla.ts` is the single source of SLA phrases for every surface: "Due Thu 14:00" (on track; a date from six days out), "Due in 4 h" (due soon: within max(25% of the SLA window, 6 h)), "Late 13 h", "On time", "Late by 8 h", "Failed", "Returned" and "—". `RiskBadge` renders them with an icon for every non-neutral state, so none relies on colour; only open late rows get a tint, due-soon rows a 3 px caution bar.
 
 **Live updates:** each `useSocketSubscription` reports its own status, `connecting | live | offline`, instead of one global flag. Sockets are ref-counted in `websocket-client.ts`: the first consumer opens the connection, the last one closes it. The catch-up refetch runs after the subscription acks, so nothing emitted between connect and join is missed. While a subscription isn't `live`, the query polls as a fallback, and stops on a `4xx` (retrying won't fix those).
+
+**App shell ([spec 09](./specs/09-app-sidebar.md)):** each layout declares its navigation as a `NavSection[]` tree (`components/common/nav-tree.ts`, which also holds the one current-item function) and composes the feature parts into `AppShell`: the counts reach the shared sidebar through `NavCountsContext` (`components/common/nav-counts.tsx`), provided by `SellerNavCounts`, `CarrierNavCounts` or `AdminNavCounts` (`features/shipments`), each holding its own ref-counted room subscription that invalidates only its counts query; the feature status lines go in the `sidebarFooter` slot (`ChaosStatusRow`, `AdminOpsStatus`). Browser state: the `tms-sidebar` cookie (rail from 1280 px, read on the server for the first paint), and `localStorage` `tms:shortcuts` (single-key shortcuts on or off) and `tms:recents:<userId>` (up to five recent shipments), both with the density hook's blocked-storage fallback.
 
 **Motion ([spec 04](./specs/04-live-motion.md)):** animation exists to answer "what changed?" for a change that arrived over the socket, never for decoration.
 

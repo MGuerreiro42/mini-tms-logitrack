@@ -15,6 +15,7 @@ import { TrackingCode } from '@/components/common/tracking-code';
 import { ShipmentStatusBadge } from '@/components/ui/status-badge';
 import { TrackingTimeline } from '@/features/tracking/components/tracking-timeline';
 import { useAppOrigin } from '@/hooks/use-app-origin';
+import { useRememberRecent } from '@/hooks/use-recents';
 import { formatCep } from '@/lib/br-documents';
 import { formatDateTime } from '@/lib/format-date';
 import type { LiveConnection } from '@/lib/live-status';
@@ -31,6 +32,7 @@ import { ShipmentMapPanel } from './shipment-map-panel';
 export function ShipmentDetailCard({ id }: { id: string }) {
   const live = useShipmentTracking({ shipmentId: id });
   const query = useShipment(id, live.status);
+  useRememberRecent(query.data?.trackingCode);
 
   return (
     <QueryState
