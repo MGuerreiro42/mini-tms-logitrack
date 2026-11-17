@@ -42,4 +42,17 @@ describe('WindowSelector', () => {
 
     expect(currentUrl()).toBe('/carrier/performance?tab=x');
   });
+
+  it('reads its range under the segments', () => {
+    resetNavigation('/seller');
+    render(
+      <WindowSelector
+        value="90d"
+        onChange={() => {}}
+        range="Aug 13 – Nov 11"
+      />,
+    );
+
+    expect(screen.getByText('Aug 13 – Nov 11')).toBeVisible();
+  });
 });

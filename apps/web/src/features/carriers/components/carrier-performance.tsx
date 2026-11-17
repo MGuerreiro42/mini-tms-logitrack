@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  FirstAttemptTile,
+  MedianDeliveryTile,
+} from '@/components/common/delivery-tiles';
 import { EmptyState } from '@/components/common/feedback-state';
 import {
   LiveIndicator,
@@ -16,7 +20,6 @@ import { useCarrierPerformance } from '../hooks/use-carrier-performance';
 import { useOperatorRanking } from '../hooks/use-operator-ranking';
 import { usePerformanceLive } from '../hooks/use-performance-live';
 import type { CarrierPerformance as CarrierPerformanceData } from '../types';
-import { FirstAttemptTile, MedianDeliveryTile } from './delivery-tiles';
 import { StageDurationChart } from './stage-duration-chart';
 import { TeamTable } from './team-table';
 

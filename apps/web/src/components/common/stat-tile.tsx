@@ -13,7 +13,7 @@ const TONE_CLASS = {
   caution: 'text-notice-foreground',
 };
 
-interface StatTileProps {
+export interface StatTileProps {
   label: string;
   // A primitive, so a live change can be told apart from a re-render.
   value: string | number;
@@ -26,6 +26,8 @@ interface StatTileProps {
   definition?: ReactNode;
   sparkline?: (number | null)[];
   target?: number;
+  // A micro-chart under the value, hidden from screen readers: the label and note carry its meaning.
+  figure?: ReactNode;
   // The list filtered to exactly this number, and what opening it does.
   href?: string;
   linkLabel?: string;
@@ -40,6 +42,7 @@ export function StatTile({
   definition,
   sparkline,
   target,
+  figure,
   href,
   linkLabel,
 }: StatTileProps) {
@@ -120,6 +123,7 @@ export function StatTile({
         </p>
         {sparkline && <Sparkline values={sparkline} target={target} />}
       </div>
+      {figure && <div aria-hidden>{figure}</div>}
       {note && <p className="truncate text-xs text-muted-foreground">{note}</p>}
     </div>
   );

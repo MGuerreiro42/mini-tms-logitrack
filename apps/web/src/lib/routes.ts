@@ -9,6 +9,7 @@ export const ROUTES = {
   seller: '/seller',
   sellerShipments: '/seller/shipments',
   sellerShipment: (id: string) => `/seller/shipments/${id}`,
+  sellerShipmentList: (search: string) => `/seller/shipments?${search}`,
   newShipment: '/seller/shipments/new',
   sellerModalities: '/seller/modalities',
   sellerIntegrations: '/seller/integrations',

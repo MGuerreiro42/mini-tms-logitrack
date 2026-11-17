@@ -1,10 +1,12 @@
-import type { ClaimMetric, ListStats, OnTimeTrend, Rate } from '@/lib/metrics';
-import type { PaginationQuery } from '@/types/pagination';
 import type {
-  ApprovalStatus,
-  ApprovalStatusCounts,
-  ShipmentStatus,
-} from '@/types/status';
+  ClaimMetric,
+  ListStats,
+  OnTimeTrend,
+  Rate,
+  StageDuration,
+} from '@/lib/metrics';
+import type { PaginationQuery } from '@/types/pagination';
+import type { ApprovalStatus, ApprovalStatusCounts } from '@/types/status';
 
 export type { ApprovalStatusCounts };
 
@@ -41,15 +43,6 @@ export interface CoverageArea {
 export interface CoverageAreaInput {
   state: string;
   city?: string;
-}
-
-// Medians and p90 are nearest-rank, null without samples (spec 07 FR-022).
-export interface StageDuration {
-  status: ShipmentStatus;
-  p50Hours: number | null;
-  p90Hours: number | null;
-  budgetHours: number | null;
-  n: number;
 }
 
 export interface CarrierPerformance {
