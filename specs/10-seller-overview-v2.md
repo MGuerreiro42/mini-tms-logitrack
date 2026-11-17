@@ -145,7 +145,7 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
 - **New seller with fewer than 5 shipments in the window.** The tiles follow States A ("—" plus "n = 3"). Each micro-figure is replaced by its note. The insight line shows "Not enough history to call trends yet · Only "late" and "webhooks" rules run (n = 3)". Delivery health shows "Building your score · 3 of 10 deliveries".
 - **Seller with no shipment at all.** Today's `EmptyState` ("Send your first shipment") replaces the whole page, unchanged.
-- **Previous window older than the seller's history.** Its n < 5, so no delta line and no "compared with" clause in the range line.
+- **Previous window older than the seller's history.** Its n < 5, so no delta line and no "compared with" clause in the range line. The range line then reads "· No earlier history to compare". The demo seed holds 90 days, so its 90 d window always lands here.
 - **Immature window** (under 80 % of created shipments terminal or past due). The rate tiles read "Comparison once more shipments close". The delta insight rule does not fire.
 - **Open shipment whose modality has no SLA (`dueAt` null).** It is drawn as a dashed ring with the label "No SLA" and counted in no outlook bucket. The legend adds "No SLA N" only when N > 0.
 - **Due soon is a moving boundary.** The web re-evaluates `slaState` every 60 s (`useNow`). The `view=due-soon` list uses the request time. A count can differ from the list by a shipment for up to a minute. This is accepted and stated in the e2e test as "same instant, same count".
