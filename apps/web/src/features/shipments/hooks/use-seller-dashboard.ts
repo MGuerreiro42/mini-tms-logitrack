@@ -1,72 +1,64 @@
 'use client';
 
-import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import type { StatsWindow } from '@/hooks/use-stats-window';
-import { combineQueries } from '@/lib/combine-queries';
-import { fallbackPollInterval } from '@/lib/live-status';
+import type { fallbackPollInterval } from '@/lib/live-status';
 import {
   getSellerMetrics,
   getShipmentActivity,
   getShipmentAttention,
 } from '../api';
 import { shipmentKeys } from '../api/keys';
-import type {
-  ShipmentActivity,
-  ShipmentAttention,
-  ShipmentStatusCounts,
-} from '../types';
 import { statusCountsQuery } from './use-shipment-status-counts';
-import { useShipmentTracking } from './use-shipment-tracking';
+
+// The page subscribes once (useShipmentTracking); each section reads its own query and polls
+// with this while the socket is down.
+export type OverviewPoll = ReturnType<typeof fallbackPollInterval>;
 
 // The API maximum: grouped by shipment, it fills the six groups shown.
 const ACTIVITY_LIMIT = 20;
 
-export interface SellerDashboardData {
-  counts: ShipmentStatusCounts;
-  attention: ShipmentAttention;
-  activity: ShipmentActivity[];
+export function useSellerCounts(poll: OverviewPoll) {
+  const { token, enabled } = useAuthToken();
+  return useQuery({
+    ...statusCountsQuery(token, enabled),
+    refetchInterval: poll,
+    // The next poll is the retry, so a failure shows at once.
+    retry: false,
+  });
 }
 
-export function useSellerDashboard(statsWindow: StatsWindow) {
+export function useSellerAttention(poll: OverviewPoll) {
   const { token, enabled } = useAuthToken();
-  const live = useShipmentTracking({ subscribeToSeller: true });
-  const refetchInterval = fallbackPollInterval(live.status);
-
-  // The "now" numbers and the window's metrics load and fail apart.
-  const query = useQueries({
-    queries: [
-      { ...statusCountsQuery(token, enabled), refetchInterval },
-      {
-        queryKey: shipmentKeys.activity(),
-        queryFn: () => getShipmentActivity(ACTIVITY_LIMIT, token),
-        enabled,
-        refetchInterval,
-      },
-      {
-        queryKey: shipmentKeys.attention(),
-        queryFn: () => getShipmentAttention(token),
-        enabled,
-        refetchInterval,
-      },
-    ],
-    combine: (results) =>
-      combineQueries(
-        results,
-        ([counts, activity, attention]): SellerDashboardData => ({
-          counts,
-          attention,
-          activity,
-        }),
-      ),
+  return useQuery({
+    queryKey: shipmentKeys.attention(),
+    queryFn: () => getShipmentAttention(token),
+    enabled,
+    refetchInterval: poll,
+    // The next poll is the retry, so a failure shows at once.
+    retry: false,
   });
-  const metrics = useQuery({
+}
+
+export function useSellerActivity(poll: OverviewPoll) {
+  const { token, enabled } = useAuthToken();
+  return useQuery({
+    queryKey: shipmentKeys.activity(),
+    queryFn: () => getShipmentActivity(ACTIVITY_LIMIT, token),
+    enabled,
+    refetchInterval: poll,
+  });
+}
+
+export function useSellerMetrics(statsWindow: StatsWindow, poll: OverviewPoll) {
+  const { token, enabled } = useAuthToken();
+  return useQuery({
     queryKey: shipmentKeys.metrics(statsWindow),
     queryFn: () => getSellerMetrics(statsWindow, token),
     enabled,
-    refetchInterval,
+    refetchInterval: poll,
+    // The previous window's numbers stay, dimmed, until the new ones arrive.
     placeholderData: keepPreviousData,
   });
-
-  return { query, metrics, live };
 }
