@@ -1,39 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OnTimeRows } from './on-time-rows';
-import { PipelineBar } from './pipeline-bar';
 import { StageChart } from './stage-chart';
-
-describe('PipelineBar', () => {
-  it('links every open stage in lifecycle order, a zero one as a stub', () => {
-    render(
-      <PipelineBar
-        counts={{
-          PENDING: 2,
-          ACCEPTED: 0,
-          COLLECTED: 1,
-          IN_TRANSIT: 5,
-          OUT_FOR_DELIVERY: 1,
-        }}
-        hrefFor={(status) => `/seller/shipments?status=${status}`}
-      />,
-    );
-
-    const links = screen.getAllByRole('link');
-    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
-      '2 Pending',
-      '0 Accepted',
-      '1 Collected',
-      '5 In transit',
-      '1 Out for delivery',
-    ]);
-    expect(links[3]).toHaveAttribute(
-      'href',
-      '/seller/shipments?status=IN_TRANSIT',
-    );
-    expect(links[1].parentElement).toHaveStyle({ flex: '0 0 4px' });
-  });
-});
 
 describe('OnTimeRows', () => {
   it('draws a meter only from 5 samples on', () => {

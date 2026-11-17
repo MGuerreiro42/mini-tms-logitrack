@@ -1,6 +1,5 @@
-import { PIPELINE_STATUSES } from '@/components/common/charts/pipeline-bar';
 import { type SlaState, slaState } from '@/lib/sla';
-import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
+import { PIPELINE_STATUSES, SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
 import type { Shipment } from '../types';
 
 type FlowStatus = (typeof PIPELINE_STATUSES)[number];
@@ -17,41 +16,41 @@ const BUCKET_WORDS: [FlowKind, string][] = [
 const flowKind = ({ kind }: SlaState): FlowKind =>
   kind === 'onTrack' || kind === 'dueSoon' || kind === 'late' ? kind : 'none';
 
-const emptyTotals = (): Record<FlowKind, number> => ({
-  onTrack: 0,
-  dueSoon: 0,
-  late: 0,
-  none: 0,
-});
-
-// Stage counts are exact (status-counts); marks are the drawn list, so a stage may hide some.
+// Stage counts are exact (status-counts); marks are the drawn list, so a stage may hide some,
+// and its summary says how many.
 export function flowStages(
   shipments: Shipment[],
   counts: Record<FlowStatus, number>,
   now: Date,
 ) {
-  const totals = emptyTotals();
-  const stages = PIPELINE_STATUSES.map((status) => {
-    const buckets = emptyTotals();
+  return PIPELINE_STATUSES.map((status) => {
+    const buckets: Record<FlowKind, number> = {
+      onTrack: 0,
+      dueSoon: 0,
+      late: 0,
+      none: 0,
+    };
     const marks = shipments
       .filter((shipment) => shipment.status === status)
       .map((shipment) => {
         const state = slaState({ ...shipment, now });
         const kind = flowKind(state);
         buckets[kind] += 1;
-        totals[kind] += 1;
         return { shipment, state, kind };
       });
-    const parts = BUCKET_WORDS.filter(([kind]) => buckets[kind] > 0).map(
-      ([kind, words]) => `${buckets[kind]} ${words}`,
-    );
+    const hidden = Math.max(counts[status] - marks.length, 0);
+    const parts = [
+      ...BUCKET_WORDS.filter(([kind]) => buckets[kind] > 0).map(
+        ([kind, words]) => `${buckets[kind]} ${words}`,
+      ),
+      ...(hidden > 0 ? [`${hidden} not drawn`] : []),
+    ];
     return {
       status,
       count: counts[status],
       marks,
-      hidden: counts[status] - marks.length,
+      hidden,
       summary: `${SHIPMENT_STATUS_LABEL[status]} ${counts[status]}${parts.length ? `: ${parts.join(', ')}` : ''}`,
     };
   });
-  return { stages, totals };
 }
