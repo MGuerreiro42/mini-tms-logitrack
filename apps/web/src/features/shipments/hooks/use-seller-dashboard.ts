@@ -17,8 +17,10 @@ import { statusCountsQuery } from './use-shipment-status-counts';
 // with this while the socket is down.
 export type OverviewPoll = ReturnType<typeof fallbackPollInterval>;
 
-// The API maximum: grouped by shipment, it fills the six groups shown.
-const ACTIVITY_LIMIT = 20;
+// Recent updates read one query: every event of the last 4 h for the strip (the API
+// allows 200), the newest of them for the feed.
+export const ACTIVITY_WINDOW_MS = 4 * 3_600_000;
+const ACTIVITY_LIMIT = 200;
 // The list API's page maximum: the flow draws the first 100 open shipments by due time.
 const FLOW_QUERY = { view: 'active', limit: 100 } as const;
 
@@ -48,7 +50,14 @@ export function useSellerActivity(poll: OverviewPoll) {
   const { token, enabled } = useAuthToken();
   return useQuery({
     queryKey: shipmentKeys.activity(),
-    queryFn: () => getShipmentActivity(ACTIVITY_LIMIT, token),
+    queryFn: () =>
+      getShipmentActivity(
+        {
+          since: new Date(Date.now() - ACTIVITY_WINDOW_MS).toISOString(),
+          limit: ACTIVITY_LIMIT,
+        },
+        token,
+      ),
     enabled,
     refetchInterval: poll,
   });

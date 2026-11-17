@@ -70,6 +70,8 @@ export interface ShipmentActivity {
   trackingCode: string;
   status: ShipmentStatus;
   city: string;
+  // The shipment's due time, so a delivery reads on time or late.
+  dueAt: string | null;
   createdAt: string;
 }
 

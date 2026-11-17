@@ -106,11 +106,11 @@ export function getShipmentAttention(
 }
 
 export function getShipmentActivity(
-  limit: number,
+  query: { since: string; limit: number },
   token: string,
 ): Promise<ShipmentActivity[]> {
   return apiClient<ShipmentActivity[]>(
-    `/shipments/activity${toQueryString({ limit })}`,
+    `/shipments/activity${toQueryString(query)}`,
     undefined,
     token,
   );
