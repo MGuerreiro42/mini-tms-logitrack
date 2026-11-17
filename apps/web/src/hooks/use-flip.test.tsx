@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { useRef } from 'react';
+import { setReducedMotion } from '@/test/viewport';
 import { useFlip } from './use-flip';
 
 function Marks({ group }: { group: string }) {
@@ -13,13 +14,6 @@ function Marks({ group }: { group: string }) {
   );
 }
 
-const reducedMotion = (matches: boolean) =>
-  vi.spyOn(window, 'matchMedia').mockReturnValue({
-    matches,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  } as unknown as MediaQueryList);
-
 describe('useFlip', () => {
   const animate = vi.fn();
 
@@ -29,7 +23,6 @@ describe('useFlip', () => {
   });
 
   it('slides only a mark that changed group, never on mount', () => {
-    reducedMotion(false);
     const { rerender } = render(<Marks group="IN_TRANSIT" />);
     expect(animate).not.toHaveBeenCalled();
 
@@ -41,7 +34,7 @@ describe('useFlip', () => {
   });
 
   it('moves the mark without a tween under reduced motion', () => {
-    reducedMotion(true);
+    setReducedMotion(true);
     const { rerender } = render(<Marks group="IN_TRANSIT" />);
 
     rerender(<Marks group="OUT_FOR_DELIVERY" />);
