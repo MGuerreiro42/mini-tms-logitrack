@@ -17,6 +17,9 @@ export class ShipmentActivityResponseDto {
   @ApiProperty({ example: 'Sorocaba' })
   city: string;
 
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  dueAt: Date | null;
+
   @ApiProperty()
   createdAt: Date;
 }

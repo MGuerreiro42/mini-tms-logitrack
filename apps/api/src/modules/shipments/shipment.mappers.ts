@@ -100,7 +100,7 @@ const toTrackingEventDto = (
 
 export const toShipmentActivityResponseDto = (
   event: Pick<TrackingEvent, 'id' | 'status' | 'createdAt'> & {
-    shipment: Pick<Shipment, 'id' | 'trackingCode' | 'addressCity'>;
+    shipment: Pick<Shipment, 'id' | 'trackingCode' | 'addressCity' | 'dueAt'>;
   },
 ): ShipmentActivityResponseDto => ({
   id: event.id,
@@ -108,6 +108,7 @@ export const toShipmentActivityResponseDto = (
   trackingCode: event.shipment.trackingCode,
   status: event.status,
   city: event.shipment.addressCity,
+  dueAt: event.shipment.dueAt,
   createdAt: event.createdAt,
 });
 

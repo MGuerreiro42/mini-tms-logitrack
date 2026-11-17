@@ -366,7 +366,7 @@ export class ShipmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ActivityQueryDto,
   ) {
-    return this.shipmentsService.activityForSeller(user.id, query.limit);
+    return this.shipmentsService.activityForSeller(user.id, query);
   }
 
   @ApiOperation({
