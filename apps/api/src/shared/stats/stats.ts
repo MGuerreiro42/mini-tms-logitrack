@@ -19,9 +19,10 @@ export function startOfDay(at: Date): Date {
 }
 
 export const DEFAULT_STATS_WINDOW_DAYS = 90;
-export const MAX_STATS_WINDOW_DAYS = 365;
 
 export const WINDOW_DAYS = { '7d': 7, '30d': 30, '90d': 90 } as const;
+// The longest named window: seller metrics also read the window before it.
+export const MAX_STATS_WINDOW_DAYS = WINDOW_DAYS['90d'];
 export type StatsWindow = keyof typeof WINDOW_DAYS;
 
 export const daysAgo = (days: number, now = new Date()): Date =>

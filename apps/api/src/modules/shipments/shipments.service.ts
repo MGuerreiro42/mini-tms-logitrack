@@ -27,6 +27,7 @@ import {
   createdSince,
   groupBy,
   type StatsWindow,
+  windowSince,
 } from '../../shared/stats/stats';
 import { cityKey } from '../../shared/transforms/normalize';
 import type {
@@ -62,9 +63,13 @@ import type {
 import type { AdminMetricsResponseDto } from './metrics/admin-metrics.dto';
 import {
   deliveryMetrics,
+  firstAttempt,
+  isMature,
   isOnTimeSample,
   type MetricRow,
   onTime,
+  onTimeByState,
+  volumeSeries,
 } from './metrics/delivery-metrics';
 import { loadMetricRows } from './metrics/metric-rows';
 import type { SellerMetricsResponseDto } from './metrics/metrics-response.dto';
@@ -413,23 +418,47 @@ export class ShipmentsService {
 
   async metricsForSeller(
     userId: string,
-    since: Date,
+    query: { window?: StatsWindow; since?: Date },
   ): Promise<SellerMetricsResponseDto> {
     const seller = await this.findApprovedSellerOrThrow(
       userId,
       new ForbiddenException('Seller is not approved'),
     );
-    // Delivered and on-time read no history, so the event query is skipped.
-    const rows = await loadMetricRows(
-      this.prisma,
-      { sellerId: seller.id, ...createdSince(since) },
-      { events: false },
-    );
-    const { delivered, onTime } = deliveryMetrics(rows, {
-      since,
-      now: new Date(),
-    });
-    return { delivered, onTime, byModality: onTimeByModality(rows) };
+    const now = new Date();
+    const since = windowSince(query, now);
+    // The previous window has the same span and ends where this one starts.
+    const previousSince = new Date(2 * since.getTime() - now.getTime());
+    const [rows, previous] = await Promise.all([
+      loadMetricRows(this.prisma, {
+        sellerId: seller.id,
+        createdAt: { gte: since },
+      }),
+      loadMetricRows(this.prisma, {
+        sellerId: seller.id,
+        createdAt: { gte: previousSince, lt: since },
+      }),
+    ]);
+    const metrics = deliveryMetrics(rows, { since, now });
+    return {
+      shipments: metrics.shipments,
+      delivered: metrics.delivered,
+      cancelled: metrics.cancelled,
+      onTime: metrics.onTime,
+      medianDelivery: metrics.medianDelivery,
+      firstAttempt: metrics.firstAttempt,
+      stages: metrics.stages,
+      slaMedianHours: metrics.slaMedianHours,
+      byModality: onTimeByModality(rows),
+      byState: onTimeByState(rows),
+      volume: volumeSeries(rows, { since, now }),
+      comparison: {
+        since,
+        previousSince,
+        mature: isMature(rows, now),
+        onTime: onTime(previous),
+        firstAttempt: firstAttempt(previous),
+      },
+    };
   }
 
   async metricsForAdmin({

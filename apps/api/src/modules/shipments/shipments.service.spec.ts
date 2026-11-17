@@ -759,17 +759,19 @@ describe('ShipmentsService', () => {
       });
 
       await expect(
-        shipmentsService.metricsForSeller('user-1', since),
+        shipmentsService.metricsForSeller('user-1', { since }),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('reads the window without events and groups on time by modality', async () => {
+    it('reads the window and the one before it, with events, and groups on time', async () => {
       sellerFindUnique.mockResolvedValue(approvedSeller);
+      trackingEventFindMany.mockResolvedValue([]);
       shipmentFindMany.mockResolvedValue([
         {
           id: 'a',
           createdAt: new Date('2026-01-02T00:00:00Z'),
           status: 'DELIVERED',
+          addressState: 'PR',
           dueAt: new Date('2026-01-03T00:00:00Z'),
           deliveredAt: new Date('2026-01-02T12:00:00Z'),
           modality: { code: 'EXPRESS', name: 'Express' },
@@ -784,14 +786,34 @@ describe('ShipmentsService', () => {
         },
       ]);
 
-      const result = await shipmentsService.metricsForSeller('user-1', since);
+      const result = await shipmentsService.metricsForSeller('user-1', {
+        since,
+      });
+      const { previousSince } = result.comparison;
 
       expect(shipmentFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { sellerId: 'seller-1', createdAt: { gte: since } },
         }),
       );
-      expect(trackingEventFindMany).not.toHaveBeenCalled();
+      expect(shipmentFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            sellerId: 'seller-1',
+            createdAt: { gte: previousSince, lt: since },
+          },
+        }),
+      );
+      expect(since.getTime() - previousSince.getTime()).toBeGreaterThan(0);
+      expect(trackingEventFindMany).toHaveBeenCalledTimes(2);
+      expect(result.comparison).toMatchObject({
+        since,
+        mature: false,
+        onTime: { n: 1, count: 1, rate: 100 },
+        firstAttempt: { n: 1, count: 1, rate: 100 },
+      });
+      expect(result.byState).toEqual([{ uf: 'PR', n: 1, count: 1, rate: 100 }]);
+      expect(result.volume.bucket).toBe('week');
       expect(result.delivered).toBe(1);
       expect(result.onTime).toMatchObject({ n: 1, count: 1, rate: 100 });
       expect(result.byModality).toEqual([

@@ -104,7 +104,7 @@ export function volumeSeries(
   { since, now }: { since: Date; now: Date },
 ) {
   const daily = now.getTime() - since.getTime() <= VOLUME_DAILY_UP_TO_MS;
-  const bucket = daily ? 'day' : 'week';
+  const bucket: 'day' | 'week' = daily ? 'day' : 'week';
   const size = daily ? DAY_MS : 7 * DAY_MS;
   const origin = daily ? startOfDay(since) : since;
   const points = Array.from(
