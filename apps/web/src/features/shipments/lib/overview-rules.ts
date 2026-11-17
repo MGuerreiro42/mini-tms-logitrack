@@ -7,6 +7,7 @@ import {
   ON_TIME_TARGET,
   type Rate,
   STAGE_LABEL,
+  type StageDuration,
 } from '@/lib/metrics';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS_LABEL } from '@/lib/status-labels';
@@ -132,8 +133,9 @@ function waitingRule({ attention }: InsightInput): Insight | null {
   };
 }
 
-function slowTailRule({ metrics }: InsightInput): Insight | null {
-  const over = (metrics?.stages ?? [])
+// Stages whose slow tail (p90) runs past their budget, n ≥ 5, worst overrun first.
+export const overBudget = (stages: StageDuration[]) =>
+  stages
     .flatMap(({ status, p90Hours, budgetHours, n }) =>
       hasEnoughData(n) &&
       p90Hours !== null &&
@@ -143,10 +145,35 @@ function slowTailRule({ metrics }: InsightInput): Insight | null {
         : [],
     )
     .sort((a, b) => b.p90Hours - b.budgetHours - (a.p90Hours - a.budgetHours));
+
+const stageName = (status: StageDuration['status']) =>
+  STAGE_LABEL[status]?.toLowerCase() ?? status;
+
+const listed = (words: string[]) =>
+  words.length < 2
+    ? words.join('')
+    : `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`;
+
+// The one sentence under Promise against reality, built from the data (spec 10 FR-030).
+export function promiseSummary(
+  stages: StageDuration[],
+  medianHours: number | null,
+  slaHours: number | null,
+): string {
+  const over = overBudget(stages);
+  if (over.length === 0) return "Every stage's slow tail sits within budget.";
+  const tail = `lateness lives in the tail of ${listed(over.map(({ status }) => stageName(status)))}.`;
+  return medianHours !== null && slaHours !== null && medianHours < slaHours
+    ? `The typical shipment arrives with ${formatDuration(slaHours - medianHours)} to spare; ${tail}`
+    : `L${tail.slice(1)}`;
+}
+
+function slowTailRule({ metrics }: InsightInput): Insight | null {
+  const over = overBudget(metrics?.stages ?? []);
   if (over.length === 0) return null;
   const parts = over.map(
     ({ status, p90Hours, budgetHours }) =>
-      `${STAGE_LABEL[status]?.toLowerCase()} ${formatDuration(p90Hours)} vs ${formatDuration(budgetHours)}`,
+      `${stageName(status)} ${formatDuration(p90Hours)} vs ${formatDuration(budgetHours)}`,
   );
   return {
     id: 'slow-tail',

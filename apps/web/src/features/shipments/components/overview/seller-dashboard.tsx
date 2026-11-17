@@ -17,6 +17,7 @@ import { OnTimeBy } from './on-time-by';
 import { OverviewAnnouncer } from './overview-announcer';
 import { OverviewHeader } from './overview-header';
 import { OverviewTiles } from './overview-tiles';
+import { PromiseVsReality } from './promise-vs-reality';
 import { RecentUpdates } from './recent-updates';
 import { ShipmentFlow } from './shipment-flow';
 import { VolumePanel } from './volume-panel';
@@ -66,6 +67,7 @@ export function SellerDashboard() {
             </div>
             <RecentUpdates live={live} poll={poll} />
           </div>
+          <PromiseVsReality statsWindow={statsWindow} poll={poll} />
         </div>
       )}
     </div>
