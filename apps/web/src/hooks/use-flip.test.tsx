@@ -34,7 +34,6 @@ describe('useFlip', () => {
   });
 
   it('starts the slide from the layout position, whatever the scroll or a running slide', () => {
-    reducedMotion(false);
     const { container, rerender } = render(<Marks group="IN_TRANSIT" />);
     const mark = container.querySelector<HTMLElement>('[data-flip-id="a"]');
     if (!mark) throw new Error('mark missing');

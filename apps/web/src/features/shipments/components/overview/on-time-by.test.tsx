@@ -50,9 +50,11 @@ describe('OnTimeBy', () => {
     expect(
       await screen.findByRole('radio', { name: 'Destination' }),
     ).toBeChecked();
-    const links = within((await screen.findAllByRole('list'))[0]).getAllByRole(
-      'link',
-    );
+    const links = within(
+      await screen.findByRole('list', {
+        name: 'On time by destination, worst first',
+      }),
+    ).getAllByRole('link');
     expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
       'PR: 78% on time, 7 of 9, likely 45–94%',
       'SP: 94% on time, 90 of 96, likely 87–97%',
@@ -82,6 +84,9 @@ describe('OnTimeBy', () => {
       .click(screen.getByRole('radio', { name: 'Destination' }));
     expect(
       screen.getByRole('link', { name: /^PR: 78% on time/ }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('list', { name: 'On time by destination, worst first' }),
     ).toBeVisible();
   });
 });
