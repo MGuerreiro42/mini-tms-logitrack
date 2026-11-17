@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, HistoryIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useId, useState } from 'react';
@@ -18,6 +18,7 @@ import { RailTooltip } from '@/components/common/rail-tooltip';
 import { useSidebar } from '@/components/common/sidebar-context';
 import { keyShortcut } from '@/components/common/use-nav-shortcuts';
 import { Button } from '@/components/ui/button';
+import { useRecents } from '@/hooks/use-recents';
 import { plural } from '@/lib/plural';
 import { cn } from '@/lib/utils';
 
@@ -114,6 +115,7 @@ function NavTree({
           </div>
         );
       })}
+      <RecentList />
     </div>
   );
 }
@@ -265,6 +267,42 @@ function NavRow({
         </ul>
       )}
     </li>
+  );
+}
+
+function RecentList() {
+  const recents = useRecents();
+  const pathname = usePathname();
+  if (recents.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1 rail:hidden">
+      <p
+        aria-hidden
+        className="flex h-6 items-center gap-1.5 px-2 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground"
+      >
+        <HistoryIcon className="size-3.5" />
+        Recent
+      </p>
+      <ul aria-label="Recent" className="flex flex-col gap-0.5">
+        {recents.map((recent) => {
+          const active = recent.href === pathname;
+          return (
+            <li key={recent.href}>
+              <Link
+                href={recent.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  rowClassName(active ? 'current' : 'rest'),
+                  'font-mono text-xs',
+                )}
+              >
+                <span className="truncate">{recent.code}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

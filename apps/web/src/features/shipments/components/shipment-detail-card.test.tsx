@@ -8,6 +8,7 @@ import { getSocket } from '@/services/websocket-client';
 import { mapProps } from '@/test/delivery-map-stub';
 import { makeFakeSocket } from '@/test/fake-socket';
 import { server } from '@/test/msw/server';
+import { resetNavigation } from '@/test/navigation';
 import { renderWithQueryClient } from '@/test/render';
 import type { ShipmentDetail } from '../types';
 import { ShipmentDetailCard } from './shipment-detail-card';
@@ -126,6 +127,20 @@ describe('ShipmentDetailCard', () => {
     await act(() => vi.advanceTimersByTimeAsync(16_000));
 
     expect(requests).toBe(1);
+    expect(localStorage.getItem('tms:recents:user-1')).toBeNull();
+  });
+
+  it('remembers the shipment as a recent once it loads', async () => {
+    resetNavigation('/seller/shipments/shipment-1');
+    renderWithQueryClient(<ShipmentDetailCard id="shipment-1" />);
+
+    await waitFor(() =>
+      expect(localStorage.getItem('tms:recents:user-1')).toBe(
+        JSON.stringify([
+          { href: '/seller/shipments/shipment-1', code: 'TMS-AAA111' },
+        ]),
+      ),
+    );
   });
 
   it('polls every few seconds until the subscription is live, then stops', async () => {
