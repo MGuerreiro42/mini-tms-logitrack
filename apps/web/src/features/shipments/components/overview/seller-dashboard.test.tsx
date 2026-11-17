@@ -21,6 +21,10 @@ import {
 } from './overview.fixtures';
 import { SellerDashboard } from './seller-dashboard';
 
+// jsdom has no ResizeObserver, and its absence also keeps auto-animate off.
+vi.mock('@/hooks/use-element-width', () => ({
+  useElementWidth: () => [{ current: null }, undefined],
+}));
 vi.mock('@/services/websocket-client', async (importOriginal) => ({
   ...(await importOriginal()),
   getSocket: vi.fn(),
@@ -135,6 +139,15 @@ describe('SellerDashboard', () => {
     const [first] = within(exceptions).getAllByRole('link');
     expect(first).toHaveAttribute('href', '/seller/integrations');
     expect(first).toHaveTextContent('Webhook endpoint failing since 14:02');
+  });
+
+  it('leaves the exception count to the sidebar announcer', async () => {
+    const { container } = renderWithQueryClient(<SellerDashboard />);
+    await screen.findByRole('heading', { name: 'Exceptions 2' });
+
+    expect(
+      container.querySelector('[aria-live="polite"]'),
+    ).toBeEmptyDOMElement();
   });
 
   it('dates the window and the one it is compared with', async () => {

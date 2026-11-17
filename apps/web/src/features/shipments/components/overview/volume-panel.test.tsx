@@ -80,6 +80,43 @@ describe('VolumePanel', () => {
     expect(ticks).toEqual(['0', '1', '2', '3', '4']);
   });
 
+  it('groups days by week when columns would be thinner than 24 px, and says so', async () => {
+    const day = (n: number) => ({
+      start: `2026-08-${String(n).padStart(2, '0')}T03:00:00.000Z`,
+      delivered: 1,
+      problem: 0,
+      open: 0,
+    });
+    serve(
+      sellerMetrics({
+        volume: {
+          bucket: 'day',
+          points: Array.from({ length: 14 }, (_, i) => day(i + 1)),
+        },
+      }),
+    );
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private callback: (entries: unknown[]) => void) {}
+        observe() {
+          this.callback([{ contentRect: { width: 330 } }]);
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    renderPanel();
+
+    const chart = await screen.findByRole('list', {
+      name: 'Shipments created per week: 7, 7',
+    });
+    expect(within(chart).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText(/by week$/)).toBeVisible();
+    expect(screen.getByText(/Grouped by week/)).toBeVisible();
+    vi.unstubAllGlobals();
+  });
+
   it('moves between columns with the arrows and closes the tooltip with Escape', async () => {
     serve(sellerMetrics());
     const user = userEvent.setup();
