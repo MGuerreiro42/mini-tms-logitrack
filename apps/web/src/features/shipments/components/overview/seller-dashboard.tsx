@@ -12,6 +12,7 @@ import { fallbackPollInterval } from '@/lib/live-status';
 import { ROUTES } from '@/lib/routes';
 import { sumRecord } from '@/lib/sum-record';
 import { ExceptionsPanel } from './exceptions-panel';
+import { InsightLine } from './insight-line';
 import { OnTimeBy } from './on-time-by';
 import { OverviewAnnouncer } from './overview-announcer';
 import { OverviewHeader } from './overview-header';
@@ -39,13 +40,22 @@ export function SellerDashboard() {
         poll={poll}
       />
       <WebhookStrip health={webhook} />
-      <OverviewAnnouncer poll={poll} webhook={webhook} />
+      <OverviewAnnouncer
+        statsWindow={statsWindow}
+        poll={poll}
+        webhook={webhook}
+      />
       <QueryState query={counts} errorMessage="Couldn't load your dashboard.">
         {(data) =>
           sumRecord(data) === 0 ? (
             <FirstShipment />
           ) : (
             <div className="space-y-5">
+              <InsightLine
+                statsWindow={statsWindow}
+                poll={poll}
+                webhook={webhook}
+              />
               <OverviewTiles statsWindow={statsWindow} poll={poll} />
               <ShipmentFlow counts={data} poll={poll} />
               <div className="grid grid-cols-1 gap-5 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
