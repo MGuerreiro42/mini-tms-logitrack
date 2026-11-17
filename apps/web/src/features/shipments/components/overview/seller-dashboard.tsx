@@ -19,6 +19,7 @@ import { OverviewHeader } from './overview-header';
 import { OverviewTiles } from './overview-tiles';
 import { RecentUpdates } from './recent-updates';
 import { ShipmentFlow } from './shipment-flow';
+import { VolumePanel } from './volume-panel';
 import { WebhookStrip } from './webhook-strip';
 
 // Composition only: each section reads its own query, so one refetch re-renders one section.
@@ -61,6 +62,7 @@ export function SellerDashboard() {
               <div className="grid grid-cols-1 gap-5 @min-[880px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
                 <div className="flex min-w-0 flex-col gap-5">
                   <ExceptionsPanel poll={poll} webhook={webhook} />
+                  <VolumePanel statsWindow={statsWindow} poll={poll} />
                   <OnTimeBy statsWindow={statsWindow} poll={poll} />
                 </div>
                 <RecentUpdates live={live} poll={poll} />
