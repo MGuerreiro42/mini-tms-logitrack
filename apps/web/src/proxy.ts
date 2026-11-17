@@ -42,7 +42,8 @@ export function proxy(request: NextRequest) {
   );
   const [, segment] = request.nextUrl.pathname.split('/');
 
-  if (segment === 'login') {
+  // Signed in, both public entry pages go home: a signup would leave the old session in place.
+  if (segment === 'login' || segment === 'signup') {
     return login(request, session);
   }
 
@@ -67,5 +68,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/seller/:path*', '/carrier/:path*', '/login'],
+  matcher: [
+    '/admin/:path*',
+    '/seller/:path*',
+    '/carrier/:path*',
+    '/login',
+    '/signup/:path*',
+  ],
 };
