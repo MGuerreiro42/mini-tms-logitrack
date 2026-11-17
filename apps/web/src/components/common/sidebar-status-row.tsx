@@ -14,7 +14,7 @@ const TONES = {
   neutral: 'bg-muted-foreground',
 };
 
-// One footer line; in the rail it shrinks to its dot, named by a tooltip.
+// One footer line, wrapping when long; in the rail it shrinks to its dot, named by a tooltip.
 export function SidebarStatusRow({
   tone,
   label,
@@ -30,11 +30,11 @@ export function SidebarStatusRow({
         aria-hidden
         className={cn('size-2 shrink-0 rounded-full', TONES[tone])}
       />
-      <span className="truncate rail:sr-only">{label}</span>
+      <span className="leading-tight rail:sr-only">{label}</span>
     </>
   );
   const className =
-    'flex min-h-6 items-center gap-2 rounded-sm px-2 text-xs text-muted-foreground rail:justify-center rail:px-0 pointer-coarse:min-h-9';
+    'flex min-h-6 items-center gap-2 rounded-sm px-2 py-0.5 text-xs text-muted-foreground rail:justify-center rail:px-0 pointer-coarse:min-h-9';
   return (
     <RailTooltip label={label}>
       {href ? (
