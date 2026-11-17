@@ -63,6 +63,13 @@ describe('ViewTabs', () => {
     );
   });
 
+  it('points no tab at a panel that is not rendered', () => {
+    renderTabs({ view: 'ALL', status: 'ALL' });
+
+    for (const tab of screen.getAllByRole('tab'))
+      expect(tab).not.toHaveAttribute('aria-controls');
+  });
+
   it('sets the chosen key and resets the others', async () => {
     const onChange = renderTabs({ view: 'ALL', status: 'DELIVERED' });
 
