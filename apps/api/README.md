@@ -53,13 +53,13 @@ Grouped by domain, not by technical layer — same philosophy as the frontend (`
 
 ## Demo seed
 
-`pnpm exec prisma db seed` is idempotent and always upserts the admin and the modality catalog. Demo data is opt-in, since the demo password is public:
+`pnpm exec prisma db seed` always upserts the admin and the modality catalog. Demo data is opt-in, since the demo password is public:
 
 ```bash
 SEED_DEMO=true pnpm exec prisma db seed
 ```
 
-That also upserts the demo accounts (password `demo12345`) and creates any of the 40 demo shipments (`TMS-DE0000000001`–`040`) that don't exist yet.
+That also upserts the demo accounts (password `demo12345`) and replaces every shipment of the demo sellers with the 40 demo ones (`TMS-DE0000000001`–`040`), so visitor-created demo data is reset on every deploy. It also resets the demo sellers' webhook endpoints, deliveries and API keys and marks the reset time (`demo:last-reset`), like the daily reset. Other tenants are untouched.
 
 | Account | Role |
 |---|---|
@@ -67,8 +67,8 @@ That also upserts the demo accounts (password `demo12345`) and creates any of th
 | `carrier@demo.minitms.dev` | manager of Transportadora Demo |
 | `operator1@demo.minitms.dev`, `operator2@demo.minitms.dev` | operators |
 
-- Shipment dates are relative to the **first** run (spread over the previous ~30 days) and never move afterwards. To refresh them, delete the `TMS-DE…` shipments and their events, then seed again.
-- Existing rows are never updated: changing `ADMIN_PASSWORD` later does not rotate an already-seeded admin.
+- Shipment dates are relative to the latest run (spread over the previous ~30 days), so they refresh on every seed.
+- Existing accounts are never updated: changing `ADMIN_PASSWORD` later does not rotate an already-seeded admin.
 - With `NODE_ENV=production`, the seed refuses to run without `ADMIN_PASSWORD`.
 
 ## Testing login

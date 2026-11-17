@@ -3,14 +3,17 @@
 import { CircleAlertIcon, CircleIcon } from 'lucide-react';
 import { TextLink } from '@/components/common/text-link';
 import type { WebhookHealth } from '@/features/integrations/types';
+import { useNow } from '@/hooks/use-now';
 import { formatTime, formatTimeAgo } from '@/lib/format-date';
 import { ROUTES } from '@/lib/routes';
+
+const SLA_REFRESH_MS = 60_000;
 
 // The health window is 24 h, so no success in it reads as such, never as a date.
 export const lastSuccessText = (health: WebhookHealth, now: Date) =>
   health.lastSuccessAt
-    ? formatTimeAgo(health.lastSuccessAt, now)
-    : 'none in 24 h';
+    ? `last success ${formatTimeAgo(health.lastSuccessAt, now)}`
+    : 'no success in 24 h';
 
 const latency = (ms: number) =>
   ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
@@ -26,9 +29,7 @@ function stats(health: WebhookHealth, now: Date): string {
           `${health.successRate?.toFixed(0)}% of ${health.n} deliveries succeeded`,
           health.p95Ms !== null && `p95 ${latency(health.p95Ms)}`,
         ];
-  return [...parts, `last success ${lastSuccessText(health, now)}`]
-    .filter(Boolean)
-    .join(' · ');
+  return [...parts, lastSuccessText(health, now)].filter(Boolean).join(' · ');
 }
 
 // Shown only when degraded or down (States C); down interrupts, degraded waits its turn.
@@ -37,6 +38,7 @@ export function WebhookStrip({
 }: {
   health: WebhookHealth | undefined;
 }) {
+  const now = useNow(SLA_REFRESH_MS);
   if (health?.state !== 'down' && health?.state !== 'degraded') return null;
   const down = health.state === 'down';
   const Icon = down ? CircleAlertIcon : CircleIcon;
@@ -51,7 +53,7 @@ export function WebhookStrip({
         <span className="font-semibold">
           Webhooks {down ? 'down' : 'degraded'}
         </span>{' '}
-        {stats(health, new Date())}
+        {stats(health, now)}
       </p>
       <TextLink href={ROUTES.sellerIntegrations} className="font-semibold">
         Open Integrations

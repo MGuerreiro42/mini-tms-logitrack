@@ -8,7 +8,6 @@ import {
   SpanBar,
   TickTrack,
 } from '@/components/common/charts/micro-figures';
-import { PIPELINE_STATUSES } from '@/components/common/charts/pipeline-bar';
 import {
   FirstAttemptTile,
   MedianDeliveryTile,
@@ -30,6 +29,7 @@ import { formatDuration } from '@/lib/format-duration';
 import { hasEnoughData, ON_TIME_TARGET } from '@/lib/metrics';
 import { ROUTES } from '@/lib/routes';
 import { SHIPMENT_STATUS_DOT } from '@/lib/status-colors';
+import { PIPELINE_STATUSES } from '@/lib/status-labels';
 import { cn } from '@/lib/utils';
 
 const SLA_REFRESH_MS = 60_000;
@@ -134,42 +134,51 @@ function WindowCell({
 }
 
 function ActiveTile({ poll }: { poll: OverviewPoll }) {
-  // The page renders the tiles only once the counts have loaded.
-  const counts = useSellerCounts(poll).data;
+  const counts = useSellerCounts(poll);
   const oldestPendingAt = useSellerAttention(poll).data?.oldestPendingAt;
-  if (!counts) return null;
-  const active = PIPELINE_STATUSES.reduce(
-    (sum, status) => sum + counts[status],
-    0,
-  );
   const oldest =
     oldestPendingAt && formatDuration(hoursSince(oldestPendingAt, new Date()));
 
   return (
-    <StatTile
-      label="Active"
-      scope="now"
-      value={active}
-      href={ROUTES.sellerShipmentList('view=active')}
-      linkLabel="View active shipments"
-      figure={
-        <SegmentBar
-          segments={PIPELINE_STATUSES.map((status) => ({
-            key: status,
-            value: counts[status],
-            className: SHIPMENT_STATUS_DOT[status],
-          }))}
-        />
-      }
-      note={
-        oldest && (
-          <Note
-            wide={`${counts.PENDING} unclaimed · oldest ${oldest}`}
-            narrow={`Oldest unclaimed ${oldest}`}
+    <QueryState
+      query={counts}
+      errorMessage="Couldn't load the active shipments."
+    >
+      {(counts) => {
+        const active = PIPELINE_STATUSES.reduce(
+          (sum, status) => sum + counts[status],
+          0,
+        );
+        return (
+          <StatTile
+            label="Active"
+            scope="now"
+            value={active}
+            href={ROUTES.sellerShipmentList('view=active')}
+            linkLabel="View active shipments"
+            figure={
+              <SegmentBar
+                segments={PIPELINE_STATUSES.map((status) => ({
+                  key: status,
+                  value: counts[status],
+                  className: SHIPMENT_STATUS_DOT[status],
+                }))}
+              />
+            }
+            note={
+              oldest ? (
+                <Note
+                  wide={`${counts.PENDING} unclaimed · oldest ${oldest}`}
+                  narrow={`Oldest unclaimed ${oldest}`}
+                />
+              ) : (
+                `${counts.PENDING} unclaimed`
+              )
+            }
           />
-        )
-      }
-    />
+        );
+      }}
+    </QueryState>
   );
 }
 
@@ -228,7 +237,7 @@ function WindowTiles({
     metrics;
   const windowParam = `window=${statsWindow}`;
   const p90 = medianDelivery.p90Hours;
-  const onTimeShown = hasEnoughData(onTime.n) && onTime.rate !== null;
+  const onTimeRate = hasEnoughData(onTime.n) ? onTime.rate : null;
   const previousOnTime =
     deltas.onTime === 'immature' ? undefined : deltas.onTime?.previous;
   const sla =
@@ -244,22 +253,22 @@ function WindowTiles({
         <StatTile
           label="On time"
           scope={scope}
-          value={onTimeShown ? `${onTime.rate?.toFixed(1)}%` : '—'}
+          value={onTimeRate === null ? '—' : `${onTimeRate.toFixed(1)}%`}
           href={ROUTES.sellerShipmentList(
             `status=DELIVERED&${windowParam}&sla=late`,
           )}
           linkLabel="View late deliveries"
           figure={
-            onTimeShown && (
+            onTimeRate !== null && (
               <RateDots
-                rate={onTime.rate as number}
+                rate={onTimeRate}
                 previous={previousOnTime}
                 target={ON_TIME_TARGET}
               />
             )
           }
           note={
-            onTimeShown ? (
+            onTimeRate !== null ? (
               <DeltaNote
                 n={onTime.n}
                 delta={deltas.onTime}

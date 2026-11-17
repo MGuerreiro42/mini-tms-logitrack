@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { daysAgo } from '../../shared/stats/stats';
 import { DEMO_RESET, type DemoResetEvent } from '../simulator/demo-events';
+import { resetDemoWebhooks } from './demo-webhooks';
 import type { UpdateWebhookEndpointDto } from './dto/update-webhook-endpoint.dto';
 import type { WebhookDeliveryResponseDto } from './dto/webhook-delivery-response.dto';
 import type { WebhookEndpointResponseDto } from './dto/webhook-endpoint-response.dto';
@@ -175,23 +176,7 @@ export class WebhooksService {
   // Errors fail the reset job, so BullMQ retries it.
   @OnEvent(DEMO_RESET, { suppressErrors: false })
   async resetDemo({ sellerIds }: DemoResetEvent): Promise<void> {
-    const endpoints = await this.prisma.webhookEndpoint.findMany({
-      where: { sellerId: { in: sellerIds } },
-    });
-    await this.inbox.clear(endpoints.map((endpoint) => endpoint.inboxId));
-    await this.prisma.$transaction([
-      this.prisma.webhookDelivery.deleteMany({
-        where: { endpoint: { sellerId: { in: sellerIds } } },
-      }),
-      this.prisma.apiKey.deleteMany({ where: { sellerId: { in: sellerIds } } }),
-      // Fresh inbox id and secret: the demo password is public, so yesterday's visitors knew both.
-      ...endpoints.map((endpoint) =>
-        this.prisma.webhookEndpoint.update({
-          where: { id: endpoint.id },
-          data: { ...this.inbox.freshEndpoint(), active: true },
-        }),
-      ),
-    ]);
+    await resetDemoWebhooks(this.prisma, this.inbox, sellerIds);
   }
 
   private async findOrCreateEndpoint(userId: string): Promise<WebhookEndpoint> {

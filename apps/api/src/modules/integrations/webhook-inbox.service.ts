@@ -28,6 +28,30 @@ const INBOX_TTL_SECONDS = 7 * 24 * 60 * 60;
 const requestsKey = (inboxId: string) => `webhook-inbox:${inboxId}:requests`;
 const failingKey = (inboxId: string) => `webhook-inbox:${inboxId}:failing`;
 
+// PUBLIC_API_URL is an origin: a path on it would be dropped here.
+const inboxUrl = (origin: string, inboxId: string) =>
+  new URL(`/${WEBHOOK_INBOX_PATH}/${inboxId}`, origin).href;
+
+export const clearInboxes = async (
+  redis: Redis,
+  inboxIds: string[],
+): Promise<void> => {
+  if (inboxIds.length === 0) return;
+  await redis.del(
+    ...inboxIds.flatMap((id) => [requestsKey(id), failingKey(id)]),
+  );
+};
+
+export const freshInboxEndpoint = (origin: string) => {
+  const inboxId = randomUUID();
+  return {
+    inboxId,
+    url: inboxUrl(origin, inboxId),
+    events: Object.values(WebhookEvent),
+    secret: generateWebhookSecret(),
+  };
+};
+
 @Injectable()
 export class WebhookInboxService {
   constructor(
@@ -38,21 +62,18 @@ export class WebhookInboxService {
     private readonly demoTenantService: DemoTenantService,
   ) {}
 
-  // PUBLIC_API_URL is an origin: a path on it would be dropped here.
   urlFor(inboxId: string): string {
-    const origin = this.configService.get('PUBLIC_API_URL', { infer: true });
-    return new URL(`/${WEBHOOK_INBOX_PATH}/${inboxId}`, origin).href;
+    return inboxUrl(
+      this.configService.get('PUBLIC_API_URL', { infer: true }),
+      inboxId,
+    );
   }
 
   // How every endpoint starts, and how a demo reset leaves it: its own fresh inbox, every event, a new secret.
   freshEndpoint() {
-    const inboxId = randomUUID();
-    return {
-      inboxId,
-      url: this.urlFor(inboxId),
-      events: Object.values(WebhookEvent),
-      secret: generateWebhookSecret(),
-    };
+    return freshInboxEndpoint(
+      this.configService.get('PUBLIC_API_URL', { infer: true }),
+    );
   }
 
   // By path, not full URL: endpoints saved under an earlier PUBLIC_API_URL still reach their inbox.
@@ -134,10 +155,7 @@ export class WebhookInboxService {
     }
   }
 
-  async clear(inboxIds: string[]): Promise<void> {
-    if (inboxIds.length === 0) return;
-    await this.redis.del(
-      ...inboxIds.flatMap((id) => [requestsKey(id), failingKey(id)]),
-    );
+  clear(inboxIds: string[]): Promise<void> {
+    return clearInboxes(this.redis, inboxIds);
   }
 }
