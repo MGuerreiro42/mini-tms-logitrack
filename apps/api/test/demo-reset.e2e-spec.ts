@@ -63,7 +63,8 @@ describe('Demo reset (e2e)', () => {
       process.env.ADMIN_PASSWORD ?? 'admin12345',
     );
     demoSellerToken = await login(DEMO_SELLERS[0].email, DEMO_PASSWORD);
-  });
+    // The seed child process alone takes ~6s on a freshly truncated database.
+  }, 60_000);
 
   afterAll(async () => {
     await ctx.app.get<Queue>(getQueueToken(DEMO_QUEUE)).obliterate({
