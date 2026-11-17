@@ -78,6 +78,15 @@ describe('ShipmentFlow', () => {
     expect(screen.getByText('4 active · one dot per shipment')).toBeVisible();
   });
 
+  it('keeps every stage name whole, with a width floor for a dominant stage', async () => {
+    listed([shipment('pending', 'PENDING', 48)]);
+    renderWithQueryClient(<ShipmentFlow counts={counts} poll={() => false} />);
+
+    const name = (await screen.findByText('Out for delivery')).closest('li');
+    expect(screen.getByText('Out for delivery')).not.toHaveClass('truncate');
+    expect(name).toHaveClass('min-w-20');
+  });
+
   it('links each legend count to the list of that state', async () => {
     listed([shipment('late', 'IN_TRANSIT', -7)], {
       'on-track': 3,

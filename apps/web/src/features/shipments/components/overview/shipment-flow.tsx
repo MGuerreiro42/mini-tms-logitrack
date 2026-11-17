@@ -120,12 +120,16 @@ function FlowStages({
             // Proportional, with an empty stage still a thin door.
             style={{ flexGrow: Math.max(stage.count, 1) }}
             className={cn(
-              'min-w-0 basis-0 rounded-md px-2.5 py-2 first:rounded-l-lg last:rounded-r-lg @max-[600px]:basis-auto',
+              // A floor wide enough for the stage name, so a dominant stage can't squeeze the others to a count.
+              'min-w-20 basis-0 rounded-md px-2.5 py-2 first:rounded-l-lg last:rounded-r-lg @max-[600px]:min-w-0 @max-[600px]:basis-auto',
               SHIPMENT_STATUS[stage.status].className,
             )}
           >
-            <p aria-hidden className="flex items-baseline gap-1.5 text-xs">
-              <span className="truncate font-medium">
+            <p
+              aria-hidden
+              className="flex flex-wrap items-baseline gap-x-1.5 text-xs"
+            >
+              <span className="font-medium">
                 {SHIPMENT_STATUS[stage.status].label}
               </span>
               <span className="text-base font-semibold">{stage.count}</span>
