@@ -1,16 +1,6 @@
 import { StageChart } from '@/components/common/charts/stage-chart';
 import { Panel } from '@/components/common/panel';
-import type { StageDuration } from '@/lib/metrics';
-import type { ShipmentStatus } from '@/types/status';
-
-// Each stage is named by the status the shipment sits in (spec 07 FR-016).
-const STAGE_LABEL: Partial<Record<ShipmentStatus, string>> = {
-  PENDING: 'Claim wait',
-  ACCEPTED: 'Pickup wait',
-  COLLECTED: 'At origin',
-  IN_TRANSIT: 'Line haul',
-  OUT_FOR_DELIVERY: 'Last mile',
-};
+import { STAGE_LABEL, type StageDuration } from '@/lib/metrics';
 
 export function StageDurationChart({ stages }: { stages: StageDuration[] }) {
   return (

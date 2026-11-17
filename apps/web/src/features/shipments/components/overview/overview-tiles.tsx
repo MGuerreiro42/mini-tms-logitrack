@@ -21,7 +21,7 @@ import {
   useSellerCounts,
   useSellerMetrics,
 } from '@/features/shipments/hooks/use-seller-dashboard';
-import { windowDeltas } from '@/features/shipments/lib/overview-rules';
+import { isDelta, windowDeltas } from '@/features/shipments/lib/overview-rules';
 import type { SellerMetrics } from '@/features/shipments/types';
 import { useNow } from '@/hooks/use-now';
 import { type StatsWindow, windowLabel } from '@/hooks/use-stats-window';
@@ -238,8 +238,9 @@ function WindowTiles({
   const windowParam = `window=${statsWindow}`;
   const p90 = medianDelivery.p90Hours;
   const onTimeRate = hasEnoughData(onTime.n) ? onTime.rate : null;
-  const previousOnTime =
-    deltas.onTime === 'immature' ? undefined : deltas.onTime?.previous;
+  const previousOnTime = isDelta(deltas.onTime)
+    ? deltas.onTime.previous
+    : undefined;
   const sla =
     slaMedianHours === null ? '' : ` · SLA ${formatDuration(slaMedianHours)}`;
   const previous =
