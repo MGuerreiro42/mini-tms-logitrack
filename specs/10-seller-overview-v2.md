@@ -303,16 +303,18 @@ These are batched into one sentence at most every 10 s. Recent updates can be pa
 
 ### Shipment flow
 
-- **FR-020**: `ShipmentFlow` MUST replace `PipelineBar` and the outlook bar on the seller Overview. `PipelineBar` stays for the other pages. It reads:
+- **FR-020**: `ShipmentFlow` MUST replace `PipelineBar` and the outlook bar on the seller Overview. `PipelineBar` is deleted (no other page used it) and `PIPELINE_STATUSES` lives in `lib/status-labels`. It reads:
   - `GET /shipments?view=active&limit=100`, sorted by `dueAt`, under `shipmentKeys.list`, so it gets the live refresh;
-  - the stage counts from `status-counts`.
+  - the stage counts from `status-counts`;
+  - the legend totals from `GET /shipments?view=on-track|due-soon|late&limit=1` (`meta.total`), so they equal the lists the legend opens whatever the 100 drawn marks are; "No SLA" is the active count minus those three.
 
   Rendering:
   - Stages are proportional segments on today's `status-*-bg`.
   - Marks are 10 px with a 2 px card ring, shaped by `slaState` (ring, half disc `--sla-soon`, filled `--sla-late`).
   - Each mark is a link to the shipment, with a tooltip "TMS-… Ribeirão Preto/SP · Standard · Late 7 h · due 07:31".
-  - The legend reads "On track N (link) · Due soon N (link) · Late N (link)".
-  - The desktop hint reads "Hover a dot for its code and due time · a dot slides right when a carrier scans it".
+  - The legend reads "On track N (link) · Due soon N (link) · Late N (link)", and "Showing the 100 most urgent of N" when fewer marks are drawn than are open.
+  - Each mark is a 24 px target around the dot, with one tab stop for the flow and arrow keys between marks; the tooltip opens on hover or focus and carries code, place, modality, state and due time.
+  - The desktop hint reads "Hover or focus a dot for its details · a dot slides right when a carrier scans it".
   - The empty state is "No open shipments." with no bar and no zero segments.
 - **FR-021**: Motion is a FLIP keyed by shipment id. When a mark changes stage between two renders it slides 400 ms `cubic-bezier(.16,1,.3,1)` and pulses once. The animation is on a wrapper `div`, not on SVG. Under reduced motion the mark moves without a tween. Moves are never announced.
 
