@@ -17,61 +17,97 @@ const lateOnes = (count: number) =>
     shipment(`late-${i}`, 'IN_TRANSIT', -2),
   );
 
+function mount(initial: { metricsAfterAttention?: boolean } = {}) {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  setSession({ token: 't', role: 'SELLER', userId: 'u', email: 'a@b.c' });
+  const served = {
+    late: 5,
+    metrics: sellerMetrics(),
+    metricsReady: !initial.metricsAfterAttention,
+  };
+  server.use(
+    http.get(`${API_URL}/shipments/attention`, () =>
+      HttpResponse.json(attention(lateOnes(served.late), [])),
+    ),
+    http.get(`${API_URL}/shipments/metrics`, async () => {
+      await vi.waitFor(() => expect(served.metricsReady).toBe(true));
+      return HttpResponse.json(served.metrics);
+    }),
+  );
+  const queryClient = new QueryClient();
+  const { container } = renderWithQueryClient(
+    <OverviewAnnouncer
+      statsWindow="90d"
+      poll={() => false}
+      webhook={undefined}
+    />,
+    queryClient,
+  );
+  return {
+    served,
+    queryClient,
+    region: container.querySelector('[aria-live="polite"]'),
+    refetch: () => act(() => queryClient.refetchQueries()),
+    settle: () => act(() => vi.advanceTimersByTimeAsync(11_000)),
+    loaded: (key: unknown[]) =>
+      vi.waitFor(() => expect(queryClient.getQueryData(key)).toBeDefined()),
+  };
+}
+
 describe('OverviewAnnouncer', () => {
   afterEach(() => vi.useRealTimers());
 
   it('batches exception and health changes into one sentence per 10 s, silent on first load', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    setSession({ token: 't', role: 'SELLER', userId: 'u', email: 'a@b.c' });
-    let late = 5;
-    let firstAttempt = sellerMetrics().firstAttempt;
-    server.use(
-      http.get(`${API_URL}/shipments/attention`, () =>
-        HttpResponse.json(attention(lateOnes(late), [])),
-      ),
-      http.get(`${API_URL}/shipments/metrics`, () =>
-        HttpResponse.json(sellerMetrics({ firstAttempt })),
-      ),
-    );
-    const queryClient = new QueryClient();
-    const { container } = renderWithQueryClient(
-      <OverviewAnnouncer
-        statsWindow="90d"
-        poll={() => false}
-        webhook={undefined}
-      />,
-      queryClient,
-    );
-    const region = container.querySelector('[aria-live="polite"]');
-    const refetch = async (count: number) => {
-      late = count;
-      await act(() => queryClient.refetchQueries());
-    };
-    await vi.waitFor(() => {
-      expect(
-        queryClient.getQueryData(['shipments', 'attention']),
-      ).toBeDefined();
-      expect(
-        queryClient.getQueryData(['shipments', 'metrics', '90d']),
-      ).toBeDefined();
-    });
-    await act(() => vi.advanceTimersByTimeAsync(11_000));
-    expect(region).toBeEmptyDOMElement();
+    const page = mount();
+    await page.loaded(['shipments', 'attention']);
+    await page.loaded(['shipments', 'metrics', '90d']);
+    await page.settle();
+    expect(page.region).toBeEmptyDOMElement();
 
     // After a quiet 10 s the first change is spoken at once...
-    await refetch(6);
+    page.served.late = 6;
+    await page.refetch();
     await vi.waitFor(() =>
-      expect(region).toHaveTextContent('Exceptions 5 → 6.'),
+      expect(page.region).toHaveTextContent('Exceptions 5 → 6.'),
     );
 
     // ...and the next ones inside the window wait, then speak as one sentence.
-
-    await refetch(7);
-    firstAttempt = { rate: 88, n: 159, failed: 13, returned: 6 };
-    await refetch(8);
-    await act(() => vi.advanceTimersByTimeAsync(11_000));
-    expect(region).toHaveTextContent(
+    page.served.late = 7;
+    await page.refetch();
+    page.served.late = 8;
+    page.served.metrics = sellerMetrics({
+      firstAttempt: { rate: 88, n: 159, failed: 13, returned: 6 },
+    });
+    await page.refetch();
+    await page.settle();
+    expect(page.region).toHaveTextContent(
       'Exceptions 6 → 8. Delivery health now Fair, held back by first attempt 88.0% (n=159).',
     );
+  });
+
+  it('stays silent when only what holds the band back changes inside it', async () => {
+    const page = mount();
+    await page.loaded(['shipments', 'metrics', '90d']);
+    await page.settle();
+
+    page.served.metrics = sellerMetrics({
+      onTime: { n: 150, count: 136, rate: 90.7, trend: [] },
+    });
+    await page.refetch();
+    await page.settle();
+
+    expect(page.region).toBeEmptyDOMElement();
+  });
+
+  it('stays silent when the metrics arrive after the attention', async () => {
+    const page = mount({ metricsAfterAttention: true });
+    await page.loaded(['shipments', 'attention']);
+    await page.settle();
+
+    page.served.metricsReady = true;
+    await page.loaded(['shipments', 'metrics', '90d']);
+    await page.settle();
+
+    expect(page.region).toBeEmptyDOMElement();
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import type { StatsWindow } from '@/hooks/use-stats-window';
 import type { fallbackPollInterval } from '@/lib/live-status';
@@ -69,5 +69,33 @@ export function useSellerFlow(poll: OverviewPoll) {
     queryFn: () => listShipments(FLOW_QUERY, token),
     enabled,
     refetchInterval: poll,
+  });
+}
+
+const SLA_VIEWS = ['on-track', 'due-soon', 'late'] as const;
+
+// Exact per-state totals of the open set, from the lists the legend links open (a page of one is enough).
+export function useSellerSlaTotals(poll: OverviewPoll) {
+  const { token, enabled } = useAuthToken();
+  return useQueries({
+    queries: SLA_VIEWS.map((view) => {
+      const query = { view, limit: 1 } as const;
+      return {
+        queryKey: shipmentKeys.list(query),
+        queryFn: () => listShipments(query, token),
+        enabled,
+        refetchInterval: poll,
+      };
+    }),
+    combine: (results) => {
+      const [onTrack, dueSoon, late] = results.map(
+        ({ data }) => data?.meta.total,
+      );
+      return onTrack === undefined ||
+        dueSoon === undefined ||
+        late === undefined
+        ? undefined
+        : { onTrack, dueSoon, late };
+    },
   });
 }
